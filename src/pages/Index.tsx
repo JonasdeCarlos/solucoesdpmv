@@ -113,6 +113,7 @@ const Index = () => {
         {currentStep === 3 && (
           <Step3PartiesAndTerm
             step1={step1}
+            step2={step2}
             verbas={verbas}
             data={step3}
             onChange={setStep3}
