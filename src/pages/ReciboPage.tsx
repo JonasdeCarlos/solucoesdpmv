@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { type Client } from '@/types/client';
 import { type Verba, TIPO_CALCULO_LABELS } from '@/types/verba';
@@ -17,14 +18,50 @@ import {
 } from '@/types/recibo';
 import { generateReciboPDF, generateReciboTexto } from '@/utils/reciboGenerator';
 import { formatCurrency, formatCurrencyInput, parseCurrencyToNumber } from '@/utils/formatters';
-import { Plus, Trash2, FileDown, Copy, Calculator } from 'lucide-react';
+import { type FeriadoMunicipal, quintoDiaUtilSubsequente, contarDiasUteisMes } from '@/utils/feriados';
+import { Plus, Trash2, FileDown, Copy, Calculator, CalendarDays } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const ReciboPage = () => {
   const [clientes] = useLocalStorage<Client[]>('mv_clientes', []);
   const [verbasDB] = useLocalStorage<Verba[]>('mv_verbas', []);
+  const [feriadosMunicipais, setFeriadosMunicipais] = useLocalStorage<FeriadoMunicipal[]>('mv_feriados_municipais', []);
   const [recibo, setRecibo] = useState<ReciboData>(createEmptyReciboData());
+  const [feriadoDialogOpen, setFeriadoDialogOpen] = useState(false);
+  const [novoFeriado, setNovoFeriado] = useState({ nome: '', dia: '', mes: '' });
   const { toast } = useToast();
+
+  // Ao alterar competência, preencher data de emissão e dias úteis/não úteis
+  const handleCompetenciaChange = useCallback((comp: string) => {
+    setRecibo((p) => {
+      const updates: Partial<ReciboData> = { competencia: comp };
+      const parts = comp.split('/');
+      if (parts.length === 2) {
+        const mes = Number(parts[0]);
+        const ano = Number(parts[1]);
+        if (mes >= 1 && mes <= 12 && ano >= 2000) {
+          const dataEmissao = quintoDiaUtilSubsequente(comp, feriadosMunicipais);
+          if (dataEmissao) updates.dataEmissao = dataEmissao;
+          const { uteis, naoUteis } = contarDiasUteisMes(ano, mes, feriadosMunicipais);
+          updates.diasUteis = uteis;
+          updates.diasNaoUteis = naoUteis;
+        }
+      }
+      return { ...p, ...updates };
+    });
+  }, [feriadosMunicipais]);
+
+  const handleAddFeriado = () => {
+    const dia = Number(novoFeriado.dia);
+    const mes = Number(novoFeriado.mes);
+    if (!novoFeriado.nome.trim() || dia < 1 || dia > 31 || mes < 1 || mes > 12) {
+      toast({ title: 'Preencha nome, dia e mês corretamente', variant: 'destructive' });
+      return;
+    }
+    setFeriadosMunicipais((prev) => [...prev, { id: crypto.randomUUID(), nome: novoFeriado.nome.trim(), dia, mes }]);
+    setNovoFeriado({ nome: '', dia: '', mes: '' });
+    toast({ title: 'Feriado municipal adicionado!' });
+  };
 
   // Selecionar cliente
   const handleClienteSelect = (clienteId: string) => {
@@ -161,7 +198,12 @@ const ReciboPage = () => {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-bold">Recibo Avulso de Pagamento</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-bold">Recibo Avulso de Pagamento</h2>
+        <Button variant="outline" size="sm" onClick={() => setFeriadoDialogOpen(true)}>
+          <CalendarDays className="w-4 h-4 mr-1" /> Feriados Municipais
+        </Button>
+      </div>
 
       {/* Bloco 1 — Identificação */}
       <Card>
@@ -202,7 +244,7 @@ const ReciboPage = () => {
               <Label>Competência (MM/AAAA) *</Label>
               <Input
                 value={recibo.competencia}
-                onChange={(e) => setRecibo((p) => ({ ...p, competencia: e.target.value }))}
+                onChange={(e) => handleCompetenciaChange(e.target.value)}
                 placeholder="01/2026"
               />
             </div>
@@ -555,6 +597,81 @@ const ReciboPage = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Dialog Feriados Municipais */}
+      <Dialog open={feriadoDialogOpen} onOpenChange={setFeriadoDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Feriados Municipais</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-5 gap-2 items-end">
+              <div className="col-span-2">
+                <Label>Nome</Label>
+                <Input
+                  value={novoFeriado.nome}
+                  onChange={(e) => setNovoFeriado((p) => ({ ...p, nome: e.target.value }))}
+                  placeholder="Padroeiro"
+                />
+              </div>
+              <div>
+                <Label>Dia</Label>
+                <Input
+                  type="number" min={1} max={31}
+                  value={novoFeriado.dia}
+                  onChange={(e) => setNovoFeriado((p) => ({ ...p, dia: e.target.value }))}
+                  placeholder="15"
+                />
+              </div>
+              <div>
+                <Label>Mês</Label>
+                <Input
+                  type="number" min={1} max={12}
+                  value={novoFeriado.mes}
+                  onChange={(e) => setNovoFeriado((p) => ({ ...p, mes: e.target.value }))}
+                  placeholder="8"
+                />
+              </div>
+              <Button size="sm" onClick={handleAddFeriado}>
+                <Plus className="w-4 h-4" />
+              </Button>
+            </div>
+
+            {feriadosMunicipais.length > 0 && (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead className="w-20">Data</TableHead>
+                    <TableHead className="w-12"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {feriadosMunicipais.map((f) => (
+                    <TableRow key={f.id}>
+                      <TableCell>{f.nome}</TableCell>
+                      <TableCell>{String(f.dia).padStart(2, '0')}/{String(f.mes).padStart(2, '0')}</TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost" size="icon"
+                          onClick={() => setFeriadosMunicipais((prev) => prev.filter((x) => x.id !== f.id))}
+                          className="h-8 w-8"
+                        >
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+
+            {feriadosMunicipais.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-4">Nenhum feriado municipal cadastrado.</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
