@@ -53,7 +53,7 @@ const Step3PartiesAndTerm = ({ step1, step2, verbas, data, onChange, onVerbaUpda
 
     return `TERMO DE RESCISÃO DE CONTRATO DE TRABALHO EM COMUM, NÃO PERSONIFICADO, ${motivoTitulo}.
 
-As partes desta rescisão, ${data.empregadorNome || '[NOME DO EMPREGADOR]'}, CPF sob número ${data.empregadorCPF || '[CPF]'}, residente e domiciliado ${data.empregadorEndereco || '[ENDEREÇO]'}${data.empregadorTipo === 'empresa' && data.empregadorCNPJ ? `, CNPJ ${data.empregadorCNPJ}` : ''}, de agora em diante denominada simplesmente EMPREGADOR e ${data.empregadoNome || '[NOME DO EMPREGADO]'}, CPF sob número ${data.empregadoCPF || '[CPF]'}, residente e domiciliada ${data.empregadoEndereco || '[ENDEREÇO]'}, de agora em diante denominado simplesmente empregado.
+As partes desta rescisão, ${data.empregadorNome || '[NOME DO EMPREGADOR]'}, ${data.empregadorTipo === 'empresa' ? `CNPJ sob número ${data.empregadorCNPJ || '[CNPJ]'}` : `CPF sob número ${data.empregadorCPF || '[CPF]'}`}, residente e domiciliado ${data.empregadorEndereco || '[ENDEREÇO]'}, de agora em diante denominada simplesmente EMPREGADOR e ${data.empregadoNome || '[NOME DO EMPREGADO]'}, CPF sob número ${data.empregadoCPF || '[CPF]'}, residente e domiciliada ${data.empregadoEndereco || '[ENDEREÇO]'}, de agora em diante denominado simplesmente empregado.
 
 O período trabalhado compreende a vigência de ${dataAdm} a ${dataDesl}.
 
@@ -286,16 +286,16 @@ ${data.empregadoNome || '[NOME DO EMPREGADO]'}`;
             <Label>Tipo</Label>
             <RadioGroup
               value={data.empregadorTipo}
-              onValueChange={(v) => update({ empregadorTipo: v as 'domestico' | 'empresa' })}
+              onValueChange={(v) => update({ empregadorTipo: v as 'domestico' | 'empresa', empregadorCPF: '', empregadorCNPJ: '' })}
               className="flex gap-4"
             >
               <div className="flex items-center gap-2">
                 <RadioGroupItem value="domestico" id="tipo-domestico" />
-                <Label htmlFor="tipo-domestico">Empregador doméstico</Label>
+                <Label htmlFor="tipo-domestico">Empregador doméstico (CPF)</Label>
               </div>
               <div className="flex items-center gap-2">
                 <RadioGroupItem value="empresa" id="tipo-empresa" />
-                <Label htmlFor="tipo-empresa">Empresa</Label>
+                <Label htmlFor="tipo-empresa">Empresa (CNPJ)</Label>
               </div>
             </RadioGroup>
           </div>
@@ -305,16 +305,14 @@ ${data.empregadoNome || '[NOME DO EMPREGADO]'}`;
               <Input value={data.empregadorNome} onChange={(e) => update({ empregadorNome: e.target.value })} />
             </div>
             <div className="space-y-2">
-              <Label>CPF</Label>
-              <Input value={data.empregadorCPF} onChange={(e) => update({ empregadorCPF: e.target.value })} placeholder="000.000.000-00" />
+              <Label>{data.empregadorTipo === 'empresa' ? 'CNPJ' : 'CPF'}</Label>
+              {data.empregadorTipo === 'empresa' ? (
+                <Input value={data.empregadorCNPJ} onChange={(e) => update({ empregadorCNPJ: e.target.value })} placeholder="00.000.000/0000-00" />
+              ) : (
+                <Input value={data.empregadorCPF} onChange={(e) => update({ empregadorCPF: e.target.value })} placeholder="000.000.000-00" />
+              )}
             </div>
           </div>
-          {data.empregadorTipo === 'empresa' && (
-            <div className="space-y-2">
-              <Label>CNPJ (opcional)</Label>
-              <Input value={data.empregadorCNPJ} onChange={(e) => update({ empregadorCNPJ: e.target.value })} placeholder="00.000.000/0000-00" />
-            </div>
-          )}
           <div className="space-y-2">
             <Label>Endereço completo</Label>
             <Input value={data.empregadorEndereco} onChange={(e) => update({ empregadorEndereco: e.target.value })} placeholder="Logradouro, nº, Cidade/UF, CEP" />
