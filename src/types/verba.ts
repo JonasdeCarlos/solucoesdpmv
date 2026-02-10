@@ -15,6 +15,7 @@ export interface Verba {
   referenciaPadrao: string;
   padraoPD: 'P' | 'D';
   incideFGTS: boolean;
+  calculaDSR: boolean;
 }
 
 export function createEmptyVerba(): Verba {
@@ -25,5 +26,6 @@ export function createEmptyVerba(): Verba {
     referenciaPadrao: '',
     padraoPD: 'P',
     incideFGTS: true,
+    calculaDSR: false,
   };
 }

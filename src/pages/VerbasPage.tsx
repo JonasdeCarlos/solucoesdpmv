@@ -69,14 +69,15 @@ const VerbasPage = () => {
                 <TableHead className="text-card">Descrição</TableHead>
                 <TableHead className="text-card">Tipo Cálculo</TableHead>
                 <TableHead className="text-card">P/D</TableHead>
-                <TableHead className="text-card">Incide FGTS</TableHead>
+                <TableHead className="text-card">FGTS</TableHead>
+                <TableHead className="text-card">DSR</TableHead>
                 <TableHead className="text-card w-[100px]">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {verbas.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                     Nenhuma verba cadastrada.
                   </TableCell>
                 </TableRow>
@@ -92,6 +93,13 @@ const VerbasPage = () => {
                     </TableCell>
                     <TableCell>
                       {v.incideFGTS ? (
+                        <Check className="w-4 h-4 text-primary" />
+                      ) : (
+                        <X className="w-4 h-4 text-muted-foreground" />
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {v.calculaDSR ? (
                         <Check className="w-4 h-4 text-primary" />
                       ) : (
                         <X className="w-4 h-4 text-muted-foreground" />
@@ -181,6 +189,15 @@ const VerbasPage = () => {
                   id="incide-fgts"
                   checked={editing.incideFGTS}
                   onCheckedChange={(v) => setEditing({ ...editing, incideFGTS: v })}
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <Label htmlFor="calcula-dsr">Calcula DSR?</Label>
+                <Switch
+                  id="calcula-dsr"
+                  checked={editing.calculaDSR}
+                  onCheckedChange={(v) => setEditing({ ...editing, calculaDSR: v })}
                 />
               </div>
 
