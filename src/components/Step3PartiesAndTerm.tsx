@@ -11,7 +11,7 @@ import { formatCurrency, formatDate } from '@/utils/formatters';
 import { numberToWords } from '@/utils/numberToWords';
 import ResultsTable from '@/components/ResultsTable';
 import { toast } from 'sonner';
-import { generateTermoPDF, generateDemonstrativoPDF, generateMemoriaPDF } from '@/utils/pdfGenerator';
+import { generateTermoPDF, generateDemonstrativoPDF, generateMemoriaPDF, generateTermoEMemoriaPDF } from '@/utils/pdfGenerator';
 
 interface Step3Props {
   step1: Step1Data;
@@ -81,9 +81,8 @@ ${data.empregadoNome || '[NOME DO EMPREGADO]'}`;
   };
 
   const handleDownloadTermoEMemoria = () => {
-    generateTermoPDF(step1, step2, data, verbas);
-    generateMemoriaPDF(step1, step2, verbas);
-    toast.success('Termo + Memória de Cálculo gerados!');
+    generateTermoEMemoriaPDF(step1, step2, data, verbas);
+    toast.success('Termo + Memória de Cálculo gerados em um único PDF!');
   };
 
   const handleDownloadDemo = () => {
