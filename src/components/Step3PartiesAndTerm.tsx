@@ -10,6 +10,7 @@ import { formatCurrency, formatDate } from '@/utils/formatters';
 import { numberToWords } from '@/utils/numberToWords';
 import ResultsTable from '@/components/ResultsTable';
 import { toast } from 'sonner';
+import { generateTermoPDF, generateDemonstrativoPDF, generateMemoriaPDF } from '@/utils/pdfGenerator';
 
 interface Step3Props {
   step1: Step1Data;
@@ -73,13 +74,13 @@ ${data.empregadoNome || '[NOME DO EMPREGADO]'}`;
   };
 
   const handleDownloadTerm = () => {
-    downloadTextFile(generateTermText(), 'termo-rescisao.txt');
-    toast.success('Termo baixado!');
+    generateTermoPDF(step1, step2, data, verbas);
+    toast.success('Termo PDF gerado!');
   };
 
   const handleDownloadDemo = () => {
-    downloadTextFile(generateTableText(), 'demonstrativo-verbas.txt');
-    toast.success('Demonstrativo baixado!');
+    generateDemonstrativoPDF(verbas);
+    toast.success('Demonstrativo PDF gerado!');
   };
 
   const generateMemoriaCalculo = (): string => {
@@ -230,8 +231,8 @@ ${data.empregadoNome || '[NOME DO EMPREGADO]'}`;
   };
 
   const handleDownloadMemoria = () => {
-    downloadTextFile(generateMemoriaCalculo(), 'memoria-de-calculo.txt');
-    toast.success('Memória de cálculo baixada!');
+    generateMemoriaPDF(step1, step2, verbas);
+    toast.success('Memória de cálculo PDF gerada!');
   };
 
   const handleCopyMemoria = () => {
@@ -342,7 +343,7 @@ ${data.empregadoNome || '[NOME DO EMPREGADO]'}`;
             <Copy className="w-4 h-4" /> Copiar Termo
           </Button>
           <Button onClick={handleDownloadTerm} className="gap-2">
-            <FileText className="w-4 h-4" /> Gerar Termo (TXT)
+            <FileText className="w-4 h-4" /> Gerar Termo (PDF)
           </Button>
           <Button onClick={handleDownloadDemo} variant="outline" className="gap-2">
             <Download className="w-4 h-4" /> Baixar Demonstrativo
