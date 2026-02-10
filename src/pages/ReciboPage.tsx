@@ -323,13 +323,45 @@ const ReciboPage = () => {
                       <TableCell>
                         {l.tipoCalculo !== 'manual' && (
                           <div className="flex items-center gap-1">
-                            <Input
-                              type="number"
-                              value={l.quantidade || ''}
-                              onChange={(e) => updateLinha(l.id, { quantidade: Number(e.target.value) })}
-                              className="h-8 text-sm w-16"
-                              placeholder="0"
-                            />
+                            {(l.tipoCalculo === 'hora_extra' || l.tipoCalculo === 'horas' || l.tipoCalculo === 'adicional_noturno') ? (
+                              <Input
+                                type="text"
+                                value={l._horaInput ?? String(l.quantidade || '')}
+                                onChange={(e) => {
+                                  const raw = e.target.value;
+                                  // Allow typing HH:MM format
+                                  if (/^\d{0,3}(:\d{0,2})?$/.test(raw) || /^\d*[,.]?\d*$/.test(raw)) {
+                                    const updates: Partial<ReciboLinha> = { _horaInput: raw } as any;
+                                    // Parse on the fly
+                                    if (raw.includes(':')) {
+                                      const [h, m] = raw.split(':');
+                                      const hours = Number(h) || 0;
+                                      const mins = Number(m) || 0;
+                                      updates.quantidade = Math.round((hours + mins / 60) * 100) / 100;
+                                    } else {
+                                      updates.quantidade = Number(raw.replace(',', '.')) || 0;
+                                    }
+                                    updateLinha(l.id, updates);
+                                  }
+                                }}
+                                onBlur={() => {
+                                  // Format display on blur
+                                  const val = l.quantidade || 0;
+                                  updateLinha(l.id, { _horaInput: String(val) } as any);
+                                }}
+                                className="h-8 text-sm w-20"
+                                placeholder="1:30"
+                                title="Ex: 1:30 = 1,50h centesimal"
+                              />
+                            ) : (
+                              <Input
+                                type="number"
+                                value={l.quantidade || ''}
+                                onChange={(e) => updateLinha(l.id, { quantidade: Number(e.target.value) })}
+                                className="h-8 text-sm w-16"
+                                placeholder="0"
+                              />
+                            )}
                             {(l.tipoCalculo === 'hora_extra' || l.tipoCalculo === 'adicional_noturno') && (
                               <div className="flex items-center gap-0.5">
                                 <Input
