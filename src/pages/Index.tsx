@@ -8,7 +8,7 @@ import { type Step1Data, type Step2Data, type Step3Data, type VerbaRescisoria, c
 import { diffMonths } from '@/utils/formatters';
 import { formatCurrency } from '@/utils/formatters';
 import { numberToWords } from '@/utils/numberToWords';
-import { Scale } from 'lucide-react';
+import logoMonteVerde from '@/assets/logo-monte-verde.png';
 
 const STEP_LABELS = ['Contrato', 'Complementar', 'Termo'];
 
@@ -90,12 +90,10 @@ const Index = () => {
       {/* Header */}
       <header className="border-b bg-card">
         <div className="container max-w-4xl mx-auto px-4 py-4 md:py-6 flex items-center gap-3">
-          <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg bg-primary flex items-center justify-center">
-            <Scale className="w-5 h-5 md:w-6 md:h-6 text-primary-foreground" />
-          </div>
+          <img src={logoMonteVerde} alt="Monte Verde Contabilidade" className="h-10 md:h-14 w-auto" />
           <div>
-            <h1 className="text-lg md:text-2xl font-bold leading-tight">Calculadora de Rescisão CLT</h1>
-            <p className="text-xs md:text-sm text-muted-foreground">Brasil — Cálculo estimativo de verbas rescisórias</p>
+            <h1 className="text-lg md:text-2xl font-bold leading-tight">Monte Verde Contabilidade</h1>
+            <p className="text-xs md:text-sm text-muted-foreground">Calculadora de Rescisão CLT — Cálculo estimativo</p>
           </div>
         </div>
       </header>
