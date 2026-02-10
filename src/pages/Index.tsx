@@ -53,6 +53,8 @@ const Index = () => {
     empregadoNome: '',
     empregadoCPF: '',
     empregadoEndereco: '',
+    localAssinatura: '',
+    dataAssinatura: new Date().toISOString().split('T')[0],
   });
 
   const handleGoToStep2 = () => {
