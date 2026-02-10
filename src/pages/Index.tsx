@@ -31,6 +31,8 @@ const Index = () => {
     percentualMultaFGTS: 0,
     calculaAvisoPrevioIndenizado: false,
     diasAvisoPrevioIndenizado: 30,
+    calcula13AnosAnteriores: false,
+    anos13Selecionados: [],
   });
 
   const [step2, setStep2] = useState<Step2Data>({

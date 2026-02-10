@@ -48,6 +48,8 @@ export interface Step1Data {
   percentualMultaFGTS: number;
   calculaAvisoPrevioIndenizado: boolean;
   diasAvisoPrevioIndenizado: number;
+  calcula13AnosAnteriores: boolean;
+  anos13Selecionados: number[];
 }
 
 export interface Step2Data {
@@ -324,6 +326,26 @@ export function calcularVerbas(step1: Step1Data, step2: Step2Data): VerbaResciso
         verba: 'Multa FGTS',
         referencia: `${step1.percentualMultaFGTS}%`,
         valor: round2(multa),
+        tipo: 'credito',
+      });
+    }
+  }
+
+  // 13º de anos anteriores
+  if (step1.calcula13AnosAnteriores && step1.anos13Selecionados.length > 0) {
+    for (const ano of step1.anos13Selecionados) {
+      // Verificar quantos meses trabalhou naquele ano
+      const inicioAno = new Date(ano, 0, 1);
+      const fimAno = new Date(ano, 11, 31);
+      const inicioEfetivo = step1.dataAdmissao && step1.dataAdmissao > inicioAno ? step1.dataAdmissao : inicioAno;
+      const fimEfetivo = step1.dataDesligamento && step1.dataDesligamento < fimAno ? step1.dataDesligamento : fimAno;
+      const mesesNoAno = Math.min(12, diffMonthsFull(inicioEfetivo, fimEfetivo));
+      const valor13Ano = sal * (mesesNoAno / 12);
+      verbas.push({
+        id: `13_ano_${ano}`,
+        verba: `13º salário — ${ano}`,
+        referencia: `${mesesNoAno}/12`,
+        valor: round2(valor13Ano),
         tipo: 'credito',
       });
     }

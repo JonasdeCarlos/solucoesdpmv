@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarIcon, ArrowRight } from 'lucide-react';
@@ -72,12 +73,24 @@ const Step1InitialQuestions = ({ data, onChange, onNext }: Step1Props) => {
   };
 
   // Verifica se o intervalo entre admissão e desligamento é > 1 ano
-  const temMaisDeUmAno = (() => {
+  const temMaisDeUmAno = useMemo(() => {
     if (!data.dataAdmissao || !data.dataDesligamento) return false;
     const diffMs = data.dataDesligamento.getTime() - data.dataAdmissao.getTime();
     const diffDays = diffMs / (1000 * 60 * 60 * 24);
     return diffDays > 365;
-  })();
+  }, [data.dataAdmissao, data.dataDesligamento]);
+
+  // Anos completos entre admissão e desligamento (excluindo o ano do desligamento, que é o proporcional)
+  const anosAnteriores = useMemo(() => {
+    if (!data.dataAdmissao || !data.dataDesligamento) return [];
+    const anoAdm = data.dataAdmissao.getFullYear();
+    const anoDesl = data.dataDesligamento.getFullYear();
+    const anos: number[] = [];
+    for (let y = anoAdm; y < anoDesl; y++) {
+      anos.push(y);
+    }
+    return anos;
+  }, [data.dataAdmissao, data.dataDesligamento]);
 
   // Auto-desabilitar férias vencidas se não tem mais de 1 ano
   useEffect(() => {
@@ -326,7 +339,42 @@ const Step1InitialQuestions = ({ data, onChange, onNext }: Step1Props) => {
                   value={data.diasAvisoPrevioIndenizado}
                   onChange={(e) => update({ diasAvisoPrevioIndenizado: parseInt(e.target.value) || 30 })}
                 />
+          {/* 13º anos anteriores */}
+          {anosAnteriores.length > 0 && (
+            <div className="space-y-3 p-4 rounded-lg bg-secondary">
+              <div className="flex items-center justify-between">
+                <Label>Calcular 13º de anos anteriores?</Label>
+                <Switch
+                  checked={data.calcula13AnosAnteriores}
+                  onCheckedChange={(v) => {
+                    update({ calcula13AnosAnteriores: v, anos13Selecionados: v ? [...anosAnteriores] : [] });
+                  }}
+                />
               </div>
+              {data.calcula13AnosAnteriores && (
+                <div className="space-y-2">
+                  <Label className="text-sm">Selecione os anos</Label>
+                  <div className="flex flex-wrap gap-3">
+                    {anosAnteriores.map((ano) => (
+                      <label key={ano} className="flex items-center gap-2 cursor-pointer">
+                        <Checkbox
+                          checked={data.anos13Selecionados.includes(ano)}
+                          onCheckedChange={(checked) => {
+                            const next = checked
+                              ? [...data.anos13Selecionados, ano].sort()
+                              : data.anos13Selecionados.filter((a) => a !== ano);
+                            update({ anos13Selecionados: next });
+                          }}
+                        />
+                        <span className="text-sm">{ano}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
             )}
           </div>
         </div>
