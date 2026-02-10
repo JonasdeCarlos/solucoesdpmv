@@ -142,16 +142,50 @@ export function calcularVerbas(step1: Step1Data, step2: Step2Data): VerbaResciso
     });
   }
 
-  // Aviso prévio indenizado
+  // Aviso prévio indenizado + reflexos (projeção)
   if (step1.calculaAvisoPrevioIndenizado) {
-    const aviso = (sal / 30) * step1.diasAvisoPrevioIndenizado;
+    const diasAviso = step1.diasAvisoPrevioIndenizado;
+    const aviso = (sal / 30) * diasAviso;
     verbas.push({
       id: 'aviso_previo_indenizado',
       verba: 'Aviso prévio indenizado',
-      referencia: `${step1.diasAvisoPrevioIndenizado} dias`,
+      referencia: `${diasAviso} dias`,
       valor: round2(aviso),
       tipo: 'credito',
     });
+
+    // Projeção do aviso no 13º: salário / 12 × (dias / 30)
+    const mesesProjecao = diasAviso / 30;
+    const reflexo13 = (sal / 12) * mesesProjecao;
+    verbas.push({
+      id: 'reflexo_aviso_13',
+      verba: '13º salário — projeção aviso prévio',
+      referencia: `${diasAviso}/30 avos`,
+      valor: round2(reflexo13),
+      tipo: 'credito',
+    });
+
+    // Projeção do aviso nas férias: salário / 12 × (dias / 30)
+    const reflexoFerias = (sal / 12) * mesesProjecao;
+    verbas.push({
+      id: 'reflexo_aviso_ferias',
+      verba: 'Férias — projeção aviso prévio',
+      referencia: `${diasAviso}/30 avos`,
+      valor: round2(reflexoFerias),
+      tipo: 'credito',
+    });
+
+    // 1/3 sobre férias da projeção
+    if (step2.consideraTercoFerias) {
+      const tercoReflexo = reflexoFerias / 3;
+      verbas.push({
+        id: 'reflexo_aviso_terco',
+        verba: '1/3 férias — projeção aviso prévio',
+        referencia: '1/3',
+        valor: round2(tercoReflexo),
+        tipo: 'credito',
+      });
+    }
   }
 
   // Desconto aviso prévio (pedido demissão)
@@ -231,9 +265,30 @@ export function calcularVerbas(step1: Step1Data, step2: Step2Data): VerbaResciso
       tipo: 'credito',
     });
 
-    // Multa FGTS
+    // FGTS sobre aviso prévio indenizado e reflexos
+    let fgtsSobreAviso = 0;
+    if (step1.calculaAvisoPrevioIndenizado) {
+      const diasAviso = step1.diasAvisoPrevioIndenizado;
+      const avisoVal = (sal / 30) * diasAviso;
+      const mesesProj = diasAviso / 30;
+      const reflexo13 = (sal / 12) * mesesProj;
+      const reflexoFerias = (sal / 12) * mesesProj;
+      const tercoReflexo = step2.consideraTercoFerias ? reflexoFerias / 3 : 0;
+      const baseAviso = avisoVal + reflexo13 + reflexoFerias + tercoReflexo;
+      fgtsSobreAviso = baseAviso * 0.08;
+      verbas.push({
+        id: 'fgts_aviso',
+        verba: 'FGTS sobre aviso prévio e reflexos',
+        referencia: '8%',
+        valor: round2(fgtsSobreAviso),
+        tipo: 'credito',
+      });
+    }
+
+    // Multa FGTS (sobre FGTS total + FGTS aviso)
     if (step1.calculaMultaFGTS && step1.percentualMultaFGTS > 0) {
-      const multa = fgtsTotal * (step1.percentualMultaFGTS / 100);
+      const fgtsTotalComAviso = fgtsTotal + fgtsSobreAviso;
+      const multa = fgtsTotalComAviso * (step1.percentualMultaFGTS / 100);
       verbas.push({
         id: 'multa_fgts',
         verba: 'Multa FGTS',
