@@ -339,6 +339,10 @@ const Step1InitialQuestions = ({ data, onChange, onNext }: Step1Props) => {
                   value={data.diasAvisoPrevioIndenizado}
                   onChange={(e) => update({ diasAvisoPrevioIndenizado: parseInt(e.target.value) || 30 })}
                 />
+              </div>
+            )}
+          </div>
+
           {/* 13º anos anteriores */}
           {anosAnteriores.length > 0 && (
             <div className="space-y-3 p-4 rounded-lg bg-secondary">
@@ -374,9 +378,6 @@ const Step1InitialQuestions = ({ data, onChange, onNext }: Step1Props) => {
               )}
             </div>
           )}
-        </div>
-            )}
-          </div>
         </div>
 
         <div className="flex justify-end pt-4">
