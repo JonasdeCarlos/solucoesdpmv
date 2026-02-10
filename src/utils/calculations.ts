@@ -170,31 +170,41 @@ export function calcularVerbas(step1: Step1Data, step2: Step2Data): VerbaResciso
     if (step2.fgtsManual !== null && step2.fgtsManual > 0) {
       fgtsTotal = step2.fgtsManual;
     } else {
-      // Calcula base FGTS mês a mês considerando dias trabalhados
+      // Calcula base FGTS mês a mês: salário/30 × dias trabalhados no mês
       let baseFGTS = 0;
       if (step1.dataAdmissao && step1.dataDesligamento) {
         const start = new Date(step1.dataAdmissao);
         const end = new Date(step1.dataDesligamento);
-        const cursor = new Date(start.getFullYear(), start.getMonth(), 1);
 
-        while (cursor <= end) {
+        // Itera mês a mês do contrato
+        const cursor = new Date(start.getFullYear(), start.getMonth(), 1);
+        while (cursor.getFullYear() < end.getFullYear() || 
+               (cursor.getFullYear() === end.getFullYear() && cursor.getMonth() <= end.getMonth())) {
           const year = cursor.getFullYear();
           const month = cursor.getMonth();
           const totalDiasNoMes = new Date(year, month + 1, 0).getDate();
 
-          // Primeiro dia trabalhado neste mês
-          const inicioMes = new Date(year, month, 1);
-          const primeiroDia = start > inicioMes ? start.getDate() : 1;
+          const isFirstMonth = year === start.getFullYear() && month === start.getMonth();
+          const isLastMonth = year === end.getFullYear() && month === end.getMonth();
 
-          // Último dia trabalhado neste mês
-          const fimMes = new Date(year, month, totalDiasNoMes);
-          const ultimoDia = end < fimMes ? end.getDate() : totalDiasNoMes;
+          let diasTrabalhados: number;
+          if (isFirstMonth && isLastMonth) {
+            // Contrato dentro do mesmo mês
+            diasTrabalhados = end.getDate() - start.getDate() + 1;
+          } else if (isFirstMonth) {
+            // Mês de admissão: do dia da admissão até o fim do mês
+            diasTrabalhados = totalDiasNoMes - start.getDate() + 1;
+          } else if (isLastMonth) {
+            // Mês de desligamento: do dia 1 até o dia do desligamento
+            diasTrabalhados = end.getDate();
+          } else {
+            // Mês completo
+            diasTrabalhados = 30; // padrão CLT
+          }
 
-          const diasTrabalhados = Math.max(0, ultimoDia - primeiroDia + 1);
-          const proporcao = diasTrabalhados / totalDiasNoMes;
-          baseFGTS += sal * proporcao;
+          // FGTS = salário / 30 × dias trabalhados (padrão CLT)
+          baseFGTS += (sal / 30) * diasTrabalhados;
 
-          // Avança para o próximo mês
           cursor.setMonth(cursor.getMonth() + 1);
         }
       }
