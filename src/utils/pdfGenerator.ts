@@ -49,7 +49,8 @@ export function generateTermoPDF(step1: Step1Data, step2: Step2Data, step3: Step
   const tipoEmpregador = step3.empregadorTipo === 'domestico' ? 'empregador doméstico' : 'empresa';
   const dataAdm = step1.dataAdmissao ? formatDate(step1.dataAdmissao) : '___/___/______';
   const dataDesl = step1.dataDesligamento ? formatDate(step1.dataDesligamento) : '___/___/______';
-  const hoje = formatDate(new Date());
+  const local = step3.localAssinatura || '________________';
+  const dataAss = step3.dataAssinatura ? formatDate(new Date(step3.dataAssinatura + 'T12:00:00')) : formatDate(new Date());
 
   // Title
   let y = addHeader(doc, `TERMO DE RESCISÃO DE CONTRATO DE TRABALHO EM COMUM, NÃO PERSONIFICADO, ${motivoTitulo}.`);
@@ -192,7 +193,7 @@ export function generateTermoPDF(step1: Step1Data, step2: Step2Data, step3: Step
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
-  doc.text(`________________, ${hoje}`, MARGIN, y);
+  doc.text(`${local}, ${dataAss}`, MARGIN, y);
   y += 20;
 
   // Two signature columns

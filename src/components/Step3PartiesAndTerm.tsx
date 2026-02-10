@@ -48,7 +48,8 @@ const Step3PartiesAndTerm = ({ step1, step2, verbas, data, onChange, onVerbaUpda
   const generateTermText = (): string => {
     const dataAdm = step1.dataAdmissao ? formatDate(step1.dataAdmissao) : '___/___/______';
     const dataDesl = step1.dataDesligamento ? formatDate(step1.dataDesligamento) : '___/___/______';
-    const hoje = formatDate(new Date());
+    const local = data.localAssinatura || '________________';
+    const dataAss = data.dataAssinatura ? formatDate(new Date(data.dataAssinatura + 'T12:00:00')) : formatDate(new Date());
 
     return `TERMO DE RESCISÃO DE CONTRATO DE TRABALHO EM COMUM, NÃO PERSONIFICADO, ${motivoTitulo}.
 
@@ -63,7 +64,7 @@ ${generateTableText()}
 Eu ${data.empregadoNome || '[NOME DO EMPREGADO]'}, já identificada, declaro neste ato ter recebido a quantia de ${formatCurrency(total)} (${numberToWords(total)}), referentes à rescisão de contrato de trabalho não personificada, ${motivoCorpo}, com o ${tipoEmpregador} já identificado acima;
 E por assim estarmos justos e contratados, firmo o presente termo em uma única via que servirá como recibo para o empregador.
 
-________________, ${hoje}
+${local}, ${dataAss}
 
 _________________________________
 ${data.empregadoNome || '[NOME DO EMPREGADO]'}`;
@@ -334,6 +335,25 @@ ${data.empregadoNome || '[NOME DO EMPREGADO]'}`;
           <div className="space-y-2">
             <Label>Endereço completo</Label>
             <Input value={data.empregadoEndereco} onChange={(e) => update({ empregadoEndereco: e.target.value })} placeholder="Logradouro, nº, Cidade/UF" />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Local e Data */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-xl">Local e Data da Assinatura</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Local (cidade/UF)</Label>
+              <Input value={data.localAssinatura} onChange={(e) => update({ localAssinatura: e.target.value })} placeholder="Ex: São Paulo/SP" />
+            </div>
+            <div className="space-y-2">
+              <Label>Data da assinatura</Label>
+              <Input type="date" value={data.dataAssinatura} onChange={(e) => update({ dataAssinatura: e.target.value })} />
+            </div>
           </div>
         </CardContent>
       </Card>

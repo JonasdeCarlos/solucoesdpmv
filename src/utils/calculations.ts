@@ -78,6 +78,8 @@ export interface Step3Data {
   empregadoNome: string;
   empregadoCPF: string;
   empregadoEndereco: string;
+  localAssinatura: string;
+  dataAssinatura: string;
 }
 
 export function calcularVerbas(step1: Step1Data, step2: Step2Data): VerbaRescisoria[] {
