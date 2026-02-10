@@ -322,13 +322,26 @@ const ReciboPage = () => {
                       </TableCell>
                       <TableCell>
                         {l.tipoCalculo !== 'manual' && (
-                          <Input
-                            type="number"
-                            value={l.quantidade || ''}
-                            onChange={(e) => updateLinha(l.id, { quantidade: Number(e.target.value) })}
-                            className="h-8 text-sm w-16"
-                            placeholder="0"
-                          />
+                          <div className="flex items-center gap-1">
+                            <Input
+                              type="number"
+                              value={l.quantidade || ''}
+                              onChange={(e) => updateLinha(l.id, { quantidade: Number(e.target.value) })}
+                              className="h-8 text-sm w-16"
+                              placeholder="0"
+                            />
+                            {(l.tipoCalculo === 'hora_extra' || l.tipoCalculo === 'adicional_noturno') && (
+                              <div className="flex items-center gap-0.5">
+                                <Input
+                                  type="number"
+                                  value={l.adicionalPercent ?? (l.tipoCalculo === 'hora_extra' ? 50 : 20)}
+                                  onChange={(e) => updateLinha(l.id, { adicionalPercent: Number(e.target.value) })}
+                                  className="h-8 text-sm w-14"
+                                />
+                                <span className="text-xs text-muted-foreground">%</span>
+                              </div>
+                            )}
+                          </div>
                         )}
                       </TableCell>
                       <TableCell>
