@@ -59,7 +59,8 @@ const Index = () => {
     // Auto-fill step2 suggestions
     if (step1.dataAdmissao && step1.dataDesligamento) {
       const meses13 = Math.min(12, diffMonths(new Date(step1.dataDesligamento.getFullYear(), 0, 1), step1.dataDesligamento));
-      const mesesFerias = Math.min(12, diffMonths(step1.dataAdmissao, step1.dataDesligamento) % 12 || 12);
+      const totalMesesVinculo = diffMonths(step1.dataAdmissao, step1.dataDesligamento);
+      const mesesFerias = totalMesesVinculo % 12;
       const diasMes = step1.dataDesligamento.getDate();
       setStep2((prev) => ({
         ...prev,
