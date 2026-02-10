@@ -80,6 +80,12 @@ ${data.empregadoNome || '[NOME DO EMPREGADO]'}`;
     toast.success('Termo PDF gerado!');
   };
 
+  const handleDownloadTermoEMemoria = () => {
+    generateTermoPDF(step1, step2, data, verbas);
+    generateMemoriaPDF(step1, step2, verbas);
+    toast.success('Termo + Memória de Cálculo gerados!');
+  };
+
   const handleDownloadDemo = () => {
     generateDemonstrativoPDF(verbas);
     toast.success('Demonstrativo PDF gerado!');
@@ -372,6 +378,9 @@ ${data.empregadoNome || '[NOME DO EMPREGADO]'}`;
           </Button>
           <Button onClick={handleDownloadDemo} variant="outline" className="gap-2">
             <Download className="w-4 h-4" /> Baixar Demonstrativo
+          </Button>
+          <Button onClick={handleDownloadTermoEMemoria} className="gap-2">
+            <FileText className="w-4 h-4" /> Termo + Memória (PDF)
           </Button>
           <Button onClick={handleDownloadMemoria} variant="outline" className="gap-2">
             <Calculator className="w-4 h-4" /> Memória de Cálculo
