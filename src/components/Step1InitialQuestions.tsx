@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +13,25 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { type Step1Data, type MotivoRescisao, MOTIVO_LABELS } from '@/utils/calculations';
 
+function parseDateBR(text: string): Date | null {
+  const clean = text.replace(/\D/g, '');
+  if (clean.length !== 8) return null;
+  const day = parseInt(clean.slice(0, 2));
+  const month = parseInt(clean.slice(2, 4));
+  const year = parseInt(clean.slice(4, 8));
+  if (month < 1 || month > 12 || day < 1 || day > 31 || year < 1900 || year > 2100) return null;
+  const d = new Date(year, month - 1, day);
+  if (d.getDate() !== day || d.getMonth() !== month - 1) return null;
+  return d;
+}
+
+function maskDateBR(value: string): string {
+  const digits = value.replace(/\D/g, '').slice(0, 8);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+}
+
 interface Step1Props {
   data: Step1Data;
   onChange: (data: Step1Data) => void;
@@ -21,6 +40,8 @@ interface Step1Props {
 
 const Step1InitialQuestions = ({ data, onChange, onNext }: Step1Props) => {
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [admText, setAdmText] = useState(data.dataAdmissao ? format(data.dataAdmissao, 'dd/MM/yyyy') : '');
+  const [deslText, setDeslText] = useState(data.dataDesligamento ? format(data.dataDesligamento, 'dd/MM/yyyy') : '');
 
   const update = (partial: Partial<Step1Data>) => {
     onChange({ ...data, ...partial });
@@ -80,57 +101,102 @@ const Step1InitialQuestions = ({ data, onChange, onNext }: Step1Props) => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label>Data de admissão *</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn('w-full justify-start text-left font-normal', !data.dataAdmissao && 'text-muted-foreground')}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {data.dataAdmissao ? format(data.dataAdmissao, 'dd/MM/yyyy') : 'Selecione'}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0 bg-popover z-50" align="start">
-                <Calendar
-                  mode="single"
-                  selected={data.dataAdmissao || undefined}
-                  onSelect={(d) => update({ dataAdmissao: d || null })}
-                  locale={ptBR}
-                  className="pointer-events-auto"
-                  captionLayout="dropdown-buttons"
-                  fromYear={1960}
-                  toYear={2030}
-                />
-              </PopoverContent>
-            </Popover>
+            <div className="flex gap-2">
+              <Input
+                placeholder="dd/mm/aaaa"
+                value={admText}
+                onChange={(e) => {
+                  const masked = maskDateBR(e.target.value);
+                  setAdmText(masked);
+                  const parsed = parseDateBR(masked);
+                  if (parsed) update({ dataAdmissao: parsed });
+                  if (masked === '') update({ dataAdmissao: null });
+                }}
+                onBlur={() => {
+                  const parsed = parseDateBR(admText);
+                  if (parsed) {
+                    update({ dataAdmissao: parsed });
+                    setAdmText(format(parsed, 'dd/MM/yyyy'));
+                  } else if (admText && admText.replace(/\D/g, '').length > 0) {
+                    // Invalid date, reset to last valid
+                    setAdmText(data.dataAdmissao ? format(data.dataAdmissao, 'dd/MM/yyyy') : '');
+                  }
+                }}
+                className="flex-1"
+              />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="icon" className="shrink-0">
+                    <CalendarIcon className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0 bg-popover z-50" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={data.dataAdmissao || undefined}
+                    onSelect={(d) => {
+                      update({ dataAdmissao: d || null });
+                      setAdmText(d ? format(d, 'dd/MM/yyyy') : '');
+                    }}
+                    locale={ptBR}
+                    className="pointer-events-auto"
+                    captionLayout="dropdown-buttons"
+                    fromYear={1960}
+                    toYear={2030}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
             {errors.dataAdmissao && <p className="text-sm text-destructive">{errors.dataAdmissao}</p>}
           </div>
 
           <div className="space-y-2">
             <Label>Data de desligamento *</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn('w-full justify-start text-left font-normal', !data.dataDesligamento && 'text-muted-foreground')}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {data.dataDesligamento ? format(data.dataDesligamento, 'dd/MM/yyyy') : 'Selecione'}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0 bg-popover z-50" align="start">
-                <Calendar
-                  mode="single"
-                  selected={data.dataDesligamento || undefined}
-                  onSelect={(d) => update({ dataDesligamento: d || null })}
-                  locale={ptBR}
-                  className="pointer-events-auto"
-                  captionLayout="dropdown-buttons"
-                  fromYear={1960}
-                  toYear={2030}
-                />
-              </PopoverContent>
-            </Popover>
+            <div className="flex gap-2">
+              <Input
+                placeholder="dd/mm/aaaa"
+                value={deslText}
+                onChange={(e) => {
+                  const masked = maskDateBR(e.target.value);
+                  setDeslText(masked);
+                  const parsed = parseDateBR(masked);
+                  if (parsed) update({ dataDesligamento: parsed });
+                  if (masked === '') update({ dataDesligamento: null });
+                }}
+                onBlur={() => {
+                  const parsed = parseDateBR(deslText);
+                  if (parsed) {
+                    update({ dataDesligamento: parsed });
+                    setDeslText(format(parsed, 'dd/MM/yyyy'));
+                  } else if (deslText && deslText.replace(/\D/g, '').length > 0) {
+                    setDeslText(data.dataDesligamento ? format(data.dataDesligamento, 'dd/MM/yyyy') : '');
+                  }
+                }}
+                className="flex-1"
+              />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="icon" className="shrink-0">
+                    <CalendarIcon className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0 bg-popover z-50" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={data.dataDesligamento || undefined}
+                    onSelect={(d) => {
+                      update({ dataDesligamento: d || null });
+                      setDeslText(d ? format(d, 'dd/MM/yyyy') : '');
+                    }}
+                    locale={ptBR}
+                    className="pointer-events-auto"
+                    captionLayout="dropdown-buttons"
+                    fromYear={1960}
+                    toYear={2030}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
             {errors.dataDesligamento && <p className="text-sm text-destructive">{errors.dataDesligamento}</p>}
           </div>
         </div>
