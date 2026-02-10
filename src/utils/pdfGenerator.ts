@@ -64,14 +64,15 @@ export function generateTermoPDF(step1: Step1Data, step2: Step2Data, step3: Step
 
   // Parties paragraph
   const empregadorNome = step3.empregadorNome || '[NOME DO EMPREGADOR]';
-  const empregadorCPF = step3.empregadorCPF || '[CPF]';
   const empregadorEnd = step3.empregadorEndereco || '[ENDEREÇO]';
   const empregadoNome = step3.empregadoNome || '[NOME DO EMPREGADO]';
   const empregadoCPF = step3.empregadoCPF || '[CPF]';
   const empregadoEnd = step3.empregadoEndereco || '[ENDEREÇO]';
-  const cnpjPart = step3.empregadorTipo === 'empresa' && step3.empregadorCNPJ ? `, inscrita no CNPJ/MF sob nº ${step3.empregadorCNPJ}` : '';
+  const empregadorDocPart = step3.empregadorTipo === 'empresa'
+    ? `inscrita no CNPJ/MF sob nº ${step3.empregadorCNPJ || '[CNPJ]'}`
+    : `inscrito(a) no CPF/MF sob nº ${step3.empregadorCPF || '[CPF]'}`;
 
-  const partiesParagraph = `Pelo presente instrumento e na melhor forma de direito, as partes, de um lado, ${empregadorNome}, inscrito(a) no CPF/MF sob nº ${empregadorCPF}${cnpjPart}, residente e domiciliado(a) ${empregadorEnd}, doravante denominado(a) simplesmente EMPREGADOR, e do outro lado, ${empregadoNome}, inscrito(a) no CPF/MF sob nº ${empregadoCPF}, residente e domiciliado(a) ${empregadoEnd}, doravante denominado(a) simplesmente EMPREGADO(A), resolvem rescindir o contrato de trabalho firmado entre as partes, conforme segue.`;
+  const partiesParagraph = `Pelo presente instrumento e na melhor forma de direito, as partes, de um lado, ${empregadorNome}, ${empregadorDocPart}, residente e domiciliado(a) ${empregadorEnd}, doravante denominado(a) simplesmente EMPREGADOR, e do outro lado, ${empregadoNome}, inscrito(a) no CPF/MF sob nº ${empregadoCPF}, residente e domiciliado(a) ${empregadoEnd}, doravante denominado(a) simplesmente EMPREGADO(A), resolvem rescindir o contrato de trabalho firmado entre as partes, conforme segue.`;
 
   y = addParagraph(doc, partiesParagraph, y);
   y += 3;
@@ -278,12 +279,13 @@ export function generateTermoEMemoriaPDF(step1: Step1Data, step2: Step2Data, ste
   const local = step3.localAssinatura || '________________';
   const dataAss = step3.dataAssinatura ? formatDate(new Date(step3.dataAssinatura + 'T12:00:00')) : formatDate(new Date());
   const empregadorNome = step3.empregadorNome || '[NOME DO EMPREGADOR]';
-  const empregadorCPF = step3.empregadorCPF || '[CPF]';
   const empregadorEnd = step3.empregadorEndereco || '[ENDEREÇO]';
   const empregadoNome = step3.empregadoNome || '[NOME DO EMPREGADO]';
   const empregadoCPF = step3.empregadoCPF || '[CPF]';
   const empregadoEnd = step3.empregadoEndereco || '[ENDEREÇO]';
-  const cnpjPart = step3.empregadorTipo === 'empresa' && step3.empregadorCNPJ ? `, inscrita no CNPJ/MF sob nº ${step3.empregadorCNPJ}` : '';
+  const empregadorDocPart = step3.empregadorTipo === 'empresa'
+    ? `inscrita no CNPJ/MF sob nº ${step3.empregadorCNPJ || '[CNPJ]'}`
+    : `inscrito(a) no CPF/MF sob nº ${step3.empregadorCPF || '[CPF]'}`;
 
   let y = addHeader(doc, `TERMO DE RESCISÃO DE CONTRATO DE TRABALHO EM COMUM, NÃO PERSONIFICADO, ${motivoTitulo}.`);
   y += 2;
@@ -292,7 +294,7 @@ export function generateTermoEMemoriaPDF(step1: Step1Data, step2: Step2Data, ste
   doc.line(MARGIN, y, PAGE_WIDTH - MARGIN, y);
   y += 8;
 
-  const partiesParagraph = `Pelo presente instrumento e na melhor forma de direito, as partes, de um lado, ${empregadorNome}, inscrito(a) no CPF/MF sob nº ${empregadorCPF}${cnpjPart}, residente e domiciliado(a) ${empregadorEnd}, doravante denominado(a) simplesmente EMPREGADOR, e do outro lado, ${empregadoNome}, inscrito(a) no CPF/MF sob nº ${empregadoCPF}, residente e domiciliado(a) ${empregadoEnd}, doravante denominado(a) simplesmente EMPREGADO(A), resolvem rescindir o contrato de trabalho firmado entre as partes, conforme segue.`;
+  const partiesParagraph = `Pelo presente instrumento e na melhor forma de direito, as partes, de um lado, ${empregadorNome}, ${empregadorDocPart}, residente e domiciliado(a) ${empregadorEnd}, doravante denominado(a) simplesmente EMPREGADOR, e do outro lado, ${empregadoNome}, inscrito(a) no CPF/MF sob nº ${empregadoCPF}, residente e domiciliado(a) ${empregadoEnd}, doravante denominado(a) simplesmente EMPREGADO(A), resolvem rescindir o contrato de trabalho firmado entre as partes, conforme segue.`;
   y = addParagraph(doc, partiesParagraph, y);
   y += 3;
 
