@@ -63,7 +63,10 @@ const Index = () => {
       const meses13 = Math.min(12, diffMonths(new Date(step1.dataDesligamento.getFullYear(), 0, 1), step1.dataDesligamento));
       const totalMesesVinculo = diffMonths(step1.dataAdmissao, step1.dataDesligamento);
       const mesesFerias = totalMesesVinculo % 12;
-      const diasMes = step1.dataDesligamento.getDate();
+      const diaDesl = step1.dataDesligamento.getDate();
+      const ultimoDiaMes = new Date(step1.dataDesligamento.getFullYear(), step1.dataDesligamento.getMonth() + 1, 0).getDate();
+      // Se trabalhou até o último dia do mês, considerar mês completo (30/30)
+      const diasMes = diaDesl >= ultimoDiaMes ? 30 : diaDesl;
       setStep2((prev) => ({
         ...prev,
         meses13Proporcional: prev.meses13Proporcional || meses13,
