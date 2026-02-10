@@ -142,21 +142,43 @@ export function calcularVerbas(step1: Step1Data, step2: Step2Data): VerbaResciso
     });
   }
 
-  // Aviso prévio indenizado + reflexos (projeção)
+  // Aviso prévio indenizado + dias por ano completo + reflexos (projeção)
   if (step1.calculaAvisoPrevioIndenizado) {
-    const diasAviso = step1.diasAvisoPrevioIndenizado;
-    const aviso = (sal / 30) * diasAviso;
+    const diasAvisoBase = step1.diasAvisoPrevioIndenizado;
+    const avisoBase = (sal / 30) * diasAvisoBase;
     verbas.push({
       id: 'aviso_previo_indenizado',
       verba: 'Aviso prévio indenizado',
-      referencia: `${diasAviso} dias`,
-      valor: round2(aviso),
+      referencia: `${diasAvisoBase} dias`,
+      valor: round2(avisoBase),
       tipo: 'credito',
     });
 
-    // Projeção do aviso no 13º: salário / 12 × (dias / 30)
-    const mesesProjecao = diasAviso / 30;
+    // Dias indenizados por ano completo (3 dias por ano completo de serviço)
+    let anosCompletos = 0;
+    if (step1.dataAdmissao && step1.dataDesligamento) {
+      const totalMeses = diffMonthsFull(step1.dataAdmissao, step1.dataDesligamento);
+      anosCompletos = Math.floor(totalMeses / 12);
+    }
+    const diasPorAno = anosCompletos * 3;
+    let valorDiasPorAno = 0;
+    if (diasPorAno > 0) {
+      valorDiasPorAno = (sal / 30) * diasPorAno;
+      verbas.push({
+        id: 'dias_indenizados_ano',
+        verba: 'Dias indenizados por ano completo',
+        referencia: `${anosCompletos} ano(s) × 3 = ${diasPorAno} dias`,
+        valor: round2(valorDiasPorAno),
+        tipo: 'credito',
+      });
+    }
+
+    // Total de dias para projeção = aviso base + dias por ano
+    const diasTotalProjecao = diasAvisoBase + diasPorAno;
+    const mesesProjecao = diasTotalProjecao / 30;
     const avosProjecao = Math.round(mesesProjecao);
+
+    // Projeção no 13º
     const reflexo13 = (sal / 12) * mesesProjecao;
     verbas.push({
       id: 'reflexo_aviso_13',
@@ -166,7 +188,7 @@ export function calcularVerbas(step1: Step1Data, step2: Step2Data): VerbaResciso
       tipo: 'credito',
     });
 
-    // Projeção do aviso nas férias: salário / 12 × (dias / 30)
+    // Projeção nas férias
     const reflexoFerias = (sal / 12) * mesesProjecao;
     verbas.push({
       id: 'reflexo_aviso_ferias',
@@ -266,16 +288,23 @@ export function calcularVerbas(step1: Step1Data, step2: Step2Data): VerbaResciso
       tipo: 'credito',
     });
 
-    // FGTS sobre aviso prévio indenizado e reflexos
+    // FGTS sobre aviso prévio indenizado, dias por ano e reflexos
     let fgtsSobreAviso = 0;
     if (step1.calculaAvisoPrevioIndenizado) {
-      const diasAviso = step1.diasAvisoPrevioIndenizado;
-      const avisoVal = (sal / 30) * diasAviso;
-      const mesesProj = diasAviso / 30;
+      const diasAvisoBase = step1.diasAvisoPrevioIndenizado;
+      let anosComp = 0;
+      if (step1.dataAdmissao && step1.dataDesligamento) {
+        anosComp = Math.floor(diffMonthsFull(step1.dataAdmissao, step1.dataDesligamento) / 12);
+      }
+      const diasPorAno = anosComp * 3;
+      const diasTotalProj = diasAvisoBase + diasPorAno;
+      const avisoVal = (sal / 30) * diasAvisoBase;
+      const valDiasPorAno = (sal / 30) * diasPorAno;
+      const mesesProj = diasTotalProj / 30;
       const reflexo13 = (sal / 12) * mesesProj;
       const reflexoFerias = (sal / 12) * mesesProj;
       const tercoReflexo = step2.consideraTercoFerias ? reflexoFerias / 3 : 0;
-      const baseAviso = avisoVal + reflexo13 + reflexoFerias + tercoReflexo;
+      const baseAviso = avisoVal + valDiasPorAno + reflexo13 + reflexoFerias + tercoReflexo;
       fgtsSobreAviso = baseAviso * 0.08;
       verbas.push({
         id: 'fgts_aviso',
