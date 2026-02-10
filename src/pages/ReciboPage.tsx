@@ -88,12 +88,22 @@ const ReciboPage = () => {
     setRecibo((prev) => ({ ...prev, linhas: prev.linhas.filter((l) => l.id !== id) }));
   };
 
-  // Atualizar linha
+  // Atualizar linha (e recalcular DSR vinculado se houver)
   const updateLinha = (id: string, updates: Partial<ReciboLinha>) => {
-    setRecibo((prev) => ({
-      ...prev,
-      linhas: prev.linhas.map((l) => (l.id === id ? { ...l, ...updates } : l)),
-    }));
+    setRecibo((prev) => {
+      let linhas = prev.linhas.map((l) => (l.id === id ? { ...l, ...updates } : l));
+      // Se alterou valor de uma linha que tem DSR filho, recalcular DSR
+      if ('valor' in updates) {
+        const parentValor = updates.valor ?? 0;
+        linhas = linhas.map((l) => {
+          if (l.isDSR && l.dsrParentId === id && prev.diasUteis > 0) {
+            return { ...l, valor: Math.round((parentValor / prev.diasUteis) * prev.diasNaoUteis * 100) / 100 };
+          }
+          return l;
+        });
+      }
+      return { ...prev, linhas };
+    });
   };
 
   // Calcular valores automáticos
