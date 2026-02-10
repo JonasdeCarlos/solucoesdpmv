@@ -54,7 +54,8 @@ export function calcularFgtsDetalhado(
         diasTrabalhados = 30;
       }
 
-      const valorBase = (salario / 30) * diasTrabalhados;
+      // Mês completo = salário integral (padrão CLT)
+      const valorBase = diasTrabalhados >= 30 ? salario : (salario / 30) * diasTrabalhados;
       baseSalarial += valorBase;
 
       meses.push({

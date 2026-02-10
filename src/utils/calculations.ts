@@ -86,12 +86,13 @@ export function calcularVerbas(step1: Step1Data, step2: Step2Data): VerbaResciso
   const verbas: VerbaRescisoria[] = [];
   const sal = step1.salarioMensal;
 
-  // Saldo de salário
-  const saldoSalario = (sal / 30) * step2.diasTrabalhadosMes;
+  // Saldo de salário (teto: 30/30 = salário integral)
+  const diasSaldo = Math.min(step2.diasTrabalhadosMes, 30);
+  const saldoSalario = diasSaldo >= 30 ? sal : (sal / 30) * diasSaldo;
   verbas.push({
     id: 'saldo_salario',
     verba: 'Saldo de salário',
-    referencia: `${step2.diasTrabalhadosMes}/30 dias`,
+    referencia: `${diasSaldo}/30 dias`,
     valor: round2(saldoSalario),
     tipo: 'credito',
   });
@@ -257,12 +258,12 @@ export function calcularVerbas(step1: Step1Data, step2: Step2Data): VerbaResciso
             // Mês de desligamento: do dia 1 até o dia do desligamento
             diasTrabalhados = end.getDate();
           } else {
-            // Mês completo
-            diasTrabalhados = 30; // padrão CLT
+            // Mês completo: sempre salário integral (padrão CLT)
+            diasTrabalhados = 30;
           }
 
-          // FGTS = salário / 30 × dias trabalhados (padrão CLT)
-          baseFGTS += (sal / 30) * diasTrabalhados;
+          // FGTS: mês completo = salário integral; parcial = proporcional
+          baseFGTS += diasTrabalhados >= 30 ? sal : (sal / 30) * diasTrabalhados;
 
           cursor.setMonth(cursor.getMonth() + 1);
         }
