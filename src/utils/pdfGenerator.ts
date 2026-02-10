@@ -213,16 +213,7 @@ export function generateTermoPDF(step1: Step1Data, step2: Step2Data, step3: Step
   doc.text('EMPREGADO(A)', sigCol1, y);
   doc.text('EMPREGADOR', sigCol2, y);
 
-  // Footer disclaimer
-  const pageCount = doc.getNumberOfPages();
-  for (let i = 1; i <= pageCount; i++) {
-    doc.setPage(i);
-    doc.setFontSize(7);
-    doc.setFont('helvetica', 'italic');
-    doc.setTextColor(120);
-    doc.text('Cálculo estimativo. Pode variar conforme CCT, médias, adicionais, descontos legais e particularidades do contrato.', PAGE_WIDTH / 2, 290, { align: 'center' });
-    doc.setTextColor(0);
-  }
+  addFooterDisclaimer(doc);
 
   doc.save('termo-rescisao.pdf');
 }
@@ -269,6 +260,158 @@ export function generateDemonstrativoPDF(verbas: VerbaRescisoria[]) {
 
 export function generateMemoriaPDF(step1: Step1Data, step2: Step2Data, verbas: VerbaRescisoria[]) {
   const doc = new jsPDF('p', 'mm', 'a4');
+  renderMemoriaPages(doc, step1, step2, verbas);
+  addFooterDisclaimer(doc);
+  doc.save('memoria-de-calculo.pdf');
+}
+
+export function generateTermoEMemoriaPDF(step1: Step1Data, step2: Step2Data, step3: Step3Data, verbas: VerbaRescisoria[]) {
+  const doc = new jsPDF('p', 'mm', 'a4');
+
+  // --- Parte 1: Termo de Rescisão (reusa lógica do generateTermoPDF, mas sem salvar) ---
+  const total = calcularTotal(verbas);
+  const motivoTitulo = step1.motivo === 'outros' ? (step1.motivoOutroTexto.toUpperCase() || 'OUTROS') : MOTIVO_TERMO_TITULO[step1.motivo];
+  const motivoCorpo = step1.motivo === 'outros' ? (step1.motivoOutroTexto.toLowerCase() || 'outros') : MOTIVO_TERMO_CORPO[step1.motivo];
+  const tipoEmpregador = step3.empregadorTipo === 'domestico' ? 'empregador doméstico' : 'empresa';
+  const dataAdm = step1.dataAdmissao ? formatDate(step1.dataAdmissao) : '___/___/______';
+  const dataDesl = step1.dataDesligamento ? formatDate(step1.dataDesligamento) : '___/___/______';
+  const local = step3.localAssinatura || '________________';
+  const dataAss = step3.dataAssinatura ? formatDate(new Date(step3.dataAssinatura + 'T12:00:00')) : formatDate(new Date());
+  const empregadorNome = step3.empregadorNome || '[NOME DO EMPREGADOR]';
+  const empregadorCPF = step3.empregadorCPF || '[CPF]';
+  const empregadorEnd = step3.empregadorEndereco || '[ENDEREÇO]';
+  const empregadoNome = step3.empregadoNome || '[NOME DO EMPREGADO]';
+  const empregadoCPF = step3.empregadoCPF || '[CPF]';
+  const empregadoEnd = step3.empregadoEndereco || '[ENDEREÇO]';
+  const cnpjPart = step3.empregadorTipo === 'empresa' && step3.empregadorCNPJ ? `, inscrita no CNPJ/MF sob nº ${step3.empregadorCNPJ}` : '';
+
+  let y = addHeader(doc, `TERMO DE RESCISÃO DE CONTRATO DE TRABALHO EM COMUM, NÃO PERSONIFICADO, ${motivoTitulo}.`);
+  y += 2;
+  doc.setDrawColor(0);
+  doc.setLineWidth(0.5);
+  doc.line(MARGIN, y, PAGE_WIDTH - MARGIN, y);
+  y += 8;
+
+  const partiesParagraph = `Pelo presente instrumento e na melhor forma de direito, as partes, de um lado, ${empregadorNome}, inscrito(a) no CPF/MF sob nº ${empregadorCPF}${cnpjPart}, residente e domiciliado(a) ${empregadorEnd}, doravante denominado(a) simplesmente EMPREGADOR, e do outro lado, ${empregadoNome}, inscrito(a) no CPF/MF sob nº ${empregadoCPF}, residente e domiciliado(a) ${empregadoEnd}, doravante denominado(a) simplesmente EMPREGADO(A), resolvem rescindir o contrato de trabalho firmado entre as partes, conforme segue.`;
+  y = addParagraph(doc, partiesParagraph, y);
+  y += 3;
+
+  y = addParagraph(doc, 'DADOS DO CONTRATO', y, { bold: true, fontSize: 11 });
+  y += 1;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  const col1X = MARGIN;
+  const col2X = MARGIN + CONTENT_WIDTH / 2;
+  y = checkPageBreak(doc, y, 25);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Admissão:', col1X, y);
+  doc.setFont('helvetica', 'normal');
+  doc.text(dataAdm, col1X + 25, y);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Desligamento:', col2X, y);
+  doc.setFont('helvetica', 'normal');
+  doc.text(dataDesl, col2X + 32, y);
+  y += 6;
+  doc.setFont('helvetica', 'bold');
+  doc.text('Salário:', col1X, y);
+  doc.setFont('helvetica', 'normal');
+  doc.text(formatCurrency(step1.salarioMensal), col1X + 18, y);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Motivo:', col2X, y);
+  doc.setFont('helvetica', 'normal');
+  const motivoLabel = step1.motivo === 'outros' ? (step1.motivoOutroTexto || 'Outros') : MOTIVO_LABELS[step1.motivo];
+  const motivoLines = doc.splitTextToSize(motivoLabel, CONTENT_WIDTH / 2 - 20);
+  doc.text(motivoLines, col2X + 18, y);
+  y += Math.max(6, motivoLines.length * 5) + 4;
+
+  y = checkPageBreak(doc, y, 5);
+  doc.setLineWidth(0.3);
+  doc.line(MARGIN, y, PAGE_WIDTH - MARGIN, y);
+  y += 6;
+
+  y = addParagraph(doc, 'DEMONSTRATIVO DE VERBAS RESCISÓRIAS', y, { bold: true, fontSize: 11 });
+  y += 2;
+
+  const tableBody = verbas.map(v => [
+    v.verba, v.referencia,
+    v.tipo === 'debito' ? '' : formatCurrency(v.valor),
+    v.tipo === 'debito' ? formatCurrency(v.valor) : '',
+  ]);
+  tableBody.push([
+    { content: 'TOTAL GERAL', styles: { fontStyle: 'bold' as const } } as any, '',
+    { content: formatCurrency(Math.max(0, total)), styles: { fontStyle: 'bold' as const } } as any,
+    { content: total < 0 ? formatCurrency(Math.abs(total)) : '', styles: { fontStyle: 'bold' as const } } as any,
+  ]);
+
+  autoTable(doc, {
+    startY: y, margin: { left: MARGIN, right: MARGIN },
+    head: [['VERBA', 'REF', 'CRÉDITO (R$)', 'DÉBITO (R$)']],
+    body: tableBody,
+    styles: { fontSize: 9, cellPadding: 2.5, lineColor: [0, 0, 0], lineWidth: 0.2, textColor: [0, 0, 0] },
+    headStyles: { fillColor: [40, 40, 40], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
+    columnStyles: { 0: { cellWidth: 65 }, 1: { cellWidth: 30, halign: 'center' }, 2: { cellWidth: 35, halign: 'right' }, 3: { cellWidth: 30, halign: 'right' } },
+    alternateRowStyles: { fillColor: [245, 245, 245] },
+  });
+
+  y = (doc as any).lastAutoTable.finalY + 6;
+  y = checkPageBreak(doc, y, 15);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.text(`Total por extenso: ${numberToWords(total)}`, MARGIN, y);
+  y += 10;
+
+  y = checkPageBreak(doc, y, 30);
+  doc.setLineWidth(0.3);
+  doc.line(MARGIN, y, PAGE_WIDTH - MARGIN, y);
+  y += 6;
+  const declaration = `Eu, ${empregadoNome}, já qualificado(a) acima, declaro neste ato ter recebido a quantia de ${formatCurrency(total)} (${numberToWords(total)}), referentes à rescisão de contrato de trabalho não personificada, ${motivoCorpo}, com o ${tipoEmpregador} já identificado acima. E por assim estarmos justos e contratados, firmo o presente termo em uma única via que servirá como recibo para o empregador.`;
+  y = addParagraph(doc, declaration, y);
+  y += 15;
+
+  y = checkPageBreak(doc, y, 45);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.text(`${local}, ${dataAss}`, MARGIN, y);
+  y += 20;
+  const sigCol1 = MARGIN + 10;
+  const sigCol2 = PAGE_WIDTH / 2 + 10;
+  doc.setLineWidth(0.3);
+  doc.line(sigCol1, y, sigCol1 + 55, y);
+  doc.line(sigCol2, y, sigCol2 + 55, y);
+  y += 5;
+  doc.setFontSize(9);
+  doc.text(empregadoNome, sigCol1, y);
+  doc.text(empregadorNome, sigCol2, y);
+  y += 4;
+  doc.setFontSize(8);
+  doc.text('EMPREGADO(A)', sigCol1, y);
+  doc.text('EMPREGADOR', sigCol2, y);
+
+  // --- Parte 2: Memória de Cálculo (nova página) ---
+  doc.addPage();
+  renderMemoriaPages(doc, step1, step2, verbas);
+
+  // Footer em todas as páginas
+  addFooterDisclaimer(doc);
+
+  doc.save('termo-e-memoria-de-calculo.pdf');
+}
+
+// --- Funções auxiliares extraídas ---
+
+function addFooterDisclaimer(doc: jsPDF) {
+  const pageCount = doc.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'italic');
+    doc.setTextColor(120);
+    doc.text('Cálculo estimativo. Pode variar conforme CCT, médias, adicionais, descontos legais e particularidades do contrato.', PAGE_WIDTH / 2, 290, { align: 'center' });
+    doc.setTextColor(0);
+  }
+}
+
+function renderMemoriaPages(doc: jsPDF, step1: Step1Data, step2: Step2Data, verbas: VerbaRescisoria[]) {
   const sal = step1.salarioMensal;
   const total = calcularTotal(verbas);
   const dataAdm = step1.dataAdmissao ? formatDate(step1.dataAdmissao) : '—';
@@ -281,7 +424,6 @@ export function generateMemoriaPDF(step1: Step1Data, step2: Step2Data, verbas: V
   doc.line(MARGIN, y, PAGE_WIDTH - MARGIN, y);
   y += 8;
 
-  // Contract info in two columns
   doc.setFontSize(10);
   const col1X = MARGIN;
   const col2X = MARGIN + CONTENT_WIDTH / 2;
@@ -310,25 +452,21 @@ export function generateMemoriaPDF(step1: Step1Data, step2: Step2Data, verbas: V
   doc.line(MARGIN, y, PAGE_WIDTH - MARGIN, y);
   y += 8;
 
-  // Build calculation items
   interface CalcItem { title: string; lines: string[]; }
   const items: CalcItem[] = [];
 
-  // Saldo
   const saldoSal = (sal / 30) * step2.diasTrabalhadosMes;
   items.push({ title: 'SALDO DE SALÁRIO', lines: [
     `Fórmula: Salário / 30 × dias trabalhados no mês`,
     `${formatCurrency(sal)} / 30 × ${step2.diasTrabalhadosMes} = ${formatCurrency(saldoSal)}`,
   ]});
 
-  // 13º
   const decimo = sal * (step2.meses13Proporcional / 12);
   items.push({ title: '13º SALÁRIO PROPORCIONAL', lines: [
     `Fórmula: Salário × (meses / 12)`,
     `${formatCurrency(sal)} × (${step2.meses13Proporcional}/12) = ${formatCurrency(decimo)}`,
   ]});
 
-  // Férias proporcionais
   const feriasProp = sal * (step2.mesesFeriasProporcional / 12);
   items.push({ title: 'FÉRIAS PROPORCIONAIS', lines: [
     `Fórmula: Salário × (meses / 12)`,
@@ -355,11 +493,33 @@ export function generateMemoriaPDF(step1: Step1Data, step2: Step2Data, verbas: V
   }
 
   if (step1.calculaAvisoPrevioIndenizado) {
-    const av = (sal / 30) * step1.diasAvisoPrevioIndenizado;
+    const diasAviso = step1.diasAvisoPrevioIndenizado;
+    const av = (sal / 30) * diasAviso;
+    const mesesProj = diasAviso / 30;
+    const avos = Math.round(mesesProj);
     items.push({ title: 'AVISO PRÉVIO INDENIZADO', lines: [
       `Fórmula: Salário / 30 × dias de aviso`,
-      `${formatCurrency(sal)} / 30 × ${step1.diasAvisoPrevioIndenizado} = ${formatCurrency(av)}`,
+      `${formatCurrency(sal)} / 30 × ${diasAviso} = ${formatCurrency(av)}`,
     ]});
+
+    const reflexo13 = (sal / 12) * mesesProj;
+    items.push({ title: '13º — PROJEÇÃO AVISO PRÉVIO', lines: [
+      `Fórmula: Salário / 12 × meses projeção`,
+      `${formatCurrency(sal)} / 12 × ${avos} = ${formatCurrency(reflexo13)}`,
+    ]});
+
+    const reflexoFerias = (sal / 12) * mesesProj;
+    items.push({ title: 'FÉRIAS — PROJEÇÃO AVISO PRÉVIO', lines: [
+      `Fórmula: Salário / 12 × meses projeção`,
+      `${formatCurrency(sal)} / 12 × ${avos} = ${formatCurrency(reflexoFerias)}`,
+    ]});
+
+    if (step2.consideraTercoFerias) {
+      const tercoRef = reflexoFerias / 3;
+      items.push({ title: '1/3 FÉRIAS — PROJEÇÃO AVISO PRÉVIO', lines: [
+        `${formatCurrency(reflexoFerias)} / 3 = ${formatCurrency(tercoRef)}`,
+      ]});
+    }
   }
 
   if (step1.motivo === 'pedido_demissao' && step1.descontaAvisoPrevio) {
@@ -411,7 +571,6 @@ export function generateMemoriaPDF(step1: Step1Data, step2: Step2Data, verbas: V
   if (step2.outrosCreditos > 0) items.push({ title: 'OUTROS CRÉDITOS', lines: [formatCurrency(step2.outrosCreditos)] });
   if (step2.outrosDescontos > 0) items.push({ title: 'OUTROS DESCONTOS (DÉBITO)', lines: [`-${formatCurrency(step2.outrosDescontos)}`] });
 
-  // Render items
   items.forEach((item, idx) => {
     y = checkPageBreak(doc, y, 20);
     doc.setFont('helvetica', 'bold');
@@ -428,7 +587,6 @@ export function generateMemoriaPDF(step1: Step1Data, step2: Step2Data, verbas: V
     y += 3;
   });
 
-  // Total
   y = checkPageBreak(doc, y, 15);
   doc.setLineWidth(0.5);
   doc.line(MARGIN, y, PAGE_WIDTH - MARGIN, y);
@@ -439,17 +597,4 @@ export function generateMemoriaPDF(step1: Step1Data, step2: Step2Data, verbas: V
   y += 6;
   doc.setFontSize(10);
   doc.text(`Por extenso: ${numberToWords(total)}`, MARGIN, y);
-
-  // Footer
-  const pageCount = doc.getNumberOfPages();
-  for (let i = 1; i <= pageCount; i++) {
-    doc.setPage(i);
-    doc.setFontSize(7);
-    doc.setFont('helvetica', 'italic');
-    doc.setTextColor(120);
-    doc.text('Cálculo estimativo. Pode variar conforme CCT, médias, adicionais, descontos legais e particularidades do contrato.', PAGE_WIDTH / 2, 290, { align: 'center' });
-    doc.setTextColor(0);
-  }
-
-  doc.save('memoria-de-calculo.pdf');
 }
