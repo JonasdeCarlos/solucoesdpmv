@@ -170,15 +170,44 @@ export function calcularVerbas(step1: Step1Data, step2: Step2Data): VerbaResciso
     if (step2.fgtsManual !== null && step2.fgtsManual > 0) {
       fgtsTotal = step2.fgtsManual;
     } else {
-      const mesesVinculo = step1.dataAdmissao && step1.dataDesligamento
-        ? diffMonthsFull(step1.dataAdmissao, step1.dataDesligamento)
-        : 0;
-      let baseFGTS = sal * mesesVinculo;
-      // 13º proporcional
+      // Calcula base FGTS mês a mês considerando dias trabalhados
+      let baseFGTS = 0;
+      if (step1.dataAdmissao && step1.dataDesligamento) {
+        const start = new Date(step1.dataAdmissao);
+        const end = new Date(step1.dataDesligamento);
+        const cursor = new Date(start.getFullYear(), start.getMonth(), 1);
+
+        while (cursor <= end) {
+          const year = cursor.getFullYear();
+          const month = cursor.getMonth();
+          const totalDiasNoMes = new Date(year, month + 1, 0).getDate();
+
+          // Primeiro dia trabalhado neste mês
+          const inicioMes = new Date(year, month, 1);
+          const primeiroDia = start > inicioMes ? start.getDate() : 1;
+
+          // Último dia trabalhado neste mês
+          const fimMes = new Date(year, month, totalDiasNoMes);
+          const ultimoDia = end < fimMes ? end.getDate() : totalDiasNoMes;
+
+          const diasTrabalhados = Math.max(0, ultimoDia - primeiroDia + 1);
+          const proporcao = diasTrabalhados / totalDiasNoMes;
+          baseFGTS += sal * proporcao;
+
+          // Avança para o próximo mês
+          cursor.setMonth(cursor.getMonth() + 1);
+        }
+      }
+      // Adiciona 13º proporcional à base
       baseFGTS += decimo;
-      if (step2.incluir13AnosAnteriores && mesesVinculo > 12) {
-        const anosCompletos = Math.floor(mesesVinculo / 12);
-        baseFGTS += sal * anosCompletos;
+      if (step2.incluir13AnosAnteriores) {
+        const mesesVinculo = step1.dataAdmissao && step1.dataDesligamento
+          ? diffMonthsFull(step1.dataAdmissao, step1.dataDesligamento)
+          : 0;
+        if (mesesVinculo > 12) {
+          const anosCompletos = Math.floor(mesesVinculo / 12);
+          baseFGTS += sal * anosCompletos;
+        }
       }
       fgtsTotal = baseFGTS * 0.08;
     }
