@@ -14,7 +14,90 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      clientes: {
+        Row: {
+          cnpj: string | null
+          cpf: string | null
+          created_at: string
+          endereco: string | null
+          id: string
+          nome: string
+          tipo: string
+        }
+        Insert: {
+          cnpj?: string | null
+          cpf?: string | null
+          created_at?: string
+          endereco?: string | null
+          id?: string
+          nome: string
+          tipo?: string
+        }
+        Update: {
+          cnpj?: string | null
+          cpf?: string | null
+          created_at?: string
+          endereco?: string | null
+          id?: string
+          nome?: string
+          tipo?: string
+        }
+        Relationships: []
+      }
+      feriados_municipais: {
+        Row: {
+          created_at: string
+          data: string
+          descricao: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          data: string
+          descricao: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          data?: string
+          descricao?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      verbas: {
+        Row: {
+          calcula_dsr: boolean
+          created_at: string
+          id: string
+          incide_fgts: boolean
+          nome: string
+          padrao_pd: string
+          referencia_padrao: string | null
+          tipo_calculo: string
+        }
+        Insert: {
+          calcula_dsr?: boolean
+          created_at?: string
+          id?: string
+          incide_fgts?: boolean
+          nome: string
+          padrao_pd?: string
+          referencia_padrao?: string | null
+          tipo_calculo?: string
+        }
+        Update: {
+          calcula_dsr?: boolean
+          created_at?: string
+          id?: string
+          incide_fgts?: boolean
+          nome?: string
+          padrao_pd?: string
+          referencia_padrao?: string | null
+          tipo_calculo?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

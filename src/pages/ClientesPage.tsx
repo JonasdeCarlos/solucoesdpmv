@@ -2,40 +2,39 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Card, CardContent } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useClientes } from '@/hooks/useClientes';
 import { type Client, createEmptyClient } from '@/types/client';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const ClientesPage = () => {
-  const [clientes, setClientes] = useLocalStorage<Client[]>('mv_clientes', []);
+  const { clientes, loading, saveCliente, deleteCliente } = useClientes();
   const [editing, setEditing] = useState<Client | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const { toast } = useToast();
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!editing) return;
     if (!editing.nome.trim()) {
       toast({ title: 'Nome é obrigatório', variant: 'destructive' });
       return;
     }
-
-    setClientes((prev) => {
-      const exists = prev.find((c) => c.id === editing.id);
-      if (exists) return prev.map((c) => (c.id === editing.id ? editing : c));
-      return [...prev, editing];
-    });
+    const { error } = await saveCliente(editing);
+    if (error) {
+      toast({ title: 'Erro ao salvar cliente', variant: 'destructive' });
+      return;
+    }
     setDialogOpen(false);
     setEditing(null);
     toast({ title: 'Cliente salvo com sucesso!' });
   };
 
-  const handleDelete = (id: string) => {
-    setClientes((prev) => prev.filter((c) => c.id !== id));
+  const handleDelete = async (id: string) => {
+    await deleteCliente(id);
     toast({ title: 'Cliente excluído.' });
   };
 
@@ -70,7 +69,13 @@ const ClientesPage = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {clientes.length === 0 ? (
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                    Carregando...
+                  </TableCell>
+                </TableRow>
+              ) : clientes.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
                     Nenhum cliente cadastrado.

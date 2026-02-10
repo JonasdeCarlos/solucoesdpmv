@@ -8,37 +8,36 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useVerbas } from '@/hooks/useVerbas';
 import { type Verba, type TipoCalculo, createEmptyVerba, TIPO_CALCULO_LABELS } from '@/types/verba';
 import { Plus, Pencil, Trash2, Check, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 
 const VerbasPage = () => {
-  const [verbas, setVerbas] = useLocalStorage<Verba[]>('mv_verbas', []);
+  const { verbas, loading, saveVerba, deleteVerba } = useVerbas();
   const [editing, setEditing] = useState<Verba | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const { toast } = useToast();
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!editing) return;
     if (!editing.nome.trim()) {
       toast({ title: 'Nome da verba é obrigatório', variant: 'destructive' });
       return;
     }
-
-    setVerbas((prev) => {
-      const exists = prev.find((v) => v.id === editing.id);
-      if (exists) return prev.map((v) => (v.id === editing.id ? editing : v));
-      return [...prev, editing];
-    });
+    const { error } = await saveVerba(editing);
+    if (error) {
+      toast({ title: 'Erro ao salvar verba', variant: 'destructive' });
+      return;
+    }
     setDialogOpen(false);
     setEditing(null);
     toast({ title: 'Verba salva com sucesso!' });
   };
 
-  const handleDelete = (id: string) => {
-    setVerbas((prev) => prev.filter((v) => v.id !== id));
+  const handleDelete = async (id: string) => {
+    await deleteVerba(id);
     toast({ title: 'Verba excluída.' });
   };
 
@@ -75,7 +74,13 @@ const VerbasPage = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {verbas.length === 0 ? (
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                    Carregando...
+                  </TableCell>
+                </TableRow>
+              ) : verbas.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                     Nenhuma verba cadastrada.

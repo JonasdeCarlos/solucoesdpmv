@@ -8,9 +8,9 @@ import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { type Client } from '@/types/client';
-import { type Verba, TIPO_CALCULO_LABELS } from '@/types/verba';
+import { useClientes } from '@/hooks/useClientes';
+import { useVerbas } from '@/hooks/useVerbas';
+import { useFeriadosMunicipais } from '@/hooks/useFeriadosMunicipais';
 import {
   type ReciboData, type ReciboLinha,
   createEmptyReciboData, createEmptyLinha,
@@ -18,14 +18,14 @@ import {
 } from '@/types/recibo';
 import { generateReciboPDF, generateReciboTexto } from '@/utils/reciboGenerator';
 import { formatCurrency, formatCurrencyInput, parseCurrencyToNumber } from '@/utils/formatters';
-import { type FeriadoMunicipal, quintoDiaUtilSubsequente, contarDiasUteisMes } from '@/utils/feriados';
+import { quintoDiaUtilSubsequente, contarDiasUteisMes } from '@/utils/feriados';
 import { Plus, Trash2, FileDown, Copy, Calculator, CalendarDays } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const ReciboPage = () => {
-  const [clientes] = useLocalStorage<Client[]>('mv_clientes', []);
-  const [verbasDB] = useLocalStorage<Verba[]>('mv_verbas', []);
-  const [feriadosMunicipais, setFeriadosMunicipais] = useLocalStorage<FeriadoMunicipal[]>('mv_feriados_municipais', []);
+  const { clientes } = useClientes();
+  const { verbas: verbasDB } = useVerbas();
+  const { feriados: feriadosMunicipais, addFeriado, deleteFeriado } = useFeriadosMunicipais();
   const [recibo, setRecibo] = useState<ReciboData>(createEmptyReciboData());
   const [feriadoDialogOpen, setFeriadoDialogOpen] = useState(false);
   const [novoFeriado, setNovoFeriado] = useState({ nome: '', dia: '', mes: '' });
@@ -51,14 +51,14 @@ const ReciboPage = () => {
     });
   }, [feriadosMunicipais]);
 
-  const handleAddFeriado = () => {
+  const handleAddFeriado = async () => {
     const dia = Number(novoFeriado.dia);
     const mes = Number(novoFeriado.mes);
     if (!novoFeriado.nome.trim() || dia < 1 || dia > 31 || mes < 1 || mes > 12) {
       toast({ title: 'Preencha nome, dia e mês corretamente', variant: 'destructive' });
       return;
     }
-    setFeriadosMunicipais((prev) => [...prev, { id: crypto.randomUUID(), nome: novoFeriado.nome.trim(), dia, mes }]);
+    await addFeriado({ nome: novoFeriado.nome.trim(), dia, mes });
     setNovoFeriado({ nome: '', dia: '', mes: '' });
     toast({ title: 'Feriado municipal adicionado!' });
   };
@@ -654,7 +654,7 @@ const ReciboPage = () => {
                       <TableCell>
                         <Button
                           variant="ghost" size="icon"
-                          onClick={() => setFeriadosMunicipais((prev) => prev.filter((x) => x.id !== f.id))}
+                          onClick={() => deleteFeriado(f.id)}
                           className="h-8 w-8"
                         >
                           <Trash2 className="w-4 h-4 text-destructive" />
