@@ -66,7 +66,7 @@ const ReciboPage = () => {
         id: crypto.randomUUID(),
         descricao: `DSR ${v.nome}${percentLabel}`,
         pd: v.padraoPD,
-        ref: '',
+        ref: '', // will be set in setRecibo with diasNaoUteis
         valor: 0,
         incideFGTS: v.incideFGTS,
         tipoCalculo: 'manual',
@@ -75,7 +75,12 @@ const ReciboPage = () => {
       });
     }
 
-    setRecibo((prev) => ({ ...prev, linhas: [...prev.linhas, ...novasLinhas] }));
+    setRecibo((prev) => ({
+      ...prev,
+      linhas: [...prev.linhas, ...novasLinhas.map((l) =>
+        l.isDSR ? { ...l, ref: String(prev.diasNaoUteis || '') } : l
+      )],
+    }));
   };
 
   // Adicionar linha manual
