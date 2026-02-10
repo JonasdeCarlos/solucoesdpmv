@@ -7,8 +7,9 @@ export interface ReciboLinha {
   incideFGTS: boolean;
   tipoCalculo: 'manual' | 'dias' | 'horas' | 'hora_extra' | 'adicional_noturno';
   // Campos para cálculos automáticos
-  quantidade?: number; // dias ou horas
+  quantidade?: number; // dias ou horas (centesimal)
   adicionalPercent?: number; // para hora extra / adicional noturno
+  _horaInput?: string; // campo auxiliar para digitação HH:MM
 }
 
 export interface ReciboData {
