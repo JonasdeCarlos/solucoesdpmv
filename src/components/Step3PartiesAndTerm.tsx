@@ -4,8 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { ArrowLeft, FileText, Copy, Download } from 'lucide-react';
-import { type Step1Data, type Step3Data, type VerbaRescisoria, calcularTotal, MOTIVO_TERMO_TITULO, MOTIVO_TERMO_CORPO } from '@/utils/calculations';
+import { ArrowLeft, FileText, Copy, Download, Calculator } from 'lucide-react';
+import { type Step1Data, type Step2Data, type Step3Data, type VerbaRescisoria, calcularTotal, MOTIVO_TERMO_TITULO, MOTIVO_TERMO_CORPO, MOTIVO_LABELS } from '@/utils/calculations';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { numberToWords } from '@/utils/numberToWords';
 import ResultsTable from '@/components/ResultsTable';
@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 
 interface Step3Props {
   step1: Step1Data;
+  step2: Step2Data;
   verbas: VerbaRescisoria[];
   data: Step3Data;
   onChange: (data: Step3Data) => void;
@@ -20,7 +21,7 @@ interface Step3Props {
   onBack: () => void;
 }
 
-const Step3PartiesAndTerm = ({ step1, verbas, data, onChange, onVerbaUpdate, onBack }: Step3Props) => {
+const Step3PartiesAndTerm = ({ step1, step2, verbas, data, onChange, onVerbaUpdate, onBack }: Step3Props) => {
   const update = (partial: Partial<Step3Data>) => {
     onChange({ ...data, ...partial });
   };
@@ -79,6 +80,163 @@ ${data.empregadoNome || '[NOME DO EMPREGADO]'}`;
   const handleDownloadDemo = () => {
     downloadTextFile(generateTableText(), 'demonstrativo-verbas.txt');
     toast.success('Demonstrativo baixado!');
+  };
+
+  const generateMemoriaCalculo = (): string => {
+    const sal = step1.salarioMensal;
+    const dataAdm = step1.dataAdmissao ? formatDate(step1.dataAdmissao) : '—';
+    const dataDesl = step1.dataDesligamento ? formatDate(step1.dataDesligamento) : '—';
+    const motivo = step1.motivo === 'outros' ? (step1.motivoOutroTexto || 'Outros') : MOTIVO_LABELS[step1.motivo];
+
+    let lines: string[] = [];
+    lines.push('═══════════════════════════════════════════════════');
+    lines.push('           MEMÓRIA DE CÁLCULO - RESCISÃO CLT');
+    lines.push('═══════════════════════════════════════════════════');
+    lines.push('');
+    lines.push(`Admissão: ${dataAdm}`);
+    lines.push(`Desligamento: ${dataDesl}`);
+    lines.push(`Salário mensal: ${formatCurrency(sal)}`);
+    lines.push(`Motivo: ${motivo}`);
+    lines.push('');
+    lines.push('───────────────────────────────────────────────────');
+
+    // Saldo de salário
+    const saldoSal = (sal / 30) * step2.diasTrabalhadosMes;
+    lines.push('');
+    lines.push('1) SALDO DE SALÁRIO');
+    lines.push(`   Fórmula: Salário / 30 × dias trabalhados no mês`);
+    lines.push(`   ${formatCurrency(sal)} / 30 × ${step2.diasTrabalhadosMes} = ${formatCurrency(saldoSal)}`);
+
+    // 13º proporcional
+    const decimo = sal * (step2.meses13Proporcional / 12);
+    lines.push('');
+    lines.push('2) 13º SALÁRIO PROPORCIONAL');
+    lines.push(`   Fórmula: Salário × (meses / 12)`);
+    lines.push(`   ${formatCurrency(sal)} × (${step2.meses13Proporcional}/12) = ${formatCurrency(decimo)}`);
+
+    // Férias proporcionais
+    const feriasProp = sal * (step2.mesesFeriasProporcional / 12);
+    lines.push('');
+    lines.push('3) FÉRIAS PROPORCIONAIS');
+    lines.push(`   Fórmula: Salário × (meses / 12)`);
+    lines.push(`   ${formatCurrency(sal)} × (${step2.mesesFeriasProporcional}/12) = ${formatCurrency(feriasProp)}`);
+
+    let totalFerias = feriasProp;
+    let itemNum = 4;
+
+    // Férias vencidas
+    if (step1.temFeriasVencidas && step1.periodosVencidos > 0) {
+      const feriasVenc = sal * step1.periodosVencidos;
+      totalFerias += feriasVenc;
+      lines.push('');
+      lines.push(`${itemNum}) FÉRIAS VENCIDAS`);
+      lines.push(`   Fórmula: Salário × períodos vencidos`);
+      lines.push(`   ${formatCurrency(sal)} × ${step1.periodosVencidos} = ${formatCurrency(feriasVenc)}`);
+      itemNum++;
+    }
+
+    // 1/3 férias
+    if (step2.consideraTercoFerias) {
+      const terco = totalFerias / 3;
+      lines.push('');
+      lines.push(`${itemNum}) 1/3 CONSTITUCIONAL SOBRE FÉRIAS`);
+      lines.push(`   Fórmula: (Férias proporcionais${step1.temFeriasVencidas ? ' + Férias vencidas' : ''}) / 3`);
+      lines.push(`   ${formatCurrency(totalFerias)} / 3 = ${formatCurrency(terco)}`);
+      itemNum++;
+    }
+
+    // Aviso prévio indenizado
+    if (step1.calculaAvisoPrevioIndenizado) {
+      const aviso = (sal / 30) * step1.diasAvisoPrevioIndenizado;
+      lines.push('');
+      lines.push(`${itemNum}) AVISO PRÉVIO INDENIZADO`);
+      lines.push(`   Fórmula: Salário / 30 × dias de aviso`);
+      lines.push(`   ${formatCurrency(sal)} / 30 × ${step1.diasAvisoPrevioIndenizado} = ${formatCurrency(aviso)}`);
+      itemNum++;
+    }
+
+    // Desconto aviso prévio
+    if (step1.motivo === 'pedido_demissao' && step1.descontaAvisoPrevio) {
+      const desc = (sal / 30) * step1.diasAvisoDesconto;
+      lines.push('');
+      lines.push(`${itemNum}) DESCONTO AVISO PRÉVIO (DÉBITO)`);
+      lines.push(`   Fórmula: Salário / 30 × dias de aviso`);
+      lines.push(`   ${formatCurrency(sal)} / 30 × ${step1.diasAvisoDesconto} = -${formatCurrency(desc)}`);
+      itemNum++;
+    }
+
+    // FGTS
+    if (step1.calculaFGTS) {
+      if (step2.fgtsManual !== null && step2.fgtsManual > 0) {
+        lines.push('');
+        lines.push(`${itemNum}) FGTS DO PERÍODO (informado manualmente)`);
+        lines.push(`   Valor informado: ${formatCurrency(step2.fgtsManual)}`);
+      } else {
+        const mesesVinculo = step1.dataAdmissao && step1.dataDesligamento
+          ? Math.max(0, (step1.dataDesligamento.getFullYear() - step1.dataAdmissao.getFullYear()) * 12 + step1.dataDesligamento.getMonth() - step1.dataAdmissao.getMonth() + (step1.dataDesligamento.getDate() - step1.dataAdmissao.getDate() >= 15 ? 1 : 0))
+          : 0;
+        let baseFGTS = sal * mesesVinculo;
+        lines.push('');
+        lines.push(`${itemNum}) FGTS DO PERÍODO`);
+        lines.push(`   Meses de vínculo: ${mesesVinculo}`);
+        lines.push(`   Base: Salário × meses = ${formatCurrency(sal)} × ${mesesVinculo} = ${formatCurrency(baseFGTS)}`);
+        baseFGTS += decimo;
+        lines.push(`   + 13º proporcional: ${formatCurrency(decimo)}`);
+        if (step2.incluir13AnosAnteriores && mesesVinculo > 12) {
+          const anosCompletos = Math.floor(mesesVinculo / 12);
+          const extra = sal * anosCompletos;
+          baseFGTS += extra;
+          lines.push(`   + 13º anos anteriores (${anosCompletos} anos): ${formatCurrency(extra)}`);
+        }
+        const fgtsTotal = baseFGTS * 0.08;
+        lines.push(`   Base total FGTS: ${formatCurrency(baseFGTS)}`);
+        lines.push(`   FGTS = 8% × ${formatCurrency(baseFGTS)} = ${formatCurrency(fgtsTotal)}`);
+
+        if (step1.calculaMultaFGTS && step1.percentualMultaFGTS > 0) {
+          const multa = fgtsTotal * (step1.percentualMultaFGTS / 100);
+          itemNum++;
+          lines.push('');
+          lines.push(`${itemNum}) MULTA FGTS`);
+          lines.push(`   Fórmula: ${step1.percentualMultaFGTS}% × FGTS total`);
+          lines.push(`   ${step1.percentualMultaFGTS}% × ${formatCurrency(fgtsTotal)} = ${formatCurrency(multa)}`);
+        }
+      }
+      itemNum++;
+    }
+
+    // Outros
+    if (step2.outrosCreditos > 0) {
+      lines.push('');
+      lines.push(`${itemNum}) OUTROS CRÉDITOS: ${formatCurrency(step2.outrosCreditos)}`);
+      itemNum++;
+    }
+    if (step2.outrosDescontos > 0) {
+      lines.push('');
+      lines.push(`${itemNum}) OUTROS DESCONTOS (DÉBITO): -${formatCurrency(step2.outrosDescontos)}`);
+      itemNum++;
+    }
+
+    lines.push('');
+    lines.push('───────────────────────────────────────────────────');
+    lines.push(`TOTAL GERAL: ${formatCurrency(total)}`);
+    lines.push(`Por extenso: ${numberToWords(total)}`);
+    lines.push('═══════════════════════════════════════════════════');
+    lines.push('');
+    lines.push('⚠️ Cálculo estimativo. Pode variar conforme CCT,');
+    lines.push('médias, adicionais, descontos legais e');
+    lines.push('particularidades do contrato.');
+
+    return lines.join('\n');
+  };
+
+  const handleDownloadMemoria = () => {
+    downloadTextFile(generateMemoriaCalculo(), 'memoria-de-calculo.txt');
+    toast.success('Memória de cálculo baixada!');
+  };
+
+  const handleCopyMemoria = () => {
+    navigator.clipboard.writeText(generateMemoriaCalculo());
+    toast.success('Memória de cálculo copiada!');
   };
 
   const downloadTextFile = (text: string, filename: string) => {
@@ -188,6 +346,12 @@ ${data.empregadoNome || '[NOME DO EMPREGADO]'}`;
           </Button>
           <Button onClick={handleDownloadDemo} variant="outline" className="gap-2">
             <Download className="w-4 h-4" /> Baixar Demonstrativo
+          </Button>
+          <Button onClick={handleDownloadMemoria} variant="outline" className="gap-2">
+            <Calculator className="w-4 h-4" /> Memória de Cálculo
+          </Button>
+          <Button onClick={handleCopyMemoria} variant="outline" className="gap-2">
+            <Copy className="w-4 h-4" /> Copiar Memória
           </Button>
         </div>
       </div>
