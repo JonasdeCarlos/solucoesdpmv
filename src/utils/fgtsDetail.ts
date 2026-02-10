@@ -45,11 +45,13 @@ export function calcularFgtsDetalhado(
 
       let diasTrabalhados: number;
       if (isFirstMonth && isLastMonth) {
-        diasTrabalhados = end.getDate() - start.getDate() + 1;
+        const diasReais = end.getDate() - start.getDate() + 1;
+        diasTrabalhados = (end.getDate() >= totalDiasNoMes && start.getDate() === 1) ? 30 : diasReais;
       } else if (isFirstMonth) {
-        diasTrabalhados = totalDiasNoMes - start.getDate() + 1;
+        const diasReais = totalDiasNoMes - start.getDate() + 1;
+        diasTrabalhados = start.getDate() === 1 ? 30 : diasReais;
       } else if (isLastMonth) {
-        diasTrabalhados = end.getDate();
+        diasTrabalhados = end.getDate() >= totalDiasNoMes ? 30 : end.getDate();
       } else {
         diasTrabalhados = 30;
       }
