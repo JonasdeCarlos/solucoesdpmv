@@ -50,6 +50,22 @@ const Step1InitialQuestions = ({ data, onChange, onNext }: Step1Props) => {
     return Object.keys(errs).length === 0;
   };
 
+  // Verifica se o intervalo entre admissão e desligamento é > 1 ano
+  const temMaisDeUmAno = (() => {
+    if (!data.dataAdmissao || !data.dataDesligamento) return false;
+    const diffMs = data.dataDesligamento.getTime() - data.dataAdmissao.getTime();
+    const diffDays = diffMs / (1000 * 60 * 60 * 24);
+    return diffDays > 365;
+  })();
+
+  // Auto-desabilitar férias vencidas se não tem mais de 1 ano
+  useEffect(() => {
+    if (!temMaisDeUmAno && data.temFeriasVencidas) {
+      update({ temFeriasVencidas: false, periodosVencidos: 1 });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [temMaisDeUmAno]);
+
   const handleNext = () => {
     if (validate()) onNext();
   };
@@ -180,10 +196,13 @@ const Step1InitialQuestions = ({ data, onChange, onNext }: Step1Props) => {
           )}
 
           {/* Férias vencidas */}
-          <div className="space-y-3 p-4 rounded-lg bg-secondary">
+          <div className={cn("space-y-3 p-4 rounded-lg bg-secondary", !temMaisDeUmAno && "opacity-50")}>
             <div className="flex items-center justify-between">
-              <Label>Há férias vencidas?</Label>
-              <Switch checked={data.temFeriasVencidas} onCheckedChange={(v) => update({ temFeriasVencidas: v })} />
+              <Label className={!temMaisDeUmAno ? "text-muted-foreground" : ""}>
+                Há férias vencidas?
+                {!temMaisDeUmAno && <span className="block text-xs font-normal mt-1">Disponível apenas para contratos com mais de 1 ano</span>}
+              </Label>
+              <Switch checked={data.temFeriasVencidas} onCheckedChange={(v) => update({ temFeriasVencidas: v })} disabled={!temMaisDeUmAno} />
             </div>
             {data.temFeriasVencidas && (
               <div className="space-y-2">
