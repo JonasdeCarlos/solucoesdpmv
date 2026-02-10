@@ -26,7 +26,7 @@ const Step2ComplementaryData = ({ step1, data, onChange, onBack, onCalculate }: 
     ? diffMonths(new Date(step1.dataAdmissao.getFullYear(), 0, 1), step1.dataDesligamento)
     : 0;
   const mesesFeriasProp = step1.dataAdmissao && step1.dataDesligamento
-    ? diffMonths(step1.dataAdmissao, step1.dataDesligamento) % 12 || 12
+    ? diffMonths(step1.dataAdmissao, step1.dataDesligamento) % 12
     : 0;
 
   return (
