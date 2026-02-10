@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ArrowLeft, FileText, Copy, Download, Calculator } from 'lucide-react';
 import { type Step1Data, type Step2Data, type Step3Data, type VerbaRescisoria, calcularTotal, MOTIVO_TERMO_TITULO, MOTIVO_TERMO_CORPO, MOTIVO_LABELS } from '@/utils/calculations';
+import { calcularFgtsDetalhado } from '@/utils/fgtsDetail';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { numberToWords } from '@/utils/numberToWords';
 import ResultsTable from '@/components/ResultsTable';
@@ -173,33 +174,37 @@ ${data.empregadoNome || '[NOME DO EMPREGADO]'}`;
         lines.push(`${itemNum}) FGTS DO PERÍODO (informado manualmente)`);
         lines.push(`   Valor informado: ${formatCurrency(step2.fgtsManual)}`);
       } else {
-        const mesesVinculo = step1.dataAdmissao && step1.dataDesligamento
-          ? Math.max(0, (step1.dataDesligamento.getFullYear() - step1.dataAdmissao.getFullYear()) * 12 + step1.dataDesligamento.getMonth() - step1.dataAdmissao.getMonth() + (step1.dataDesligamento.getDate() - step1.dataAdmissao.getDate() >= 15 ? 1 : 0))
-          : 0;
-        let baseFGTS = sal * mesesVinculo;
+        const decimo = sal * (step2.meses13Proporcional / 12);
+        const fgtsDetail = calcularFgtsDetalhado(
+          sal, step1.dataAdmissao, step1.dataDesligamento,
+          decimo, step2.incluir13AnosAnteriores
+        );
+
         lines.push('');
-        lines.push(`${itemNum}) FGTS DO PERÍODO`);
-        lines.push(`   Meses de vínculo: ${mesesVinculo}`);
-        lines.push(`   Base: Salário × meses = ${formatCurrency(sal)} × ${mesesVinculo} = ${formatCurrency(baseFGTS)}`);
-        baseFGTS += decimo;
-        lines.push(`   + 13º proporcional: ${formatCurrency(decimo)}`);
-        if (step2.incluir13AnosAnteriores && mesesVinculo > 12) {
-          const anosCompletos = Math.floor(mesesVinculo / 12);
-          const extra = sal * anosCompletos;
-          baseFGTS += extra;
-          lines.push(`   + 13º anos anteriores (${anosCompletos} anos): ${formatCurrency(extra)}`);
+        lines.push(`${itemNum}) FGTS DO PERÍODO — DETALHAMENTO MÊS A MÊS`);
+        lines.push(`   Fórmula mensal: Salário / 30 × dias trabalhados`);
+        lines.push('');
+        lines.push('   Mês         | Dias | Base (R$)');
+        lines.push('   ' + '-'.repeat(42));
+        fgtsDetail.meses.forEach(m => {
+          lines.push(`   ${m.mes.padEnd(12)} | ${String(m.diasTrabalhados).padStart(4)} | ${formatCurrency(m.valorBase)}`);
+        });
+        lines.push('   ' + '-'.repeat(42));
+        lines.push(`   Subtotal salarial: ${formatCurrency(fgtsDetail.baseSalarial)}`);
+        lines.push(`   + 13º proporcional: ${formatCurrency(fgtsDetail.baseDecimo)}`);
+        if (fgtsDetail.base13Anterior > 0) {
+          lines.push(`   + 13º anos anteriores: ${formatCurrency(fgtsDetail.base13Anterior)}`);
         }
-        const fgtsTotal = baseFGTS * 0.08;
-        lines.push(`   Base total FGTS: ${formatCurrency(baseFGTS)}`);
-        lines.push(`   FGTS = 8% × ${formatCurrency(baseFGTS)} = ${formatCurrency(fgtsTotal)}`);
+        lines.push(`   Base total FGTS: ${formatCurrency(fgtsDetail.baseTotal)}`);
+        lines.push(`   FGTS = 8% × ${formatCurrency(fgtsDetail.baseTotal)} = ${formatCurrency(fgtsDetail.fgtsTotal)}`);
 
         if (step1.calculaMultaFGTS && step1.percentualMultaFGTS > 0) {
-          const multa = fgtsTotal * (step1.percentualMultaFGTS / 100);
+          const multa = fgtsDetail.fgtsTotal * (step1.percentualMultaFGTS / 100);
           itemNum++;
           lines.push('');
           lines.push(`${itemNum}) MULTA FGTS`);
           lines.push(`   Fórmula: ${step1.percentualMultaFGTS}% × FGTS total`);
-          lines.push(`   ${step1.percentualMultaFGTS}% × ${formatCurrency(fgtsTotal)} = ${formatCurrency(multa)}`);
+          lines.push(`   ${step1.percentualMultaFGTS}% × ${formatCurrency(fgtsDetail.fgtsTotal)} = ${formatCurrency(multa)}`);
         }
       }
       itemNum++;

@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { type Step1Data, type Step2Data, type Step3Data, type VerbaRescisoria, calcularTotal, MOTIVO_TERMO_TITULO, MOTIVO_TERMO_CORPO, MOTIVO_LABELS } from './calculations';
+import { calcularFgtsDetalhado } from './fgtsDetail';
 import { formatCurrency, formatDate } from './formatters';
 import { numberToWords } from './numberToWords';
 
@@ -374,28 +375,33 @@ export function generateMemoriaPDF(step1: Step1Data, step2: Step2Data, verbas: V
         `Valor informado: ${formatCurrency(step2.fgtsManual)}`,
       ]});
     } else {
-      const mv = step1.dataAdmissao && step1.dataDesligamento
-        ? Math.max(0, (step1.dataDesligamento.getFullYear() - step1.dataAdmissao.getFullYear()) * 12 + step1.dataDesligamento.getMonth() - step1.dataAdmissao.getMonth() + (step1.dataDesligamento.getDate() - step1.dataAdmissao.getDate() >= 15 ? 1 : 0))
-        : 0;
-      let base = sal * mv + decimo;
-      const fgtsLines = [
-        `Meses de vínculo: ${mv}`,
-        `Base: ${formatCurrency(sal)} × ${mv} + 13º (${formatCurrency(decimo)}) = ${formatCurrency(base)}`,
+      const fgtsDetail = calcularFgtsDetalhado(
+        sal, step1.dataAdmissao, step1.dataDesligamento,
+        decimo, step2.incluir13AnosAnteriores
+      );
+
+      const fgtsLines: string[] = [
+        `Fórmula mensal: Salário / 30 × dias trabalhados`,
+        '',
+        'Detalhamento mês a mês:',
       ];
-      if (step2.incluir13AnosAnteriores && mv > 12) {
-        const anos = Math.floor(mv / 12);
-        const extra = sal * anos;
-        base += extra;
-        fgtsLines.push(`+ 13º anos anteriores (${anos}): ${formatCurrency(extra)}`);
+      fgtsDetail.meses.forEach(m => {
+        fgtsLines.push(`  ${m.mes}: ${m.diasTrabalhados} dias → ${formatCurrency(m.valorBase)}`);
+      });
+      fgtsLines.push('');
+      fgtsLines.push(`Subtotal salarial: ${formatCurrency(fgtsDetail.baseSalarial)}`);
+      fgtsLines.push(`+ 13º proporcional: ${formatCurrency(fgtsDetail.baseDecimo)}`);
+      if (fgtsDetail.base13Anterior > 0) {
+        fgtsLines.push(`+ 13º anos anteriores: ${formatCurrency(fgtsDetail.base13Anterior)}`);
       }
-      const fgtsTotal = base * 0.08;
-      fgtsLines.push(`FGTS = 8% × ${formatCurrency(base)} = ${formatCurrency(fgtsTotal)}`);
-      items.push({ title: 'FGTS DO PERÍODO', lines: fgtsLines });
+      fgtsLines.push(`Base total: ${formatCurrency(fgtsDetail.baseTotal)}`);
+      fgtsLines.push(`FGTS = 8% × ${formatCurrency(fgtsDetail.baseTotal)} = ${formatCurrency(fgtsDetail.fgtsTotal)}`);
+      items.push({ title: 'FGTS DO PERÍODO — DETALHAMENTO MÊS A MÊS', lines: fgtsLines });
 
       if (step1.calculaMultaFGTS && step1.percentualMultaFGTS > 0) {
-        const multa = fgtsTotal * (step1.percentualMultaFGTS / 100);
+        const multa = fgtsDetail.fgtsTotal * (step1.percentualMultaFGTS / 100);
         items.push({ title: 'MULTA FGTS', lines: [
-          `${step1.percentualMultaFGTS}% × ${formatCurrency(fgtsTotal)} = ${formatCurrency(multa)}`,
+          `${step1.percentualMultaFGTS}% × ${formatCurrency(fgtsDetail.fgtsTotal)} = ${formatCurrency(multa)}`,
         ]});
       }
     }
