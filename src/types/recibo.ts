@@ -22,6 +22,8 @@ export interface ReciboData {
   recebedorCPF: string;
   cidadeUF: string;
   competencia: string; // MM/AAAA
+  diasUteis: number;
+  diasNaoUteis: number;
   dataEmissao: string; // YYYY-MM-DD
   salarioBase: number;
   jornadaMensal: number;
@@ -42,6 +44,8 @@ export function createEmptyReciboData(): ReciboData {
     recebedorCPF: '',
     cidadeUF: 'Monte Verde',
     competencia: '',
+    diasUteis: 0,
+    diasNaoUteis: 0,
     dataEmissao: new Date().toISOString().split('T')[0],
     salarioBase: 0,
     jornadaMensal: 220,

@@ -163,6 +163,31 @@ const ReciboPage = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
+              <Label>Dias Úteis</Label>
+              <Input
+                type="number"
+                min={0}
+                max={31}
+                value={recibo.diasUteis || ''}
+                onChange={(e) => setRecibo((p) => ({ ...p, diasUteis: Number(e.target.value) || 0 }))}
+                placeholder="22"
+              />
+            </div>
+            <div>
+              <Label>Dias Não Úteis</Label>
+              <Input
+                type="number"
+                min={0}
+                max={31}
+                value={recibo.diasNaoUteis || ''}
+                onChange={(e) => setRecibo((p) => ({ ...p, diasNaoUteis: Number(e.target.value) || 0 }))}
+                placeholder="8"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
               <Label>Nome do Recebedor (Empregado) *</Label>
               <Input
                 value={recibo.recebedorNome}
