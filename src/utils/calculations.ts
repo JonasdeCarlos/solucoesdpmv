@@ -156,11 +156,12 @@ export function calcularVerbas(step1: Step1Data, step2: Step2Data): VerbaResciso
 
     // Projeção do aviso no 13º: salário / 12 × (dias / 30)
     const mesesProjecao = diasAviso / 30;
+    const avosProjecao = Math.round(mesesProjecao * 12);
     const reflexo13 = (sal / 12) * mesesProjecao;
     verbas.push({
       id: 'reflexo_aviso_13',
       verba: '13º salário — projeção aviso prévio',
-      referencia: `${diasAviso}/30 avos`,
+      referencia: `${avosProjecao}/12 avos`,
       valor: round2(reflexo13),
       tipo: 'credito',
     });
@@ -170,7 +171,7 @@ export function calcularVerbas(step1: Step1Data, step2: Step2Data): VerbaResciso
     verbas.push({
       id: 'reflexo_aviso_ferias',
       verba: 'Férias — projeção aviso prévio',
-      referencia: `${diasAviso}/30 avos`,
+      referencia: `${avosProjecao}/12 avos`,
       valor: round2(reflexoFerias),
       tipo: 'credito',
     });
