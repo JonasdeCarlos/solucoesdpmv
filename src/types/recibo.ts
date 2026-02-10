@@ -10,6 +10,9 @@ export interface ReciboLinha {
   quantidade?: number; // dias ou horas (centesimal)
   adicionalPercent?: number; // para hora extra / adicional noturno
   _horaInput?: string; // campo auxiliar para digitação HH:MM
+  // DSR automático
+  isDSR?: boolean;
+  dsrParentId?: string; // id da linha que originou este DSR
 }
 
 export interface ReciboData {

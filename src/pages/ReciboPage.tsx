@@ -44,8 +44,12 @@ const ReciboPage = () => {
   const handleAddVerbaFromDB = (verbaId: string) => {
     const v = verbasDB.find((vb) => vb.id === verbaId);
     if (!v) return;
+    const linhaId = crypto.randomUUID();
+    const percentLabel = (v.tipoCalculo === 'hora_extra' || v.tipoCalculo === 'adicional_noturno')
+      ? ` ${v.tipoCalculo === 'hora_extra' ? '50' : '20'}%`
+      : '';
     const novaLinha: ReciboLinha = {
-      id: crypto.randomUUID(),
+      id: linhaId,
       descricao: v.nome,
       pd: v.padraoPD,
       ref: v.referenciaPadrao,
@@ -55,7 +59,23 @@ const ReciboPage = () => {
       quantidade: 0,
       adicionalPercent: v.tipoCalculo === 'hora_extra' ? 50 : v.tipoCalculo === 'adicional_noturno' ? 20 : 0,
     };
-    setRecibo((prev) => ({ ...prev, linhas: [...prev.linhas, novaLinha] }));
+    const novasLinhas: ReciboLinha[] = [novaLinha];
+
+    if (v.calculaDSR) {
+      novasLinhas.push({
+        id: crypto.randomUUID(),
+        descricao: `DSR ${v.nome}${percentLabel}`,
+        pd: v.padraoPD,
+        ref: '',
+        valor: 0,
+        incideFGTS: v.incideFGTS,
+        tipoCalculo: 'manual',
+        isDSR: true,
+        dsrParentId: linhaId,
+      });
+    }
+
+    setRecibo((prev) => ({ ...prev, linhas: [...prev.linhas, ...novasLinhas] }));
   };
 
   // Adicionar linha manual
@@ -78,16 +98,28 @@ const ReciboPage = () => {
 
   // Calcular valores automáticos
   const handleCalcular = () => {
-    setRecibo((prev) => ({
-      ...prev,
-      linhas: prev.linhas.map((l) => {
-        if (l.tipoCalculo !== 'manual') {
+    setRecibo((prev) => {
+      // First pass: calculate non-manual, non-DSR lines
+      let linhas = prev.linhas.map((l) => {
+        if (l.tipoCalculo !== 'manual' && !l.isDSR) {
           const novoValor = calcularValorLinha(l, prev.salarioBase, prev.jornadaMensal, prev.divisorDiario);
           return { ...l, valor: novoValor };
         }
         return l;
-      }),
-    }));
+      });
+      // Second pass: calculate DSR lines based on parent value
+      linhas = linhas.map((l) => {
+        if (l.isDSR && l.dsrParentId) {
+          const parent = linhas.find((p) => p.id === l.dsrParentId);
+          if (parent && prev.diasUteis > 0) {
+            const dsrValor = Math.round((parent.valor / prev.diasUteis) * prev.diasNaoUteis * 100) / 100;
+            return { ...l, valor: dsrValor };
+          }
+        }
+        return l;
+      });
+      return { ...prev, linhas };
+    });
     toast({ title: 'Valores calculados!' });
   };
 
@@ -434,7 +466,7 @@ const ReciboPage = () => {
             </div>
           )}
 
-          {recibo.linhas.length > 0 && recibo.linhas.some((l) => l.tipoCalculo !== 'manual') && (
+          {recibo.linhas.length > 0 && recibo.linhas.some((l) => l.tipoCalculo !== 'manual' || l.isDSR) && (
             <Button onClick={handleCalcular} variant="outline" size="sm">
               <Calculator className="w-4 h-4 mr-1" /> Calcular Valores
             </Button>
