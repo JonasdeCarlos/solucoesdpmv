@@ -144,8 +144,8 @@ const PontoGrid: React.FC<Props> = ({ dias, diasCalculados, config, onDiaChange 
                   {minutesToHHMM(calc?.trabalhoLiquido ?? 0)}
                 </td>
                 <td className="px-1 py-1 text-center font-mono text-green-700 dark:text-green-400">
-                  {calc && calc.saldoMinutos > 0 ? minutesToHHMM(calc.saldoMinutos) : ''}
-                  {calc && config.tolerancia10min && calc.saldoMinutos !== calc.saldoAntesTolerancia && calc.saldoAntesTolerancia > 0 && (
+                  {calc && calc.saldoMinutos > 0 && dia.tipoDia === 'normal' ? minutesToHHMM(calc.saldoMinutos) : ''}
+                  {calc && config.tolerancia10min && calc.saldoMinutos !== calc.saldoAntesTolerancia && calc.saldoAntesTolerancia > 0 && dia.tipoDia === 'normal' && (
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <span className="text-[10px] text-muted-foreground ml-0.5 cursor-help">*</span>
@@ -157,8 +157,8 @@ const PontoGrid: React.FC<Props> = ({ dias, diasCalculados, config, onDiaChange 
                   )}
                 </td>
                 <td className="px-1 py-1 text-center font-mono text-red-700 dark:text-red-400">
-                  {calc && calc.saldoMinutos < 0 ? minutesToHHMM(calc.saldoMinutos) : ''}
-                  {calc && config.tolerancia10min && calc.saldoMinutos !== calc.saldoAntesTolerancia && calc.saldoAntesTolerancia < 0 && (
+                  {calc && calc.saldoMinutos < 0 && dia.tipoDia === 'normal' ? minutesToHHMM(calc.saldoMinutos) : ''}
+                  {calc && config.tolerancia10min && calc.saldoMinutos !== calc.saldoAntesTolerancia && calc.saldoAntesTolerancia < 0 && dia.tipoDia === 'normal' && (
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <span className="text-[10px] text-muted-foreground ml-0.5 cursor-help">*</span>
