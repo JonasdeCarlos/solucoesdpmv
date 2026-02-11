@@ -84,6 +84,7 @@ export function calcularDia(dia: PontoDia, config: PontoConfig): PontoDiaCalcula
     noturnoReal: 0,
     noturnoConvertido: 0,
     alertaIntervalo: false,
+    intervaloDevido: 0,
   };
 
   // Parse all valid markings
@@ -136,10 +137,12 @@ export function calcularDia(dia: PontoDia, config: PontoConfig): PontoDiaCalcula
   const intervaloMin = parseHHMM(config.intervaloMinimo);
   if (!isNaN(intervaloMin) && totalIntervalos < intervaloMin && totalIntervalos > 0) {
     result.alertaIntervalo = true;
+    result.intervaloDevido = intervaloMin - totalIntervalos;
   }
   if (totalIntervalos === 0 && result.trabalhoLiquido > 6 * 60) {
     // No interval registered but worked > 6h
     result.alertaIntervalo = true;
+    result.intervaloDevido = intervaloMin || 60;
   }
 
   // Hours to fulfill
