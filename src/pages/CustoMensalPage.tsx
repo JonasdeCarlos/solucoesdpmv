@@ -211,7 +211,17 @@ const CustoMensalPage: React.FC = () => {
       {calculado && (
         <Card>
           <CardHeader>
+          <div className="flex items-center justify-between w-full">
             <CardTitle className="text-base">Memória de Cálculo</CardTitle>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={handleCopiar} className="gap-1.5">
+                <Copy className="w-4 h-4" /> Copiar
+              </Button>
+              <Button variant="outline" size="sm" onClick={handlePrint} className="gap-1.5">
+                <Printer className="w-4 h-4" /> Imprimir / PDF
+              </Button>
+            </div>
+          </div>
           </CardHeader>
           <CardContent className="space-y-4">
             {Object.entries(grupos).map(([grupo, linhas]) => (
