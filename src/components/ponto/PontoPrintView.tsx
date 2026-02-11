@@ -105,6 +105,7 @@ const PontoPrintView: React.FC<Props> = ({ identificacao, config, diasCalculados
               <th>Cumprir</th>
               <th>Trab.</th>
               <th>Saldo</th>
+              <th>Int.Dev</th>
               <th>Not.R</th>
               <th>Not.C</th>
             </tr>
@@ -119,6 +120,7 @@ const PontoPrintView: React.FC<Props> = ({ identificacao, config, diasCalculados
                 <td>{d.horasACumprir}</td>
                 <td>{minutesToHHMM(d.trabalhoLiquido)}</td>
                 <td className={saldoClass(d.saldoMinutos)}>{minutesToHHMM(d.saldoMinutos)}</td>
+                <td style={{color: d.intervaloDevido > 0 ? '#c2410c' : ''}}>{d.intervaloDevido > 0 ? minutesToHHMM(d.intervaloDevido) : ''}</td>
                 <td>{d.noturnoReal > 0 ? minutesToHHMM(d.noturnoReal) : ''}</td>
                 <td>{d.noturnoConvertido > 0 ? minutesToHHMM(d.noturnoConvertido) : ''}</td>
               </tr>
