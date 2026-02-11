@@ -104,17 +104,18 @@ export function gerarDiasMes(mesAno: string, config: PontoConfig): PontoDia[] {
   for (let d = 1; d <= totalDias; d++) {
     const date = new Date(year, month - 1, d);
     const dow = date.getDay();
-    const isSunday = dow === 0;
 
     const diaSemana = DIAS_SEMANA[dow] as DiaSemanaKey;
     const horasACumprir = config.jornadaSemanal
       ? config.jornadaSemanal[diaSemana]
-      : (isSunday ? '00:00' : config.jornadaDiaria);
+      : (dow === 0 ? '00:00' : config.jornadaDiaria);
+
+    const semJornada = horasACumprir === '00:00' || horasACumprir === '';
 
     dias.push({
       dia: d,
       diaSemana,
-      tipoDia: isSunday ? 'folga_dsr' : 'normal',
+      tipoDia: semJornada ? 'folga_dsr' : 'normal',
       marcacoes: Array(config.colunasMarcacoes).fill(''),
       horasACumprir,
       observacao: '',
