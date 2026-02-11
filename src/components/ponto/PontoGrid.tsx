@@ -89,7 +89,7 @@ const PontoGrid: React.FC<Props> = ({ dias, diasCalculados, config, onDiaChange 
             <th className="px-1 py-2 text-center font-medium text-blue-700 dark:text-blue-400">Folga</th>
             <th className="px-1 py-2 text-center font-medium">Not.R</th>
             <th className="px-1 py-2 text-center font-medium">Not.C</th>
-            <th className="px-1 py-2 text-center font-medium w-6"></th>
+            <th className="px-1 py-2 text-center font-medium text-orange-700 dark:text-orange-400">Int.Dev</th>
           </tr>
         </thead>
         <tbody>
@@ -181,17 +181,20 @@ const PontoGrid: React.FC<Props> = ({ dias, diasCalculados, config, onDiaChange 
                 <td className="px-1 py-1 text-center font-mono text-muted-foreground">
                   {calc && calc.noturnoConvertido > 0 ? minutesToHHMM(calc.noturnoConvertido) : ''}
                 </td>
-                <td className="px-1 py-1">
-                  {calc?.alertaIntervalo && (
+                <td className="px-1 py-1 text-center font-mono text-orange-700 dark:text-orange-400">
+                  {calc && calc.intervaloDevido > 0 ? (
                     <Tooltip>
-                      <TooltipTrigger>
-                        <AlertTriangle className="w-3.5 h-3.5 text-yellow-600" />
+                      <TooltipTrigger asChild>
+                        <span className="flex items-center justify-center gap-0.5 cursor-help">
+                          {minutesToHHMM(calc.intervaloDevido)}
+                          <AlertTriangle className="w-3 h-3" />
+                        </span>
                       </TooltipTrigger>
                       <TooltipContent className="text-xs">
-                        Intervalo intrajornada inferior a 1h
+                        Intervalo intrajornada inferior ao mínimo
                       </TooltipContent>
                     </Tooltip>
-                  )}
+                  ) : ''}
                 </td>
               </tr>
             );

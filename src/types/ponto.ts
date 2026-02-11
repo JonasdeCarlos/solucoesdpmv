@@ -40,6 +40,7 @@ export interface PontoDiaCalculado extends PontoDia {
   noturnoReal: number; // minutes
   noturnoConvertido: number; // minutes
   alertaIntervalo: boolean;
+  intervaloDevido: number; // minutes owed (difference when interval < minimum)
 }
 
 export interface PontoIdentificacao {
