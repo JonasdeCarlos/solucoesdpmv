@@ -10,6 +10,7 @@ import VerbasPage from "./pages/VerbasPage";
 import ReciboPage from "./pages/ReciboPage";
 import PontoPage from "./pages/PontoPage";
 import CustoMensalPage from "./pages/CustoMensalPage";
+import EncargosPage from "./pages/EncargosPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +29,7 @@ const App = () => (
             <Route path="/recibo" element={<ReciboPage />} />
             <Route path="/ponto" element={<PontoPage />} />
             <Route path="/custo-mensal" element={<CustoMensalPage />} />
+            <Route path="/encargos" element={<EncargosPage />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
