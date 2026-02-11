@@ -191,6 +191,7 @@ export interface PontoResumo {
   totalFolgasDsr: number;
   totalNoturnoReal: number;
   totalNoturnoConvertido: number;
+  totalIntervaloDevido: number;
 }
 
 export function calcularResumo(dias: PontoDiaCalculado[]): PontoResumo {
@@ -204,6 +205,7 @@ export function calcularResumo(dias: PontoDiaCalculado[]): PontoResumo {
     totalFolgasDsr: 0,
     totalNoturnoReal: 0,
     totalNoturnoConvertido: 0,
+    totalIntervaloDevido: 0,
   };
 
   for (const d of dias) {
@@ -218,6 +220,7 @@ export function calcularResumo(dias: PontoDiaCalculado[]): PontoResumo {
 
     resumo.totalNoturnoReal += d.noturnoReal;
     resumo.totalNoturnoConvertido += d.noturnoConvertido;
+    resumo.totalIntervaloDevido += d.intervaloDevido;
   }
 
   resumo.saldoFinal = resumo.totalSaldoPositivo + resumo.totalSaldoNegativo;
