@@ -215,7 +215,6 @@ export function calcularResumo(dias: PontoDiaCalculado[]): PontoResumo {
 
     resumo.totalNoturnoReal += d.noturnoReal;
     resumo.totalNoturnoConvertido += d.noturnoConvertido;
-    resumo.totalNoturnoReal += d.noturnoReal;
   }
 
   resumo.saldoFinal = resumo.totalSaldoPositivo + resumo.totalSaldoNegativo;
