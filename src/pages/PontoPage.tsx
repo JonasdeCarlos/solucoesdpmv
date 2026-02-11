@@ -73,10 +73,15 @@ const PontoPage: React.FC = () => {
       // Apply weekly schedule changes to existing days
       if (newCfg.jornadaSemanal && JSON.stringify(newCfg.jornadaSemanal) !== JSON.stringify(prev.jornadaSemanal)) {
         setDias(current =>
-          current.map(d => ({
-            ...d,
-            horasACumprir: newCfg.jornadaSemanal[d.diaSemana as keyof typeof newCfg.jornadaSemanal] ?? d.horasACumprir,
-          }))
+          current.map(d => {
+            const novaJornada = newCfg.jornadaSemanal[d.diaSemana as keyof typeof newCfg.jornadaSemanal] ?? d.horasACumprir;
+            const semJornada = novaJornada === '00:00' || novaJornada === '';
+            return {
+              ...d,
+              horasACumprir: novaJornada,
+              tipoDia: semJornada ? 'folga_dsr' : (d.tipoDia === 'folga_dsr' ? 'normal' : d.tipoDia),
+            };
+          })
         );
       }
 
