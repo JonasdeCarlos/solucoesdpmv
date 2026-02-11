@@ -1,5 +1,7 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import { Printer } from 'lucide-react';
 import { type PontoIdentificacao, type PontoConfig, type PontoDiaCalculado } from '@/types/ponto';
 import { type PontoResumo, minutesToHHMM } from '@/utils/pontoCalculations';
@@ -16,6 +18,7 @@ interface Props {
 
 const PontoPrintView: React.FC<Props> = ({ identificacao, config, diasCalculados, resumo }) => {
   const printRef = useRef<HTMLDivElement>(null);
+  const [exibirIntrajornada, setExibirIntrajornada] = useState(true);
   const labels = config.colunasMarcacoes === 6 ? MARCACAO_LABELS_6 : MARCACAO_LABELS_4;
 
   const handlePrint = () => {
@@ -72,9 +75,19 @@ const PontoPrintView: React.FC<Props> = ({ identificacao, config, diasCalculados
 
   return (
     <div>
-      <Button onClick={handlePrint} className="mb-4">
-        <Printer className="w-4 h-4 mr-2" /> Imprimir / PDF
-      </Button>
+      <div className="flex items-center gap-4 mb-4">
+        <Button onClick={handlePrint}>
+          <Printer className="w-4 h-4 mr-2" /> Imprimir / PDF
+        </Button>
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="exibirIntrajornada"
+            checked={exibirIntrajornada}
+            onCheckedChange={(v) => setExibirIntrajornada(!!v)}
+          />
+          <Label htmlFor="exibirIntrajornada" className="text-sm cursor-pointer">Exibir Int. Devido</Label>
+        </div>
+      </div>
 
       <div ref={printRef} className="hidden">
         <div className="header">
@@ -105,7 +118,7 @@ const PontoPrintView: React.FC<Props> = ({ identificacao, config, diasCalculados
               <th>Cumprir</th>
               <th>Trab.</th>
               <th>Saldo</th>
-              <th>Int.Dev</th>
+              {exibirIntrajornada && <th>Int.Dev</th>}
               <th>Not.R</th>
               <th>Not.C</th>
             </tr>
@@ -120,7 +133,7 @@ const PontoPrintView: React.FC<Props> = ({ identificacao, config, diasCalculados
                 <td>{d.horasACumprir}</td>
                 <td>{minutesToHHMM(d.trabalhoLiquido)}</td>
                 <td className={saldoClass(d.saldoMinutos)}>{minutesToHHMM(d.saldoMinutos)}</td>
-                <td style={{color: d.intervaloDevido > 0 ? '#c2410c' : ''}}>{d.intervaloDevido > 0 ? minutesToHHMM(d.intervaloDevido) : ''}</td>
+                {exibirIntrajornada && <td style={{color: d.intervaloDevido > 0 ? '#c2410c' : ''}}>{d.intervaloDevido > 0 ? minutesToHHMM(d.intervaloDevido) : ''}</td>}
                 <td>{d.noturnoReal > 0 ? minutesToHHMM(d.noturnoReal) : ''}</td>
                 <td>{d.noturnoConvertido > 0 ? minutesToHHMM(d.noturnoConvertido) : ''}</td>
               </tr>
@@ -138,6 +151,7 @@ const PontoPrintView: React.FC<Props> = ({ identificacao, config, diasCalculados
           <div className="summary-item"><div className="label">Folgas/DSR</div><div className="value">{minutesToHHMM(resumo.totalFolgasDsr)}</div></div>
           <div className="summary-item"><div className="label">Noturno Real</div><div className="value">{minutesToHHMM(resumo.totalNoturnoReal)}</div></div>
           <div className="summary-item"><div className="label">Noturno Convertido</div><div className="value">{minutesToHHMM(resumo.totalNoturnoConvertido)}</div></div>
+          {exibirIntrajornada && <div className="summary-item"><div className="label">Int. Devido</div><div className="value" style={{color: resumo.totalIntervaloDevido > 0 ? '#c2410c' : ''}}>{minutesToHHMM(resumo.totalIntervaloDevido)}</div></div>}
         </div>
 
         <div className="signatures">

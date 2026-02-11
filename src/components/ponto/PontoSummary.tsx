@@ -18,6 +18,7 @@ const PontoSummary: React.FC<Props> = ({ resumo }) => {
     { label: 'Horas em Folgas/DSR', value: minutesToHHMM(resumo.totalFolgasDsr) },
     { label: 'Noturno (real)', value: minutesToHHMM(resumo.totalNoturnoReal) },
     { label: 'Noturno (convertido)', value: minutesToHHMM(resumo.totalNoturnoConvertido) },
+    { label: 'Int. Devido', value: minutesToHHMM(resumo.totalIntervaloDevido), className: resumo.totalIntervaloDevido > 0 ? 'text-orange-700 dark:text-orange-400' : '' },
   ];
 
   return (
