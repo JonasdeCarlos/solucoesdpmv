@@ -1,4 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Eraser } from 'lucide-react';
 import PontoHeader from '@/components/ponto/PontoHeader';
 import PontoGrid from '@/components/ponto/PontoGrid';
 import PontoSummary from '@/components/ponto/PontoSummary';
@@ -97,6 +99,13 @@ const PontoPage: React.FC = () => {
     });
   }, []);
 
+  const handleLimparMarcacoes = useCallback(() => {
+    setDias(prev => prev.map(d => ({
+      ...d,
+      marcacoes: Array(config.colunasMarcacoes).fill(''),
+    })));
+  }, [config.colunasMarcacoes]);
+
   // Save to localStorage
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ identificacao, config, dias }));
@@ -117,6 +126,14 @@ const PontoPage: React.FC = () => {
         onIdentificacaoChange={handleIdentificacaoChange}
         onConfigChange={handleConfigChange}
       />
+
+      <div className="flex justify-between items-center">
+        <div />
+        <Button variant="outline" size="sm" onClick={handleLimparMarcacoes} className="gap-1.5">
+          <Eraser className="w-4 h-4" />
+          Limpar Marcações
+        </Button>
+      </div>
 
       <PontoGrid
         dias={dias}
