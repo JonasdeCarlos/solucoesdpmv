@@ -4,7 +4,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { type PontoIdentificacao, type PontoConfig } from '@/types/ponto';
+import { type PontoIdentificacao, type PontoConfig, type DiaSemanaKey, type JornadaSemanal } from '@/types/ponto';
 
 interface Props {
   identificacao: PontoIdentificacao;
@@ -75,12 +75,8 @@ const PontoHeader: React.FC<Props> = ({ identificacao, config, onIdentificacaoCh
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Configurações</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 items-end">
-            <div>
-              <Label className="text-xs">Jornada diária</Label>
-              <Input value={config.jornadaDiaria} onChange={e => setCfg('jornadaDiaria', e.target.value)} placeholder="08:00" className="font-mono" />
-            </div>
             <div>
               <Label className="text-xs">Intervalo mínimo</Label>
               <Input value={config.intervaloMinimo} onChange={e => setCfg('intervaloMinimo', e.target.value)} placeholder="01:00" className="font-mono" />
@@ -106,6 +102,30 @@ const PontoHeader: React.FC<Props> = ({ identificacao, config, onIdentificacaoCh
             <div>
               <Label className="text-xs">Noturno fim</Label>
               <Input value={config.noturnoFim} onChange={e => setCfg('noturnoFim', e.target.value)} className="font-mono" />
+            </div>
+          </div>
+
+          {/* Weekly schedule grid */}
+          <div>
+            <Label className="text-xs font-medium mb-2 block">Jornada por dia da semana (hh:mm)</Label>
+            <div className="grid grid-cols-7 gap-1.5">
+              {(['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'] as DiaSemanaKey[]).map(ds => (
+                <div key={ds} className="text-center">
+                  <Label className="text-[10px] text-muted-foreground">{ds}</Label>
+                  <Input
+                    value={config.jornadaSemanal?.[ds] ?? '00:00'}
+                    onChange={e => {
+                      const newSemanal: JornadaSemanal = {
+                        ...(config.jornadaSemanal || { Dom: '00:00', Seg: '08:00', Ter: '08:00', Qua: '08:00', Qui: '08:00', Sex: '08:00', Sáb: '00:00' }),
+                        [ds]: e.target.value,
+                      };
+                      onConfigChange({ ...config, jornadaSemanal: newSemanal });
+                    }}
+                    className="font-mono text-xs text-center h-8 px-1"
+                    placeholder="08:00"
+                  />
+                </div>
+              ))}
             </div>
           </div>
         </CardContent>

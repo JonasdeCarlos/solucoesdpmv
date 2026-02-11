@@ -57,6 +57,7 @@ const PontoPage: React.FC = () => {
 
   const handleConfigChange = useCallback((newCfg: PontoConfig) => {
     setConfig(prev => {
+      // Update column count
       if (newCfg.colunasMarcacoes !== prev.colunasMarcacoes) {
         setDias(current =>
           current.map(d => {
@@ -68,6 +69,17 @@ const PontoPage: React.FC = () => {
           })
         );
       }
+
+      // Apply weekly schedule changes to existing days
+      if (newCfg.jornadaSemanal && JSON.stringify(newCfg.jornadaSemanal) !== JSON.stringify(prev.jornadaSemanal)) {
+        setDias(current =>
+          current.map(d => ({
+            ...d,
+            horasACumprir: newCfg.jornadaSemanal[d.diaSemana as keyof typeof newCfg.jornadaSemanal] ?? d.horasACumprir,
+          }))
+        );
+      }
+
       return newCfg;
     });
   }, []);

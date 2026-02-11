@@ -1,7 +1,20 @@
 export type TipoDia = 'normal' | 'feriado' | 'folga_dsr' | 'falta' | 'afastamento';
 
+export type DiaSemanaKey = 'Dom' | 'Seg' | 'Ter' | 'Qua' | 'Qui' | 'Sex' | 'Sáb';
+
+export interface JornadaSemanal {
+  Dom: string;
+  Seg: string;
+  Ter: string;
+  Qua: string;
+  Qui: string;
+  Sex: string;
+  Sáb: string;
+}
+
 export interface PontoConfig {
-  jornadaDiaria: string; // hh:mm
+  jornadaDiaria: string; // hh:mm (fallback)
+  jornadaSemanal: JornadaSemanal;
   tolerancia10min: boolean;
   intervaloMinimo: string; // hh:mm
   colunasMarcacoes: 4 | 6;
@@ -45,9 +58,22 @@ export interface PontoState {
   dias: PontoDia[];
 }
 
+export function createDefaultJornadaSemanal(jornada: string = '08:00'): JornadaSemanal {
+  return {
+    Dom: '00:00',
+    Seg: jornada,
+    Ter: jornada,
+    Qua: jornada,
+    Qui: jornada,
+    Sex: jornada,
+    Sáb: '00:00',
+  };
+}
+
 export function createDefaultConfig(): PontoConfig {
   return {
     jornadaDiaria: '08:00',
+    jornadaSemanal: createDefaultJornadaSemanal('08:00'),
     tolerancia10min: true,
     intervaloMinimo: '01:00',
     colunasMarcacoes: 4,
@@ -80,12 +106,17 @@ export function gerarDiasMes(mesAno: string, config: PontoConfig): PontoDia[] {
     const dow = date.getDay();
     const isSunday = dow === 0;
 
+    const diaSemana = DIAS_SEMANA[dow] as DiaSemanaKey;
+    const horasACumprir = config.jornadaSemanal
+      ? config.jornadaSemanal[diaSemana]
+      : (isSunday ? '00:00' : config.jornadaDiaria);
+
     dias.push({
       dia: d,
-      diaSemana: DIAS_SEMANA[dow],
+      diaSemana,
       tipoDia: isSunday ? 'folga_dsr' : 'normal',
       marcacoes: Array(config.colunasMarcacoes).fill(''),
-      horasACumprir: isSunday ? '00:00' : config.jornadaDiaria,
+      horasACumprir,
       observacao: '',
     });
   }
