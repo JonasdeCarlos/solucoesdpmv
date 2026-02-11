@@ -83,7 +83,10 @@ const PontoGrid: React.FC<Props> = ({ dias, diasCalculados, config, onDiaChange 
             ))}
             <th className="px-1 py-2 text-center font-medium w-[70px]">A cumprir</th>
             <th className="px-1 py-2 text-center font-medium">Trab.</th>
-            <th className="px-1 py-2 text-center font-medium">Saldo</th>
+            <th className="px-1 py-2 text-center font-medium text-green-700 dark:text-green-400">Extra</th>
+            <th className="px-1 py-2 text-center font-medium text-red-700 dark:text-red-400">Débito</th>
+            <th className="px-1 py-2 text-center font-medium text-yellow-700 dark:text-yellow-400">Feriado</th>
+            <th className="px-1 py-2 text-center font-medium text-blue-700 dark:text-blue-400">Folga</th>
             <th className="px-1 py-2 text-center font-medium">Not.R</th>
             <th className="px-1 py-2 text-center font-medium">Not.C</th>
             <th className="px-1 py-2 text-center font-medium w-6"></th>
@@ -140,9 +143,9 @@ const PontoGrid: React.FC<Props> = ({ dias, diasCalculados, config, onDiaChange 
                 <td className="px-1 py-1 text-center font-mono">
                   {minutesToHHMM(calc?.trabalhoLiquido ?? 0)}
                 </td>
-                <td className={`px-1 py-1 text-center font-mono font-medium ${saldoClass(calc?.saldoMinutos ?? 0)}`}>
-                  {minutesToHHMM(calc?.saldoMinutos ?? 0)}
-                  {calc && config.tolerancia10min && calc.saldoMinutos !== calc.saldoAntesTolerancia && (
+                <td className="px-1 py-1 text-center font-mono text-green-700 dark:text-green-400">
+                  {calc && calc.saldoMinutos > 0 ? minutesToHHMM(calc.saldoMinutos) : ''}
+                  {calc && config.tolerancia10min && calc.saldoMinutos !== calc.saldoAntesTolerancia && calc.saldoAntesTolerancia > 0 && (
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <span className="text-[10px] text-muted-foreground ml-0.5 cursor-help">*</span>
@@ -152,6 +155,25 @@ const PontoGrid: React.FC<Props> = ({ dias, diasCalculados, config, onDiaChange 
                       </TooltipContent>
                     </Tooltip>
                   )}
+                </td>
+                <td className="px-1 py-1 text-center font-mono text-red-700 dark:text-red-400">
+                  {calc && calc.saldoMinutos < 0 ? minutesToHHMM(calc.saldoMinutos) : ''}
+                  {calc && config.tolerancia10min && calc.saldoMinutos !== calc.saldoAntesTolerancia && calc.saldoAntesTolerancia < 0 && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="text-[10px] text-muted-foreground ml-0.5 cursor-help">*</span>
+                      </TooltipTrigger>
+                      <TooltipContent className="text-xs">
+                        Antes da tolerância: {minutesToHHMM(calc.saldoAntesTolerancia)}
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                </td>
+                <td className="px-1 py-1 text-center font-mono text-yellow-700 dark:text-yellow-400">
+                  {calc && dia.tipoDia === 'feriado' && calc.trabalhoLiquido > 0 ? minutesToHHMM(calc.trabalhoLiquido) : ''}
+                </td>
+                <td className="px-1 py-1 text-center font-mono text-blue-700 dark:text-blue-400">
+                  {calc && dia.tipoDia === 'folga_dsr' && calc.trabalhoLiquido > 0 ? minutesToHHMM(calc.trabalhoLiquido) : ''}
                 </td>
                 <td className="px-1 py-1 text-center font-mono text-muted-foreground">
                   {calc && calc.noturnoReal > 0 ? minutesToHHMM(calc.noturnoReal) : ''}
