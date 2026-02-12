@@ -5,32 +5,38 @@ import { calcularFgtsDetalhado } from './fgtsDetail';
 import { formatCurrency, formatDate } from './formatters';
 import { numberToWords } from './numberToWords';
 
-const MARGIN = 25;
+const MARGIN = 20;
 const PAGE_WIDTH = 210;
 const CONTENT_WIDTH = PAGE_WIDTH - MARGIN * 2;
 
-function addHeader(doc: jsPDF, title: string) {
+function addHeader(doc: jsPDF, title: string, compact = false) {
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(13);
+  const fontSize = compact ? 10 : 13;
+  doc.setFontSize(fontSize);
   const lines = doc.splitTextToSize(title, CONTENT_WIDTH);
-  doc.text(lines, PAGE_WIDTH / 2, MARGIN + 5, { align: 'center' });
-  return MARGIN + 5 + lines.length * 6 + 4;
+  const startY = MARGIN + (compact ? 3 : 5);
+  doc.text(lines, PAGE_WIDTH / 2, startY, { align: 'center' });
+  const lineH = compact ? 4 : 6;
+  return startY + lines.length * lineH + (compact ? 2 : 4);
 }
 
-function addParagraph(doc: jsPDF, text: string, y: number, opts?: { bold?: boolean; fontSize?: number; align?: 'left' | 'center' | 'justify' }): number {
+function addParagraph(doc: jsPDF, text: string, y: number, opts?: { bold?: boolean; fontSize?: number; align?: 'left' | 'center' | 'justify'; compact?: boolean }): number {
   const fontSize = opts?.fontSize ?? 10;
+  const compact = opts?.compact ?? false;
   doc.setFont('helvetica', opts?.bold ? 'bold' : 'normal');
   doc.setFontSize(fontSize);
   const lines = doc.splitTextToSize(text, CONTENT_WIDTH);
+  const lineH = compact ? 3.8 : 5;
+  const gap = compact ? 1.5 : 3;
   
   // Check if we need a new page
-  if (y + lines.length * 5 > 280) {
+  if (y + lines.length * lineH > 280) {
     doc.addPage();
     y = MARGIN;
   }
   
   doc.text(lines, MARGIN, y, { align: opts?.align ?? 'left', maxWidth: CONTENT_WIDTH });
-  return y + lines.length * 5 + 3;
+  return y + lines.length * lineH + gap;
 }
 
 function checkPageBreak(doc: jsPDF, y: number, needed: number): number {
@@ -53,14 +59,14 @@ export function generateTermoPDF(step1: Step1Data, step2: Step2Data, step3: Step
   const dataAss = step3.dataAssinatura ? formatDate(new Date(step3.dataAssinatura + 'T12:00:00')) : formatDate(new Date());
 
   // Title
-  let y = addHeader(doc, `TERMO DE RESCISÃO DE CONTRATO DE TRABALHO EM COMUM, NÃO PERSONIFICADO, ${motivoTitulo}.`);
+  let y = addHeader(doc, `TERMO DE RESCISÃO DE CONTRATO DE TRABALHO EM COMUM, NÃO PERSONIFICADO, ${motivoTitulo}.`, true);
 
   // Horizontal line
-  y += 2;
+  y += 1;
   doc.setDrawColor(0);
-  doc.setLineWidth(0.5);
+  doc.setLineWidth(0.4);
   doc.line(MARGIN, y, PAGE_WIDTH - MARGIN, y);
-  y += 8;
+  y += 5;
 
   // Parties paragraph
   const empregadorNome = step3.empregadorNome || '[NOME DO EMPREGADOR]';
@@ -74,55 +80,50 @@ export function generateTermoPDF(step1: Step1Data, step2: Step2Data, step3: Step
 
   const partiesParagraph = `Pelo presente instrumento e na melhor forma de direito, as partes, de um lado, ${empregadorNome}, ${empregadorDocPart}, residente e domiciliado(a) ${empregadorEnd}, doravante denominado(a) simplesmente EMPREGADOR, e do outro lado, ${empregadoNome}, inscrito(a) no CPF/MF sob nº ${empregadoCPF}, residente e domiciliado(a) ${empregadoEnd}, doravante denominado(a) simplesmente EMPREGADO(A), resolvem rescindir o contrato de trabalho firmado entre as partes, conforme segue.`;
 
-  y = addParagraph(doc, partiesParagraph, y);
-  y += 3;
-
-  // Contract details section
-  y = addParagraph(doc, 'DADOS DO CONTRATO', y, { bold: true, fontSize: 11 });
+  y = addParagraph(doc, partiesParagraph, y, { fontSize: 9, compact: true });
   y += 1;
 
-  // Two-column layout for contract info
+  // Contract details section
+  y = addParagraph(doc, 'DADOS DO CONTRATO', y, { bold: true, fontSize: 9, compact: true });
+
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   
   const col1X = MARGIN;
   const col2X = MARGIN + CONTENT_WIDTH / 2;
 
-  y = checkPageBreak(doc, y, 25);
-  
   doc.setFont('helvetica', 'bold');
   doc.text('Admissão:', col1X, y);
   doc.setFont('helvetica', 'normal');
-  doc.text(dataAdm, col1X + 25, y);
+  doc.text(dataAdm, col1X + 22, y);
 
   doc.setFont('helvetica', 'bold');
   doc.text('Desligamento:', col2X, y);
   doc.setFont('helvetica', 'normal');
-  doc.text(dataDesl, col2X + 32, y);
-  y += 6;
+  doc.text(dataDesl, col2X + 28, y);
+  y += 5;
 
   doc.setFont('helvetica', 'bold');
   doc.text('Salário:', col1X, y);
   doc.setFont('helvetica', 'normal');
-  doc.text(formatCurrency(step1.salarioMensal), col1X + 18, y);
+  doc.text(formatCurrency(step1.salarioMensal), col1X + 16, y);
 
   doc.setFont('helvetica', 'bold');
   doc.text('Motivo:', col2X, y);
   doc.setFont('helvetica', 'normal');
   const motivoLabel = step1.motivo === 'outros' ? (step1.motivoOutroTexto || 'Outros') : MOTIVO_LABELS[step1.motivo];
-  const motivoLines = doc.splitTextToSize(motivoLabel, CONTENT_WIDTH / 2 - 20);
-  doc.text(motivoLines, col2X + 18, y);
-  y += Math.max(6, motivoLines.length * 5) + 4;
+  const motivoLines = doc.splitTextToSize(motivoLabel, CONTENT_WIDTH / 2 - 18);
+  doc.text(motivoLines, col2X + 16, y);
+  y += Math.max(5, motivoLines.length * 4) + 2;
 
   // Separator
-  y = checkPageBreak(doc, y, 5);
   doc.setLineWidth(0.3);
   doc.line(MARGIN, y, PAGE_WIDTH - MARGIN, y);
-  y += 6;
+  y += 4;
 
   // Verbas table header
-  y = addParagraph(doc, 'DEMONSTRATIVO DE VERBAS RESCISÓRIAS', y, { bold: true, fontSize: 11 });
-  y += 2;
+  y = addParagraph(doc, 'DEMONSTRATIVO DE VERBAS RESCISÓRIAS', y, { bold: true, fontSize: 9, compact: true });
+  y += 1;
 
   // Table using autoTable
   const verbasNaoZero = verbas.filter(v => v.valor !== 0);
@@ -147,8 +148,8 @@ export function generateTermoPDF(step1: Step1Data, step2: Step2Data, step3: Step
     head: [['VERBA', 'REF', 'CRÉDITO (R$)', 'DÉBITO (R$)']],
     body: tableBody,
     styles: {
-      fontSize: 9,
-      cellPadding: 2.5,
+      fontSize: 8,
+      cellPadding: 1.5,
       lineColor: [0, 0, 0],
       lineWidth: 0.2,
       textColor: [0, 0, 0],
@@ -158,11 +159,12 @@ export function generateTermoPDF(step1: Step1Data, step2: Step2Data, step3: Step
       textColor: [255, 255, 255],
       fontStyle: 'bold',
       halign: 'center',
+      cellPadding: 1.5,
     },
     columnStyles: {
-      0: { cellWidth: 65 },
-      1: { cellWidth: 30, halign: 'center' },
-      2: { cellWidth: 35, halign: 'right' },
+      0: { cellWidth: 70 },
+      1: { cellWidth: 28, halign: 'center' },
+      2: { cellWidth: 32, halign: 'right' },
       3: { cellWidth: 30, halign: 'right' },
     },
     alternateRowStyles: {
@@ -170,33 +172,29 @@ export function generateTermoPDF(step1: Step1Data, step2: Step2Data, step3: Step
     },
   });
 
-  y = (doc as any).lastAutoTable.finalY + 6;
+  y = (doc as any).lastAutoTable.finalY + 4;
 
   // Total por extenso
-  y = checkPageBreak(doc, y, 15);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
+  doc.setFontSize(8);
   doc.text(`Total por extenso: ${numberToWords(total)}`, MARGIN, y);
-  y += 10;
+  y += 6;
 
   // Declaration
-  y = checkPageBreak(doc, y, 30);
   doc.setLineWidth(0.3);
   doc.line(MARGIN, y, PAGE_WIDTH - MARGIN, y);
-  y += 6;
+  y += 4;
 
   const declaration = `Eu, ${empregadoNome}, já qualificado(a) acima, declaro neste ato ter recebido a quantia de ${formatCurrency(total)} (${numberToWords(total)}), referentes à rescisão de contrato de trabalho não personificada, ${motivoCorpo}, com o ${tipoEmpregador} já identificado acima. E por assim estarmos justos e contratados, firmo o presente termo em uma única via que servirá como recibo para o empregador.`;
 
-  y = addParagraph(doc, declaration, y);
-  y += 15;
+  y = addParagraph(doc, declaration, y, { fontSize: 8, compact: true });
+  y += 8;
 
   // Signature area
-  y = checkPageBreak(doc, y, 45);
-
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   doc.text(`${local}, ${dataAss}`, MARGIN, y);
-  y += 20;
+  y += 12;
 
   // Two signature columns
   const sigCol1 = MARGIN + 10;
@@ -205,13 +203,13 @@ export function generateTermoPDF(step1: Step1Data, step2: Step2Data, step3: Step
   doc.setLineWidth(0.3);
   doc.line(sigCol1, y, sigCol1 + 55, y);
   doc.line(sigCol2, y, sigCol2 + 55, y);
-  y += 5;
+  y += 4;
 
-  doc.setFontSize(9);
+  doc.setFontSize(8);
   doc.text(empregadoNome, sigCol1, y);
   doc.text(empregadorNome, sigCol2, y);
-  y += 4;
-  doc.setFontSize(8);
+  y += 3;
+  doc.setFontSize(7);
   doc.text('EMPREGADO(A)', sigCol1, y);
   doc.text('EMPREGADOR', sigCol2, y);
 
@@ -289,52 +287,49 @@ export function generateTermoEMemoriaPDF(step1: Step1Data, step2: Step2Data, ste
     ? `inscrita no CNPJ/MF sob nº ${step3.empregadorCNPJ || '[CNPJ]'}`
     : `inscrito(a) no CPF/MF sob nº ${step3.empregadorCPF || '[CPF]'}`;
 
-  let y = addHeader(doc, `TERMO DE RESCISÃO DE CONTRATO DE TRABALHO EM COMUM, NÃO PERSONIFICADO, ${motivoTitulo}.`);
-  y += 2;
+  let y = addHeader(doc, `TERMO DE RESCISÃO DE CONTRATO DE TRABALHO EM COMUM, NÃO PERSONIFICADO, ${motivoTitulo}.`, true);
+  y += 1;
   doc.setDrawColor(0);
-  doc.setLineWidth(0.5);
+  doc.setLineWidth(0.4);
   doc.line(MARGIN, y, PAGE_WIDTH - MARGIN, y);
-  y += 8;
+  y += 5;
 
   const partiesParagraph = `Pelo presente instrumento e na melhor forma de direito, as partes, de um lado, ${empregadorNome}, ${empregadorDocPart}, residente e domiciliado(a) ${empregadorEnd}, doravante denominado(a) simplesmente EMPREGADOR, e do outro lado, ${empregadoNome}, inscrito(a) no CPF/MF sob nº ${empregadoCPF}, residente e domiciliado(a) ${empregadoEnd}, doravante denominado(a) simplesmente EMPREGADO(A), resolvem rescindir o contrato de trabalho firmado entre as partes, conforme segue.`;
-  y = addParagraph(doc, partiesParagraph, y);
-  y += 3;
-
-  y = addParagraph(doc, 'DADOS DO CONTRATO', y, { bold: true, fontSize: 11 });
+  y = addParagraph(doc, partiesParagraph, y, { fontSize: 9, compact: true });
   y += 1;
+
+  y = addParagraph(doc, 'DADOS DO CONTRATO', y, { bold: true, fontSize: 9, compact: true });
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   const col1X = MARGIN;
   const col2X = MARGIN + CONTENT_WIDTH / 2;
-  y = checkPageBreak(doc, y, 25);
   doc.setFont('helvetica', 'bold');
   doc.text('Admissão:', col1X, y);
   doc.setFont('helvetica', 'normal');
-  doc.text(dataAdm, col1X + 25, y);
+  doc.text(dataAdm, col1X + 22, y);
   doc.setFont('helvetica', 'bold');
   doc.text('Desligamento:', col2X, y);
   doc.setFont('helvetica', 'normal');
-  doc.text(dataDesl, col2X + 32, y);
-  y += 6;
+  doc.text(dataDesl, col2X + 28, y);
+  y += 5;
   doc.setFont('helvetica', 'bold');
   doc.text('Salário:', col1X, y);
   doc.setFont('helvetica', 'normal');
-  doc.text(formatCurrency(step1.salarioMensal), col1X + 18, y);
+  doc.text(formatCurrency(step1.salarioMensal), col1X + 16, y);
   doc.setFont('helvetica', 'bold');
   doc.text('Motivo:', col2X, y);
   doc.setFont('helvetica', 'normal');
   const motivoLabel = step1.motivo === 'outros' ? (step1.motivoOutroTexto || 'Outros') : MOTIVO_LABELS[step1.motivo];
-  const motivoLines = doc.splitTextToSize(motivoLabel, CONTENT_WIDTH / 2 - 20);
-  doc.text(motivoLines, col2X + 18, y);
-  y += Math.max(6, motivoLines.length * 5) + 4;
+  const motivoLines = doc.splitTextToSize(motivoLabel, CONTENT_WIDTH / 2 - 18);
+  doc.text(motivoLines, col2X + 16, y);
+  y += Math.max(5, motivoLines.length * 4) + 2;
 
-  y = checkPageBreak(doc, y, 5);
   doc.setLineWidth(0.3);
   doc.line(MARGIN, y, PAGE_WIDTH - MARGIN, y);
-  y += 6;
+  y += 4;
 
-  y = addParagraph(doc, 'DEMONSTRATIVO DE VERBAS RESCISÓRIAS', y, { bold: true, fontSize: 11 });
-  y += 2;
+  y = addParagraph(doc, 'DEMONSTRATIVO DE VERBAS RESCISÓRIAS', y, { bold: true, fontSize: 9, compact: true });
+  y += 1;
 
   const verbasNaoZero = verbas.filter(v => v.valor !== 0);
   const tableBody = verbasNaoZero.map(v => [
@@ -352,43 +347,40 @@ export function generateTermoEMemoriaPDF(step1: Step1Data, step2: Step2Data, ste
     startY: y, margin: { left: MARGIN, right: MARGIN },
     head: [['VERBA', 'REF', 'CRÉDITO (R$)', 'DÉBITO (R$)']],
     body: tableBody,
-    styles: { fontSize: 9, cellPadding: 2.5, lineColor: [0, 0, 0], lineWidth: 0.2, textColor: [0, 0, 0] },
-    headStyles: { fillColor: [40, 40, 40], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
-    columnStyles: { 0: { cellWidth: 65 }, 1: { cellWidth: 30, halign: 'center' }, 2: { cellWidth: 35, halign: 'right' }, 3: { cellWidth: 30, halign: 'right' } },
+    styles: { fontSize: 8, cellPadding: 1.5, lineColor: [0, 0, 0], lineWidth: 0.2, textColor: [0, 0, 0] },
+    headStyles: { fillColor: [40, 40, 40], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center', cellPadding: 1.5 },
+    columnStyles: { 0: { cellWidth: 70 }, 1: { cellWidth: 28, halign: 'center' }, 2: { cellWidth: 32, halign: 'right' }, 3: { cellWidth: 30, halign: 'right' } },
     alternateRowStyles: { fillColor: [245, 245, 245] },
   });
 
-  y = (doc as any).lastAutoTable.finalY + 6;
-  y = checkPageBreak(doc, y, 15);
+  y = (doc as any).lastAutoTable.finalY + 4;
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
+  doc.setFontSize(8);
   doc.text(`Total por extenso: ${numberToWords(total)}`, MARGIN, y);
-  y += 10;
+  y += 6;
 
-  y = checkPageBreak(doc, y, 30);
   doc.setLineWidth(0.3);
   doc.line(MARGIN, y, PAGE_WIDTH - MARGIN, y);
-  y += 6;
+  y += 4;
   const declaration = `Eu, ${empregadoNome}, já qualificado(a) acima, declaro neste ato ter recebido a quantia de ${formatCurrency(total)} (${numberToWords(total)}), referentes à rescisão de contrato de trabalho não personificada, ${motivoCorpo}, com o ${tipoEmpregador} já identificado acima. E por assim estarmos justos e contratados, firmo o presente termo em uma única via que servirá como recibo para o empregador.`;
-  y = addParagraph(doc, declaration, y);
-  y += 15;
+  y = addParagraph(doc, declaration, y, { fontSize: 8, compact: true });
+  y += 8;
 
-  y = checkPageBreak(doc, y, 45);
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   doc.text(`${local}, ${dataAss}`, MARGIN, y);
-  y += 20;
+  y += 12;
   const sigCol1 = MARGIN + 10;
   const sigCol2 = PAGE_WIDTH / 2 + 10;
   doc.setLineWidth(0.3);
   doc.line(sigCol1, y, sigCol1 + 55, y);
   doc.line(sigCol2, y, sigCol2 + 55, y);
-  y += 5;
-  doc.setFontSize(9);
-  doc.text(empregadoNome, sigCol1, y);
-  doc.text(empregadorNome, sigCol2, y);
   y += 4;
   doc.setFontSize(8);
+  doc.text(empregadoNome, sigCol1, y);
+  doc.text(empregadorNome, sigCol2, y);
+  y += 3;
+  doc.setFontSize(7);
   doc.text('EMPREGADO(A)', sigCol1, y);
   doc.text('EMPREGADOR', sigCol2, y);
 
