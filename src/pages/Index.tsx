@@ -73,8 +73,8 @@ const Index = () => {
       const diasMes = diaDesl >= ultimoDiaMes ? 30 : diaDesl;
       setStep2((prev) => ({
         ...prev,
-        meses13Proporcional: prev.meses13Proporcional || meses13,
-        mesesFeriasProporcional: prev.mesesFeriasProporcional || mesesFerias,
+        meses13Proporcional: meses13,
+        mesesFeriasProporcional: mesesFerias,
         diasTrabalhadosMes: diasMes,
       }));
     }
