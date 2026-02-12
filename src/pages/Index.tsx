@@ -60,9 +60,12 @@ const Index = () => {
 
   const handleGoToStep2 = () => {
     if (step1.dataAdmissao && step1.dataDesligamento) {
-      const mesDesl = step1.dataDesligamento.getMonth(); // 0-indexed
-      const diaDesl2 = step1.dataDesligamento.getDate();
-      const meses13 = Math.min(12, mesDesl + (diaDesl2 >= 15 ? 1 : 0));
+      // 13º proporcional: meses trabalhados no ano do desligamento (desde admissão ou janeiro)
+      const anoDesl = step1.dataDesligamento.getFullYear();
+      const inicioAno = step1.dataAdmissao.getFullYear() < anoDesl
+        ? new Date(anoDesl, 0, 1)
+        : step1.dataAdmissao;
+      const meses13 = Math.min(12, diffMonths(inicioAno, step1.dataDesligamento));
       const totalMesesVinculo = diffMonths(step1.dataAdmissao, step1.dataDesligamento);
       const mesesFerias = totalMesesVinculo % 12;
       const diaDesl = step1.dataDesligamento.getDate();
