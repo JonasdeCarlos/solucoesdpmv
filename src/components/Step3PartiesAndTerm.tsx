@@ -111,6 +111,9 @@ ${data.empregadoNome || '[NOME DO EMPREGADO]'}`;
     const dataDesl = step1.dataDesligamento ? formatDate(step1.dataDesligamento) : '—';
     const motivo = step1.motivo === 'outros' ? (step1.motivoOutroTexto || 'Outros') : MOTIVO_LABELS[step1.motivo];
 
+    // Helper: verba exists and has non-zero value
+    const verbaAtiva = (id: string) => verbas.some(v => v.id === id && v.valor !== 0);
+
     let lines: string[] = [];
     lines.push('═══════════════════════════════════════════════════');
     lines.push('           MEMÓRIA DE CÁLCULO - RESCISÃO CLT');
@@ -123,32 +126,42 @@ ${data.empregadoNome || '[NOME DO EMPREGADO]'}`;
     lines.push('');
     lines.push('───────────────────────────────────────────────────');
 
+    let itemNum = 1;
+
     // Saldo de salário
-    const saldoSal = (sal / 30) * step2.diasTrabalhadosMes;
-    lines.push('');
-    lines.push('1) SALDO DE SALÁRIO');
-    lines.push(`   Fórmula: Salário / 30 × dias trabalhados no mês`);
-    lines.push(`   ${formatCurrency(sal)} / 30 × ${step2.diasTrabalhadosMes} = ${formatCurrency(saldoSal)}`);
+    if (verbaAtiva('saldo_salario')) {
+      const saldoSal = (sal / 30) * step2.diasTrabalhadosMes;
+      lines.push('');
+      lines.push(`${itemNum}) SALDO DE SALÁRIO`);
+      lines.push(`   Fórmula: Salário / 30 × dias trabalhados no mês`);
+      lines.push(`   ${formatCurrency(sal)} / 30 × ${step2.diasTrabalhadosMes} = ${formatCurrency(saldoSal)}`);
+      itemNum++;
+    }
 
     // 13º proporcional
-    const decimo = sal * (step2.meses13Proporcional / 12);
-    lines.push('');
-    lines.push('2) 13º SALÁRIO PROPORCIONAL');
-    lines.push(`   Fórmula: Salário × (meses / 12)`);
-    lines.push(`   ${formatCurrency(sal)} × (${step2.meses13Proporcional}/12) = ${formatCurrency(decimo)}`);
+    if (verbaAtiva('13_proporcional')) {
+      const decimo = sal * (step2.meses13Proporcional / 12);
+      lines.push('');
+      lines.push(`${itemNum}) 13º SALÁRIO PROPORCIONAL`);
+      lines.push(`   Fórmula: Salário × (meses / 12)`);
+      lines.push(`   ${formatCurrency(sal)} × (${step2.meses13Proporcional}/12) = ${formatCurrency(decimo)}`);
+      itemNum++;
+    }
 
     // Férias proporcionais
     const feriasProp = sal * (step2.mesesFeriasProporcional / 12);
-    lines.push('');
-    lines.push('3) FÉRIAS PROPORCIONAIS');
-    lines.push(`   Fórmula: Salário × (meses / 12)`);
-    lines.push(`   ${formatCurrency(sal)} × (${step2.mesesFeriasProporcional}/12) = ${formatCurrency(feriasProp)}`);
-
     let totalFerias = feriasProp;
-    let itemNum = 4;
+
+    if (verbaAtiva('ferias_proporcionais')) {
+      lines.push('');
+      lines.push(`${itemNum}) FÉRIAS PROPORCIONAIS`);
+      lines.push(`   Fórmula: Salário × (meses / 12)`);
+      lines.push(`   ${formatCurrency(sal)} × (${step2.mesesFeriasProporcional}/12) = ${formatCurrency(feriasProp)}`);
+      itemNum++;
+    }
 
     // Férias vencidas
-    if (step1.temFeriasVencidas && step1.periodosVencidos > 0) {
+    if (step1.temFeriasVencidas && step1.periodosVencidos > 0 && verbaAtiva('ferias_vencidas')) {
       const feriasVenc = sal * step1.periodosVencidos;
       totalFerias += feriasVenc;
       lines.push('');
@@ -159,7 +172,7 @@ ${data.empregadoNome || '[NOME DO EMPREGADO]'}`;
     }
 
     // 1/3 férias
-    if (step2.consideraTercoFerias) {
+    if (step2.consideraTercoFerias && verbaAtiva('terco_ferias')) {
       const terco = totalFerias / 3;
       lines.push('');
       lines.push(`${itemNum}) 1/3 CONSTITUCIONAL SOBRE FÉRIAS`);
@@ -169,7 +182,7 @@ ${data.empregadoNome || '[NOME DO EMPREGADO]'}`;
     }
 
     // Aviso prévio indenizado
-    if (step1.calculaAvisoPrevioIndenizado) {
+    if (step1.calculaAvisoPrevioIndenizado && verbaAtiva('aviso_previo_indenizado')) {
       const aviso = (sal / 30) * step1.diasAvisoPrevioIndenizado;
       lines.push('');
       lines.push(`${itemNum}) AVISO PRÉVIO INDENIZADO`);
@@ -178,8 +191,35 @@ ${data.empregadoNome || '[NOME DO EMPREGADO]'}`;
       itemNum++;
     }
 
+    // Reflexos aviso prévio
+    if (verbaAtiva('reflexo_aviso_13')) {
+      const mesesProj = step1.diasAvisoPrevioIndenizado / 30;
+      const reflexo13 = (sal / 12) * mesesProj;
+      lines.push('');
+      lines.push(`${itemNum}) 13º — PROJEÇÃO AVISO PRÉVIO`);
+      lines.push(`   ${formatCurrency(sal)} / 12 × ${Math.round(mesesProj)} = ${formatCurrency(reflexo13)}`);
+      itemNum++;
+    }
+    if (verbaAtiva('reflexo_aviso_ferias')) {
+      const mesesProj = step1.diasAvisoPrevioIndenizado / 30;
+      const reflexoFerias = (sal / 12) * mesesProj;
+      lines.push('');
+      lines.push(`${itemNum}) FÉRIAS — PROJEÇÃO AVISO PRÉVIO`);
+      lines.push(`   ${formatCurrency(sal)} / 12 × ${Math.round(mesesProj)} = ${formatCurrency(reflexoFerias)}`);
+      itemNum++;
+    }
+    if (verbaAtiva('reflexo_aviso_terco')) {
+      const mesesProj = step1.diasAvisoPrevioIndenizado / 30;
+      const reflexoFerias = (sal / 12) * mesesProj;
+      const tercoRef = reflexoFerias / 3;
+      lines.push('');
+      lines.push(`${itemNum}) 1/3 FÉRIAS — PROJEÇÃO AVISO PRÉVIO`);
+      lines.push(`   ${formatCurrency(reflexoFerias)} / 3 = ${formatCurrency(tercoRef)}`);
+      itemNum++;
+    }
+
     // Desconto aviso prévio
-    if (step1.motivo === 'pedido_demissao' && step1.descontaAvisoPrevio) {
+    if (step1.motivo === 'pedido_demissao' && step1.descontaAvisoPrevio && verbaAtiva('desconto_aviso')) {
       const desc = (sal / 30) * step1.diasAvisoDesconto;
       lines.push('');
       lines.push(`${itemNum}) DESCONTO AVISO PRÉVIO (DÉBITO)`);
@@ -189,7 +229,7 @@ ${data.empregadoNome || '[NOME DO EMPREGADO]'}`;
     }
 
     // FGTS
-    if (step1.calculaFGTS) {
+    if (step1.calculaFGTS && verbaAtiva('fgts')) {
       if (step2.fgtsManual !== null && step2.fgtsManual > 0) {
         lines.push('');
         lines.push(`${itemNum}) FGTS DO PERÍODO (informado manualmente)`);
@@ -219,7 +259,7 @@ ${data.empregadoNome || '[NOME DO EMPREGADO]'}`;
         lines.push(`   Base total FGTS: ${formatCurrency(fgtsDetail.baseTotal)}`);
         lines.push(`   FGTS = 8% × ${formatCurrency(fgtsDetail.baseTotal)} = ${formatCurrency(fgtsDetail.fgtsTotal)}`);
 
-        if (step1.calculaMultaFGTS && step1.percentualMultaFGTS > 0) {
+        if (step1.calculaMultaFGTS && step1.percentualMultaFGTS > 0 && verbaAtiva('multa_fgts')) {
           const multa = fgtsDetail.fgtsTotal * (step1.percentualMultaFGTS / 100);
           itemNum++;
           lines.push('');
@@ -232,12 +272,12 @@ ${data.empregadoNome || '[NOME DO EMPREGADO]'}`;
     }
 
     // Outros
-    if (step2.outrosCreditos > 0) {
+    if (step2.outrosCreditos > 0 && verbaAtiva('outros_creditos')) {
       lines.push('');
       lines.push(`${itemNum}) OUTROS CRÉDITOS: ${formatCurrency(step2.outrosCreditos)}`);
       itemNum++;
     }
-    if (step2.outrosDescontos > 0) {
+    if (step2.outrosDescontos > 0 && verbaAtiva('outros_descontos')) {
       lines.push('');
       lines.push(`${itemNum}) OUTROS DESCONTOS (DÉBITO): -${formatCurrency(step2.outrosDescontos)}`);
       itemNum++;
