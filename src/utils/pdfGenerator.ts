@@ -47,6 +47,34 @@ function checkPageBreak(doc: jsPDF, y: number, needed: number): number {
   return y;
 }
 
+function buildVerbasTable(verbas: VerbaRescisoria[], total: number) {
+  const verbasNaoZero = verbas.filter(v => v.valor !== 0);
+  const hasDebito = verbasNaoZero.some(v => v.tipo === 'debito');
+
+  if (hasDebito) {
+    const body = verbasNaoZero.map(v => [
+      v.verba, v.referencia,
+      v.tipo === 'debito' ? '' : formatCurrency(v.valor),
+      v.tipo === 'debito' ? formatCurrency(v.valor) : '',
+    ]);
+    body.push([
+      { content: 'TOTAL GERAL', styles: { fontStyle: 'bold' as const } } as any, '',
+      { content: formatCurrency(Math.max(0, total)), styles: { fontStyle: 'bold' as const } } as any,
+      { content: total < 0 ? formatCurrency(Math.abs(total)) : '', styles: { fontStyle: 'bold' as const } } as any,
+    ]);
+    return { head: [['VERBA', 'REF', 'CRÉDITO (R$)', 'DÉBITO (R$)']], body, hasDebito };
+  } else {
+    const body = verbasNaoZero.map(v => [
+      v.verba, v.referencia, formatCurrency(v.valor),
+    ]);
+    body.push([
+      { content: 'TOTAL GERAL', styles: { fontStyle: 'bold' as const } } as any, '',
+      { content: formatCurrency(total), styles: { fontStyle: 'bold' as const } } as any,
+    ]);
+    return { head: [['VERBA', 'REF', 'VALOR (R$)']], body, hasDebito };
+  }
+}
+
 export function generateTermoPDF(step1: Step1Data, step2: Step2Data, step3: Step3Data, verbas: VerbaRescisoria[]) {
   const doc = new jsPDF('p', 'mm', 'a4');
   const total = calcularTotal(verbas);
@@ -126,26 +154,16 @@ export function generateTermoPDF(step1: Step1Data, step2: Step2Data, step3: Step
   y += 1;
 
   // Table using autoTable
-  const verbasNaoZero = verbas.filter(v => v.valor !== 0);
-  const tableBody = verbasNaoZero.map(v => [
-    v.verba,
-    v.referencia,
-    v.tipo === 'debito' ? '' : formatCurrency(v.valor),
-    v.tipo === 'debito' ? formatCurrency(v.valor) : '',
-  ]);
+  const { head, body: tableBody, hasDebito } = buildVerbasTable(verbas, total);
 
-  // Total row
-  tableBody.push([
-    { content: 'TOTAL GERAL', styles: { fontStyle: 'bold' as const } } as any,
-    '',
-    { content: formatCurrency(Math.max(0, total)), styles: { fontStyle: 'bold' as const } } as any,
-    { content: total < 0 ? formatCurrency(Math.abs(total)) : '', styles: { fontStyle: 'bold' as const } } as any,
-  ]);
+  const colStylesCompact = hasDebito
+    ? { 0: { cellWidth: 70 }, 1: { cellWidth: 28, halign: 'center' as const }, 2: { cellWidth: 32, halign: 'right' as const }, 3: { cellWidth: 30, halign: 'right' as const } }
+    : { 0: { cellWidth: 80 }, 1: { cellWidth: 35, halign: 'center' as const }, 2: { cellWidth: 45, halign: 'right' as const } };
 
   autoTable(doc, {
     startY: y,
     margin: { left: MARGIN, right: MARGIN },
-    head: [['VERBA', 'REF', 'CRÉDITO (R$)', 'DÉBITO (R$)']],
+    head,
     body: tableBody,
     styles: {
       fontSize: 8,
@@ -161,12 +179,7 @@ export function generateTermoPDF(step1: Step1Data, step2: Step2Data, step3: Step
       halign: 'center',
       cellPadding: 1.5,
     },
-    columnStyles: {
-      0: { cellWidth: 70 },
-      1: { cellWidth: 28, halign: 'center' },
-      2: { cellWidth: 32, halign: 'right' },
-      3: { cellWidth: 30, halign: 'right' },
-    },
+    columnStyles: colStylesCompact,
     alternateRowStyles: {
       fillColor: [245, 245, 245],
     },
@@ -225,29 +238,19 @@ export function generateDemonstrativoPDF(verbas: VerbaRescisoria[]) {
   let y = addHeader(doc, 'DEMONSTRATIVO DE VERBAS RESCISÓRIAS');
   y += 5;
 
-  const verbasNaoZero = verbas.filter(v => v.valor !== 0);
-  const tableBody = verbasNaoZero.map(v => [
-    v.verba,
-    v.referencia,
-    v.tipo === 'debito' ? '' : formatCurrency(v.valor),
-    v.tipo === 'debito' ? formatCurrency(v.valor) : '',
-  ]);
-
-  tableBody.push([
-    { content: 'TOTAL GERAL', styles: { fontStyle: 'bold' as const } } as any,
-    '',
-    { content: formatCurrency(Math.max(0, total)), styles: { fontStyle: 'bold' as const } } as any,
-    { content: total < 0 ? formatCurrency(Math.abs(total)) : '', styles: { fontStyle: 'bold' as const } } as any,
-  ]);
+  const { head, body: tableBody, hasDebito } = buildVerbasTable(verbas, total);
+  const colStyles = hasDebito
+    ? { 0: { cellWidth: 65 }, 1: { cellWidth: 30, halign: 'center' as const }, 2: { cellWidth: 35, halign: 'right' as const }, 3: { cellWidth: 30, halign: 'right' as const } }
+    : { 0: { cellWidth: 75 }, 1: { cellWidth: 40, halign: 'center' as const }, 2: { cellWidth: 45, halign: 'right' as const } };
 
   autoTable(doc, {
     startY: y,
     margin: { left: MARGIN, right: MARGIN },
-    head: [['VERBA', 'REF', 'CRÉDITO (R$)', 'DÉBITO (R$)']],
+    head,
     body: tableBody,
     styles: { fontSize: 9, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.2, textColor: [0, 0, 0] },
     headStyles: { fillColor: [40, 40, 40], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
-    columnStyles: { 0: { cellWidth: 65 }, 1: { cellWidth: 30, halign: 'center' }, 2: { cellWidth: 35, halign: 'right' }, 3: { cellWidth: 30, halign: 'right' } },
+    columnStyles: colStyles,
     alternateRowStyles: { fillColor: [245, 245, 245] },
   });
 
@@ -331,25 +334,18 @@ export function generateTermoEMemoriaPDF(step1: Step1Data, step2: Step2Data, ste
   y = addParagraph(doc, 'DEMONSTRATIVO DE VERBAS RESCISÓRIAS', y, { bold: true, fontSize: 9, compact: true });
   y += 1;
 
-  const verbasNaoZero = verbas.filter(v => v.valor !== 0);
-  const tableBody = verbasNaoZero.map(v => [
-    v.verba, v.referencia,
-    v.tipo === 'debito' ? '' : formatCurrency(v.valor),
-    v.tipo === 'debito' ? formatCurrency(v.valor) : '',
-  ]);
-  tableBody.push([
-    { content: 'TOTAL GERAL', styles: { fontStyle: 'bold' as const } } as any, '',
-    { content: formatCurrency(Math.max(0, total)), styles: { fontStyle: 'bold' as const } } as any,
-    { content: total < 0 ? formatCurrency(Math.abs(total)) : '', styles: { fontStyle: 'bold' as const } } as any,
-  ]);
+  const { head, body: tableBody, hasDebito } = buildVerbasTable(verbas, total);
+  const colStylesCompact2 = hasDebito
+    ? { 0: { cellWidth: 70 }, 1: { cellWidth: 28, halign: 'center' as const }, 2: { cellWidth: 32, halign: 'right' as const }, 3: { cellWidth: 30, halign: 'right' as const } }
+    : { 0: { cellWidth: 80 }, 1: { cellWidth: 35, halign: 'center' as const }, 2: { cellWidth: 45, halign: 'right' as const } };
 
   autoTable(doc, {
     startY: y, margin: { left: MARGIN, right: MARGIN },
-    head: [['VERBA', 'REF', 'CRÉDITO (R$)', 'DÉBITO (R$)']],
+    head,
     body: tableBody,
     styles: { fontSize: 8, cellPadding: 1.5, lineColor: [0, 0, 0], lineWidth: 0.2, textColor: [0, 0, 0] },
     headStyles: { fillColor: [40, 40, 40], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center', cellPadding: 1.5 },
-    columnStyles: { 0: { cellWidth: 70 }, 1: { cellWidth: 28, halign: 'center' }, 2: { cellWidth: 32, halign: 'right' }, 3: { cellWidth: 30, halign: 'right' } },
+    columnStyles: colStylesCompact2,
     alternateRowStyles: { fillColor: [245, 245, 245] },
   });
 
