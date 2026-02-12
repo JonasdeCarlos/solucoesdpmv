@@ -36,7 +36,7 @@ const Step3PartiesAndTerm = ({ step1, step2, verbas, data, onChange, onVerbaUpda
   const generateTableText = (): string => {
     let text = 'VERBA | REF | VALOR\n';
     text += '-'.repeat(50) + '\n';
-    verbas.forEach((v) => {
+    verbas.filter(v => v.valor !== 0).forEach((v) => {
       const sign = v.tipo === 'debito' ? '- ' : '';
       text += `${v.verba} | ${v.referencia} | ${sign}${formatCurrency(v.valor)}\n`;
     });
