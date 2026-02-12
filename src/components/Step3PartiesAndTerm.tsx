@@ -34,15 +34,30 @@ const Step3PartiesAndTerm = ({ step1, step2, verbas, data, onChange, onVerbaUpda
   const tipoEmpregador = data.empregadorTipo === 'domestico' ? 'empregador doméstico' : 'empresa';
 
   const generateTableText = (): string => {
-    let text = 'VERBA | REF | VALOR\n';
-    text += '-'.repeat(50) + '\n';
-    verbas.filter(v => v.valor !== 0).forEach((v) => {
-      const sign = v.tipo === 'debito' ? '- ' : '';
-      text += `${v.verba} | ${v.referencia} | ${sign}${formatCurrency(v.valor)}\n`;
-    });
-    text += '-'.repeat(50) + '\n';
-    text += `TOTAL GERAL | | ${formatCurrency(total)}\n`;
-    return text;
+    const verbasNaoZero = verbas.filter(v => v.valor !== 0);
+    const hasDebito = verbasNaoZero.some(v => v.tipo === 'debito');
+
+    if (hasDebito) {
+      let text = 'VERBA | REF | CRÉDITO | DÉBITO\n';
+      text += '-'.repeat(55) + '\n';
+      verbasNaoZero.forEach((v) => {
+        const credito = v.tipo === 'debito' ? '' : formatCurrency(v.valor);
+        const debito = v.tipo === 'debito' ? formatCurrency(v.valor) : '';
+        text += `${v.verba} | ${v.referencia} | ${credito} | ${debito}\n`;
+      });
+      text += '-'.repeat(55) + '\n';
+      text += `TOTAL GERAL | | ${formatCurrency(total)} |\n`;
+      return text;
+    } else {
+      let text = 'VERBA | REF | VALOR\n';
+      text += '-'.repeat(50) + '\n';
+      verbasNaoZero.forEach((v) => {
+        text += `${v.verba} | ${v.referencia} | ${formatCurrency(v.valor)}\n`;
+      });
+      text += '-'.repeat(50) + '\n';
+      text += `TOTAL GERAL | | ${formatCurrency(total)}\n`;
+      return text;
+    }
   };
 
   const generateTermText = (): string => {
