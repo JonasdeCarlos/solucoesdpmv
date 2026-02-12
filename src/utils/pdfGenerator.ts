@@ -125,7 +125,8 @@ export function generateTermoPDF(step1: Step1Data, step2: Step2Data, step3: Step
   y += 2;
 
   // Table using autoTable
-  const tableBody = verbas.map(v => [
+  const verbasNaoZero = verbas.filter(v => v.valor !== 0);
+  const tableBody = verbasNaoZero.map(v => [
     v.verba,
     v.referencia,
     v.tipo === 'debito' ? '' : formatCurrency(v.valor),
@@ -226,7 +227,8 @@ export function generateDemonstrativoPDF(verbas: VerbaRescisoria[]) {
   let y = addHeader(doc, 'DEMONSTRATIVO DE VERBAS RESCISÓRIAS');
   y += 5;
 
-  const tableBody = verbas.map(v => [
+  const verbasNaoZero = verbas.filter(v => v.valor !== 0);
+  const tableBody = verbasNaoZero.map(v => [
     v.verba,
     v.referencia,
     v.tipo === 'debito' ? '' : formatCurrency(v.valor),
@@ -334,7 +336,8 @@ export function generateTermoEMemoriaPDF(step1: Step1Data, step2: Step2Data, ste
   y = addParagraph(doc, 'DEMONSTRATIVO DE VERBAS RESCISÓRIAS', y, { bold: true, fontSize: 11 });
   y += 2;
 
-  const tableBody = verbas.map(v => [
+  const verbasNaoZero = verbas.filter(v => v.valor !== 0);
+  const tableBody = verbasNaoZero.map(v => [
     v.verba, v.referencia,
     v.tipo === 'debito' ? '' : formatCurrency(v.valor),
     v.tipo === 'debito' ? formatCurrency(v.valor) : '',
