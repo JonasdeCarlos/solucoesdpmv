@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { ArrowLeft, Calculator } from 'lucide-react';
+import { ArrowLeft, Calculator, Plus, Trash2 } from 'lucide-react';
 import { type Step1Data, type Step2Data } from '@/utils/calculations';
 import { diffMonths } from '@/utils/formatters';
 
@@ -107,29 +107,72 @@ const Step2ComplementaryData = ({ step1, data, onChange, onBack, onCalculate }: 
         )}
 
         {/* Outros */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>Outros descontos/adiantamentos (R$)</Label>
-            <Input
-              type="number"
-              step="0.01"
-              min={0}
-              placeholder="0,00"
-              value={data.outrosDescontos || ''}
-              onChange={(e) => update({ outrosDescontos: parseFloat(e.target.value) || 0 })}
-            />
+        {/* Outros descontos - múltiplas linhas */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <Label>Descontos / Adiantamentos</Label>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-1"
+              onClick={() => update({ outrosDescontos: [...data.outrosDescontos, { descricao: '', valor: 0 }] })}
+            >
+              <Plus className="w-3 h-3" /> Adicionar desconto
+            </Button>
           </div>
-          <div className="space-y-2">
-            <Label>Outros créditos (R$)</Label>
-            <Input
-              type="number"
-              step="0.01"
-              min={0}
-              placeholder="0,00"
-              value={data.outrosCreditos || ''}
-              onChange={(e) => update({ outrosCreditos: parseFloat(e.target.value) || 0 })}
-            />
-          </div>
+          {data.outrosDescontos.map((d, idx) => (
+            <div key={idx} className="flex items-center gap-2">
+              <Input
+                placeholder="Natureza do desconto"
+                value={d.descricao}
+                onChange={(e) => {
+                  const arr = [...data.outrosDescontos];
+                  arr[idx] = { ...arr[idx], descricao: e.target.value };
+                  update({ outrosDescontos: arr });
+                }}
+                className="flex-1"
+              />
+              <Input
+                type="number"
+                step="0.01"
+                min={0}
+                placeholder="0,00"
+                value={d.valor || ''}
+                onChange={(e) => {
+                  const arr = [...data.outrosDescontos];
+                  arr[idx] = { ...arr[idx], valor: parseFloat(e.target.value) || 0 };
+                  update({ outrosDescontos: arr });
+                }}
+                className="w-32"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-destructive"
+                onClick={() => {
+                  const arr = data.outrosDescontos.filter((_, i) => i !== idx);
+                  update({ outrosDescontos: arr });
+                }}
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
+          ))}
+        </div>
+
+        {/* Outros créditos */}
+        <div className="space-y-2">
+          <Label>Outros créditos (R$)</Label>
+          <Input
+            type="number"
+            step="0.01"
+            min={0}
+            placeholder="0,00"
+            value={data.outrosCreditos || ''}
+            onChange={(e) => update({ outrosCreditos: parseFloat(e.target.value) || 0 })}
+          />
         </div>
 
         <div className="flex justify-between pt-4">

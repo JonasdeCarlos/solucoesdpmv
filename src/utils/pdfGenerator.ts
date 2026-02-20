@@ -575,7 +575,11 @@ function renderMemoriaPages(doc: jsPDF, step1: Step1Data, step2: Step2Data, verb
   }
 
   if (step2.outrosCreditos > 0 && verbaAtiva('outros_creditos')) items.push({ title: 'OUTROS CRÉDITOS', lines: [formatCurrency(step2.outrosCreditos)] });
-  if (step2.outrosDescontos > 0 && verbaAtiva('outros_descontos')) items.push({ title: 'OUTROS DESCONTOS (DÉBITO)', lines: [`-${formatCurrency(step2.outrosDescontos)}`] });
+  step2.outrosDescontos.forEach((d, idx) => {
+    if (d.valor > 0 && verbaAtiva(`outros_descontos_${idx}`)) {
+      items.push({ title: (d.descricao || 'OUTROS DESCONTOS').toUpperCase() + ' (DÉBITO)', lines: [`-${formatCurrency(d.valor)}`] });
+    }
+  });
 
   items.forEach((item, idx) => {
     y = checkPageBreak(doc, y, 20);
