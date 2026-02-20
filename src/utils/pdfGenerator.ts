@@ -574,7 +574,11 @@ function renderMemoriaPages(doc: jsPDF, step1: Step1Data, step2: Step2Data, verb
     }
   }
 
-  if (step2.outrosCreditos > 0 && verbaAtiva('outros_creditos')) items.push({ title: 'OUTROS CRÉDITOS', lines: [formatCurrency(step2.outrosCreditos)] });
+  step2.outrosCreditos.forEach((c, idx) => {
+    if (c.valor > 0 && verbaAtiva(`outros_creditos_${idx}`)) {
+      items.push({ title: (c.descricao || 'OUTROS CRÉDITOS').toUpperCase(), lines: [formatCurrency(c.valor)] });
+    }
+  });
   step2.outrosDescontos.forEach((d, idx) => {
     if (d.valor > 0 && verbaAtiva(`outros_descontos_${idx}`)) {
       items.push({ title: (d.descricao || 'OUTROS DESCONTOS').toUpperCase() + ' (DÉBITO)', lines: [`-${formatCurrency(d.valor)}`] });
