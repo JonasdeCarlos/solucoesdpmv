@@ -40,7 +40,7 @@ const Index = () => {
     mesesFeriasProporcional: 0,
     consideraTercoFerias: true,
     outrosDescontos: [],
-    outrosCreditos: 0,
+    outrosCreditos: [],
     incluir13AnosAnteriores: false,
     fgtsManual: null,
   });

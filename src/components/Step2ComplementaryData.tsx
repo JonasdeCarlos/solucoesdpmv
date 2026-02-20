@@ -162,17 +162,59 @@ const Step2ComplementaryData = ({ step1, data, onChange, onBack, onCalculate }: 
           ))}
         </div>
 
-        {/* Outros créditos */}
-        <div className="space-y-2">
-          <Label>Outros créditos (R$)</Label>
-          <Input
-            type="number"
-            step="0.01"
-            min={0}
-            placeholder="0,00"
-            value={data.outrosCreditos || ''}
-            onChange={(e) => update({ outrosCreditos: parseFloat(e.target.value) || 0 })}
-          />
+        {/* Outros créditos - múltiplas linhas */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <Label>Outros Créditos</Label>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-1"
+              onClick={() => update({ outrosCreditos: [...data.outrosCreditos, { descricao: '', valor: 0 }] })}
+            >
+              <Plus className="w-3 h-3" /> Adicionar crédito
+            </Button>
+          </div>
+          {data.outrosCreditos.map((c, idx) => (
+            <div key={idx} className="flex items-center gap-2">
+              <Input
+                placeholder="Natureza do crédito"
+                value={c.descricao}
+                onChange={(e) => {
+                  const arr = [...data.outrosCreditos];
+                  arr[idx] = { ...arr[idx], descricao: e.target.value };
+                  update({ outrosCreditos: arr });
+                }}
+                className="flex-1"
+              />
+              <Input
+                type="number"
+                step="0.01"
+                min={0}
+                placeholder="0,00"
+                value={c.valor || ''}
+                onChange={(e) => {
+                  const arr = [...data.outrosCreditos];
+                  arr[idx] = { ...arr[idx], valor: parseFloat(e.target.value) || 0 };
+                  update({ outrosCreditos: arr });
+                }}
+                className="w-32"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-destructive"
+                onClick={() => {
+                  const arr = data.outrosCreditos.filter((_, i) => i !== idx);
+                  update({ outrosCreditos: arr });
+                }}
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
+          ))}
         </div>
 
         <div className="flex justify-between pt-4">

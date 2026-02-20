@@ -58,7 +58,7 @@ export interface Step2Data {
   mesesFeriasProporcional: number;
   consideraTercoFerias: boolean;
   outrosDescontos: { descricao: string; valor: number }[];
-  outrosCreditos: number;
+  outrosCreditos: { descricao: string; valor: number }[];
   incluir13AnosAnteriores: boolean;
   fgtsManual: number | null;
 }
@@ -351,14 +351,18 @@ export function calcularVerbas(step1: Step1Data, step2: Step2Data): VerbaResciso
     }
   }
 
-  // Outros créditos
-  if (step2.outrosCreditos > 0) {
-    verbas.push({
-      id: 'outros_creditos',
-      verba: 'Outros créditos',
-      referencia: '-',
-      valor: round2(step2.outrosCreditos),
-      tipo: 'credito',
+  // Outros créditos (múltiplas linhas)
+  if (step2.outrosCreditos.length > 0) {
+    step2.outrosCreditos.forEach((c, idx) => {
+      if (c.valor > 0) {
+        verbas.push({
+          id: `outros_creditos_${idx}`,
+          verba: c.descricao || 'Outros créditos',
+          referencia: '-',
+          valor: round2(c.valor),
+          tipo: 'credito',
+        });
+      }
     });
   }
 

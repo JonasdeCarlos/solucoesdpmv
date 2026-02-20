@@ -272,11 +272,13 @@ ${data.empregadoNome || '[NOME DO EMPREGADO]'}`;
     }
 
     // Outros
-    if (step2.outrosCreditos > 0 && verbaAtiva('outros_creditos')) {
-      lines.push('');
-      lines.push(`${itemNum}) OUTROS CRÉDITOS: ${formatCurrency(step2.outrosCreditos)}`);
-      itemNum++;
-    }
+    step2.outrosCreditos.forEach((c, idx) => {
+      if (c.valor > 0 && verbaAtiva(`outros_creditos_${idx}`)) {
+        lines.push('');
+        lines.push(`${itemNum}) ${(c.descricao || 'OUTROS CRÉDITOS').toUpperCase()}: ${formatCurrency(c.valor)}`);
+        itemNum++;
+      }
+    });
     step2.outrosDescontos.forEach((d, idx) => {
       if (d.valor > 0 && verbaAtiva(`outros_descontos_${idx}`)) {
         lines.push('');
