@@ -57,7 +57,7 @@ export interface Step2Data {
   meses13Proporcional: number;
   mesesFeriasProporcional: number;
   consideraTercoFerias: boolean;
-  outrosDescontos: number;
+  outrosDescontos: { descricao: string; valor: number }[];
   outrosCreditos: number;
   incluir13AnosAnteriores: boolean;
   fgtsManual: number | null;
@@ -362,14 +362,18 @@ export function calcularVerbas(step1: Step1Data, step2: Step2Data): VerbaResciso
     });
   }
 
-  // Outros descontos
-  if (step2.outrosDescontos > 0) {
-    verbas.push({
-      id: 'outros_descontos',
-      verba: 'Outros descontos/adiantamentos',
-      referencia: '-',
-      valor: round2(step2.outrosDescontos),
-      tipo: 'debito',
+  // Outros descontos (múltiplas linhas)
+  if (step2.outrosDescontos.length > 0) {
+    step2.outrosDescontos.forEach((d, idx) => {
+      if (d.valor > 0) {
+        verbas.push({
+          id: `outros_descontos_${idx}`,
+          verba: d.descricao || 'Outros descontos',
+          referencia: '-',
+          valor: round2(d.valor),
+          tipo: 'debito',
+        });
+      }
     });
   }
 
