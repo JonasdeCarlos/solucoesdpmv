@@ -484,7 +484,7 @@ const ReciboPage = () => {
                                   max={200}
                                   value={l.adicionalPercent ?? (l.tipoCalculo === 'hora_extra' ? 50 : 20)}
                                   onChange={(e) => updateLinha(l.id, { adicionalPercent: Math.min(200, Math.max(0, Number(e.target.value))) })}
-                                  className="h-8 text-sm w-14"
+                                  className="h-8 text-sm w-[4.5rem]"
                                 />
                                 <span className="text-xs text-muted-foreground">%</span>
                               </div>
