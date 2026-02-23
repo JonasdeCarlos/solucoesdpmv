@@ -166,7 +166,7 @@ export function calcularEncargos(input: EncargosInput): EncargosResult {
 
   // Redução mensal 2026
   const red = tabela.reducaoMensal;
-  const baseReducao = rendimentoTributavel;
+  const baseReducao = baseIRRF;
   let reducaoMensal = 0;
   if (baseReducao <= red.limiteIsencao) {
     reducaoMensal = Math.min(red.reducaoMaxima, irrfBruto);
