@@ -8,7 +8,10 @@ import CprbStep4Report from '@/components/cprb/CprbStep4Report';
 import DasSimulation from '@/components/cprb/DasSimulation';
 import { useCprbLegalParameters } from '@/hooks/useCprbLegalParameters';
 import { useCprbSimulations } from '@/hooks/useCprbSimulations';
+import { useDasAnexosFaixas } from '@/hooks/useDasParameters';
 import { calcularComparativoCprb, CprbConsolidatedResult } from '@/utils/cprbCalculations';
+import { calcularDas, DasConsolidatedResult, DasFaixa } from '@/utils/dasCalculations';
+import { distribuirMensal } from '@/utils/cprbCalculations';
 import { toast } from 'sonner';
 
 const STEP_LABELS = ['Premissas', 'Parâmetros Legais', 'Simulação', 'Relatório'];
@@ -40,6 +43,9 @@ const defaultPremissas = (): CprbPremissas => {
     aliquotaTerceiros: 0.058,
     percentualRotatividade: 0,
     percentualAbsenteismo: 0,
+    incluirDasNoM2: false,
+    dasRbt12Inicial: 0,
+    dasAnexo: 'IV',
   };
 };
 
@@ -47,9 +53,11 @@ const CprbPage = () => {
   const [step, setStep] = useState(1);
   const [premissas, setPremissas] = useState<CprbPremissas>(defaultPremissas);
   const [result, setResult] = useState<CprbConsolidatedResult | null>(null);
+  const [dasResult, setDasResult] = useState<DasConsolidatedResult | null>(null);
   const [isCalculated, setIsCalculated] = useState(false);
 
   const { data: legalParams } = useCprbLegalParameters();
+  const { data: faixasDb } = useDasAnexosFaixas();
   const { save } = useCprbSimulations();
 
   const handleCalculate = () => {
@@ -74,7 +82,41 @@ const CprbPage = () => {
       }))
     );
 
+    // Run DAS simulation if enabled
+    let dasRes: DasConsolidatedResult | null = null;
+    if (premissas.incluirDasNoM2 && faixasDb && faixasDb.length > 0 && premissas.dasRbt12Inicial > 0) {
+      const receitasMensais = distribuirMensal(
+        premissas.receitaTotal,
+        premissas.horizonteMeses,
+        premissas.percentualCrescimento
+      );
+
+      const faixas: DasFaixa[] = faixasDb.map((f) => ({
+        anexo: f.anexo,
+        faixa: f.faixa,
+        rbt12_min: Number(f.rbt12_min),
+        rbt12_max: Number(f.rbt12_max),
+        aliquota_nominal: Number(f.aliquota_nominal),
+        parcela_deduzir: Number(f.parcela_deduzir),
+      }));
+
+      dasRes = calcularDas(
+        {
+          competenciaInicial: premissas.competenciaInicial,
+          horizonteMeses: premissas.horizonteMeses,
+          rbt12Inicial: premissas.dasRbt12Inicial,
+          receitasMensais,
+          atividades: [{ anexo: premissas.dasAnexo, percentualReceita: 1 }],
+          exigeFatorR: false,
+          folha12mInicial: 0,
+          folhasMensais: [],
+        },
+        faixas
+      );
+    }
+
     setResult(res);
+    setDasResult(dasRes);
     setIsCalculated(true);
     toast.success('Simulação calculada com sucesso!');
   };
@@ -145,6 +187,7 @@ const CprbPage = () => {
           {step === 3 && (
             <CprbStep3Simulation
               result={result}
+              dasResult={dasResult}
               premissas={premissas}
               isCalculated={isCalculated}
               onCalculate={handleCalculate}
@@ -156,6 +199,7 @@ const CprbPage = () => {
             <CprbStep4Report
               premissas={premissas}
               result={result}
+              dasResult={dasResult}
               onBack={() => setStep(3)}
               onSave={handleSave}
               isSaving={save.isPending}

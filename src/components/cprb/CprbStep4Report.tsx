@@ -2,6 +2,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { formatCurrency } from '@/utils/formatters';
 import { CprbConsolidatedResult } from '@/utils/cprbCalculations';
+import { DasConsolidatedResult } from '@/utils/dasCalculations';
 import { CprbPremissas } from './CprbStep1Premissas';
 import { FileText, Save } from 'lucide-react';
 import { toast } from 'sonner';
@@ -9,12 +10,13 @@ import { toast } from 'sonner';
 interface Props {
   premissas: CprbPremissas;
   result: CprbConsolidatedResult | null;
+  dasResult: DasConsolidatedResult | null;
   onBack: () => void;
   onSave: () => void;
   isSaving: boolean;
 }
 
-const CprbStep4Report = ({ premissas, result, onBack, onSave, isSaving }: Props) => {
+const CprbStep4Report = ({ premissas, result, dasResult, onBack, onSave, isSaving }: Props) => {
   if (!result) {
     return (
       <div className="space-y-6">
@@ -87,13 +89,39 @@ const CprbStep4Report = ({ premissas, result, onBack, onSave, isSaving }: Props)
             <div><strong>Custo CPRB (12m):</strong> {formatCurrency(result.totalCustoCprb)}</div>
             <div><strong>Custo Folha (12m):</strong> {formatCurrency(result.totalCustoFolha)}</div>
             <div><strong>Economia CPRB:</strong> <span className={result.economiaCprb > 0 ? 'text-green-600 font-bold' : 'text-red-600 font-bold'}>{formatCurrency(result.economiaCprb)}</span></div>
-            <div><strong>Índice Receita/Folha:</strong> {result.indiceReceitaFolha.toFixed(2)}</div>
-            <div><strong>Break-even:</strong> {result.breakEvenRatio.toFixed(2)}</div>
-            <div><strong>Custo/m² CPRB:</strong> {formatCurrency(result.custoM2MedioCprb)}</div>
-            <div><strong>Custo/m² Folha:</strong> {formatCurrency(result.custoM2MedioFolha)}</div>
-          </div>
-        </CardContent>
-      </Card>
+             <div><strong>Índice Receita/Folha:</strong> {result.indiceReceitaFolha.toFixed(2)}</div>
+             <div><strong>Break-even:</strong> {result.breakEvenRatio.toFixed(2)}</div>
+             <div><strong>Custo/m² CPRB:</strong> {formatCurrency(result.custoM2MedioCprb)}</div>
+             <div><strong>Custo/m² Folha:</strong> {formatCurrency(result.custoM2MedioFolha)}</div>
+           </div>
+         </CardContent>
+       </Card>
+
+       {/* DAS Integration */}
+       {dasResult && premissas.incluirDasNoM2 && (
+         <Card className="border-dashed border-2 border-primary/30">
+           <CardContent className="pt-6">
+             <h3 className="font-semibold text-base mb-3">Simulação DAS (Simples Nacional) — Integrado</h3>
+             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+               <div><strong>DAS Estimado (12m):</strong> {formatCurrency(dasResult.totalDas)}</div>
+               <div><strong>Alíquota Efetiva Média:</strong> {(dasResult.aliquotaEfetivaMedia * 100).toFixed(2)}%</div>
+               <div><strong>Anexo:</strong> {premissas.dasAnexo}</div>
+               <div><strong>RBT12 Inicial:</strong> {formatCurrency(premissas.dasRbt12Inicial)}</div>
+               {(() => {
+                 const areaM2 = premissas.areaM2Total || 1;
+                 const custoM2CprbComDas = (result.custoMaoObraTotalCprb + dasResult.totalDas) / areaM2;
+                 const custoM2FolhaComDas = (result.custoMaoObraTotalFolha + dasResult.totalDas) / areaM2;
+                 return (
+                   <>
+                     <div><strong>Custo/m² CPRB + DAS:</strong> <span className="text-green-600 font-bold">{formatCurrency(Math.round(custoM2CprbComDas * 100) / 100)}</span></div>
+                     <div><strong>Custo/m² Folha + DAS:</strong> <span className="text-red-600 font-bold">{formatCurrency(Math.round(custoM2FolhaComDas * 100) / 100)}</span></div>
+                   </>
+                 );
+               })()}
+             </div>
+           </CardContent>
+         </Card>
+       )}
 
       {/* Recomendação */}
       <Card>
