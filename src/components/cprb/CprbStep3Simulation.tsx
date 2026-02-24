@@ -2,12 +2,15 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { formatCurrency } from '@/utils/formatters';
 import { CprbConsolidatedResult } from '@/utils/cprbCalculations';
-import { TrendingDown, TrendingUp, Equal, ArrowRight } from 'lucide-react';
+import { CprbPremissas } from './CprbStep1Premissas';
+import { TrendingDown, TrendingUp, Equal, ArrowRight, FileSearch } from 'lucide-react';
 
 interface Props {
   result: CprbConsolidatedResult | null;
+  premissas: CprbPremissas;
   onBack: () => void;
   onNext: () => void;
   onCalculate: () => void;
@@ -26,7 +29,7 @@ const KpiCard = ({ label, value, sub, variant }: { label: string; value: string;
   </Card>
 );
 
-const CprbStep3Simulation = ({ result, onBack, onNext, onCalculate, isCalculated }: Props) => {
+const CprbStep3Simulation = ({ result, premissas, onBack, onNext, onCalculate, isCalculated }: Props) => {
   if (!isCalculated || !result) {
     return (
       <div className="space-y-6">
@@ -135,6 +138,239 @@ const CprbStep3Simulation = ({ result, onBack, onNext, onCalculate, isCalculated
               </TableBody>
             </Table>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Memória de Cálculo Detalhada */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex items-center gap-2 mb-4">
+            <FileSearch className="w-5 h-5 text-primary" />
+            <h3 className="font-semibold text-base">Memória de Cálculo — Composição dos Totais</h3>
+          </div>
+          <Accordion type="multiple" className="w-full">
+            {/* Composição da Folha Projetada */}
+            <AccordionItem value="folha">
+              <AccordionTrigger className="text-sm font-medium">
+                Folha Projetada 12m: {formatCurrency(result.totalFolhaProjetada)}
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-3 text-sm">
+                  <p className="text-muted-foreground">
+                    Folha total informada: <strong>{formatCurrency(premissas.folhaTotal)}</strong>, distribuída em <strong>{premissas.horizonteMeses}</strong> meses
+                    {premissas.percentualCrescimento > 0 && <> com crescimento de <strong>{(premissas.percentualCrescimento * 100).toFixed(1)}%</strong> ao mês</>}.
+                  </p>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Competência</TableHead>
+                        <TableHead className="text-right">Folha do Mês</TableHead>
+                        <TableHead className="text-right">Acumulado</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {result.monthly.reduce((acc, m) => {
+                        const prev = acc.length > 0 ? acc[acc.length - 1].acumulado : 0;
+                        acc.push({ ...m, acumulado: prev + m.folhaMes });
+                        return acc;
+                      }, [] as (typeof result.monthly[0] & { acumulado: number })[]).map((m) => (
+                        <TableRow key={m.competencia}>
+                          <TableCell>{m.competencia}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(m.folhaMes)}</TableCell>
+                          <TableCell className="text-right font-medium">{formatCurrency(m.acumulado)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* Composição da Receita Projetada */}
+            <AccordionItem value="receita">
+              <AccordionTrigger className="text-sm font-medium">
+                Receita Projetada 12m: {formatCurrency(result.totalReceitaProjetada)}
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-3 text-sm">
+                  <p className="text-muted-foreground">
+                    Receita total informada: <strong>{formatCurrency(premissas.receitaTotal)}</strong>, distribuída em <strong>{premissas.horizonteMeses}</strong> meses
+                    {premissas.percentualCrescimento > 0 && <> com crescimento de <strong>{(premissas.percentualCrescimento * 100).toFixed(1)}%</strong> ao mês</>}.
+                  </p>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Competência</TableHead>
+                        <TableHead className="text-right">Receita do Mês</TableHead>
+                        <TableHead className="text-right">Acumulado</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {result.monthly.reduce((acc, m) => {
+                        const prev = acc.length > 0 ? acc[acc.length - 1].acumulado : 0;
+                        acc.push({ ...m, acumulado: prev + m.receitaMes });
+                        return acc;
+                      }, [] as (typeof result.monthly[0] & { acumulado: number })[]).map((m) => (
+                        <TableRow key={m.competencia}>
+                          <TableCell>{m.competencia}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(m.receitaMes)}</TableCell>
+                          <TableCell className="text-right font-medium">{formatCurrency(m.acumulado)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* Composição do Custo CPRB */}
+            <AccordionItem value="cprb">
+              <AccordionTrigger className="text-sm font-medium">
+                Custo Cenário CPRB: {formatCurrency(result.totalCustoCprb)}
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-3 text-sm">
+                  <p className="text-muted-foreground">
+                    Soma mensal de: CPRB sobre receita (alíquota × % transição) + Contribuição sobre folha (% transição folha).
+                  </p>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Competência</TableHead>
+                        <TableHead className="text-right">CPRB s/ Receita</TableHead>
+                        <TableHead className="text-right">Contrib. Folha (transição)</TableHead>
+                        <TableHead className="text-right">Total Mês</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {result.monthly.map((m) => (
+                        <TableRow key={m.competencia}>
+                          <TableCell>{m.competencia}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(m.cprbValor)}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(m.contribFolhaTransicao)}</TableCell>
+                          <TableCell className="text-right font-medium">{formatCurrency(m.custoCenarioCprb)}</TableCell>
+                        </TableRow>
+                      ))}
+                      <TableRow className="font-bold bg-muted/50">
+                        <TableCell>TOTAL</TableCell>
+                        <TableCell className="text-right">{formatCurrency(result.monthly.reduce((s, m) => s + m.cprbValor, 0))}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(result.monthly.reduce((s, m) => s + m.contribFolhaTransicao, 0))}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(result.totalCustoCprb)}</TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* Composição do Custo Folha */}
+            <AccordionItem value="folha-custo">
+              <AccordionTrigger className="text-sm font-medium">
+                Custo Cenário Folha: {formatCurrency(result.totalCustoFolha)}
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-3 text-sm">
+                  <p className="text-muted-foreground">
+                    Contribuição patronal de 20% sobre a folha mensal (sem CPRB).
+                  </p>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Competência</TableHead>
+                        <TableHead className="text-right">Folha do Mês</TableHead>
+                        <TableHead className="text-right">Contrib. Patronal (20%)</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {result.monthly.map((m) => (
+                        <TableRow key={m.competencia}>
+                          <TableCell>{m.competencia}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(m.folhaMes)}</TableCell>
+                          <TableCell className="text-right font-medium">{formatCurrency(m.contribPatronalFolha)}</TableCell>
+                        </TableRow>
+                      ))}
+                      <TableRow className="font-bold bg-muted/50">
+                        <TableCell>TOTAL</TableCell>
+                        <TableCell className="text-right">{formatCurrency(result.totalFolhaProjetada)}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(result.totalCustoFolha)}</TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* Encargos Gerenciais */}
+            <AccordionItem value="encargos">
+              <AccordionTrigger className="text-sm font-medium">
+                Encargos Gerenciais (premissas ativas)
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-2 text-sm">
+                  <p className="text-muted-foreground mb-2">Componentes incluídos no custo gerencial de mão de obra (base: folha mensal):</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="flex justify-between border-b pb-1">
+                      <span>Férias (1/12)</span>
+                      <span className={premissas.incluirFerias ? 'text-green-600 font-medium' : 'text-muted-foreground'}>
+                        {premissas.incluirFerias ? '8,33%' : 'Não incluído'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between border-b pb-1">
+                      <span>1/3 Férias</span>
+                      <span className={premissas.incluirTercoFerias ? 'text-green-600 font-medium' : 'text-muted-foreground'}>
+                        {premissas.incluirTercoFerias ? '2,78%' : 'Não incluído'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between border-b pb-1">
+                      <span>13º Salário (1/12)</span>
+                      <span className={premissas.incluirDecimoTerceiro ? 'text-green-600 font-medium' : 'text-muted-foreground'}>
+                        {premissas.incluirDecimoTerceiro ? '8,33%' : 'Não incluído'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between border-b pb-1">
+                      <span>FGTS</span>
+                      <span className={premissas.incluirFgts ? 'text-green-600 font-medium' : 'text-muted-foreground'}>
+                        {premissas.incluirFgts ? '8,00%' : 'Não incluído'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between border-b pb-1">
+                      <span>Multa FGTS</span>
+                      <span className={premissas.incluirMultaFgts ? 'text-green-600 font-medium' : 'text-muted-foreground'}>
+                        {premissas.incluirMultaFgts ? `${(premissas.percentualMultaFgts * 100).toFixed(0)}% × FGTS × rotatividade` : 'Não incluído'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between border-b pb-1">
+                      <span>RAT/FAP</span>
+                      <span className={premissas.incluirRatFap ? 'text-green-600 font-medium' : 'text-muted-foreground'}>
+                        {premissas.incluirRatFap ? `${(premissas.aliquotaRatFap * 100).toFixed(1)}%` : 'Não incluído'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between border-b pb-1">
+                      <span>Terceiros</span>
+                      <span className={premissas.incluirTerceiros ? 'text-green-600 font-medium' : 'text-muted-foreground'}>
+                        {premissas.incluirTerceiros ? `${(premissas.aliquotaTerceiros * 100).toFixed(1)}%` : 'Não incluído'}
+                      </span>
+                    </div>
+                  </div>
+                  {(() => {
+                    let pct = 0;
+                    if (premissas.incluirFerias) pct += 8.33;
+                    if (premissas.incluirTercoFerias) pct += 2.78;
+                    if (premissas.incluirDecimoTerceiro) pct += 8.33;
+                    if (premissas.incluirFgts) pct += 8.0;
+                    if (premissas.incluirRatFap) pct += premissas.aliquotaRatFap * 100;
+                    if (premissas.incluirTerceiros) pct += premissas.aliquotaTerceiros * 100;
+                    return (
+                      <div className="mt-3 p-2 bg-muted rounded text-sm">
+                        <strong>% total de encargos gerenciais sobre folha ≈ {pct.toFixed(2)}%</strong>
+                        <span className="text-muted-foreground ml-2">(excluindo multa FGTS que depende da rotatividade)</span>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </CardContent>
       </Card>
 
