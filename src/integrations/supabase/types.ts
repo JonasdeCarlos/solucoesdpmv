@@ -44,6 +44,279 @@ export type Database = {
         }
         Relationships: []
       }
+      cprb_legal_parameters: {
+        Row: {
+          aliquota_cprb: number
+          aliquota_patronal_folha: number
+          ano: number
+          cnae: string | null
+          competencia_fim: string
+          competencia_inicio: string
+          created_at: string
+          fonte_legal: string | null
+          id: string
+          observacoes_legais: string | null
+          percentual_cprb_transicao: number
+          percentual_folha_transicao: number
+          regra_decimo_terceiro: string | null
+          setor: string
+          updated_at: string
+        }
+        Insert: {
+          aliquota_cprb: number
+          aliquota_patronal_folha?: number
+          ano: number
+          cnae?: string | null
+          competencia_fim: string
+          competencia_inicio: string
+          created_at?: string
+          fonte_legal?: string | null
+          id?: string
+          observacoes_legais?: string | null
+          percentual_cprb_transicao?: number
+          percentual_folha_transicao?: number
+          regra_decimo_terceiro?: string | null
+          setor?: string
+          updated_at?: string
+        }
+        Update: {
+          aliquota_cprb?: number
+          aliquota_patronal_folha?: number
+          ano?: number
+          cnae?: string | null
+          competencia_fim?: string
+          competencia_inicio?: string
+          created_at?: string
+          fonte_legal?: string | null
+          id?: string
+          observacoes_legais?: string | null
+          percentual_cprb_transicao?: number
+          percentual_folha_transicao?: number
+          regra_decimo_terceiro?: string | null
+          setor?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      cprb_obras: {
+        Row: {
+          area_m2: number
+          created_at: string
+          criterio_rateio: string | null
+          folha_obra: number | null
+          id: string
+          nome: string
+          percentual_rateio: number | null
+          receita_obra: number | null
+          simulation_id: string
+        }
+        Insert: {
+          area_m2?: number
+          created_at?: string
+          criterio_rateio?: string | null
+          folha_obra?: number | null
+          id?: string
+          nome: string
+          percentual_rateio?: number | null
+          receita_obra?: number | null
+          simulation_id: string
+        }
+        Update: {
+          area_m2?: number
+          created_at?: string
+          criterio_rateio?: string | null
+          folha_obra?: number | null
+          id?: string
+          nome?: string
+          percentual_rateio?: number | null
+          receita_obra?: number | null
+          simulation_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cprb_obras_simulation_id_fkey"
+            columns: ["simulation_id"]
+            isOneToOne: false
+            referencedRelation: "cprb_simulations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cprb_simulation_results: {
+        Row: {
+          competencia: string
+          contrib_folha_transicao: number | null
+          contrib_patronal_folha: number | null
+          cprb_valor: number | null
+          created_at: string
+          custo_cenario_cprb: number | null
+          custo_cenario_folha: number | null
+          custo_m2_cprb: number | null
+          custo_m2_folha: number | null
+          custo_mao_obra_cprb: number | null
+          custo_mao_obra_folha: number | null
+          diferenca_absoluta: number | null
+          diferenca_percentual: number | null
+          folha_mes: number | null
+          id: string
+          mes_numero: number
+          receita_mes: number | null
+          simulation_id: string
+        }
+        Insert: {
+          competencia: string
+          contrib_folha_transicao?: number | null
+          contrib_patronal_folha?: number | null
+          cprb_valor?: number | null
+          created_at?: string
+          custo_cenario_cprb?: number | null
+          custo_cenario_folha?: number | null
+          custo_m2_cprb?: number | null
+          custo_m2_folha?: number | null
+          custo_mao_obra_cprb?: number | null
+          custo_mao_obra_folha?: number | null
+          diferenca_absoluta?: number | null
+          diferenca_percentual?: number | null
+          folha_mes?: number | null
+          id?: string
+          mes_numero: number
+          receita_mes?: number | null
+          simulation_id: string
+        }
+        Update: {
+          competencia?: string
+          contrib_folha_transicao?: number | null
+          contrib_patronal_folha?: number | null
+          cprb_valor?: number | null
+          created_at?: string
+          custo_cenario_cprb?: number | null
+          custo_cenario_folha?: number | null
+          custo_m2_cprb?: number | null
+          custo_m2_folha?: number | null
+          custo_mao_obra_cprb?: number | null
+          custo_mao_obra_folha?: number | null
+          diferenca_absoluta?: number | null
+          diferenca_percentual?: number | null
+          folha_mes?: number | null
+          id?: string
+          mes_numero?: number
+          receita_mes?: number | null
+          simulation_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cprb_simulation_results_simulation_id_fkey"
+            columns: ["simulation_id"]
+            isOneToOne: false
+            referencedRelation: "cprb_simulations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cprb_simulations: {
+        Row: {
+          aliquota_rat_fap: number | null
+          aliquota_terceiros: number | null
+          cnae: string | null
+          cnpj: string | null
+          competencia_inicial: string
+          created_at: string
+          decimo_terceiro: number | null
+          empresa_nome: string | null
+          folha_total: number | null
+          horizonte_meses: number
+          id: string
+          incluir_decimo_terceiro: boolean | null
+          incluir_ferias: boolean | null
+          incluir_fgts: boolean | null
+          incluir_multa_fgts: boolean | null
+          incluir_rat_fap: boolean | null
+          incluir_terceiros: boolean | null
+          incluir_terco_ferias: boolean | null
+          legal_parameter_id: string | null
+          nome: string
+          percentual_absenteismo: number | null
+          percentual_crescimento: number | null
+          percentual_multa_fgts: number | null
+          percentual_rotatividade: number | null
+          pro_labore: number | null
+          receita_total: number | null
+          regime_tributario: string
+          tipo_analise: string
+          updated_at: string
+        }
+        Insert: {
+          aliquota_rat_fap?: number | null
+          aliquota_terceiros?: number | null
+          cnae?: string | null
+          cnpj?: string | null
+          competencia_inicial: string
+          created_at?: string
+          decimo_terceiro?: number | null
+          empresa_nome?: string | null
+          folha_total?: number | null
+          horizonte_meses?: number
+          id?: string
+          incluir_decimo_terceiro?: boolean | null
+          incluir_ferias?: boolean | null
+          incluir_fgts?: boolean | null
+          incluir_multa_fgts?: boolean | null
+          incluir_rat_fap?: boolean | null
+          incluir_terceiros?: boolean | null
+          incluir_terco_ferias?: boolean | null
+          legal_parameter_id?: string | null
+          nome?: string
+          percentual_absenteismo?: number | null
+          percentual_crescimento?: number | null
+          percentual_multa_fgts?: number | null
+          percentual_rotatividade?: number | null
+          pro_labore?: number | null
+          receita_total?: number | null
+          regime_tributario?: string
+          tipo_analise?: string
+          updated_at?: string
+        }
+        Update: {
+          aliquota_rat_fap?: number | null
+          aliquota_terceiros?: number | null
+          cnae?: string | null
+          cnpj?: string | null
+          competencia_inicial?: string
+          created_at?: string
+          decimo_terceiro?: number | null
+          empresa_nome?: string | null
+          folha_total?: number | null
+          horizonte_meses?: number
+          id?: string
+          incluir_decimo_terceiro?: boolean | null
+          incluir_ferias?: boolean | null
+          incluir_fgts?: boolean | null
+          incluir_multa_fgts?: boolean | null
+          incluir_rat_fap?: boolean | null
+          incluir_terceiros?: boolean | null
+          incluir_terco_ferias?: boolean | null
+          legal_parameter_id?: string | null
+          nome?: string
+          percentual_absenteismo?: number | null
+          percentual_crescimento?: number | null
+          percentual_multa_fgts?: number | null
+          percentual_rotatividade?: number | null
+          pro_labore?: number | null
+          receita_total?: number | null
+          regime_tributario?: string
+          tipo_analise?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cprb_simulations_legal_parameter_id_fkey"
+            columns: ["legal_parameter_id"]
+            isOneToOne: false
+            referencedRelation: "cprb_legal_parameters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       feriados_municipais: {
         Row: {
           created_at: string
