@@ -4,8 +4,9 @@ import { formatCurrency } from '@/utils/formatters';
 import { CprbConsolidatedResult } from '@/utils/cprbCalculations';
 import { DasConsolidatedResult } from '@/utils/dasCalculations';
 import { CprbPremissas } from './CprbStep1Premissas';
-import { FileText, Save } from 'lucide-react';
+import { FileText, Save, Download } from 'lucide-react';
 import { toast } from 'sonner';
+import { generateCprbRelatorioPDF } from '@/utils/cprbPdfGenerator';
 
 interface Props {
   premissas: CprbPremissas;
@@ -38,6 +39,16 @@ const CprbStep4Report = ({ premissas, result, dasResult, onBack, onSave, isSavin
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleGeneratePdf = () => {
+    if (!result) return;
+    try {
+      generateCprbRelatorioPDF(premissas, result, dasResult);
+      toast.success('PDF gerado com sucesso!');
+    } catch {
+      toast.error('Erro ao gerar PDF.');
+    }
   };
 
   return (
@@ -157,6 +168,9 @@ const CprbStep4Report = ({ premissas, result, dasResult, onBack, onSave, isSavin
         <div className="flex gap-2">
           <Button variant="outline" onClick={handlePrint}>
             <FileText className="w-4 h-4 mr-2" /> Imprimir
+          </Button>
+          <Button variant="outline" onClick={handleGeneratePdf}>
+            <Download className="w-4 h-4 mr-2" /> Gerar PDF + Memória
           </Button>
           <Button onClick={onSave} disabled={isSaving}>
             <Save className="w-4 h-4 mr-2" /> {isSaving ? 'Salvando...' : 'Salvar Cenário'}
