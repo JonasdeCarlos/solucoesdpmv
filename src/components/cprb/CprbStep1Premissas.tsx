@@ -34,6 +34,10 @@ export interface CprbPremissas {
   aliquotaTerceiros: number;
   percentualRotatividade: number;
   percentualAbsenteismo: number;
+  // DAS integration
+  incluirDasNoM2: boolean;
+  dasRbt12Inicial: number;
+  dasAnexo: string;
 }
 
 interface Props {
@@ -189,23 +193,58 @@ const CprbStep1Premissas = ({ premissas, onChange, onNext }: Props) => {
               <Label className="text-sm">Terceiros (Sistema S, etc.)</Label>
               <Switch checked={premissas.incluirTerceiros} onCheckedChange={(v) => update({ incluirTerceiros: v })} />
             </div>
-            {premissas.incluirTerceiros && (
-              <div className="space-y-1">
-                <Label className="text-sm">Alíquota Terceiros (%)</Label>
-                <Input type="number" step={0.1} value={premissas.aliquotaTerceiros * 100} onChange={(e) => update({ aliquotaTerceiros: (parseFloat(e.target.value) || 0) / 100 })} />
-              </div>
-            )}
-            <div className="space-y-1">
-              <Label className="text-sm">% Rotatividade Estimada</Label>
-              <Input type="number" step={1} value={premissas.percentualRotatividade * 100 || ''} onChange={(e) => update({ percentualRotatividade: (parseFloat(e.target.value) || 0) / 100 })} placeholder="0" />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-sm">% Absenteísmo</Label>
-              <Input type="number" step={1} value={premissas.percentualAbsenteismo * 100 || ''} onChange={(e) => update({ percentualAbsenteismo: (parseFloat(e.target.value) || 0) / 100 })} placeholder="0" />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+             {premissas.incluirTerceiros && (
+               <div className="space-y-1">
+                 <Label className="text-sm">Alíquota Terceiros (%)</Label>
+                 <Input type="number" step={0.1} value={premissas.aliquotaTerceiros * 100} onChange={(e) => update({ aliquotaTerceiros: (parseFloat(e.target.value) || 0) / 100 })} />
+               </div>
+             )}
+             <div className="space-y-1">
+               <Label className="text-sm">% Rotatividade Estimada</Label>
+               <Input type="number" step={1} value={premissas.percentualRotatividade * 100 || ''} onChange={(e) => update({ percentualRotatividade: (parseFloat(e.target.value) || 0) / 100 })} placeholder="0" />
+             </div>
+             <div className="space-y-1">
+               <Label className="text-sm">% Absenteísmo</Label>
+               <Input type="number" step={1} value={premissas.percentualAbsenteismo * 100 || ''} onChange={(e) => update({ percentualAbsenteismo: (parseFloat(e.target.value) || 0) / 100 })} placeholder="0" />
+             </div>
+           </div>
+         </CardContent>
+       </Card>
+
+       {/* Integração DAS no custo por m² */}
+       <Card>
+         <CardContent className="pt-6 space-y-4">
+           <h3 className="font-semibold text-base">
+             Integração DAS no Custo por m²
+             <InfoTip text="Inclui o DAS estimado (Simples Nacional) no cálculo do custo por m². Requer RBT12 e Anexo." />
+           </h3>
+           <div className="flex items-center justify-between p-2 rounded border">
+             <Label className="text-sm">Incluir DAS no custo por m²</Label>
+             <Switch checked={premissas.incluirDasNoM2} onCheckedChange={(v) => update({ incluirDasNoM2: v })} />
+           </div>
+           {premissas.incluirDasNoM2 && (
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+               <CurrencyField
+                 label="RBT12 Inicial (Receita Bruta 12m)"
+                 value={premissas.dasRbt12Inicial}
+                 onChange={(v) => update({ dasRbt12Inicial: v })}
+                 tip="Receita bruta acumulada dos últimos 12 meses para enquadramento na faixa do Simples"
+               />
+               <div className="space-y-1">
+                 <Label>Anexo do Simples <InfoTip text="Anexo aplicável para cálculo do DAS" /></Label>
+                 <Select value={premissas.dasAnexo} onValueChange={(v) => update({ dasAnexo: v })}>
+                   <SelectTrigger><SelectValue /></SelectTrigger>
+                   <SelectContent>
+                     {['I', 'II', 'III', 'IV', 'V'].map((a) => (
+                       <SelectItem key={a} value={a}>Anexo {a}</SelectItem>
+                     ))}
+                   </SelectContent>
+                 </Select>
+               </div>
+             </div>
+           )}
+         </CardContent>
+       </Card>
 
       <div className="flex justify-end">
         <Button onClick={onNext} size="lg">Próximo: Parâmetros Legais →</Button>

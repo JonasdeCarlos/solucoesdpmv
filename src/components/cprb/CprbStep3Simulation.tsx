@@ -5,11 +5,13 @@ import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { formatCurrency } from '@/utils/formatters';
 import { CprbConsolidatedResult } from '@/utils/cprbCalculations';
+import { DasConsolidatedResult } from '@/utils/dasCalculations';
 import { CprbPremissas } from './CprbStep1Premissas';
 import { TrendingDown, TrendingUp, Equal, ArrowRight, FileSearch } from 'lucide-react';
 
 interface Props {
   result: CprbConsolidatedResult | null;
+  dasResult: DasConsolidatedResult | null;
   premissas: CprbPremissas;
   onBack: () => void;
   onNext: () => void;
@@ -29,7 +31,7 @@ const KpiCard = ({ label, value, sub, variant }: { label: string; value: string;
   </Card>
 );
 
-const CprbStep3Simulation = ({ result, premissas, onBack, onNext, onCalculate, isCalculated }: Props) => {
+const CprbStep3Simulation = ({ result, dasResult, premissas, onBack, onNext, onCalculate, isCalculated }: Props) => {
   if (!isCalculated || !result) {
     return (
       <div className="space-y-6">
@@ -88,6 +90,87 @@ const CprbStep3Simulation = ({ result, premissas, onBack, onNext, onCalculate, i
         <KpiCard label="Custo/m² CPRB" value={formatCurrency(result.custoM2MedioCprb)} />
         <KpiCard label="Custo/m² Folha" value={formatCurrency(result.custoM2MedioFolha)} />
       </div>
+
+      {/* DAS Integration KPIs */}
+      {dasResult && premissas.incluirDasNoM2 && (
+        <Card className="border-dashed border-2 border-primary/30">
+          <CardContent className="pt-6">
+            <h3 className="font-semibold text-base mb-4">📊 Custo por m² com DAS integrado</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <KpiCard
+                label="DAS Estimado (12m)"
+                value={formatCurrency(dasResult.totalDas)}
+                sub={`Alíq. efetiva: ${(dasResult.aliquotaEfetivaMedia * 100).toFixed(2)}%`}
+              />
+              <KpiCard
+                label="DAS Médio Mensal"
+                value={formatCurrency(dasResult.totalDas / (dasResult.monthly.length || 1))}
+                sub={`Anexo ${premissas.dasAnexo}`}
+              />
+              {(() => {
+                const areaM2 = premissas.areaM2Total || 1;
+                const custoM2CprbComDas = (result.custoMaoObraTotalCprb + dasResult.totalDas) / areaM2;
+                const custoM2FolhaComDas = (result.custoMaoObraTotalFolha + dasResult.totalDas) / areaM2;
+                return (
+                  <>
+                    <KpiCard
+                      label="Custo/m² CPRB + DAS"
+                      value={formatCurrency(Math.round(custoM2CprbComDas * 100) / 100)}
+                      sub={`sem DAS: ${formatCurrency(result.custoM2MedioCprb)}`}
+                      variant="success"
+                    />
+                    <KpiCard
+                      label="Custo/m² Folha + DAS"
+                      value={formatCurrency(Math.round(custoM2FolhaComDas * 100) / 100)}
+                      sub={`sem DAS: ${formatCurrency(result.custoM2MedioFolha)}`}
+                      variant="destructive"
+                    />
+                  </>
+                );
+              })()}
+            </div>
+            {/* Monthly DAS breakdown */}
+            <Accordion type="single" collapsible className="mt-4">
+              <AccordionItem value="das-mensal">
+                <AccordionTrigger className="text-sm font-medium">
+                  DAS Mensal Estimado
+                </AccordionTrigger>
+                <AccordionContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Competência</TableHead>
+                        <TableHead className="text-right">Receita</TableHead>
+                        <TableHead className="text-right">RBT12</TableHead>
+                        <TableHead className="text-right">Alíq. Efetiva</TableHead>
+                        <TableHead className="text-right">DAS</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {dasResult.monthly.map((m) => (
+                        <TableRow key={m.competencia}>
+                          <TableCell className="font-medium">{m.competencia}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(m.receitaMes)}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(m.rbt12)}</TableCell>
+                          <TableCell className="text-right">{(m.aliquotaEfetivaPonderada * 100).toFixed(2)}%</TableCell>
+                          <TableCell className="text-right font-medium">{formatCurrency(m.dasTotal)}</TableCell>
+                        </TableRow>
+                      ))}
+                      <TableRow className="font-bold bg-muted/50">
+                        <TableCell>TOTAL</TableCell>
+                        <TableCell className="text-right">{formatCurrency(dasResult.totalReceita)}</TableCell>
+                        <TableCell className="text-right">—</TableCell>
+                        <TableCell className="text-right">{(dasResult.aliquotaEfetivaMedia * 100).toFixed(2)}%</TableCell>
+                        <TableCell className="text-right">{formatCurrency(dasResult.totalDas)}</TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Tabela mensal */}
       <Card>
