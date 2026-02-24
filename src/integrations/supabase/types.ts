@@ -317,6 +317,93 @@ export type Database = {
           },
         ]
       }
+      das_anexos_faixas: {
+        Row: {
+          aliquota_nominal: number
+          anexo: string
+          ativo: boolean
+          competencia_fim: string
+          competencia_inicio: string
+          created_at: string
+          faixa: number
+          fonte_legal: string | null
+          id: string
+          observacoes: string | null
+          parcela_deduzir: number
+          rbt12_max: number
+          rbt12_min: number
+          updated_at: string
+        }
+        Insert: {
+          aliquota_nominal: number
+          anexo: string
+          ativo?: boolean
+          competencia_fim: string
+          competencia_inicio: string
+          created_at?: string
+          faixa: number
+          fonte_legal?: string | null
+          id?: string
+          observacoes?: string | null
+          parcela_deduzir?: number
+          rbt12_max: number
+          rbt12_min?: number
+          updated_at?: string
+        }
+        Update: {
+          aliquota_nominal?: number
+          anexo?: string
+          ativo?: boolean
+          competencia_fim?: string
+          competencia_inicio?: string
+          created_at?: string
+          faixa?: number
+          fonte_legal?: string | null
+          id?: string
+          observacoes?: string | null
+          parcela_deduzir?: number
+          rbt12_max?: number
+          rbt12_min?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      das_cnae_anexo: {
+        Row: {
+          anexo_sugerido: string
+          ativo: boolean
+          cnae: string
+          created_at: string
+          descricao: string | null
+          exige_fator_r: boolean
+          fator_r_limite: number | null
+          id: string
+          observacoes: string | null
+        }
+        Insert: {
+          anexo_sugerido: string
+          ativo?: boolean
+          cnae: string
+          created_at?: string
+          descricao?: string | null
+          exige_fator_r?: boolean
+          fator_r_limite?: number | null
+          id?: string
+          observacoes?: string | null
+        }
+        Update: {
+          anexo_sugerido?: string
+          ativo?: boolean
+          cnae?: string
+          created_at?: string
+          descricao?: string | null
+          exige_fator_r?: boolean
+          fator_r_limite?: number | null
+          id?: string
+          observacoes?: string | null
+        }
+        Relationships: []
+      }
       feriados_municipais: {
         Row: {
           created_at: string

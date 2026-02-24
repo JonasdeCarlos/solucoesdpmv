@@ -1,9 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import StepIndicator from '@/components/StepIndicator';
 import CprbStep1Premissas, { CprbPremissas } from '@/components/cprb/CprbStep1Premissas';
 import CprbStep2LegalParams from '@/components/cprb/CprbStep2LegalParams';
 import CprbStep3Simulation from '@/components/cprb/CprbStep3Simulation';
 import CprbStep4Report from '@/components/cprb/CprbStep4Report';
+import DasSimulation from '@/components/cprb/DasSimulation';
 import { useCprbLegalParameters } from '@/hooks/useCprbLegalParameters';
 import { useCprbSimulations } from '@/hooks/useCprbSimulations';
 import { calcularComparativoCprb, CprbConsolidatedResult } from '@/utils/cprbCalculations';
@@ -61,10 +63,7 @@ const CprbPage = () => {
     }
 
     const res = calcularComparativoCprb(
-      {
-        ...premissas,
-        legalParams: [],
-      },
+      { ...premissas, legalParams: [] },
       legalParams.map((p) => ({
         competencia_inicio: p.competencia_inicio,
         competencia_fim: p.competencia_fim,
@@ -116,45 +115,58 @@ const CprbPage = () => {
 
   return (
     <div>
-      <h2 className="text-xl font-bold mb-2">Comparativo CPRB (Desoneração) x Folha</h2>
+      <h2 className="text-xl font-bold mb-2">CPRB x Folha & DAS (Simples Nacional)</h2>
       <p className="text-sm text-muted-foreground mb-6">
-        Simulador para construtoras — Simples Nacional
+        Simuladores tributários para construtoras — Simples Nacional
       </p>
 
-      <StepIndicator currentStep={step} totalSteps={4} labels={STEP_LABELS} />
+      <Tabs defaultValue="cprb" className="w-full">
+        <TabsList className="mb-6">
+          <TabsTrigger value="cprb">Comparativo CPRB x Folha</TabsTrigger>
+          <TabsTrigger value="das">Simulação DAS (Simples)</TabsTrigger>
+        </TabsList>
 
-      {step === 1 && (
-        <CprbStep1Premissas
-          premissas={premissas}
-          onChange={(p) => { setPremissas(p); setIsCalculated(false); }}
-          onNext={() => setStep(2)}
-        />
-      )}
-      {step === 2 && (
-        <CprbStep2LegalParams
-          onNext={() => setStep(3)}
-          onBack={() => setStep(1)}
-        />
-      )}
-      {step === 3 && (
-        <CprbStep3Simulation
-          result={result}
-          premissas={premissas}
-          isCalculated={isCalculated}
-          onCalculate={handleCalculate}
-          onNext={() => setStep(4)}
-          onBack={() => setStep(2)}
-        />
-      )}
-      {step === 4 && (
-        <CprbStep4Report
-          premissas={premissas}
-          result={result}
-          onBack={() => setStep(3)}
-          onSave={handleSave}
-          isSaving={save.isPending}
-        />
-      )}
+        <TabsContent value="cprb">
+          <StepIndicator currentStep={step} totalSteps={4} labels={STEP_LABELS} />
+
+          {step === 1 && (
+            <CprbStep1Premissas
+              premissas={premissas}
+              onChange={(p) => { setPremissas(p); setIsCalculated(false); }}
+              onNext={() => setStep(2)}
+            />
+          )}
+          {step === 2 && (
+            <CprbStep2LegalParams
+              onNext={() => setStep(3)}
+              onBack={() => setStep(1)}
+            />
+          )}
+          {step === 3 && (
+            <CprbStep3Simulation
+              result={result}
+              premissas={premissas}
+              isCalculated={isCalculated}
+              onCalculate={handleCalculate}
+              onNext={() => setStep(4)}
+              onBack={() => setStep(2)}
+            />
+          )}
+          {step === 4 && (
+            <CprbStep4Report
+              premissas={premissas}
+              result={result}
+              onBack={() => setStep(3)}
+              onSave={handleSave}
+              isSaving={save.isPending}
+            />
+          )}
+        </TabsContent>
+
+        <TabsContent value="das">
+          <DasSimulation />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
