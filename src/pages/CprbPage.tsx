@@ -139,6 +139,7 @@ const CprbPage = () => {
       {step === 3 && (
         <CprbStep3Simulation
           result={result}
+          premissas={premissas}
           isCalculated={isCalculated}
           onCalculate={handleCalculate}
           onNext={() => setStep(4)}
