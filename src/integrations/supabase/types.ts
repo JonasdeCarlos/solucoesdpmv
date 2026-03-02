@@ -425,6 +425,42 @@ export type Database = {
         }
         Relationships: []
       }
+      ponto_ocr_audit: {
+        Row: {
+          alteracoes_manuais: Json | null
+          arquivo_nome: string
+          arquivo_path: string | null
+          created_at: string
+          empregado_nome: string | null
+          id: string
+          mes_ano: string
+          resultado_ocr: Json | null
+          status: string
+        }
+        Insert: {
+          alteracoes_manuais?: Json | null
+          arquivo_nome: string
+          arquivo_path?: string | null
+          created_at?: string
+          empregado_nome?: string | null
+          id?: string
+          mes_ano: string
+          resultado_ocr?: Json | null
+          status?: string
+        }
+        Update: {
+          alteracoes_manuais?: Json | null
+          arquivo_nome?: string
+          arquivo_path?: string | null
+          created_at?: string
+          empregado_nome?: string | null
+          id?: string
+          mes_ano?: string
+          resultado_ocr?: Json | null
+          status?: string
+        }
+        Relationships: []
+      }
       verbas: {
         Row: {
           calcula_dsr: boolean

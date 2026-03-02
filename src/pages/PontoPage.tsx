@@ -5,6 +5,7 @@ import PontoHeader from '@/components/ponto/PontoHeader';
 import PontoGrid from '@/components/ponto/PontoGrid';
 import PontoSummary from '@/components/ponto/PontoSummary';
 import PontoPrintView from '@/components/ponto/PontoPrintView';
+import PontoOcrImport from '@/components/ponto/PontoOcrImport';
 import {
   type PontoIdentificacao,
   type PontoConfig,
@@ -106,6 +107,10 @@ const PontoPage: React.FC = () => {
     })));
   }, [config.colunasMarcacoes]);
 
+  const handleImportDias = useCallback((importedDias: typeof dias) => {
+    setDias(importedDias);
+  }, []);
+
   // Save to localStorage
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ identificacao, config, dias }));
@@ -128,7 +133,12 @@ const PontoPage: React.FC = () => {
       />
 
       <div className="flex justify-between items-center">
-        <div />
+        <PontoOcrImport
+          config={config}
+          dias={dias}
+          mesAno={identificacao.mesAno}
+          onImportDias={handleImportDias}
+        />
         <Button variant="outline" size="sm" onClick={handleLimparMarcacoes} className="gap-1.5">
           <Eraser className="w-4 h-4" />
           Limpar Marcações
