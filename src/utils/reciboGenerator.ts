@@ -59,7 +59,7 @@ export function generateReciboPDF(recibo: ReciboData) {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
   const lines = doc.splitTextToSize(paragrafo, CONTENT_WIDTH);
-  doc.text(lines, MARGIN, y, { maxWidth: CONTENT_WIDTH });
+  doc.text(lines, MARGIN, y, { align: 'justify', maxWidth: CONTENT_WIDTH });
   y += lines.length * 5 + 6;
 
   // Tabela de verbas
@@ -122,16 +122,17 @@ export function generateReciboPDF(recibo: ReciboData) {
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
-  doc.text(`${recibo.cidadeUF}, ${dataExtenso(recibo.dataEmissao)}.`, MARGIN, y);
+  doc.text(`${recibo.cidadeUF}, ${dataExtenso(recibo.dataEmissao)}.`, PAGE_WIDTH / 2, y, { align: 'center' });
   y += 20;
 
-  // Assinatura
-  const sigX = MARGIN + 15;
+  // Assinatura - centralizada
+  const sigWidth = 100;
+  const sigX = (PAGE_WIDTH - sigWidth) / 2;
   doc.setLineWidth(0.3);
-  doc.line(sigX, y, sigX + 100, y);
+  doc.line(sigX, y, sigX + sigWidth, y);
   y += 5;
   doc.setFontSize(10);
-  doc.text(recibo.recebedorNome || '[NOME DO RECEBEDOR]', sigX, y);
+  doc.text(recibo.recebedorNome || '[NOME DO RECEBEDOR]', PAGE_WIDTH / 2, y, { align: 'center' });
 
   doc.save(`recibo-${recibo.competencia.replace('/', '-')}.pdf`);
 }

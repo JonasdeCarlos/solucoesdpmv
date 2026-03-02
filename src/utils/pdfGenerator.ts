@@ -35,7 +35,7 @@ function addParagraph(doc: jsPDF, text: string, y: number, opts?: { bold?: boole
     y = MARGIN;
   }
   
-  doc.text(lines, MARGIN, y, { align: opts?.align ?? 'left', maxWidth: CONTENT_WIDTH });
+  doc.text(lines, opts?.align === 'center' ? PAGE_WIDTH / 2 : MARGIN, y, { align: opts?.align ?? 'justify', maxWidth: CONTENT_WIDTH });
   return y + lines.length * lineH + gap;
 }
 
@@ -206,25 +206,29 @@ export function generateTermoPDF(step1: Step1Data, step2: Step2Data, step3: Step
   // Signature area
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
-  doc.text(`${local}, ${dataAss}`, MARGIN, y);
+  doc.text(`${local}, ${dataAss}`, PAGE_WIDTH / 2, y, { align: 'center' });
   y += 12;
 
-  // Two signature columns
-  const sigCol1 = MARGIN + 10;
-  const sigCol2 = PAGE_WIDTH / 2 + 10;
+  // Two signature columns - centered
+  const sigWidth = 55;
+  const sigGap = 20;
+  const totalSigWidth = sigWidth * 2 + sigGap;
+  const sigStartX = (PAGE_WIDTH - totalSigWidth) / 2;
+  const sigCol1 = sigStartX;
+  const sigCol2 = sigStartX + sigWidth + sigGap;
 
   doc.setLineWidth(0.3);
-  doc.line(sigCol1, y, sigCol1 + 55, y);
-  doc.line(sigCol2, y, sigCol2 + 55, y);
+  doc.line(sigCol1, y, sigCol1 + sigWidth, y);
+  doc.line(sigCol2, y, sigCol2 + sigWidth, y);
   y += 4;
 
   doc.setFontSize(8);
-  doc.text(empregadoNome, sigCol1, y);
-  doc.text(empregadorNome, sigCol2, y);
+  doc.text(empregadoNome, sigCol1 + sigWidth / 2, y, { align: 'center' });
+  doc.text(empregadorNome, sigCol2 + sigWidth / 2, y, { align: 'center' });
   y += 3;
   doc.setFontSize(7);
-  doc.text('EMPREGADO(A)', sigCol1, y);
-  doc.text('EMPREGADOR', sigCol2, y);
+  doc.text('EMPREGADO(A)', sigCol1 + sigWidth / 2, y, { align: 'center' });
+  doc.text('EMPREGADOR', sigCol2 + sigWidth / 2, y, { align: 'center' });
 
   addFooterDisclaimer(doc);
 
@@ -364,21 +368,25 @@ export function generateTermoEMemoriaPDF(step1: Step1Data, step2: Step2Data, ste
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
-  doc.text(`${local}, ${dataAss}`, MARGIN, y);
+  doc.text(`${local}, ${dataAss}`, PAGE_WIDTH / 2, y, { align: 'center' });
   y += 12;
-  const sigCol1 = MARGIN + 10;
-  const sigCol2 = PAGE_WIDTH / 2 + 10;
+  const sigWidth2 = 55;
+  const sigGap2 = 20;
+  const totalSigWidth2 = sigWidth2 * 2 + sigGap2;
+  const sigStartX2 = (PAGE_WIDTH - totalSigWidth2) / 2;
+  const sigCol1b = sigStartX2;
+  const sigCol2b = sigStartX2 + sigWidth2 + sigGap2;
   doc.setLineWidth(0.3);
-  doc.line(sigCol1, y, sigCol1 + 55, y);
-  doc.line(sigCol2, y, sigCol2 + 55, y);
+  doc.line(sigCol1b, y, sigCol1b + sigWidth2, y);
+  doc.line(sigCol2b, y, sigCol2b + sigWidth2, y);
   y += 4;
   doc.setFontSize(8);
-  doc.text(empregadoNome, sigCol1, y);
-  doc.text(empregadorNome, sigCol2, y);
+  doc.text(empregadoNome, sigCol1b + sigWidth2 / 2, y, { align: 'center' });
+  doc.text(empregadorNome, sigCol2b + sigWidth2 / 2, y, { align: 'center' });
   y += 3;
   doc.setFontSize(7);
-  doc.text('EMPREGADO(A)', sigCol1, y);
-  doc.text('EMPREGADOR', sigCol2, y);
+  doc.text('EMPREGADO(A)', sigCol1b + sigWidth2 / 2, y, { align: 'center' });
+  doc.text('EMPREGADOR', sigCol2b + sigWidth2 / 2, y, { align: 'center' });
 
   // --- Parte 2: Memória de Cálculo (nova página) ---
   doc.addPage();
