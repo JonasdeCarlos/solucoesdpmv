@@ -461,6 +461,253 @@ export type Database = {
         }
         Relationships: []
       }
+      sero_deducoes: {
+        Row: {
+          competencia: string | null
+          created_at: string
+          id: string
+          nf_numero: string | null
+          nf_path: string | null
+          obra_id: string
+          tipo: string
+          valor: number
+        }
+        Insert: {
+          competencia?: string | null
+          created_at?: string
+          id?: string
+          nf_numero?: string | null
+          nf_path?: string | null
+          obra_id: string
+          tipo: string
+          valor?: number
+        }
+        Update: {
+          competencia?: string | null
+          created_at?: string
+          id?: string
+          nf_numero?: string | null
+          nf_path?: string | null
+          obra_id?: string
+          tipo?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sero_deducoes_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "sero_obras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sero_obras: {
+        Row: {
+          area_complementar: number
+          area_principal: number
+          categoria: string
+          cno: string
+          contabilidade_regular: boolean
+          created_at: string
+          data_inicio: string
+          data_termino: string | null
+          data_termino_previsto: string | null
+          encargos_projetados: number | null
+          endereco: string | null
+          folha_total_projetada: number | null
+          folha_vinculada_id: string | null
+          id: string
+          municipio: string
+          observacoes_analista: string | null
+          rateio_tipo: string | null
+          rateio_valor: number | null
+          responsavel_doc: string | null
+          responsavel_nome: string | null
+          responsavel_tipo: string
+          status: string
+          tecnica_construtiva: string
+          tipo_obra: string
+          uf: string
+          updated_at: string
+        }
+        Insert: {
+          area_complementar?: number
+          area_principal?: number
+          categoria?: string
+          cno: string
+          contabilidade_regular?: boolean
+          created_at?: string
+          data_inicio: string
+          data_termino?: string | null
+          data_termino_previsto?: string | null
+          encargos_projetados?: number | null
+          endereco?: string | null
+          folha_total_projetada?: number | null
+          folha_vinculada_id?: string | null
+          id?: string
+          municipio?: string
+          observacoes_analista?: string | null
+          rateio_tipo?: string | null
+          rateio_valor?: number | null
+          responsavel_doc?: string | null
+          responsavel_nome?: string | null
+          responsavel_tipo?: string
+          status?: string
+          tecnica_construtiva?: string
+          tipo_obra?: string
+          uf?: string
+          updated_at?: string
+        }
+        Update: {
+          area_complementar?: number
+          area_principal?: number
+          categoria?: string
+          cno?: string
+          contabilidade_regular?: boolean
+          created_at?: string
+          data_inicio?: string
+          data_termino?: string | null
+          data_termino_previsto?: string | null
+          encargos_projetados?: number | null
+          endereco?: string | null
+          folha_total_projetada?: number | null
+          folha_vinculada_id?: string | null
+          id?: string
+          municipio?: string
+          observacoes_analista?: string | null
+          rateio_tipo?: string | null
+          rateio_valor?: number | null
+          responsavel_doc?: string | null
+          responsavel_nome?: string | null
+          responsavel_tipo?: string
+          status?: string
+          tecnica_construtiva?: string
+          tipo_obra?: string
+          uf?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      sero_parametros: {
+        Row: {
+          chave: string
+          created_at: string
+          descricao: string | null
+          id: string
+          updated_at: string
+          valor: number
+          vigencia_fim: string | null
+          vigencia_inicio: string | null
+        }
+        Insert: {
+          chave: string
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          updated_at?: string
+          valor: number
+          vigencia_fim?: string | null
+          vigencia_inicio?: string | null
+        }
+        Update: {
+          chave?: string
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          updated_at?: string
+          valor?: number
+          vigencia_fim?: string | null
+          vigencia_inicio?: string | null
+        }
+        Relationships: []
+      }
+      sero_retencoes: {
+        Row: {
+          aliquota_retencao: number
+          cnpj_fornecedor: string | null
+          competencia: string | null
+          created_at: string
+          fornecedor_nome: string | null
+          id: string
+          nf_path: string | null
+          obra_id: string
+          retencao_valor: number
+          valor_bruto: number
+        }
+        Insert: {
+          aliquota_retencao?: number
+          cnpj_fornecedor?: string | null
+          competencia?: string | null
+          created_at?: string
+          fornecedor_nome?: string | null
+          id?: string
+          nf_path?: string | null
+          obra_id: string
+          retencao_valor?: number
+          valor_bruto?: number
+        }
+        Update: {
+          aliquota_retencao?: number
+          cnpj_fornecedor?: string | null
+          competencia?: string | null
+          created_at?: string
+          fornecedor_nome?: string | null
+          id?: string
+          nf_path?: string | null
+          obra_id?: string
+          retencao_valor?: number
+          valor_bruto?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sero_retencoes_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "sero_obras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sero_vau_val: {
+        Row: {
+          competencia_fim: string
+          competencia_inicio: string
+          created_at: string
+          fonte: string | null
+          id: string
+          percentual_concreto: number
+          tipo_obra: string
+          uf: string
+          updated_at: string
+          valor_m2: number
+        }
+        Insert: {
+          competencia_fim: string
+          competencia_inicio: string
+          created_at?: string
+          fonte?: string | null
+          id?: string
+          percentual_concreto?: number
+          tipo_obra?: string
+          uf?: string
+          updated_at?: string
+          valor_m2: number
+        }
+        Update: {
+          competencia_fim?: string
+          competencia_inicio?: string
+          created_at?: string
+          fonte?: string | null
+          id?: string
+          percentual_concreto?: number
+          tipo_obra?: string
+          uf?: string
+          updated_at?: string
+          valor_m2?: number
+        }
+        Relationships: []
+      }
       verbas: {
         Row: {
           calcula_dsr: boolean
