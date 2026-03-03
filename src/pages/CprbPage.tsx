@@ -6,6 +6,7 @@ import CprbStep2LegalParams from '@/components/cprb/CprbStep2LegalParams';
 import CprbStep3Simulation from '@/components/cprb/CprbStep3Simulation';
 import CprbStep4Report from '@/components/cprb/CprbStep4Report';
 import DasSimulation from '@/components/cprb/DasSimulation';
+import SeroWizard from '@/components/sero/SeroWizard';
 import { useCprbLegalParameters } from '@/hooks/useCprbLegalParameters';
 import { useCprbSimulations } from '@/hooks/useCprbSimulations';
 import { useDasAnexosFaixas } from '@/hooks/useDasParameters';
@@ -166,6 +167,7 @@ const CprbPage = () => {
         <TabsList className="mb-6">
           <TabsTrigger value="cprb">Comparativo CPRB x Folha</TabsTrigger>
           <TabsTrigger value="das">Simulação DAS (Simples)</TabsTrigger>
+          <TabsTrigger value="sero">INSS da Obra (SERO/RFB)</TabsTrigger>
         </TabsList>
 
         <TabsContent value="cprb">
@@ -209,6 +211,10 @@ const CprbPage = () => {
 
         <TabsContent value="das">
           <DasSimulation />
+        </TabsContent>
+
+        <TabsContent value="sero">
+          <SeroWizard />
         </TabsContent>
       </Tabs>
     </div>
