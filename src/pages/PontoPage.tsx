@@ -6,6 +6,7 @@ import PontoGrid from '@/components/ponto/PontoGrid';
 import PontoSummary from '@/components/ponto/PontoSummary';
 import PontoPrintView from '@/components/ponto/PontoPrintView';
 import PontoOcrImport from '@/components/ponto/PontoOcrImport';
+import PontoBancoHoras from '@/components/ponto/PontoBancoHoras';
 import {
   type PontoIdentificacao,
   type PontoConfig,
@@ -159,6 +160,13 @@ const PontoPage: React.FC = () => {
         config={config}
         diasCalculados={diasCalculados}
         resumo={resumo}
+      />
+
+      <PontoBancoHoras
+        empregadoNome={identificacao.empregadoNome}
+        empresaNome={identificacao.empresaNome}
+        mesAno={identificacao.mesAno}
+        saldoFinal={resumo.saldoFinal}
       />
 
       <p className="text-xs text-muted-foreground text-center pb-4">
