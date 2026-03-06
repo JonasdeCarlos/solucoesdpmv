@@ -172,6 +172,16 @@ const PontoOcrImport: React.FC<Props> = ({ config, dias, mesAno, onImportDias })
         }
       });
 
+      // If OCR detected only a single shift (2 markings), fill remaining columns with 00:00
+      const filledCount = marcacoes.filter((m: string) => m !== '' && m !== '??:??').length;
+      if (filledCount > 0 && filledCount <= 2) {
+        for (let i = 0; i < marcacoes.length; i++) {
+          if (marcacoes[i] === '') {
+            marcacoes[i] = '00:00';
+          }
+        }
+      }
+
       return { ...d, marcacoes, observacao: reg.observacao || d.observacao };
     });
 
