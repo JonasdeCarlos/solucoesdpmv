@@ -107,16 +107,21 @@ export function calcularTotaisRecibo(linhas: ReciboLinha[], calcularFGTS: boolea
   const descontos = linhas.filter((l) => l.pd === 'D').reduce((s, l) => s + l.valor, 0);
 
   let fgtsValor = 0;
+  let baseFGTS = 0;
   if (calcularFGTS) {
-    const baseFGTS = linhas
+    const proventosFGTS = linhas
       .filter((l) => l.incideFGTS && l.pd === 'P')
       .reduce((s, l) => s + l.valor, 0);
-    fgtsValor = round2(baseFGTS * (aliquotaFGTS / 100));
+    const descontosFGTS = linhas
+      .filter((l) => l.incideFGTS && l.pd === 'D')
+      .reduce((s, l) => s + l.valor, 0);
+    baseFGTS = round2(proventosFGTS - descontosFGTS);
+    fgtsValor = round2(Math.max(0, baseFGTS) * (aliquotaFGTS / 100));
   }
 
   const totalLiquido = round2(proventos + fgtsValor - descontos);
 
-  return { proventos: round2(proventos), descontos: round2(descontos), fgtsValor, totalLiquido };
+  return { proventos: round2(proventos), descontos: round2(descontos), fgtsValor, baseFGTS, totalLiquido };
 }
 
 function round2(n: number): number {
