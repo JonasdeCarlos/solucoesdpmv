@@ -33,7 +33,7 @@ function dataExtenso(dateStr: string): string {
 export function generateReciboPDF(recibo: ReciboData) {
   const doc = new jsPDF('p', 'mm', 'a4');
 
-  const { proventos, descontos, fgtsValor, totalLiquido } = calcularTotaisRecibo(
+  const { proventos, descontos, fgtsValor, baseFGTS, totalLiquido } = calcularTotaisRecibo(
     recibo.linhas,
     recibo.calcularFGTS,
     recibo.aliquotaFGTS
@@ -138,7 +138,7 @@ export function generateReciboPDF(recibo: ReciboData) {
 }
 
 export function generateReciboTexto(recibo: ReciboData): string {
-  const { fgtsValor, totalLiquido } = calcularTotaisRecibo(
+  const { fgtsValor, baseFGTS, totalLiquido } = calcularTotaisRecibo(
     recibo.linhas,
     recibo.calcularFGTS,
     recibo.aliquotaFGTS
