@@ -103,7 +103,21 @@ const PontoPrintView: React.FC<Props> = ({ identificacao, config, diasCalculados
               <span className="label">CPF: </span>{identificacao.empregadoCpf}<br/>
               {identificacao.empregadoFuncao && (<><span className="label">Função: </span>{identificacao.empregadoFuncao}<br/></>)}
               <span className="label">Período: </span>{mesAnoFormatado}<br/>
-              <span className="label">Jornada: </span>{config.jornadaDiaria}
+              <span className="label">Jornada Semanal:</span><br/>
+              <table style={{fontSize:'7.5pt', marginTop:'2px', borderCollapse:'collapse', width:'auto'}}>
+                <tbody>
+                  <tr>
+                    {Object.entries(config.jornadaSemanal).map(([dia]) => (
+                      <td key={dia} style={{border:'1px solid #ccc', padding:'1px 4px', fontWeight:'bold', background:'#eee', textAlign:'center'}}>{dia}</td>
+                    ))}
+                  </tr>
+                  <tr>
+                    {Object.entries(config.jornadaSemanal).map(([dia, hr]) => (
+                      <td key={dia} style={{border:'1px solid #ccc', padding:'1px 4px', textAlign:'center', fontFamily:'monospace'}}>{hr || '00:00'}</td>
+                    ))}
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
