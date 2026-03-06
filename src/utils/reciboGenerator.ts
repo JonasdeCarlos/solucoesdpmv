@@ -33,7 +33,7 @@ function dataExtenso(dateStr: string): string {
 export function generateReciboPDF(recibo: ReciboData) {
   const doc = new jsPDF('p', 'mm', 'a4');
 
-  const { proventos, descontos, fgtsValor, totalLiquido } = calcularTotaisRecibo(
+  const { proventos, descontos, fgtsValor, baseFGTS, totalLiquido } = calcularTotaisRecibo(
     recibo.linhas,
     recibo.calcularFGTS,
     recibo.aliquotaFGTS
@@ -72,7 +72,7 @@ export function generateReciboPDF(recibo: ReciboData) {
 
   // Linha FGTS se ativo
   if (recibo.calcularFGTS && fgtsValor > 0) {
-    tableRows.push(['FGTS', 'P', `${recibo.aliquotaFGTS}%`, formatCurrency(fgtsValor)]);
+    tableRows.push(['FGTS', 'P', `${recibo.aliquotaFGTS}% s/ ${formatCurrency(baseFGTS)}`, formatCurrency(fgtsValor)]);
   }
 
   // Total
@@ -138,7 +138,7 @@ export function generateReciboPDF(recibo: ReciboData) {
 }
 
 export function generateReciboTexto(recibo: ReciboData): string {
-  const { fgtsValor, totalLiquido } = calcularTotaisRecibo(
+  const { fgtsValor, baseFGTS, totalLiquido } = calcularTotaisRecibo(
     recibo.linhas,
     recibo.calcularFGTS,
     recibo.aliquotaFGTS
@@ -159,7 +159,7 @@ export function generateReciboTexto(recibo: ReciboData): string {
   }
 
   if (recibo.calcularFGTS && fgtsValor > 0) {
-    text += `FGTS | P | ${recibo.aliquotaFGTS}% | ${formatCurrency(fgtsValor)}\n`;
+    text += `FGTS | P | ${recibo.aliquotaFGTS}% s/ ${formatCurrency(baseFGTS)} | ${formatCurrency(fgtsValor)}\n`;
   }
 
   text += `${'—'.repeat(50)}\n`;

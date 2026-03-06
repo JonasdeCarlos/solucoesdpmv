@@ -567,11 +567,21 @@ const ReciboPage = () => {
                   <TableCell className="font-medium">Total Proventos</TableCell>
                   <TableCell className="text-right font-medium">{formatCurrency(totais.proventos)}</TableCell>
                 </TableRow>
-                {recibo.calcularFGTS && totais.fgtsValor > 0 && (
-                  <TableRow>
-                    <TableCell className="font-medium">FGTS ({recibo.aliquotaFGTS}%)</TableCell>
-                    <TableCell className="text-right font-medium">{formatCurrency(totais.fgtsValor)}</TableCell>
-                  </TableRow>
+                {recibo.calcularFGTS && (
+                  <>
+                    <TableRow>
+                      <TableCell className="font-medium text-muted-foreground text-xs">
+                        Base FGTS (proventos c/ incidência − descontos c/ incidência)
+                      </TableCell>
+                      <TableCell className="text-right font-medium text-xs">{formatCurrency(totais.baseFGTS)}</TableCell>
+                    </TableRow>
+                    {totais.fgtsValor > 0 && (
+                      <TableRow>
+                        <TableCell className="font-medium">FGTS ({recibo.aliquotaFGTS}%)</TableCell>
+                        <TableCell className="text-right font-medium">{formatCurrency(totais.fgtsValor)}</TableCell>
+                      </TableRow>
+                    )}
+                  </>
                 )}
                 <TableRow>
                   <TableCell className="font-medium">Total Descontos</TableCell>
