@@ -71,7 +71,7 @@ const RescisaoStep3Generate: React.FC<Props> = ({ capaData, files, onBack, onFin
       }
 
       const finalBytes = await merged.save();
-      const blob = new Blob([finalBytes.buffer], { type: 'application/pdf' });
+      const blob = new Blob([new Uint8Array(finalBytes)], { type: 'application/pdf' });
       setFinalBlob(blob);
 
       // Preview
