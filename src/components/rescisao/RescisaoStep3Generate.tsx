@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Download, Eye, Loader2, CheckCircle } from 'lucide-react';
+import { Download, Eye, Loader2, CheckCircle, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
 import { gerarCapaRescisao, imageToPdfArrayBuffer } from '@/utils/rescisaoPdfGenerator';
 import type { UploadedFile } from '@/types/rescisaoDossier';
@@ -124,8 +124,23 @@ const RescisaoStep3Generate: React.FC<Props> = ({ capaData, files, onBack, onFin
 
       {/* Preview */}
       {previewUrl && (
-        <div className="border rounded-md overflow-hidden" style={{ height: 500 }}>
-          <iframe src={previewUrl} className="w-full h-full" title="Preview PDF" />
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium">Pré-visualização:</p>
+            <Button variant="link" size="sm" className="h-auto p-0" onClick={() => window.open(previewUrl, '_blank')}>
+              <ExternalLink className="h-3 w-3 mr-1" /> Abrir em nova aba
+            </Button>
+          </div>
+          <div className="border rounded-md overflow-hidden" style={{ height: 500 }}>
+            <object data={previewUrl} type="application/pdf" className="w-full h-full">
+              <div className="flex flex-col items-center justify-center h-full gap-3 bg-muted/30">
+                <p className="text-sm text-muted-foreground">Pré-visualização não disponível no navegador.</p>
+                <Button variant="outline" size="sm" onClick={() => window.open(previewUrl, '_blank')}>
+                  <ExternalLink className="h-4 w-4 mr-1" /> Abrir PDF em nova aba
+                </Button>
+              </div>
+            </object>
+          </div>
         </div>
       )}
 
