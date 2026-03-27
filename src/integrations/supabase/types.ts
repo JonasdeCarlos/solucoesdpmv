@@ -461,6 +461,125 @@ export type Database = {
         }
         Relationships: []
       }
+      rescisao_cover_templates: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          template_pdf_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          template_pdf_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          template_pdf_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      rescisao_dossier_files: {
+        Row: {
+          doc_category: string
+          dossier_id: string
+          file_name: string
+          file_type: string | null
+          file_url: string
+          id: string
+          pages: number | null
+          sort_order: number
+          uploaded_at: string
+        }
+        Insert: {
+          doc_category?: string
+          dossier_id: string
+          file_name: string
+          file_type?: string | null
+          file_url: string
+          id?: string
+          pages?: number | null
+          sort_order?: number
+          uploaded_at?: string
+        }
+        Update: {
+          doc_category?: string
+          dossier_id?: string
+          file_name?: string
+          file_type?: string | null
+          file_url?: string
+          id?: string
+          pages?: number | null
+          sort_order?: number
+          uploaded_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rescisao_dossier_files_dossier_id_fkey"
+            columns: ["dossier_id"]
+            isOneToOne: false
+            referencedRelation: "rescisao_dossiers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rescisao_dossiers: {
+        Row: {
+          checked_by: string | null
+          company_cnpj: string | null
+          company_name: string | null
+          competence_month: string | null
+          created_at: string
+          employee_name: string
+          final_pdf_url: string | null
+          id: string
+          payment_date_final: string | null
+          payment_date_suggested: string | null
+          status: string
+          termination_date: string
+          updated_at: string
+        }
+        Insert: {
+          checked_by?: string | null
+          company_cnpj?: string | null
+          company_name?: string | null
+          competence_month?: string | null
+          created_at?: string
+          employee_name: string
+          final_pdf_url?: string | null
+          id?: string
+          payment_date_final?: string | null
+          payment_date_suggested?: string | null
+          status?: string
+          termination_date: string
+          updated_at?: string
+        }
+        Update: {
+          checked_by?: string | null
+          company_cnpj?: string | null
+          company_name?: string | null
+          competence_month?: string | null
+          created_at?: string
+          employee_name?: string
+          final_pdf_url?: string | null
+          id?: string
+          payment_date_final?: string | null
+          payment_date_suggested?: string | null
+          status?: string
+          termination_date?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       sero_deducoes: {
         Row: {
           competencia: string | null
