@@ -1,6 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import logoMonteVerde from '@/assets/logo-monte-verde.png';
-import { Calculator, Users, FileText, Receipt, Clock, DollarSign, Percent, Building2 } from 'lucide-react';
+import { Calculator, Users, FileText, Receipt, Clock, DollarSign, Percent, Building2, FileStack } from 'lucide-react';
 
 const NAV_ITEMS = [
   { to: '/', label: 'Calculadora', icon: Calculator, end: true },
@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { to: '/custo-mensal', label: 'Custo Mensal', icon: DollarSign },
   { to: '/encargos', label: 'Encargos (INSS+IRRF)', icon: Percent },
   { to: '/cprb', label: 'CPRB x Folha', icon: Building2 },
+  { to: '/rescisao-pdf', label: 'Montador PDF', icon: FileStack },
 ];
 
 const AppLayout = () => {
