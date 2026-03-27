@@ -131,15 +131,8 @@ const RescisaoStep3Generate: React.FC<Props> = ({ capaData, files, onBack, onFin
               <ExternalLink className="h-3 w-3 mr-1" /> Abrir em nova aba
             </Button>
           </div>
-          <div className="border rounded-md overflow-hidden" style={{ height: 500 }}>
-            <object data={previewUrl} type="application/pdf" className="w-full h-full">
-              <div className="flex flex-col items-center justify-center h-full gap-3 bg-muted/30">
-                <p className="text-sm text-muted-foreground">Pré-visualização não disponível no navegador.</p>
-                <Button variant="outline" size="sm" onClick={() => window.open(previewUrl, '_blank')}>
-                  <ExternalLink className="h-4 w-4 mr-1" /> Abrir PDF em nova aba
-                </Button>
-              </div>
-            </object>
+          <div className="border rounded-md overflow-hidden bg-muted/20" style={{ height: 500 }}>
+            <embed src={`${previewUrl}#toolbar=1&navpanes=0`} type="application/pdf" className="w-full h-full" />
           </div>
         </div>
       )}
