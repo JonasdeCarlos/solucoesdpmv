@@ -10,7 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import RescisaoStep1Capa from '@/components/rescisao/RescisaoStep1Capa';
 import RescisaoStep2Upload from '@/components/rescisao/RescisaoStep2Upload';
 import RescisaoStep3Generate from '@/components/rescisao/RescisaoStep3Generate';
-import { StepIndicator } from '@/components/StepIndicator';
+import StepIndicator from '@/components/StepIndicator';
 import type { UploadedFile } from '@/types/rescisaoDossier';
 
 type WizardStep = 0 | 1 | 2;
