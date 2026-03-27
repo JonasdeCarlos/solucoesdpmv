@@ -87,7 +87,7 @@ const RescisaoPdfPage: React.FC = () => {
           <h2 className="text-xl font-bold">Nova Montagem de Rescisão</h2>
           <Button variant="outline" size="sm" onClick={() => setWizardOpen(false)}>Cancelar</Button>
         </div>
-        <StepIndicator steps={STEPS} currentStep={step} />
+        <StepIndicator currentStep={step + 1} totalSteps={3} labels={STEPS} />
         <Card>
           <CardContent className="pt-6">
             {step === 0 && (
