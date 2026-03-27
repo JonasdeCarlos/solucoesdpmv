@@ -159,7 +159,7 @@ const RescisaoStep1Capa: React.FC<Props> = ({ data, onChange, onNext }) => {
           <Input
             type="date"
             value={data.paymentDateFinal}
-            onChange={(e) => update('paymentDateFinal', e.target.value)}
+            onChange={(e) => { setManualPayment(true); update('paymentDateFinal', e.target.value); }}
           />
           {data.paymentDateSuggested && (
             <p className="text-xs text-muted-foreground">
