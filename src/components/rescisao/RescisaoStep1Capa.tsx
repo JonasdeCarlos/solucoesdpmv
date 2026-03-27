@@ -37,6 +37,9 @@ const RescisaoStep1Capa: React.FC<Props> = ({ data, onChange, onNext }) => {
     onChange({ ...data, [key]: value });
   };
 
+  // Track se o usuário editou manualmente a data de pagamento
+  const [manualPayment, setManualPayment] = useState(false);
+
   useEffect(() => {
     if (data.terminationDate) {
       const dt = new Date(data.terminationDate + 'T12:00:00');
@@ -47,7 +50,7 @@ const RescisaoStep1Capa: React.FC<Props> = ({ data, onChange, onNext }) => {
         onChange({
           ...data,
           paymentDateSuggested: sugStr,
-          paymentDateFinal: data.paymentDateFinal || sugStr,
+          paymentDateFinal: manualPayment ? data.paymentDateFinal : sugStr,
           competenceMonth: comp,
         });
       }
@@ -156,7 +159,7 @@ const RescisaoStep1Capa: React.FC<Props> = ({ data, onChange, onNext }) => {
           <Input
             type="date"
             value={data.paymentDateFinal}
-            onChange={(e) => update('paymentDateFinal', e.target.value)}
+            onChange={(e) => { setManualPayment(true); update('paymentDateFinal', e.target.value); }}
           />
           {data.paymentDateSuggested && (
             <p className="text-xs text-muted-foreground">
