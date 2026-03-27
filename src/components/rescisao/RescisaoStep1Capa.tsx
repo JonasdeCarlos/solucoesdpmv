@@ -1,11 +1,15 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Info } from 'lucide-react';
-import { format, parse } from 'date-fns';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Info, Plus, Users } from 'lucide-react';
+import { format } from 'date-fns';
 import { calcularDataPagamentoSugerida, formatCompetencia } from '@/utils/rescisaoDateUtils';
+import { useClientes } from '@/hooks/useClientes';
+import { type Client, createEmptyClient } from '@/types/client';
 
 interface CapaData {
   employeeName: string;
@@ -25,6 +29,10 @@ interface Props {
 }
 
 const RescisaoStep1Capa: React.FC<Props> = ({ data, onChange, onNext }) => {
+  const { clientes, saveCliente } = useClientes();
+  const [showNewClient, setShowNewClient] = useState(false);
+  const [newClient, setNewClient] = useState<Client>(createEmptyClient());
+
   const update = (key: keyof CapaData, value: string) => {
     onChange({ ...data, [key]: value });
   };
@@ -47,10 +55,83 @@ const RescisaoStep1Capa: React.FC<Props> = ({ data, onChange, onNext }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data.terminationDate]);
 
+  const handleSelectClient = (clientId: string) => {
+    if (clientId === '__new__') {
+      setNewClient(createEmptyClient());
+      setShowNewClient(true);
+      return;
+    }
+    const c = clientes.find(cl => cl.id === clientId);
+    if (c) {
+      onChange({
+        ...data,
+        companyName: c.nome,
+        companyCnpj: c.tipo === 'PJ' ? c.cnpj : c.cpf,
+      });
+    }
+  };
+
+  const handleSaveNewClient = async () => {
+    if (!newClient.nome.trim()) return;
+    const { error } = await saveCliente(newClient);
+    if (!error) {
+      onChange({
+        ...data,
+        companyName: newClient.nome,
+        companyCnpj: newClient.tipo === 'PJ' ? newClient.cnpj : newClient.cpf,
+      });
+      setShowNewClient(false);
+    }
+  };
+
+  const pjClientes = clientes.filter(c => c.tipo === 'PJ');
+  const pfClientes = clientes.filter(c => c.tipo === 'PF');
+
   const isValid = data.employeeName.trim() && data.terminationDate && data.paymentDateFinal;
 
   return (
     <div className="space-y-6">
+      {/* Cliente/Empresa selector */}
+      <div className="space-y-2">
+        <Label className="flex items-center gap-1.5">
+          <Users className="h-4 w-4" /> Selecionar Cliente/Empresa
+        </Label>
+        <div className="flex gap-2">
+          <Select onValueChange={handleSelectClient}>
+            <SelectTrigger className="flex-1">
+              <SelectValue placeholder="Escolha um cliente cadastrado ou crie novo" />
+            </SelectTrigger>
+            <SelectContent>
+              {pjClientes.length > 0 && (
+                <>
+                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Pessoa Jurídica</div>
+                  {pjClientes.map(c => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.nome} {c.cnpj ? `— ${c.cnpj}` : ''}
+                    </SelectItem>
+                  ))}
+                </>
+              )}
+              {pfClientes.length > 0 && (
+                <>
+                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Pessoa Física</div>
+                  {pfClientes.map(c => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.nome} {c.cpf ? `— ${c.cpf}` : ''}
+                    </SelectItem>
+                  ))}
+                </>
+              )}
+              <SelectItem value="__new__">
+                <span className="flex items-center gap-1 text-primary font-medium">
+                  <Plus className="h-3 w-3" /> Cadastrar novo cliente
+                </span>
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2 md:col-span-2">
           <Label>Nome do Empregado *</Label>
@@ -102,7 +183,7 @@ const RescisaoStep1Capa: React.FC<Props> = ({ data, onChange, onNext }) => {
           />
         </div>
         <div className="space-y-2">
-          <Label>CNPJ</Label>
+          <Label>CNPJ / CPF</Label>
           <Input
             value={data.companyCnpj}
             onChange={(e) => update('companyCnpj', e.target.value)}
@@ -128,6 +209,50 @@ const RescisaoStep1Capa: React.FC<Props> = ({ data, onChange, onNext }) => {
           Próximo: Upload de Documentos
         </Button>
       </div>
+
+      {/* Dialog novo cliente */}
+      <Dialog open={showNewClient} onOpenChange={setShowNewClient}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cadastrar Novo Cliente</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Tipo</Label>
+              <Select value={newClient.tipo} onValueChange={(v) => setNewClient({ ...newClient, tipo: v as 'PF' | 'PJ' })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="PJ">Pessoa Jurídica</SelectItem>
+                  <SelectItem value="PF">Pessoa Física</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Nome / Razão Social *</Label>
+              <Input value={newClient.nome} onChange={(e) => setNewClient({ ...newClient, nome: e.target.value })} />
+            </div>
+            {newClient.tipo === 'PJ' ? (
+              <div className="space-y-2">
+                <Label>CNPJ</Label>
+                <Input value={newClient.cnpj} onChange={(e) => setNewClient({ ...newClient, cnpj: e.target.value })} placeholder="00.000.000/0000-00" />
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label>CPF</Label>
+                <Input value={newClient.cpf} onChange={(e) => setNewClient({ ...newClient, cpf: e.target.value })} placeholder="000.000.000-00" />
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label>Endereço</Label>
+              <Input value={newClient.endereco} onChange={(e) => setNewClient({ ...newClient, endereco: e.target.value })} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowNewClient(false)}>Cancelar</Button>
+            <Button onClick={handleSaveNewClient} disabled={!newClient.nome.trim()}>Salvar e Usar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
