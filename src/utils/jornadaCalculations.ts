@@ -101,7 +101,7 @@ function calcularDia(dia: JornadaDiaConfig, params: JornadaParams): JornadaDiaRe
     totalInterval += mins[i + 1] - mins[i];
   }
 
-  result.totalTrabalhadoMin = totalWork - totalInterval; // net work
+  result.totalTrabalhadoMin = totalWork; // work periods already exclude intervals
   result.totalIntervaloMin = totalInterval;
   result.noturnoRealMin = noturnoReal;
   result.noturnoConvertidoMin = Math.round(noturnoReal * 1.142857);
