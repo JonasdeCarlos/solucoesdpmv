@@ -60,12 +60,27 @@ const JornadaPage: React.FC = () => {
   }, []);
 
   const handleMarcacao = useCallback((diaIdx: number, slotIdx: number, value: string) => {
-    setDias(prev => prev.map((d, i) => {
-      if (i !== diaIdx) return d;
-      const newM = [...d.marcacoes];
-      newM[slotIdx] = value;
-      return { ...d, marcacoes: newM };
-    }));
+    setDias(prev => {
+      const updated = prev.map((d, i) => {
+        if (i !== diaIdx) return d;
+        const newM = [...d.marcacoes];
+        newM[slotIdx] = value;
+        return { ...d, marcacoes: newM };
+      });
+
+      // Se editou o primeiro dia (índice 0), replica para os demais dias ativos que ainda estão vazios naquele slot
+      if (diaIdx === 0 && value) {
+        const firstDay = updated[0];
+        return updated.map((d, i) => {
+          if (i === 0 || !d.ativo) return d;
+          const isEmpty = d.marcacoes.every(m => !m);
+          if (!isEmpty) return d;
+          return { ...d, marcacoes: [...firstDay.marcacoes] };
+        });
+      }
+
+      return updated;
+    });
   }, []);
 
   const analise = useMemo(() => analisarJornada(dias, params), [dias, params]);
