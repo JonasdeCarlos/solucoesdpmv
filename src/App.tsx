@@ -13,6 +13,7 @@ import PontoPage from "./pages/PontoPage";
 import CustoMensalPage from "./pages/CustoMensalPage";
 import EncargosPage from "./pages/EncargosPage";
 import CprbPage from "./pages/CprbPage";
+import JornadaPage from "./pages/JornadaPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,6 +35,7 @@ const App = () => (
             <Route path="/encargos" element={<EncargosPage />} />
             <Route path="/cprb" element={<CprbPage />} />
             <Route path="/rescisao-pdf" element={<RescisaoPdfPage />} />
+            <Route path="/jornada" element={<JornadaPage />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
