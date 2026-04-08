@@ -14,35 +14,34 @@ export function minutesToHHMM(totalMin: number): string {
   return `${sign}${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
-function calcNoturnoMinutos(entrada: string, saida: string, noturnoInicio: string, noturnoFim: string): number {
-  if (!entrada || !saida) return 0;
-  const eMin = hhmmToMin(entrada);
-  let sMin = hhmmToMin(saida);
-  if (sMin <= eMin) sMin += 1440;
-
+function calcNoturnoMinutosCrossMidnight(entradaMin: number, saidaMin: number, noturnoInicio: string, noturnoFim: string): number {
+  if (saidaMin <= entradaMin) return 0;
   const nIni = hhmmToMin(noturnoInicio);
   const nFim = hhmmToMin(noturnoFim);
 
   let total = 0;
-  // Window 1: noturnoInicio to midnight (e.g. 22:00-24:00)
-  if (nIni > nFim) {
-    // crosses midnight
-    const w1Start = Math.max(eMin, nIni);
-    const w1End = Math.min(sMin, 1440);
-    if (w1End > w1Start) total += w1End - w1Start;
+  // The shift may span multiple calendar days (entradaMin/saidaMin can exceed 1440).
+  // We check every possible noturno window that overlaps.
+  // Noturno windows repeat every 1440 min. If nIni > nFim (crosses midnight, e.g. 22-05),
+  // each "day d" has a window [d*1440+nIni, (d+1)*1440+nFim].
+  // If nIni < nFim (same day, e.g. 00-05), window is [d*1440+nIni, d*1440+nFim].
 
-    const w2Start = Math.max(eMin, 1440);
-    const w2End = Math.min(sMin, 1440 + nFim);
-    if (w2End > w2Start) total += w2End - w2Start;
-
-    // Also check if entry is before midnight and exit after
-    const w3Start = Math.max(eMin, 0);
-    const w3End = Math.min(sMin, nFim);
-    if (w3End > w3Start && eMin < nFim) total += w3End - w3Start;
-  } else {
-    const wStart = Math.max(eMin, nIni);
-    const wEnd = Math.min(sMin, nFim);
-    if (wEnd > wStart) total += wEnd - wStart;
+  const maxDay = Math.ceil(saidaMin / 1440) + 1;
+  for (let d = -1; d <= maxDay; d++) {
+    let wStart: number, wEnd: number;
+    if (nIni >= nFim) {
+      // crosses midnight: e.g. 22:00 to 05:00
+      wStart = d * 1440 + nIni;
+      wEnd = (d + 1) * 1440 + nFim;
+    } else {
+      wStart = d * 1440 + nIni;
+      wEnd = d * 1440 + nFim;
+    }
+    const overlapStart = Math.max(entradaMin, wStart);
+    const overlapEnd = Math.min(saidaMin, wEnd);
+    if (overlapEnd > overlapStart) {
+      total += overlapEnd - overlapStart;
+    }
   }
 
   return total;
@@ -71,13 +70,15 @@ function calcularDia(dia: JornadaDiaConfig, params: JornadaParams): JornadaDiaRe
     return result;
   }
 
-  // Check order
-  const mins = marks.map(hhmmToMin);
-  for (let i = 1; i < mins.length; i++) {
-    if (mins[i] <= mins[i - 1]) {
-      result.alertas.push(`Horários com ordem inválida no dia ${dia.dia} (saída anterior à entrada).`);
-      return result;
+  // Normalize times: if a mark is <= previous, it crossed midnight, add 1440
+  const rawMins = marks.map(hhmmToMin);
+  const mins = [rawMins[0]];
+  for (let i = 1; i < rawMins.length; i++) {
+    let val = rawMins[i];
+    while (val <= mins[i - 1]) {
+      val += 1440;
     }
+    mins.push(val);
   }
 
   // Calculate work and intervals
@@ -85,18 +86,18 @@ function calcularDia(dia: JornadaDiaConfig, params: JornadaParams): JornadaDiaRe
   let totalInterval = 0;
   let noturnoReal = 0;
 
-  for (let i = 0; i < marks.length; i += 2) {
+  for (let i = 0; i < mins.length; i += 2) {
     const entradaMin = mins[i];
     const saidaMin = mins[i + 1];
     totalWork += saidaMin - entradaMin;
 
     if (params.noturnoHabilitado) {
-      noturnoReal += calcNoturnoMinutos(marks[i], marks[i + 1], params.noturnoInicio, params.noturnoFim);
+      noturnoReal += calcNoturnoMinutosCrossMidnight(entradaMin, saidaMin, params.noturnoInicio, params.noturnoFim);
     }
   }
 
   // Intervals between pairs
-  for (let i = 1; i < marks.length - 1; i += 2) {
+  for (let i = 1; i < mins.length - 1; i += 2) {
     totalInterval += mins[i + 1] - mins[i];
   }
 
