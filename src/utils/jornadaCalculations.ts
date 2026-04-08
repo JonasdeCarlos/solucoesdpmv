@@ -150,10 +150,20 @@ export function analisarJornada(dias: JornadaDiaConfig[], params: JornadaParams)
     const currMarks = curr.marcacoes.filter(m => m && m.includes(':'));
     const nextMarks = next.marcacoes.filter(m => m && m.includes(':'));
     if (currMarks.length >= 2 && nextMarks.length >= 2) {
-      const lastExit = hhmmToMin(currMarks[currMarks.length - 1]);
+      // Normalize the last exit: reconstruct the normalized time
+      const currRaw = currMarks.map(hhmmToMin);
+      const currNorm = [currRaw[0]];
+      for (let j = 1; j < currRaw.length; j++) {
+        let v = currRaw[j];
+        while (v <= currNorm[j - 1]) v += 1440;
+        currNorm.push(v);
+      }
+      const lastExitNorm = currNorm[currNorm.length - 1]; // may be > 1440 if cross-midnight
       const firstEntry = hhmmToMin(nextMarks[0]);
-      const gap = (1440 - lastExit) + firstEntry; // assuming next day
-      if (gap < interjornadaMin) {
+      // Gap = time from last exit to next entry (next calendar day)
+      const nextEntryAbsolute = 1440 + firstEntry; // next day's entry
+      const gap = nextEntryAbsolute - lastExitNorm;
+      if (gap > 0 && gap < interjornadaMin) {
         apontamentos.push(`Interjornada inferior a ${params.interjornadaMinima} entre ${curr.dia} e ${next.dia} (apurado: ${minutesToHHMM(gap)}).`);
       }
     }
