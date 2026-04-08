@@ -101,14 +101,14 @@ function calcularDia(dia: JornadaDiaConfig, params: JornadaParams): JornadaDiaRe
     totalInterval += mins[i + 1] - mins[i];
   }
 
-  result.totalTrabalhadoMin = totalWork - totalInterval; // net work
+  result.totalTrabalhadoMin = totalWork; // work periods already exclude intervals
   result.totalIntervaloMin = totalInterval;
   result.noturnoRealMin = noturnoReal;
   result.noturnoConvertidoMin = Math.round(noturnoReal * 1.142857);
 
-  // Check intrajornada
-  const totalBruto = totalWork;
-  if (totalBruto > 360 && totalBruto <= 480) {
+  // Check intrajornada — use gross span (work + intervals) to determine threshold
+  const totalBruto = totalWork + totalInterval;
+  if (totalBruto > 360) {
     // > 6h: need minimum interval
     const minIntervalo = hhmmToMin(params.intervaloMinimoAcima6h);
     if (totalInterval < minIntervalo) {
