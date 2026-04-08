@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Printer, ShieldCheck, AlertTriangle, XCircle, FileText } from 'lucide-react';
+import { Printer, ShieldCheck, AlertTriangle, XCircle, FileText, Eraser } from 'lucide-react';
 import TimeInput from '@/components/ponto/TimeInput';
 import {
   type JornadaParams,
@@ -335,7 +335,18 @@ const JornadaPage: React.FC = () => {
       </Card>
 
       {/* PRINT BUTTON */}
-      <div className="flex justify-center">
+      <div className="flex justify-center gap-3">
+        <Button
+          variant="outline"
+          size="lg"
+          onClick={() => {
+            setDias(prev => prev.map(d => ({ ...d, marcacoes: Array(params.slots).fill('') })));
+          }}
+          className="gap-2"
+        >
+          <Eraser className="w-5 h-5" />
+          Limpar Horários
+        </Button>
         <Button size="lg" onClick={() => setPreviewOpen(true)} className="gap-2">
           <Printer className="w-5 h-5" />
           Imprimir Parecer (PDF)
