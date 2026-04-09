@@ -5,6 +5,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { type PontoIdentificacao, type PontoConfig, type DiaSemanaKey, type JornadaSemanal } from '@/types/ponto';
+import { useClientes } from '@/hooks/useClientes';
 
 interface Props {
   identificacao: PontoIdentificacao;
