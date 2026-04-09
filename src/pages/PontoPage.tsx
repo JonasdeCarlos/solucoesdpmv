@@ -134,13 +134,16 @@ const PontoPage: React.FC = () => {
         onConfigChange={handleConfigChange}
       />
 
-      <div className="flex justify-between items-center">
-        <PontoOcrImport
-          config={config}
-          dias={dias}
-          mesAno={identificacao.mesAno}
-          onImportDias={handleImportDias}
-        />
+      <div className="flex justify-between items-center flex-wrap gap-2">
+        <div className="flex gap-2">
+          <PontoOcrImport
+            config={config}
+            dias={dias}
+            mesAno={identificacao.mesAno}
+            onImportDias={handleImportDias}
+          />
+          <PontoBlankSheet config={config} />
+        </div>
         <Button variant="outline" size="sm" onClick={handleLimparMarcacoes} className="gap-1.5">
           <Eraser className="w-4 h-4" />
           Limpar Marcações
