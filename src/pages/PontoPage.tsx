@@ -7,6 +7,7 @@ import PontoSummary from '@/components/ponto/PontoSummary';
 import PontoPrintView from '@/components/ponto/PontoPrintView';
 import PontoOcrImport from '@/components/ponto/PontoOcrImport';
 import PontoBancoHoras from '@/components/ponto/PontoBancoHoras';
+import PontoBlankSheet from '@/components/ponto/PontoBlankSheet';
 import {
   type PontoIdentificacao,
   type PontoConfig,
