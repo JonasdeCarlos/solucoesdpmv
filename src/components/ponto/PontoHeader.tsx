@@ -5,6 +5,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { type PontoIdentificacao, type PontoConfig, type DiaSemanaKey, type JornadaSemanal } from '@/types/ponto';
+import { useClientes } from '@/hooks/useClientes';
 
 interface Props {
   identificacao: PontoIdentificacao;
@@ -14,10 +15,23 @@ interface Props {
 }
 
 const PontoHeader: React.FC<Props> = ({ identificacao, config, onIdentificacaoChange, onConfigChange }) => {
+  const { clientes } = useClientes();
   const setId = (field: keyof PontoIdentificacao, val: string) =>
     onIdentificacaoChange({ ...identificacao, [field]: val });
   const setCfg = (field: keyof PontoConfig, val: any) =>
     onConfigChange({ ...config, [field]: val });
+
+  const handleClienteSelect = (clienteId: string) => {
+    if (clienteId === '__manual__') return;
+    const c = clientes.find(cl => cl.id === clienteId);
+    if (!c) return;
+    onIdentificacaoChange({
+      ...identificacao,
+      empresaNome: c.nome,
+      empresaDoc: c.tipo === 'PJ' ? c.cnpj : c.cpf,
+      empresaEndereco: c.endereco,
+    });
+  };
 
   return (
     <div className="space-y-4">
@@ -28,6 +42,23 @@ const PontoHeader: React.FC<Props> = ({ identificacao, config, onIdentificacaoCh
             <CardTitle className="text-base">Empresa / Empregador</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
+            {clientes.length > 0 && (
+              <div>
+                <Label className="text-xs">Selecionar cliente cadastrado</Label>
+                <Select onValueChange={handleClienteSelect}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Preencher a partir de um cliente..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clientes.map(c => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.nome} ({c.tipo === 'PJ' ? c.cnpj : c.cpf})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div>
               <Label className="text-xs">Razão Social / Nome</Label>
               <Input value={identificacao.empresaNome} onChange={e => setId('empresaNome', e.target.value)} />
