@@ -111,8 +111,17 @@ const PontoOcrImport: React.FC<Props> = ({ config, dias, mesAno, onImportDias })
 
       setProgress(80);
 
+      // Handle edge function errors (including 402 credits)
       if (error) {
-        throw new Error(error.message || 'Erro ao processar OCR');
+        // Try to parse error body for structured message
+        let msg = 'Erro ao processar OCR';
+        try {
+          const parsed = JSON.parse(error.message);
+          if (parsed?.error) msg = parsed.error;
+        } catch {
+          if (error.message) msg = error.message;
+        }
+        throw new Error(msg);
       }
 
       if (data?.error) {
