@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      banco_horas: {
+        Row: {
+          created_at: string
+          empregado_nome: string
+          empresa_nome: string
+          id: string
+          mes_ano: string
+          saldo_final: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          empregado_nome: string
+          empresa_nome?: string
+          id?: string
+          mes_ano: string
+          saldo_final?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          empregado_nome?: string
+          empresa_nome?: string
+          id?: string
+          mes_ano?: string
+          saldo_final?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       clientes: {
         Row: {
           cnpj: string | null
