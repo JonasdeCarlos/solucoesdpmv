@@ -68,18 +68,17 @@ const JornadaPage: React.FC = () => {
         return { ...d, marcacoes: newM };
       });
 
-      // Replica apenas quando TODOS os slots do primeiro dia estiverem completos (HH:MM)
-      if (diaIdx === 0) {
-        const firstDay = updated[0];
-        const allFilled = firstDay.marcacoes.every(m => /^\d{2}:\d{2}$/.test(m));
-        if (allFilled) {
-          return updated.map((d, i) => {
-            if (i === 0 || !d.ativo) return d;
-            const isEmpty = d.marcacoes.every(m => !m);
-            if (!isEmpty) return d;
-            return { ...d, marcacoes: [...firstDay.marcacoes] };
-          });
-        }
+      // Quando TODOS os slots da linha editada estiverem completos (HH:MM),
+      // replica para todas as linhas ABAIXO que estejam vazias e ativas
+      const editedDay = updated[diaIdx];
+      const allFilled = editedDay.marcacoes.every(m => /^\d{2}:\d{2}$/.test(m));
+      if (allFilled) {
+        return updated.map((d, i) => {
+          if (i <= diaIdx || !d.ativo) return d;
+          const isEmpty = d.marcacoes.every(m => !m);
+          if (!isEmpty) return d;
+          return { ...d, marcacoes: [...editedDay.marcacoes] };
+        });
       }
 
       return updated;
