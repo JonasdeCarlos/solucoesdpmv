@@ -434,6 +434,36 @@ export type Database = {
         }
         Relationships: []
       }
+      empregados: {
+        Row: {
+          cpf: string
+          created_at: string
+          empresa_nome: string
+          funcao: string
+          id: string
+          nome: string
+          updated_at: string
+        }
+        Insert: {
+          cpf?: string
+          created_at?: string
+          empresa_nome?: string
+          funcao?: string
+          id?: string
+          nome: string
+          updated_at?: string
+        }
+        Update: {
+          cpf?: string
+          created_at?: string
+          empresa_nome?: string
+          funcao?: string
+          id?: string
+          nome?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       feriados_municipais: {
         Row: {
           created_at: string

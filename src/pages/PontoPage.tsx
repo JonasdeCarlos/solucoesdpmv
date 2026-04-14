@@ -168,6 +168,8 @@ const PontoPage: React.FC = () => {
 
       <PontoBancoHoras
         empregadoNome={identificacao.empregadoNome}
+        empregadoCpf={identificacao.empregadoCpf}
+        empregadoFuncao={identificacao.empregadoFuncao}
         empresaNome={identificacao.empresaNome}
         mesAno={identificacao.mesAno}
         saldoFinal={resumo.saldoFinal}

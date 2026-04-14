@@ -7,6 +7,7 @@ import { BookOpen, Printer, Trash2, Plus, Building2, User, Loader2 } from 'lucid
 import { minutesToHHMM } from '@/utils/pontoCalculations';
 import { toast } from 'sonner';
 import { useBancoHoras } from '@/hooks/useBancoHoras';
+import { useEmpregados } from '@/hooks/useEmpregados';
 
 function formatMesAno(mesAno: string): string {
   const [y, m] = mesAno.split('-');
@@ -16,13 +17,16 @@ function formatMesAno(mesAno: string): string {
 
 interface Props {
   empregadoNome: string;
+  empregadoCpf?: string;
+  empregadoFuncao?: string;
   empresaNome: string;
   mesAno: string;
   saldoFinal: number;
 }
 
-const PontoBancoHoras: React.FC<Props> = ({ empregadoNome, empresaNome, mesAno, saldoFinal }) => {
+const PontoBancoHoras: React.FC<Props> = ({ empregadoNome, empregadoCpf, empregadoFuncao, empresaNome, mesAno, saldoFinal }) => {
   const { entries, loading, upsertEntry, removeEntry, clearByEmpresa } = useBancoHoras();
+  const { upsertEmpregado } = useEmpregados();
   const [showReport, setShowReport] = useState(false);
   const [filtroEmpresa, setFiltroEmpresa] = useState<string>('__all__');
   const [filtroEmpregado, setFiltroEmpregado] = useState<string>('__all__');
@@ -52,12 +56,23 @@ const PontoBancoHoras: React.FC<Props> = ({ empregadoNome, empresaNome, mesAno, 
   }, [entries, filtroEmpresa, filtroEmpregado]);
 
   const handleIncluir = async () => {
+    const nome = empregadoNome || 'Empregado';
+    const empresa = empresaNome || '';
     await upsertEntry({
-      empregadoNome: empregadoNome || 'Empregado',
-      empresaNome: empresaNome || '',
+      empregadoNome: nome,
+      empresaNome: empresa,
       mesAno,
       saldoFinal,
     });
+    // Auto-save employee with CPF and function
+    if (nome && nome !== 'Empregado') {
+      await upsertEmpregado({
+        nome,
+        cpf: empregadoCpf || '',
+        funcao: empregadoFuncao || '',
+        empresaNome: empresa,
+      });
+    }
     toast.success(`Banco de Horas salvo para ${formatMesAno(mesAno)}`);
   };
 
