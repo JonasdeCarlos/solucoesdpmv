@@ -36,12 +36,16 @@ const PontoHeader: React.FC<Props> = ({ identificacao, config, onIdentificacaoCh
     });
   };
 
-  // Unique employee names from banco_horas entries
+  // Unique employee names from banco_horas, filtered by selected company
   const empregadosBH = React.useMemo(() => {
     const nomes = new Set<string>();
-    entries.forEach(e => { if (e.empregadoNome) nomes.add(e.empregadoNome); });
+    entries.forEach(e => {
+      if (e.empregadoNome && (!identificacao.empresaNome || e.empresaNome === identificacao.empresaNome)) {
+        nomes.add(e.empregadoNome);
+      }
+    });
     return Array.from(nomes).sort();
-  }, [entries]);
+  }, [entries, identificacao.empresaNome]);
 
   const handleEmpregadoSelect = (nome: string) => {
     if (nome === '__manual__') return;
