@@ -1,6 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
+export interface PontoSnapshot {
+  identificacao: any;
+  config: any;
+  diasCalculados: any[];
+  resumo: any;
+}
+
 export interface BancoHorasEntry {
   id: string;
   empregadoNome: string;
@@ -8,6 +15,7 @@ export interface BancoHorasEntry {
   mesAno: string;
   saldoFinal: number;
   addedAt: string;
+  pontoSnapshot?: PontoSnapshot | null;
 }
 
 export function useBancoHoras() {
@@ -27,6 +35,7 @@ export function useBancoHoras() {
         mesAno: d.mes_ano,
         saldoFinal: d.saldo_final,
         addedAt: d.created_at,
+        pontoSnapshot: d.ponto_snapshot || null,
       })));
     }
     setLoading(false);
@@ -35,7 +44,6 @@ export function useBancoHoras() {
   useEffect(() => { fetchEntries(); }, [fetchEntries]);
 
   const upsertEntry = useCallback(async (entry: Omit<BancoHorasEntry, 'id' | 'addedAt'>) => {
-    // Check if exists
     const { data: existing } = await supabase
       .from('banco_horas' as any)
       .select('id')
@@ -44,10 +52,18 @@ export function useBancoHoras() {
       .eq('mes_ano', entry.mesAno)
       .maybeSingle();
 
+    const payload: any = {
+      saldo_final: entry.saldoFinal,
+      updated_at: new Date().toISOString(),
+    };
+    if (entry.pontoSnapshot) {
+      payload.ponto_snapshot = entry.pontoSnapshot;
+    }
+
     if (existing) {
       await supabase
         .from('banco_horas' as any)
-        .update({ saldo_final: entry.saldoFinal, updated_at: new Date().toISOString() } as any)
+        .update(payload)
         .eq('id', (existing as any).id);
     } else {
       await supabase
@@ -56,7 +72,7 @@ export function useBancoHoras() {
           empregado_nome: entry.empregadoNome,
           empresa_nome: entry.empresaNome,
           mes_ano: entry.mesAno,
-          saldo_final: entry.saldoFinal,
+          ...payload,
         } as any);
     }
     await fetchEntries();
@@ -71,7 +87,6 @@ export function useBancoHoras() {
     if (empresa) {
       await supabase.from('banco_horas' as any).delete().eq('empresa_nome', empresa);
     } else {
-      // Delete all - fetch all ids and delete
       const { data } = await supabase.from('banco_horas' as any).select('id');
       if (data && (data as any[]).length > 0) {
         for (const row of data as any[]) {
