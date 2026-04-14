@@ -68,7 +68,7 @@ const PdfSplitter: React.FC = () => {
       const pages = await newPdf.copyPages(srcPdf, sorted);
       pages.forEach(p => newPdf.addPage(p));
       const out = await newPdf.save();
-      downloadBlob(new Blob([out], { type: 'application/pdf' }), `separado_paginas_${sorted.map(i => i + 1).join('-')}.pdf`);
+      downloadBlob(new Blob([out.buffer as ArrayBuffer], { type: 'application/pdf' }), `separado_paginas_${sorted.map(i => i + 1).join('-')}.pdf`);
       toast.success(`PDF gerado com ${sorted.length} página(s)`);
     } catch {
       toast.error('Erro ao gerar PDF');
@@ -86,7 +86,7 @@ const PdfSplitter: React.FC = () => {
         const [page] = await newPdf.copyPages(srcPdf, [i]);
         newPdf.addPage(page);
         const out = await newPdf.save();
-        downloadBlob(new Blob([out], { type: 'application/pdf' }), `pagina_${i + 1}.pdf`);
+        downloadBlob(new Blob([out.buffer as ArrayBuffer], { type: 'application/pdf' }), `pagina_${i + 1}.pdf`);
       }
       toast.success(`${pageCount} arquivo(s) gerado(s)`);
     } catch {
