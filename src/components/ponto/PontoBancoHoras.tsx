@@ -1,12 +1,13 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from '@/components/ui/table';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { BookOpen, Printer, Trash2, Plus } from 'lucide-react';
+import { BookOpen, Printer, Trash2, Plus, Building2 } from 'lucide-react';
 import { minutesToHHMM } from '@/utils/pontoCalculations';
 import { toast } from 'sonner';
+import { useClientes } from '@/hooks/useClientes';
 
 const BANCO_HORAS_KEY = 'ponto_banco_horas';
 
@@ -14,8 +15,8 @@ export interface BancoHorasEntry {
   id: string;
   empregadoNome: string;
   empresaNome: string;
-  mesAno: string; // yyyy-MM
-  saldoFinal: number; // minutes
+  mesAno: string;
+  saldoFinal: number;
   addedAt: string;
 }
 
@@ -48,10 +49,23 @@ interface Props {
 const PontoBancoHoras: React.FC<Props> = ({ empregadoNome, empresaNome, mesAno, saldoFinal }) => {
   const [entries, setEntries] = useState<BancoHorasEntry[]>(loadEntries);
   const [showReport, setShowReport] = useState(false);
+  const [filtroEmpresa, setFiltroEmpresa] = useState<string>('__all__');
   const reportRef = useRef<HTMLDivElement>(null);
+  const { clientes } = useClientes();
+
+  const empresasUnicas = useMemo(() => {
+    const nomes = new Set<string>();
+    entries.forEach(e => { if (e.empresaNome) nomes.add(e.empresaNome); });
+    return Array.from(nomes).sort();
+  }, [entries]);
+
+  const entriesFiltradas = useMemo(() => {
+    if (filtroEmpresa === '__all__') return entries;
+    return entries.filter(e => e.empresaNome === filtroEmpresa);
+  }, [entries, filtroEmpresa]);
 
   const handleIncluir = () => {
-    const existing = entries.find(e => e.mesAno === mesAno && e.empregadoNome === empregadoNome);
+    const existing = entries.find(e => e.mesAno === mesAno && e.empregadoNome === empregadoNome && e.empresaNome === empresaNome);
     let updated: BancoHorasEntry[];
 
     if (existing) {
@@ -84,9 +98,17 @@ const PontoBancoHoras: React.FC<Props> = ({ empregadoNome, empresaNome, mesAno, 
   };
 
   const handleClearAll = () => {
-    setEntries([]);
-    saveEntries([]);
-    toast.info('Banco de Horas limpo');
+    if (filtroEmpresa !== '__all__') {
+      const updated = entries.filter(e => e.empresaNome !== filtroEmpresa);
+      setEntries(updated);
+      saveEntries(updated);
+      toast.info(`Banco de Horas da empresa "${filtroEmpresa}" limpo`);
+      setFiltroEmpresa('__all__');
+    } else {
+      setEntries([]);
+      saveEntries([]);
+      toast.info('Banco de Horas limpo');
+    }
   };
 
   const handlePrintReport = () => {
@@ -129,21 +151,21 @@ const PontoBancoHoras: React.FC<Props> = ({ empregadoNome, empresaNome, mesAno, 
     printWindow.print();
   };
 
-  // Calculate running balance
   let saldoAcumulado = 0;
-  const entriesWithBalance = entries.map(e => {
+  const entriesWithBalance = entriesFiltradas.map(e => {
     saldoAcumulado += e.saldoFinal;
     return { ...e, saldoAcumulado };
   });
 
-  const totalCredito = entries.reduce((s, e) => s + (e.saldoFinal > 0 ? e.saldoFinal : 0), 0);
-  const totalDebito = entries.reduce((s, e) => s + (e.saldoFinal < 0 ? e.saldoFinal : 0), 0);
+  const totalCredito = entriesFiltradas.reduce((s, e) => s + (e.saldoFinal > 0 ? e.saldoFinal : 0), 0);
+  const totalDebito = entriesFiltradas.reduce((s, e) => s + (e.saldoFinal < 0 ? e.saldoFinal : 0), 0);
 
   const saldoClass = (v: number) => v > 0 ? 'text-green-700 dark:text-green-400' : v < 0 ? 'text-red-700 dark:text-red-400' : '';
 
+  const empresaFiltroLabel = filtroEmpresa === '__all__' ? 'Todas as Empresas' : filtroEmpresa;
+
   return (
     <div className="space-y-4">
-      {/* Action buttons */}
       <div className="flex flex-wrap items-center gap-3">
         <Button variant="secondary" size="sm" onClick={handleIncluir} className="gap-1.5">
           <Plus className="w-4 h-4" />
@@ -160,14 +182,29 @@ const PontoBancoHoras: React.FC<Props> = ({ empregadoNome, empresaNome, mesAno, 
         </Button>
       </div>
 
-      {/* Report view */}
       {showReport && (
         <Card>
           <CardHeader className="pb-3">
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center flex-wrap gap-2">
               <CardTitle className="text-base">Relatório de Banco de Horas</CardTitle>
-              <div className="flex gap-2">
-                {entries.length > 0 && (
+              <div className="flex gap-2 flex-wrap items-center">
+                {empresasUnicas.length > 1 && (
+                  <div className="flex items-center gap-1.5">
+                    <Building2 className="w-4 h-4 text-muted-foreground" />
+                    <Select value={filtroEmpresa} onValueChange={setFiltroEmpresa}>
+                      <SelectTrigger className="h-8 w-[200px] text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__all__">Todas as Empresas</SelectItem>
+                        {empresasUnicas.map(e => (
+                          <SelectItem key={e} value={e}>{e}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                {entriesFiltradas.length > 0 && (
                   <>
                     <Button variant="outline" size="sm" onClick={handlePrintReport} className="gap-1.5">
                       <Printer className="w-4 h-4" />
@@ -175,7 +212,7 @@ const PontoBancoHoras: React.FC<Props> = ({ empregadoNome, empresaNome, mesAno, 
                     </Button>
                     <Button variant="ghost" size="sm" onClick={handleClearAll} className="gap-1.5 text-destructive hover:text-destructive">
                       <Trash2 className="w-4 h-4" />
-                      Limpar Tudo
+                      {filtroEmpresa !== '__all__' ? 'Limpar Empresa' : 'Limpar Tudo'}
                     </Button>
                   </>
                 )}
@@ -183,9 +220,9 @@ const PontoBancoHoras: React.FC<Props> = ({ empregadoNome, empresaNome, mesAno, 
             </div>
           </CardHeader>
           <CardContent>
-            {entries.length === 0 ? (
+            {entriesFiltradas.length === 0 ? (
               <p className="text-muted-foreground text-sm text-center py-6">
-                Nenhum período adicionado ao Banco de Horas. Processe um mês e clique em "Incluir no Banco de Horas".
+                Nenhum período adicionado ao Banco de Horas{filtroEmpresa !== '__all__' ? ` para "${filtroEmpresa}"` : ''}. Processe um mês e clique em "Incluir no Banco de Horas".
               </p>
             ) : (
               <div className="overflow-auto">
@@ -193,6 +230,7 @@ const PontoBancoHoras: React.FC<Props> = ({ empregadoNome, empresaNome, mesAno, 
                   <TableHeader>
                     <TableRow>
                       <TableHead className="text-center">Período</TableHead>
+                      <TableHead className="text-center">Empresa</TableHead>
                       <TableHead className="text-center">Empregado</TableHead>
                       <TableHead className="text-center">Crédito</TableHead>
                       <TableHead className="text-center">Débito</TableHead>
@@ -205,6 +243,7 @@ const PontoBancoHoras: React.FC<Props> = ({ empregadoNome, empresaNome, mesAno, 
                     {entriesWithBalance.map(e => (
                       <TableRow key={e.id}>
                         <TableCell className="font-mono text-center">{formatMesAno(e.mesAno)}</TableCell>
+                        <TableCell className="text-center text-xs">{e.empresaNome || '–'}</TableCell>
                         <TableCell className="text-center">{e.empregadoNome}</TableCell>
                         <TableCell className={`font-mono text-center ${e.saldoFinal > 0 ? saldoClass(e.saldoFinal) : ''}`}>
                           {e.saldoFinal > 0 ? minutesToHHMM(e.saldoFinal) : ''}
@@ -228,7 +267,7 @@ const PontoBancoHoras: React.FC<Props> = ({ empregadoNome, empresaNome, mesAno, 
                   </TableBody>
                   <TableFooter>
                     <TableRow>
-                      <TableCell colSpan={2} className="text-right font-bold">Totais:</TableCell>
+                      <TableCell colSpan={3} className="text-right font-bold">Totais:</TableCell>
                       <TableCell className={`font-mono text-center font-bold ${saldoClass(totalCredito)}`}>
                         {minutesToHHMM(totalCredito)}
                       </TableCell>
@@ -255,8 +294,8 @@ const PontoBancoHoras: React.FC<Props> = ({ empregadoNome, empresaNome, mesAno, 
       <div ref={reportRef} className="hidden">
         <h2>RELATÓRIO DE BANCO DE HORAS</h2>
         <div className="info">
-          {entries[0]?.empresaNome && <><span className="label">Empresa: </span>{entries[0].empresaNome}<br/></>}
-          {entries[0]?.empregadoNome && <><span className="label">Empregado: </span>{entries[0].empregadoNome}<br/></>}
+          {filtroEmpresa !== '__all__' && <><span className="label">Empresa: </span>{filtroEmpresa}<br/></>}
+          {filtroEmpresa === '__all__' && entriesFiltradas[0]?.empresaNome && <><span className="label">Empresa: </span>{entriesFiltradas[0].empresaNome}<br/></>}
           <span className="label">Emissão: </span>{new Date().toLocaleDateString('pt-BR')}
         </div>
 
@@ -264,6 +303,8 @@ const PontoBancoHoras: React.FC<Props> = ({ empregadoNome, empresaNome, mesAno, 
           <thead>
             <tr>
               <th>Período</th>
+              <th>Empresa</th>
+              <th>Empregado</th>
               <th>Crédito</th>
               <th>Débito</th>
               <th>Saldo Mês</th>
@@ -274,6 +315,8 @@ const PontoBancoHoras: React.FC<Props> = ({ empregadoNome, empresaNome, mesAno, 
             {entriesWithBalance.map(e => (
               <tr key={e.id}>
                 <td>{formatMesAno(e.mesAno)}</td>
+                <td>{e.empresaNome || '–'}</td>
+                <td>{e.empregadoNome}</td>
                 <td className={e.saldoFinal > 0 ? 'positive' : ''}>{e.saldoFinal > 0 ? minutesToHHMM(e.saldoFinal) : ''}</td>
                 <td className={e.saldoFinal < 0 ? 'negative' : ''}>{e.saldoFinal < 0 ? minutesToHHMM(e.saldoFinal) : ''}</td>
                 <td className={e.saldoFinal >= 0 ? 'positive' : 'negative'}>{minutesToHHMM(e.saldoFinal)}</td>
@@ -283,7 +326,7 @@ const PontoBancoHoras: React.FC<Props> = ({ empregadoNome, empresaNome, mesAno, 
           </tbody>
           <tfoot>
             <tr className="total-row">
-              <td className="text-right"><strong>Totais:</strong></td>
+              <td colSpan={3} className="text-right"><strong>Totais:</strong></td>
               <td className="positive">{minutesToHHMM(totalCredito)}</td>
               <td className="negative">{minutesToHHMM(totalDebito)}</td>
               <td className={saldoAcumulado >= 0 ? 'positive' : 'negative'}>{minutesToHHMM(saldoAcumulado)}</td>
