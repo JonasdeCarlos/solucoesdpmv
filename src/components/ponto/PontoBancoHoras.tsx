@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { BookOpen, Printer, Trash2, Plus, Building2, Loader2 } from 'lucide-react';
+import { BookOpen, Printer, Trash2, Plus, Building2, User, Loader2 } from 'lucide-react';
 import { minutesToHHMM } from '@/utils/pontoCalculations';
 import { toast } from 'sonner';
 import { useBancoHoras } from '@/hooks/useBancoHoras';
@@ -25,6 +25,7 @@ const PontoBancoHoras: React.FC<Props> = ({ empregadoNome, empresaNome, mesAno, 
   const { entries, loading, upsertEntry, removeEntry, clearByEmpresa } = useBancoHoras();
   const [showReport, setShowReport] = useState(false);
   const [filtroEmpresa, setFiltroEmpresa] = useState<string>('__all__');
+  const [filtroEmpregado, setFiltroEmpregado] = useState<string>('__all__');
   const reportRef = useRef<HTMLDivElement>(null);
 
   const empresasUnicas = useMemo(() => {
@@ -33,10 +34,22 @@ const PontoBancoHoras: React.FC<Props> = ({ empregadoNome, empresaNome, mesAno, 
     return Array.from(nomes).sort();
   }, [entries]);
 
+  const empregadosUnicos = useMemo(() => {
+    const nomes = new Set<string>();
+    entries.forEach(e => { if (e.empregadoNome) nomes.add(e.empregadoNome); });
+    return Array.from(nomes).sort();
+  }, [entries]);
+
   const entriesFiltradas = useMemo(() => {
-    if (filtroEmpresa === '__all__') return entries;
-    return entries.filter(e => e.empresaNome === filtroEmpresa);
-  }, [entries, filtroEmpresa]);
+    let filtered = entries;
+    if (filtroEmpresa !== '__all__') {
+      filtered = filtered.filter(e => e.empresaNome === filtroEmpresa);
+    }
+    if (filtroEmpregado !== '__all__') {
+      filtered = filtered.filter(e => e.empregadoNome === filtroEmpregado);
+    }
+    return filtered;
+  }, [entries, filtroEmpresa, filtroEmpregado]);
 
   const handleIncluir = async () => {
     await upsertEntry({
@@ -127,7 +140,7 @@ const PontoBancoHoras: React.FC<Props> = ({ empregadoNome, empresaNome, mesAno, 
             <div className="flex justify-between items-center flex-wrap gap-2">
               <CardTitle className="text-base">Relatório de Banco de Horas</CardTitle>
               <div className="flex gap-2 flex-wrap items-center">
-                {empresasUnicas.length > 1 && (
+                {empresasUnicas.length > 0 && (
                   <div className="flex items-center gap-1.5">
                     <Building2 className="w-4 h-4 text-muted-foreground" />
                     <Select value={filtroEmpresa} onValueChange={setFiltroEmpresa}>
@@ -137,6 +150,22 @@ const PontoBancoHoras: React.FC<Props> = ({ empregadoNome, empresaNome, mesAno, 
                       <SelectContent>
                         <SelectItem value="__all__">Todas as Empresas</SelectItem>
                         {empresasUnicas.map(e => (
+                          <SelectItem key={e} value={e}>{e}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                {empregadosUnicos.length > 0 && (
+                  <div className="flex items-center gap-1.5">
+                    <User className="w-4 h-4 text-muted-foreground" />
+                    <Select value={filtroEmpregado} onValueChange={setFiltroEmpregado}>
+                      <SelectTrigger className="h-8 w-[200px] text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__all__">Todos os Funcionários</SelectItem>
+                        {empregadosUnicos.map(e => (
                           <SelectItem key={e} value={e}>{e}</SelectItem>
                         ))}
                       </SelectContent>
@@ -163,7 +192,7 @@ const PontoBancoHoras: React.FC<Props> = ({ empregadoNome, empresaNome, mesAno, 
               <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
             ) : entriesFiltradas.length === 0 ? (
               <p className="text-muted-foreground text-sm text-center py-6">
-                Nenhum período adicionado ao Banco de Horas{filtroEmpresa !== '__all__' ? ` para "${filtroEmpresa}"` : ''}.
+                Nenhum período adicionado ao Banco de Horas{filtroEmpresa !== '__all__' ? ` para "${filtroEmpresa}"` : ''}{filtroEmpregado !== '__all__' ? ` / "${filtroEmpregado}"` : ''}.
               </p>
             ) : (
               <div className="overflow-auto">
@@ -237,6 +266,7 @@ const PontoBancoHoras: React.FC<Props> = ({ empregadoNome, empresaNome, mesAno, 
         <div className="info">
           {filtroEmpresa !== '__all__' && <><span className="label">Empresa: </span>{filtroEmpresa}<br/></>}
           {filtroEmpresa === '__all__' && entriesFiltradas[0]?.empresaNome && <><span className="label">Empresa: </span>{entriesFiltradas[0].empresaNome}<br/></>}
+          {filtroEmpregado !== '__all__' && <><span className="label">Funcionário: </span>{filtroEmpregado}<br/></>}
           <span className="label">Emissão: </span>{new Date().toLocaleDateString('pt-BR')}
         </div>
 
