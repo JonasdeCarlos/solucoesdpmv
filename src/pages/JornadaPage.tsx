@@ -68,18 +68,17 @@ const JornadaPage: React.FC = () => {
         return { ...d, marcacoes: newM };
       });
 
-      // Replica apenas quando TODOS os slots do primeiro dia estiverem completos (HH:MM)
-      if (diaIdx === 0) {
-        const firstDay = updated[0];
-        const allFilled = firstDay.marcacoes.every(m => /^\d{2}:\d{2}$/.test(m));
-        if (allFilled) {
-          return updated.map((d, i) => {
-            if (i === 0 || !d.ativo) return d;
-            const isEmpty = d.marcacoes.every(m => !m);
-            if (!isEmpty) return d;
-            return { ...d, marcacoes: [...firstDay.marcacoes] };
-          });
-        }
+      // Quando TODOS os slots da linha editada estiverem completos (HH:MM),
+      // replica para todas as linhas ABAIXO que estejam vazias e ativas
+      const editedDay = updated[diaIdx];
+      const allFilled = editedDay.marcacoes.every(m => /^\d{2}:\d{2}$/.test(m));
+      if (allFilled) {
+        return updated.map((d, i) => {
+          if (i <= diaIdx || !d.ativo) return d;
+          const isEmpty = d.marcacoes.every(m => !m);
+          if (!isEmpty) return d;
+          return { ...d, marcacoes: [...editedDay.marcacoes] };
+        });
       }
 
       return updated;
@@ -117,6 +116,97 @@ const JornadaPage: React.FC = () => {
     const url = URL.createObjectURL(blob);
     window.open(url, '_blank');
     setPreviewOpen(false);
+  };
+
+  const handleImprimirJornada = () => {
+    const slotHeaders = params.slots === 6 ? ['Entrada', 'S.Int.1', 'E.Int.1', 'S.Int.2', 'E.Int.2', 'Saída'] :
+      params.slots === 2 ? ['Entrada', 'Saída'] :
+      ['Entrada', 'Saída Int.', 'Ent. Int.', 'Saída'];
+
+    const notHeaders = params.noturnoHabilitado ? '<th>Not.R</th><th>Not.C</th>' : '';
+    const notFooter = params.noturnoHabilitado
+      ? `<td>${minutesToHHMM(analise.dias.reduce((s, d) => s + d.noturnoRealMin, 0))}</td><td>${minutesToHHMM(analise.dias.reduce((s, d) => s + d.noturnoConvertidoMin, 0))}</td>`
+      : '';
+
+    const rows = analise.dias.map((d, i) => {
+      const marks = dias[i].marcacoes.map(m => `<td>${m || '–'}</td>`).join('');
+      const notCols = params.noturnoHabilitado
+        ? `<td>${d.noturnoRealMin > 0 ? minutesToHHMM(d.noturnoRealMin) : '–'}</td><td>${d.noturnoConvertidoMin > 0 ? minutesToHHMM(d.noturnoConvertidoMin) : '–'}</td>`
+        : '';
+      const rowClass = d.alertas.length > 0 ? 'style="background:#fff3f3"' : '';
+      return `<tr ${rowClass}><td><strong>${d.dia}</strong></td>${marks}<td>${d.ativo ? minutesToHHMM(d.totalTrabalhadoMin) : '–'}</td><td>${d.ativo ? minutesToHHMM(d.totalIntervaloMin) : '–'}</td>${notCols}</tr>`;
+    }).join('');
+
+    const saldoLabel = analise.saldoMin > 0 ? 'Acima' : analise.saldoMin < 0 ? 'Abaixo' : 'Igual';
+    const saldoColor = analise.saldoMin > 0 ? '#166534' : analise.saldoMin < 0 ? '#991b1b' : '#222';
+
+    const apontamentosHtml = analise.apontamentos.length > 0
+      ? `<div style="background:#fff3f3;border:1px solid #fca5a5;border-radius:4px;padding:10px;margin-top:8px">
+          <p style="font-weight:bold;color:#991b1b;margin-bottom:6px">Apontamentos:</p>
+          <ul style="margin:0;padding-left:18px">${analise.apontamentos.map(a => `<li style="margin-bottom:3px">${a}</li>`).join('')}</ul>
+        </div>`
+      : `<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:4px;padding:10px;margin-top:8px">
+          <p style="color:#166534">✅ Após análise automática, NÃO foram identificadas inconsistências legais/paramétricas na jornada apresentada.</p>
+        </div>`;
+
+    const pw = window.open('', '_blank');
+    if (!pw) return;
+    pw.document.write(`<!DOCTYPE html><html><head><title>Jornada Verificada</title>
+    <style>
+      * { margin:0; padding:0; box-sizing:border-box; }
+      body { font-family:Arial,sans-serif; font-size:9pt; padding:12mm; color:#222; }
+      h2 { font-size:13pt; margin-bottom:4px; text-align:center; }
+      .sub { font-size:8pt; color:#666; text-align:center; margin-bottom:10px; }
+      .info { font-size:8pt; margin-bottom:8px; }
+      .info b { display:inline; }
+      table { width:100%; border-collapse:collapse; font-size:8pt; margin-bottom:12px; }
+      th, td { border:1px solid #999; padding:3px 6px; text-align:center; }
+      th { background:#eee; font-weight:bold; }
+      tfoot td { font-weight:bold; background:#f5f5f5; }
+      .summary { display:flex; gap:12px; margin:8px 0; }
+      .summary-box { border:1px solid #ccc; border-radius:4px; padding:6px 12px; text-align:center; flex:1; }
+      .summary-box .lbl { font-size:7pt; color:#666; }
+      .summary-box .val { font-size:12pt; font-weight:bold; font-family:monospace; }
+      .signatures { margin-top:30px; display:flex; justify-content:space-between; }
+      .sig-line { text-align:center; width:42%; }
+      .sig-line hr { border:none; border-top:1px solid #333; margin-bottom:3px; }
+      .disclaimer { margin-top:12px; font-size:7pt; color:#666; text-align:center; }
+      @media print { body { padding:8mm; } }
+    </style></head><body>
+      <h2>VERIFICAÇÃO DE JORNADA (CLT)</h2>
+      <div class="sub">Emitido em: ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</div>
+      <div class="info">
+        ${params.empresaNome ? `<b>Empresa:</b> ${params.empresaNome} &nbsp; ` : ''}
+        ${params.empresaCnpj ? `<b>CNPJ:</b> ${params.empresaCnpj}<br/>` : ''}
+        ${params.colaboradorNome ? `<b>Colaborador:</b> ${params.colaboradorNome} &nbsp; ` : ''}
+        ${params.colaboradorFuncao ? `<b>Função:</b> ${params.colaboradorFuncao}<br/>` : ''}
+        ${params.periodoInicio ? `<b>Período:</b> ${params.periodoInicio} a ${params.periodoFim} &nbsp; ` : ''}
+        <b>Carga Semanal:</b> ${params.cargaSemanalContratada}
+      </div>
+
+      <table>
+        <thead><tr><th>Dia</th>${slotHeaders.map(h => `<th>${h}</th>`).join('')}<th>Trab.</th><th>Interv.</th>${notHeaders}</tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot><tr><td colspan="${1 + params.slots}"><strong>Total Semanal</strong></td><td>${minutesToHHMM(analise.totalSemanalMin)}</td><td>${minutesToHHMM(analise.dias.reduce((s, d) => s + d.totalIntervaloMin, 0))}</td>${notFooter}</tr></tfoot>
+      </table>
+
+      <div class="summary">
+        <div class="summary-box"><div class="lbl">Total Apurado</div><div class="val">${minutesToHHMM(analise.totalSemanalMin)}</div></div>
+        <div class="summary-box"><div class="lbl">Carga Contratada</div><div class="val">${minutesToHHMM(analise.cargaContratadaMin)}</div></div>
+        <div class="summary-box"><div class="lbl">Saldo</div><div class="val" style="color:${saldoColor}">${minutesToHHMM(analise.saldoMin)}</div></div>
+        <div class="summary-box"><div class="lbl">Indicação</div><div class="val">${saldoLabel}</div></div>
+      </div>
+
+      ${apontamentosHtml}
+
+      <div class="signatures">
+        <div class="sig-line"><hr/> Responsável / Analista</div>
+        <div class="sig-line"><hr/> Empresa / Representante</div>
+      </div>
+      <div class="disclaimer">⚠️ Verificação estimativa para conferência. Pode haver regras específicas por CCT, escalas e acordos.</div>
+    </body></html>`);
+    pw.document.close();
+    pw.print();
   };
 
   return (
@@ -337,8 +427,8 @@ const JornadaPage: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* PRINT BUTTON */}
-      <div className="flex justify-center gap-3">
+      {/* PRINT BUTTONS */}
+      <div className="flex justify-center gap-3 flex-wrap">
         <Button
           variant="outline"
           size="lg"
@@ -350,9 +440,13 @@ const JornadaPage: React.FC = () => {
           <Eraser className="w-5 h-5" />
           Limpar Horários
         </Button>
+        <Button variant="outline" size="lg" onClick={handleImprimirJornada} className="gap-2">
+          <Printer className="w-5 h-5" />
+          Imprimir Jornada
+        </Button>
         <Button size="lg" onClick={() => setPreviewOpen(true)} className="gap-2">
           <Printer className="w-5 h-5" />
-          Imprimir Parecer (PDF)
+          Emitir Parecer (PDF)
         </Button>
       </div>
 
