@@ -1,0 +1,1 @@
+ALTER TABLE public.banco_horas ADD COLUMN ponto_snapshot JSONB DEFAULT NULL;

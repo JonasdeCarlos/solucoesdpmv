@@ -173,6 +173,12 @@ const PontoPage: React.FC = () => {
         empresaNome={identificacao.empresaNome}
         mesAno={identificacao.mesAno}
         saldoFinal={resumo.saldoFinal}
+        pontoSnapshot={{
+          identificacao,
+          config,
+          diasCalculados,
+          resumo,
+        }}
       />
 
       <p className="text-xs text-muted-foreground text-center pb-4">

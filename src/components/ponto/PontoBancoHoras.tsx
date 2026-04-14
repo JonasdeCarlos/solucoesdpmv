@@ -3,16 +3,22 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { BookOpen, Printer, Trash2, Plus, Building2, User, Loader2 } from 'lucide-react';
+import { BookOpen, Printer, Trash2, Plus, Building2, User, Loader2, FileText } from 'lucide-react';
 import { minutesToHHMM } from '@/utils/pontoCalculations';
 import { toast } from 'sonner';
-import { useBancoHoras } from '@/hooks/useBancoHoras';
+import { useBancoHoras, type PontoSnapshot } from '@/hooks/useBancoHoras';
 import { useEmpregados } from '@/hooks/useEmpregados';
 
 function formatMesAno(mesAno: string): string {
   const [y, m] = mesAno.split('-');
   const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
   return `${meses[parseInt(m) - 1]}/${y}`;
+}
+
+function formatMesAnoLong(mesAno: string): string {
+  const [y, m] = mesAno.split('-');
+  const meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  return `${meses[parseInt(m) - 1] || m}/${y}`;
 }
 
 interface Props {
@@ -22,9 +28,10 @@ interface Props {
   empresaNome: string;
   mesAno: string;
   saldoFinal: number;
+  pontoSnapshot?: PontoSnapshot | null;
 }
 
-const PontoBancoHoras: React.FC<Props> = ({ empregadoNome, empregadoCpf, empregadoFuncao, empresaNome, mesAno, saldoFinal }) => {
+const PontoBancoHoras: React.FC<Props> = ({ empregadoNome, empregadoCpf, empregadoFuncao, empresaNome, mesAno, saldoFinal, pontoSnapshot }) => {
   const { entries, loading, upsertEntry, removeEntry, clearByEmpresa } = useBancoHoras();
   const { upsertEmpregado } = useEmpregados();
   const [showReport, setShowReport] = useState(false);
@@ -63,8 +70,8 @@ const PontoBancoHoras: React.FC<Props> = ({ empregadoNome, empregadoCpf, emprega
       empresaNome: empresa,
       mesAno,
       saldoFinal,
+      pontoSnapshot: pontoSnapshot || null,
     });
-    // Auto-save employee with CPF and function
     if (nome && nome !== 'Empregado') {
       await upsertEmpregado({
         nome,
@@ -90,6 +97,103 @@ const PontoBancoHoras: React.FC<Props> = ({ empregadoNome, empregadoCpf, emprega
       await clearByEmpresa();
       toast.info('Banco de Horas limpo');
     }
+  };
+
+  const handlePrintPonto = (snapshot: PontoSnapshot) => {
+    const { identificacao, config, diasCalculados, resumo } = snapshot;
+    const labels = config.colunasMarcacoes === 6
+      ? ['Entrada', 'S.Int.1', 'E.Int.1', 'S.Int.2', 'E.Int.2', 'Saída']
+      : ['Entrada', 'Saída Int.', 'Ent. Int.', 'Saída'];
+
+    const saldoClass = (v: number) => v > 0 ? 'positive' : v < 0 ? 'negative' : '';
+
+    const jornadaHtml = config.jornadaSemanal ? `
+      <table style="font-size:7.5pt; margin-top:2px; border-collapse:collapse; width:auto;">
+        <tr>${Object.keys(config.jornadaSemanal).map((d: string) => `<td style="border:1px solid #ccc; padding:1px 4px; font-weight:bold; background:#eee; text-align:center;">${d}</td>`).join('')}</tr>
+        <tr>${Object.values(config.jornadaSemanal).map((hr: any) => `<td style="border:1px solid #ccc; padding:1px 4px; text-align:center; font-family:monospace;">${hr || '00:00'}</td>`).join('')}</tr>
+      </table>` : '';
+
+    const rowsHtml = diasCalculados.map((d: any) => `
+      <tr>
+        <td>${String(d.dia).padStart(2, '0')}</td>
+        <td>${d.diaSemana}</td>
+        <td style="text-align:left">${d.tipoDia}</td>
+        ${d.marcacoes.map((m: string) => `<td>${m || ''}</td>`).join('')}
+        <td>${d.horasACumprir}</td>
+        <td>${minutesToHHMM(d.trabalhoLiquido)}</td>
+        <td class="${saldoClass(d.saldoMinutos)}">${minutesToHHMM(d.saldoMinutos)}</td>
+        <td>${d.noturnoReal > 0 ? minutesToHHMM(d.noturnoReal) : ''}</td>
+        <td>${d.noturnoConvertido > 0 ? minutesToHHMM(d.noturnoConvertido) : ''}</td>
+      </tr>`).join('');
+
+    const html = `<!DOCTYPE html><html><head><title>Ponto - ${identificacao.empregadoNome}</title>
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; font-size: 9pt; padding: 15mm; color: #222; }
+        h2 { font-size: 13pt; margin-bottom: 4px; }
+        .header { margin-bottom: 10px; border-bottom: 2px solid #333; padding-bottom: 8px; }
+        .header-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 8.5pt; margin-top: 6px; }
+        .label { font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 8pt; }
+        th, td { border: 1px solid #999; padding: 2px 3px; text-align: center; }
+        th { background: #eee; font-weight: bold; font-size: 7.5pt; }
+        .positive { color: #166534; }
+        .negative { color: #991b1b; }
+        .summary { margin-top: 12px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; font-size: 8.5pt; }
+        .summary-item { text-align: center; border: 1px solid #ccc; padding: 4px; border-radius: 4px; }
+        .summary-item .label { font-size: 7pt; color: #666; text-transform: uppercase; }
+        .summary-item .value { font-size: 11pt; font-weight: bold; font-family: monospace; }
+        .signatures { margin-top: 40px; display: flex; justify-content: space-between; }
+        .sig-line { text-align: center; width: 45%; }
+        .sig-line hr { border: none; border-top: 1px solid #333; margin-bottom: 4px; }
+        .disclaimer { margin-top: 16px; font-size: 7pt; color: #666; text-align: center; border-top: 1px solid #ccc; padding-top: 6px; }
+        @media print { body { padding: 10mm; } }
+      </style></head><body>
+      <div class="header">
+        <h2>APURAÇÃO DE PONTO</h2>
+        <div class="header-grid">
+          <div>
+            <span class="label">Empresa: </span>${identificacao.empresaNome || ''}<br/>
+            <span class="label">CNPJ/CPF: </span>${identificacao.empresaDoc || ''}
+            ${identificacao.empresaEndereco ? `<br/><span class="label">Endereço: </span>${identificacao.empresaEndereco}` : ''}
+          </div>
+          <div>
+            <span class="label">Empregado: </span>${identificacao.empregadoNome || ''}<br/>
+            <span class="label">CPF: </span>${identificacao.empregadoCpf || ''}<br/>
+            ${identificacao.empregadoFuncao ? `<span class="label">Função: </span>${identificacao.empregadoFuncao}<br/>` : ''}
+            <span class="label">Período: </span>${formatMesAnoLong(identificacao.mesAno)}<br/>
+            <span class="label">Jornada Semanal:</span><br/>
+            ${jornadaHtml}
+          </div>
+        </div>
+      </div>
+      <table>
+        <thead><tr>
+          <th>Dia</th><th>DS</th><th>Tipo</th>
+          ${labels.map(l => `<th>${l}</th>`).join('')}
+          <th>Cumprir</th><th>Trab.</th><th>Saldo</th><th>Not.R</th><th>Not.C</th>
+        </tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+      <div class="summary">
+        <div class="summary-item"><div class="label">Total Trabalhado</div><div class="value">${minutesToHHMM(resumo.totalTrabalhado)}</div></div>
+        <div class="summary-item"><div class="label">Total a Cumprir</div><div class="value">${minutesToHHMM(resumo.totalACumprir)}</div></div>
+        <div class="summary-item"><div class="label">Saldo Positivo</div><div class="value positive">${minutesToHHMM(resumo.totalSaldoPositivo)}</div></div>
+        <div class="summary-item"><div class="label">Saldo Negativo</div><div class="value negative">${minutesToHHMM(resumo.totalSaldoNegativo)}</div></div>
+        <div class="summary-item"><div class="label">Saldo Final</div><div class="value ${saldoClass(resumo.saldoFinal)}">${minutesToHHMM(resumo.saldoFinal)}</div></div>
+      </div>
+      <div class="signatures">
+        <div class="sig-line"><hr/> Empregado</div>
+        <div class="sig-line"><hr/> Empresa / Responsável</div>
+      </div>
+      <div class="disclaimer">⚠️ Apuração estimativa para conferência.</div>
+    </body></html>`;
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.print();
   };
 
   const handlePrintReport = () => {
@@ -221,7 +325,7 @@ const PontoBancoHoras: React.FC<Props> = ({ empregadoNome, empregadoCpf, emprega
                       <TableHead className="text-center">Débito</TableHead>
                       <TableHead className="text-center">Saldo Mês</TableHead>
                       <TableHead className="text-center">Saldo Acumulado</TableHead>
-                      <TableHead className="text-center w-10"></TableHead>
+                      <TableHead className="text-center w-20">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -243,9 +347,22 @@ const PontoBancoHoras: React.FC<Props> = ({ empregadoNome, empregadoCpf, emprega
                           {minutesToHHMM(e.saldoAcumulado)}
                         </TableCell>
                         <TableCell className="text-center">
-                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleRemove(e.id)}>
-                            <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                          </Button>
+                          <div className="flex items-center justify-center gap-1">
+                            {e.pontoSnapshot && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                title="Imprimir espelho de ponto deste mês"
+                                onClick={() => handlePrintPonto(e.pontoSnapshot!)}
+                              >
+                                <FileText className="w-3.5 h-3.5 text-primary" />
+                              </Button>
+                            )}
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleRemove(e.id)}>
+                              <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}

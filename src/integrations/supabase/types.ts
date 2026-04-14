@@ -21,6 +21,7 @@ export type Database = {
           empresa_nome: string
           id: string
           mes_ano: string
+          ponto_snapshot: Json | null
           saldo_final: number
           updated_at: string
         }
@@ -30,6 +31,7 @@ export type Database = {
           empresa_nome?: string
           id?: string
           mes_ano: string
+          ponto_snapshot?: Json | null
           saldo_final?: number
           updated_at?: string
         }
@@ -39,6 +41,7 @@ export type Database = {
           empresa_nome?: string
           id?: string
           mes_ano?: string
+          ponto_snapshot?: Json | null
           saldo_final?: number
           updated_at?: string
         }
