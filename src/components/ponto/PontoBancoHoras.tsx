@@ -56,12 +56,23 @@ const PontoBancoHoras: React.FC<Props> = ({ empregadoNome, empregadoCpf, emprega
   }, [entries, filtroEmpresa, filtroEmpregado]);
 
   const handleIncluir = async () => {
+    const nome = empregadoNome || 'Empregado';
+    const empresa = empresaNome || '';
     await upsertEntry({
-      empregadoNome: empregadoNome || 'Empregado',
-      empresaNome: empresaNome || '',
+      empregadoNome: nome,
+      empresaNome: empresa,
       mesAno,
       saldoFinal,
     });
+    // Auto-save employee with CPF and function
+    if (nome && nome !== 'Empregado') {
+      await upsertEmpregado({
+        nome,
+        cpf: empregadoCpf || '',
+        funcao: empregadoFuncao || '',
+        empresaNome: empresa,
+      });
+    }
     toast.success(`Banco de Horas salvo para ${formatMesAno(mesAno)}`);
   };
 
