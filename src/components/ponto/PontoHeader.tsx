@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { type PontoIdentificacao, type PontoConfig, type DiaSemanaKey, type JornadaSemanal } from '@/types/ponto';
 import { useClientes } from '@/hooks/useClientes';
+import { useBancoHoras } from '@/hooks/useBancoHoras';
 
 interface Props {
   identificacao: PontoIdentificacao;
@@ -16,6 +17,8 @@ interface Props {
 
 const PontoHeader: React.FC<Props> = ({ identificacao, config, onIdentificacaoChange, onConfigChange }) => {
   const { clientes } = useClientes();
+  const { entries } = useBancoHoras();
+
   const setId = (field: keyof PontoIdentificacao, val: string) =>
     onIdentificacaoChange({ ...identificacao, [field]: val });
   const setCfg = (field: keyof PontoConfig, val: any) =>
@@ -31,6 +34,18 @@ const PontoHeader: React.FC<Props> = ({ identificacao, config, onIdentificacaoCh
       empresaDoc: c.tipo === 'PJ' ? c.cnpj : c.cpf,
       empresaEndereco: c.endereco,
     });
+  };
+
+  // Unique employee names from banco_horas entries
+  const empregadosBH = React.useMemo(() => {
+    const nomes = new Set<string>();
+    entries.forEach(e => { if (e.empregadoNome) nomes.add(e.empregadoNome); });
+    return Array.from(nomes).sort();
+  }, [entries]);
+
+  const handleEmpregadoSelect = (nome: string) => {
+    if (nome === '__manual__') return;
+    onIdentificacaoChange({ ...identificacao, empregadoNome: nome });
   };
 
   return (
@@ -79,6 +94,21 @@ const PontoHeader: React.FC<Props> = ({ identificacao, config, onIdentificacaoCh
             <CardTitle className="text-base">Empregado</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
+            {empregadosBH.length > 0 && (
+              <div>
+                <Label className="text-xs">Selecionar funcionário do Banco de Horas</Label>
+                <Select onValueChange={handleEmpregadoSelect}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecionar funcionário cadastrado..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {empregadosBH.map(nome => (
+                      <SelectItem key={nome} value={nome}>{nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div>
               <Label className="text-xs">Nome</Label>
               <Input value={identificacao.empregadoNome} onChange={e => setId('empregadoNome', e.target.value)} />
