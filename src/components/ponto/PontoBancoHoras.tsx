@@ -17,13 +17,16 @@ function formatMesAno(mesAno: string): string {
 
 interface Props {
   empregadoNome: string;
+  empregadoCpf?: string;
+  empregadoFuncao?: string;
   empresaNome: string;
   mesAno: string;
   saldoFinal: number;
 }
 
-const PontoBancoHoras: React.FC<Props> = ({ empregadoNome, empresaNome, mesAno, saldoFinal }) => {
+const PontoBancoHoras: React.FC<Props> = ({ empregadoNome, empregadoCpf, empregadoFuncao, empresaNome, mesAno, saldoFinal }) => {
   const { entries, loading, upsertEntry, removeEntry, clearByEmpresa } = useBancoHoras();
+  const { upsertEmpregado } = useEmpregados();
   const [showReport, setShowReport] = useState(false);
   const [filtroEmpresa, setFiltroEmpresa] = useState<string>('__all__');
   const [filtroEmpregado, setFiltroEmpregado] = useState<string>('__all__');
