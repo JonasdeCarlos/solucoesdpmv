@@ -7,6 +7,7 @@ import { BookOpen, Printer, Trash2, Plus, Building2, User, Loader2 } from 'lucid
 import { minutesToHHMM } from '@/utils/pontoCalculations';
 import { toast } from 'sonner';
 import { useBancoHoras } from '@/hooks/useBancoHoras';
+import { useEmpregados } from '@/hooks/useEmpregados';
 
 function formatMesAno(mesAno: string): string {
   const [y, m] = mesAno.split('-');
