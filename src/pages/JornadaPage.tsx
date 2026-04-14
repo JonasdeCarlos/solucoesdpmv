@@ -427,8 +427,8 @@ const JornadaPage: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* PRINT BUTTON */}
-      <div className="flex justify-center gap-3">
+      {/* PRINT BUTTONS */}
+      <div className="flex justify-center gap-3 flex-wrap">
         <Button
           variant="outline"
           size="lg"
@@ -440,9 +440,13 @@ const JornadaPage: React.FC = () => {
           <Eraser className="w-5 h-5" />
           Limpar Horários
         </Button>
+        <Button variant="outline" size="lg" onClick={handleImprimirJornada} className="gap-2">
+          <Printer className="w-5 h-5" />
+          Imprimir Jornada
+        </Button>
         <Button size="lg" onClick={() => setPreviewOpen(true)} className="gap-2">
           <Printer className="w-5 h-5" />
-          Imprimir Parecer (PDF)
+          Emitir Parecer (PDF)
         </Button>
       </div>
 
