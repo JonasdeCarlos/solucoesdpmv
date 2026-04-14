@@ -33,6 +33,9 @@ const PontoHeader: React.FC<Props> = ({ identificacao, config, onIdentificacaoCh
       empresaNome: c.nome,
       empresaDoc: c.tipo === 'PJ' ? c.cnpj : c.cpf,
       empresaEndereco: c.endereco,
+      empregadoNome: '',
+      empregadoCpf: '',
+      empregadoFuncao: '',
     });
   };
 
