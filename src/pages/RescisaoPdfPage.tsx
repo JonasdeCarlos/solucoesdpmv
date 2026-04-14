@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Plus, Download, Trash2, FileStack } from 'lucide-react';
+import PdfSplitter from '@/components/rescisao/PdfSplitter';
 import { format } from 'date-fns';
 import { useRescisaoDossiers } from '@/hooks/useRescisaoDossiers';
 import { supabase } from '@/integrations/supabase/client';
@@ -169,6 +170,7 @@ const RescisaoPdfPage: React.FC = () => {
           )}
         </CardContent>
       </Card>
+      <PdfSplitter />
     </div>
   );
 };
