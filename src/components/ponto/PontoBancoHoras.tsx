@@ -136,8 +136,7 @@ const PontoBancoHoras: React.FC<Props> = ({ empregadoNome, empregadoCpf, emprega
         <td>${d.noturnoConvertido > 0 ? minutesToHHMM(d.noturnoConvertido) : ''}</td>
       </tr>`).join('');
 
-    const html = `<!DOCTYPE html><html><head><title>Ponto - ${identificacao.empregadoNome}</title>
-      <style>
+    const styles = `
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: Arial, sans-serif; font-size: 9pt; padding: 15mm; color: #222; }
         h2 { font-size: 13pt; margin-bottom: 4px; }
@@ -153,12 +152,14 @@ const PontoBancoHoras: React.FC<Props> = ({ empregadoNome, empregadoCpf, emprega
         .summary-item { text-align: center; border: 1px solid #ccc; padding: 4px; border-radius: 4px; }
         .summary-item .label { font-size: 7pt; color: #666; text-transform: uppercase; }
         .summary-item .value { font-size: 11pt; font-weight: bold; font-family: monospace; }
-        .signatures { margin-top: 40px; display: flex; justify-content: space-between; }
+        .signatures { margin-top: 30px; display: flex; justify-content: space-between; }
         .sig-line { text-align: center; width: 45%; }
         .sig-line hr { border: none; border-top: 1px solid #333; margin-bottom: 4px; }
-        .disclaimer { margin-top: 16px; font-size: 7pt; color: #666; text-align: center; border-top: 1px solid #ccc; padding-top: 6px; }
-        @media print { body { padding: 10mm; } }
-      </style></head><body>
+        .disclaimer { margin-top: 12px; font-size: 7pt; color: #666; text-align: center; border-top: 1px solid #ccc; padding-top: 6px; }
+        .page-break { page-break-after: always; }
+        @media print { body { padding: 10mm; } }`;
+
+    const body = `
       <div class="header">
         <h2>APURAÇÃO DE PONTO</h2>
         <div class="header-grid">
@@ -196,14 +197,60 @@ const PontoBancoHoras: React.FC<Props> = ({ empregadoNome, empregadoCpf, emprega
         <div class="sig-line"><hr/> Empregado</div>
         <div class="sig-line"><hr/> Empresa / Responsável</div>
       </div>
-      <div class="disclaimer">⚠️ Apuração estimativa para conferência.</div>
-    </body></html>`;
+      <div class="disclaimer">⚠️ Apuração estimativa para conferência.</div>`;
 
+    if (asFragment) return body;
+    return `<!DOCTYPE html><html><head><title>Ponto - ${identificacao.empregadoNome}</title><style>${styles}</style></head><body>${body}</body></html>`;
+  };
+
+  const openPrint = (html: string) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
     printWindow.document.write(html);
     printWindow.document.close();
     printWindow.print();
+  };
+
+  const handlePrintPonto = (snapshot: PontoSnapshot) => {
+    openPrint(buildPontoHtml(snapshot, false));
+  };
+
+  const handlePrintCombinado = () => {
+    const content = reportRef.current;
+    if (!content) return;
+    const sharedStyles = `
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; font-size: 10pt; padding: 15mm; color: #222; }
+        h2 { font-size: 14pt; margin-bottom: 6px; }
+        .info { font-size: 9pt; margin-bottom: 10px; }
+        .info .label { font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 9pt; }
+        th, td { border: 1px solid #999; padding: 4px 8px; text-align: center; }
+        th { background: #eee; font-weight: bold; }
+        .positive { color: #166534; font-weight: bold; }
+        .negative { color: #991b1b; font-weight: bold; }
+        .total-row { background: #f5f5f5; font-weight: bold; }
+        .header { margin-bottom: 10px; border-bottom: 2px solid #333; padding-bottom: 8px; }
+        .header-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 8.5pt; margin-top: 6px; }
+        .label { font-weight: bold; }
+        .summary { margin-top: 12px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; font-size: 8.5pt; }
+        .summary-item { text-align: center; border: 1px solid #ccc; padding: 4px; border-radius: 4px; }
+        .summary-item .label { font-size: 7pt; color: #666; text-transform: uppercase; }
+        .summary-item .value { font-size: 11pt; font-weight: bold; font-family: monospace; }
+        .signatures { margin-top: 30px; display: flex; justify-content: space-between; }
+        .sig-line { text-align: center; width: 45%; }
+        .sig-line hr { border: none; border-top: 1px solid #333; margin-bottom: 4px; }
+        .disclaimer { margin-top: 12px; font-size: 7pt; color: #666; text-align: center; border-top: 1px solid #ccc; padding-top: 6px; }
+        .page-break { page-break-after: always; }
+        @media print { body { padding: 10mm; } }`;
+
+    const pontosHtml = entriesFiltradas
+      .filter(e => e.pontoSnapshot)
+      .map(e => `<div class="page-break"></div>${buildPontoHtml(e.pontoSnapshot!, true)}`)
+      .join('');
+
+    const fullHtml = `<!DOCTYPE html><html><head><title>Banco de Horas + Pontos</title><style>${sharedStyles}</style></head><body>${content.innerHTML}${pontosHtml}</body></html>`;
+    openPrint(fullHtml);
   };
 
   const handlePrintReport = () => {
