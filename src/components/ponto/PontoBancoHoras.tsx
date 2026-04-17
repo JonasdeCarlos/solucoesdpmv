@@ -348,11 +348,40 @@ const PontoBancoHoras: React.FC<Props> = ({ empregadoNome, empregadoCpf, emprega
                     </Select>
                   </div>
                 )}
+                <div className="flex items-center gap-1.5">
+                  <Calendar className="w-4 h-4 text-muted-foreground" />
+                  <Input
+                    type="month"
+                    value={competenciaInicio}
+                    onChange={(e) => setCompetenciaInicio(e.target.value)}
+                    className="h-8 w-[140px] text-xs"
+                    placeholder="De"
+                    title="Competência inicial"
+                  />
+                  <span className="text-xs text-muted-foreground">até</span>
+                  <Input
+                    type="month"
+                    value={competenciaFim}
+                    onChange={(e) => setCompetenciaFim(e.target.value)}
+                    className="h-8 w-[140px] text-xs"
+                    placeholder="Até"
+                    title="Competência final"
+                  />
+                  {(competenciaInicio || competenciaFim) && (
+                    <Button variant="ghost" size="sm" className="h-8 px-2 text-xs" onClick={() => { setCompetenciaInicio(''); setCompetenciaFim(''); }}>
+                      Limpar
+                    </Button>
+                  )}
+                </div>
                 {entriesFiltradas.length > 0 && (
                   <>
                     <Button variant="outline" size="sm" onClick={handlePrintReport} className="gap-1.5">
                       <Printer className="w-4 h-4" />
-                      Imprimir / PDF
+                      Imprimir Banco
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={handlePrintCombinado} className="gap-1.5" title="Imprime o relatório de banco de horas seguido dos espelhos de ponto">
+                      <FileStack className="w-4 h-4" />
+                      Banco + Pontos
                     </Button>
                     <Button variant="ghost" size="sm" onClick={handleClearAll} className="gap-1.5 text-destructive hover:text-destructive">
                       <Trash2 className="w-4 h-4" />
