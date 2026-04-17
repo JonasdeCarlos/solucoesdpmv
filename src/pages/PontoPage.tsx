@@ -193,6 +193,7 @@ const PontoPage: React.FC = () => {
           diasCalculados,
           resumo,
         }}
+        onLoadSnapshot={handleLoadSnapshot}
       />
 
       <p className="text-xs text-muted-foreground text-center pb-4">
