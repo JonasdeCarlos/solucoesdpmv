@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { BookOpen, Printer, Trash2, Plus, Building2, User, Loader2, FileText, FileStack, Calendar } from 'lucide-react';
+import { BookOpen, Printer, Trash2, Plus, Building2, User, Loader2, FileText, FileStack, Calendar, Pencil } from 'lucide-react';
 import { minutesToHHMM } from '@/utils/pontoCalculations';
 import { toast } from 'sonner';
 import { useBancoHoras, type PontoSnapshot } from '@/hooks/useBancoHoras';
