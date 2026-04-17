@@ -109,7 +109,7 @@ const PontoBancoHoras: React.FC<Props> = ({ empregadoNome, empregadoCpf, emprega
     }
   };
 
-  const handlePrintPonto = (snapshot: PontoSnapshot) => {
+  const buildPontoHtml = (snapshot: PontoSnapshot, asFragment = false): string => {
     const { identificacao, config, diasCalculados, resumo } = snapshot;
     const labels = config.colunasMarcacoes === 6
       ? ['Entrada', 'S.Int.1', 'E.Int.1', 'S.Int.2', 'E.Int.2', 'Saída']
