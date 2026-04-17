@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { BookOpen, Printer, Trash2, Plus, Building2, User, Loader2, FileText, FileStack, Calendar } from 'lucide-react';
+import { BookOpen, Printer, Trash2, Plus, Building2, User, Loader2, FileText, FileStack, Calendar, Pencil } from 'lucide-react';
 import { minutesToHHMM } from '@/utils/pontoCalculations';
 import { toast } from 'sonner';
 import { useBancoHoras, type PontoSnapshot } from '@/hooks/useBancoHoras';
@@ -30,9 +30,10 @@ interface Props {
   mesAno: string;
   saldoFinal: number;
   pontoSnapshot?: PontoSnapshot | null;
+  onLoadSnapshot?: (snapshot: PontoSnapshot) => void;
 }
 
-const PontoBancoHoras: React.FC<Props> = ({ empregadoNome, empregadoCpf, empregadoFuncao, empresaNome, mesAno, saldoFinal, pontoSnapshot }) => {
+const PontoBancoHoras: React.FC<Props> = ({ empregadoNome, empregadoCpf, empregadoFuncao, empresaNome, mesAno, saldoFinal, pontoSnapshot, onLoadSnapshot }) => {
   const { entries, loading, upsertEntry, removeEntry, clearByEmpresa } = useBancoHoras();
   const { upsertEmpregado } = useEmpregados();
   const [showReport, setShowReport] = useState(false);
@@ -433,6 +434,22 @@ const PontoBancoHoras: React.FC<Props> = ({ empregadoNome, empregadoCpf, emprega
                         </TableCell>
                         <TableCell className="text-center">
                           <div className="flex items-center justify-center gap-1">
+                            {e.pontoSnapshot && onLoadSnapshot && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                title="Carregar este mês na apuração para editar e recalcular"
+                                onClick={() => {
+                                  onLoadSnapshot(e.pontoSnapshot!);
+                                  toast.success(`Apuração de ${formatMesAno(e.mesAno)} carregada para edição`);
+                                  setShowReport(false);
+                                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                                }}
+                              >
+                                <Pencil className="w-3.5 h-3.5 text-amber-600" />
+                              </Button>
+                            )}
                             {e.pontoSnapshot && (
                               <Button
                                 variant="ghost"

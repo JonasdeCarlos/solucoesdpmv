@@ -113,6 +113,20 @@ const PontoPage: React.FC = () => {
     setDias(importedDias);
   }, []);
 
+  const handleLoadSnapshot = useCallback((snapshot: { identificacao: PontoIdentificacao; config: PontoConfig; diasCalculados: any[]; resumo: any }) => {
+    setIdentificacao(snapshot.identificacao);
+    setConfig(snapshot.config);
+    // Strip calculated fields, keep only PontoDia base
+    setDias(snapshot.diasCalculados.map((d: any) => ({
+      dia: d.dia,
+      diaSemana: d.diaSemana,
+      tipoDia: d.tipoDia,
+      marcacoes: d.marcacoes,
+      horasACumprir: d.horasACumprir,
+      observacao: d.observacao || '',
+    })));
+  }, []);
+
   // Save to localStorage
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ identificacao, config, dias }));
@@ -179,6 +193,7 @@ const PontoPage: React.FC = () => {
           diasCalculados,
           resumo,
         }}
+        onLoadSnapshot={handleLoadSnapshot}
       />
 
       <p className="text-xs text-muted-foreground text-center pb-4">
