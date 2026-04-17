@@ -179,7 +179,7 @@ const PontoHeader: React.FC<Props> = ({ identificacao, config, onIdentificacaoCh
           {/* Weekly schedule grid */}
           <div>
             <Label className="text-xs font-medium mb-2 block">Jornada por dia da semana (hh:mm)</Label>
-            <div className="grid grid-cols-7 gap-1.5">
+            <div className="grid grid-cols-8 gap-1.5">
               {(['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'] as DiaSemanaKey[]).map(ds => (
                 <div key={ds} className="text-center">
                   <Label className="text-[10px] text-muted-foreground">{ds}</Label>
@@ -197,6 +197,30 @@ const PontoHeader: React.FC<Props> = ({ identificacao, config, onIdentificacaoCh
                   />
                 </div>
               ))}
+              {(() => {
+                const js = config.jornadaSemanal;
+                const totalMin = (['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'] as DiaSemanaKey[])
+                  .reduce((acc, ds) => {
+                    const v = js?.[ds] ?? '00:00';
+                    if (!v.includes(':')) return acc;
+                    const [h, m] = v.split(':').map(Number);
+                    return acc + (h || 0) * 60 + (m || 0);
+                  }, 0);
+                const h = Math.floor(totalMin / 60);
+                const m = totalMin % 60;
+                const total = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+                return (
+                  <div className="text-center">
+                    <Label className="text-[10px] text-muted-foreground font-semibold">Total/sem</Label>
+                    <Input
+                      value={total}
+                      readOnly
+                      tabIndex={-1}
+                      className="font-mono text-xs text-center h-8 px-1 bg-muted font-semibold"
+                    />
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </CardContent>
