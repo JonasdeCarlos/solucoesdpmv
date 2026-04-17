@@ -161,14 +161,12 @@ export async function imagesToPdf(files: File[], outputName = 'imagens.pdf'): Pr
   await downloadPdf(out, outputName);
 }
 
-// 7b. PDF → IMAGENS (renderização via canvas usando pdf.js do navegador via dynamic import)
-// Para manter o MVP sem dependência extra, usamos uma abordagem leve:
-// renderizamos cada página em um canvas via pdfjs-dist se disponível.
-// Fallback: instrui o usuário.
+// 7b. PDF → IMAGENS (renderização via pdfjs-dist)
 export async function pdfToImages(file: File): Promise<void> {
-  // Importa pdfjs dinamicamente
-  const pdfjs: any = await import(/* @vite-ignore */ 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.8.69/build/pdf.min.mjs');
-  pdfjs.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.8.69/build/pdf.worker.min.mjs';
+  const pdfjs: any = await import('pdfjs-dist');
+  // Worker via CDN (evita configuração de bundler para o worker)
+  pdfjs.GlobalWorkerOptions.workerSrc =
+    `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
   const bytes = await file.arrayBuffer();
   const pdf = await pdfjs.getDocument({ data: bytes }).promise;
