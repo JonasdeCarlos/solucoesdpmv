@@ -1,0 +1,66 @@
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import FileDropZone from '../FileDropZone';
+import { mergePdfs } from '@/utils/pdfTools';
+import { toast } from 'sonner';
+import { Loader2, ArrowUp, ArrowDown } from 'lucide-react';
+
+const MergeTool = () => {
+  const [files, setFiles] = useState<File[]>([]);
+  const [busy, setBusy] = useState(false);
+
+  const move = (i: number, dir: -1 | 1) => {
+    const j = i + dir;
+    if (j < 0 || j >= files.length) return;
+    const next = [...files];
+    [next[i], next[j]] = [next[j], next[i]];
+    setFiles(next);
+  };
+
+  const run = async () => {
+    if (files.length < 2) return toast.error('Selecione ao menos 2 PDFs.');
+    setBusy(true);
+    try {
+      await mergePdfs(files);
+      toast.success('PDF unido gerado.');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Falha ao unir.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Combine vários PDFs em um único arquivo. Use as setas para reordenar antes de processar.
+      </p>
+      <FileDropZone files={files} setFiles={setFiles} accept="application/pdf" multiple />
+
+      {files.length > 1 && (
+        <div className="space-y-1">
+          <p className="text-xs font-medium text-muted-foreground">Ordem de junção:</p>
+          {files.map((f, i) => (
+            <div key={i} className="flex items-center gap-2 px-3 py-1.5 bg-muted/30 rounded text-sm">
+              <span className="text-xs text-muted-foreground w-6">{i + 1}.</span>
+              <span className="flex-1 truncate">{f.name}</span>
+              <Button variant="ghost" size="sm" onClick={() => move(i, -1)} disabled={i === 0} className="h-7 w-7 p-0">
+                <ArrowUp className="w-4 h-4" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => move(i, 1)} disabled={i === files.length - 1} className="h-7 w-7 p-0">
+                <ArrowDown className="w-4 h-4" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <Button onClick={run} disabled={busy || files.length < 2} className="w-full">
+        {busy && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+        Unir {files.length > 0 ? `${files.length} PDFs` : 'PDFs'}
+      </Button>
+    </div>
+  );
+};
+
+export default MergeTool;
