@@ -33,24 +33,42 @@ export function useEmpregados() {
   useEffect(() => { fetchEmpregados(); }, [fetchEmpregados]);
 
   const upsertEmpregado = useCallback(async (emp: Omit<Empregado, 'id'>) => {
-    const { data: existing } = await supabase
-      .from('empregados')
-      .select('id')
-      .eq('nome', emp.nome)
-      .eq('empresa_nome', emp.empresaNome)
-      .maybeSingle();
+    const nomeNorm = emp.nome.trim().replace(/\s+/g, ' ');
+    const cpfNorm = (emp.cpf || '').trim();
 
-    if (existing) {
+    // 1) Match por CPF (quando informado) dentro da mesma empresa — evita duplicatas com nomes diferentes
+    let existingId: string | null = null;
+    if (cpfNorm) {
+      const { data: byCpf } = await supabase
+        .from('empregados')
+        .select('id')
+        .eq('cpf', cpfNorm)
+        .eq('empresa_nome', emp.empresaNome)
+        .maybeSingle();
+      if (byCpf) existingId = byCpf.id;
+    }
+
+    // 2) Fallback: match por nome normalizado
+    if (!existingId) {
+      const { data: all } = await supabase
+        .from('empregados')
+        .select('id, nome')
+        .eq('empresa_nome', emp.empresaNome);
+      const match = all?.find(r => r.nome.trim().replace(/\s+/g, ' ').toUpperCase() === nomeNorm.toUpperCase());
+      if (match) existingId = match.id;
+    }
+
+    if (existingId) {
       await supabase
         .from('empregados')
-        .update({ cpf: emp.cpf, funcao: emp.funcao, updated_at: new Date().toISOString() })
-        .eq('id', existing.id);
+        .update({ nome: nomeNorm, cpf: cpfNorm, funcao: emp.funcao, updated_at: new Date().toISOString() })
+        .eq('id', existingId);
     } else {
       await supabase
         .from('empregados')
         .insert({
-          nome: emp.nome,
-          cpf: emp.cpf,
+          nome: nomeNorm,
+          cpf: cpfNorm,
           funcao: emp.funcao,
           empresa_nome: emp.empresaNome,
         });
