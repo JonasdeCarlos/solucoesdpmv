@@ -434,6 +434,22 @@ const PontoBancoHoras: React.FC<Props> = ({ empregadoNome, empregadoCpf, emprega
                         </TableCell>
                         <TableCell className="text-center">
                           <div className="flex items-center justify-center gap-1">
+                            {e.pontoSnapshot && onLoadSnapshot && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                title="Carregar este mês na apuração para editar e recalcular"
+                                onClick={() => {
+                                  onLoadSnapshot(e.pontoSnapshot!);
+                                  toast.success(`Apuração de ${formatMesAno(e.mesAno)} carregada para edição`);
+                                  setShowReport(false);
+                                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                                }}
+                              >
+                                <Pencil className="w-3.5 h-3.5 text-amber-600" />
+                              </Button>
+                            )}
                             {e.pontoSnapshot && (
                               <Button
                                 variant="ghost"
