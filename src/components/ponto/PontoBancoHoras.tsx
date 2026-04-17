@@ -39,6 +39,8 @@ const PontoBancoHoras: React.FC<Props> = ({ empregadoNome, empregadoCpf, emprega
   const [showReport, setShowReport] = useState(false);
   const [filtroEmpresa, setFiltroEmpresa] = useState<string>('__all__');
   const [filtroEmpregado, setFiltroEmpregado] = useState<string>('__all__');
+  const [competenciaInicio, setCompetenciaInicio] = useState<string>('');
+  const [competenciaFim, setCompetenciaFim] = useState<string>('');
   const reportRef = useRef<HTMLDivElement>(null);
 
   const empresasUnicas = useMemo(() => {
@@ -61,8 +63,14 @@ const PontoBancoHoras: React.FC<Props> = ({ empregadoNome, empregadoCpf, emprega
     if (filtroEmpregado !== '__all__') {
       filtered = filtered.filter(e => e.empregadoNome === filtroEmpregado);
     }
+    if (competenciaInicio) {
+      filtered = filtered.filter(e => e.mesAno >= competenciaInicio);
+    }
+    if (competenciaFim) {
+      filtered = filtered.filter(e => e.mesAno <= competenciaFim);
+    }
     return filtered;
-  }, [entries, filtroEmpresa, filtroEmpregado]);
+  }, [entries, filtroEmpresa, filtroEmpregado, competenciaInicio, competenciaFim]);
 
   const handleIncluir = async () => {
     const nome = empregadoNome || 'Empregado';
