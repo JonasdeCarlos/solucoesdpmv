@@ -30,9 +30,10 @@ interface Props {
   mesAno: string;
   saldoFinal: number;
   pontoSnapshot?: PontoSnapshot | null;
+  onLoadSnapshot?: (snapshot: PontoSnapshot) => void;
 }
 
-const PontoBancoHoras: React.FC<Props> = ({ empregadoNome, empregadoCpf, empregadoFuncao, empresaNome, mesAno, saldoFinal, pontoSnapshot }) => {
+const PontoBancoHoras: React.FC<Props> = ({ empregadoNome, empregadoCpf, empregadoFuncao, empresaNome, mesAno, saldoFinal, pontoSnapshot, onLoadSnapshot }) => {
   const { entries, loading, upsertEntry, removeEntry, clearByEmpresa } = useBancoHoras();
   const { upsertEmpregado } = useEmpregados();
   const [showReport, setShowReport] = useState(false);
