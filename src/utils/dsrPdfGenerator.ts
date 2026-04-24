@@ -106,3 +106,135 @@ export function gerarPdfApuracaoDsr(r: DsrMonthlyResult, contagem: ContagemDiasM
 
   doc.save(`apuracao-dsr-${r.competencia}.pdf`);
 }
+
+/**
+ * Gera PDF da apuração ANUAL com memória de cálculo de cada mês.
+ */
+export function gerarPdfApuracaoDsrAnual(
+  ano: number,
+  empresaNome: string,
+  meses: { competencia: string; resultado: DsrMonthlyResult; erro?: string }[],
+) {
+  const doc = new jsPDF();
+  const pageW = doc.internal.pageSize.getWidth();
+
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`Apuração Anual de DSR — ${ano}`, pageW / 2, 18, { align: 'center' });
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Empresa: ${empresaNome || '—'}`, 14, 28);
+  doc.text(`Período: 01/${ano} a 12/${ano}`, 14, 34);
+
+  // Tabela resumo do ano
+  const totalBase = meses.reduce((s, m) => s + m.resultado.totalBase, 0);
+  const totalDsr = meses.reduce((s, m) => s + m.resultado.totalDsr, 0);
+
+  autoTable(doc, {
+    startY: 40,
+    head: [['Competência', 'DU', 'Dias DSR', 'Total Base', 'Total DSR', 'Total Geral']],
+    body: meses.map((m) => [
+      m.competencia,
+      String(m.resultado.diasUteis),
+      String(m.resultado.diasDsr),
+      fmtBRL(m.resultado.totalBase),
+      fmtBRL(m.resultado.totalDsr),
+      fmtBRL(m.resultado.totalBase + m.resultado.totalDsr),
+    ]),
+    foot: [[
+      `TOTAL ${ano}`,
+      '',
+      '',
+      fmtBRL(totalBase),
+      fmtBRL(totalDsr),
+      fmtBRL(totalBase + totalDsr),
+    ]],
+    theme: 'grid',
+    headStyles: { fillColor: [98, 142, 63] },
+    footStyles: { fillColor: [225, 232, 242], textColor: 20, fontStyle: 'bold' },
+    styles: { fontSize: 9, halign: 'center' },
+  });
+
+  // Memória detalhada mês a mês
+  meses.forEach((m) => {
+    const r = m.resultado;
+    const hasData = r.detalheVerbas.length > 0;
+    if (!hasData) return;
+
+    doc.addPage();
+    doc.setFontSize(13);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Memória de cálculo — ${m.competencia}`, 14, 18);
+
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text(
+      `DU: ${r.diasUteis}  |  Dias DSR: ${r.diasDsr}  |  Domingos: ${r.domingos}  |  Feriados: ${r.feriadosNaoUteis}`,
+      14,
+      26,
+    );
+
+    autoTable(doc, {
+      startY: 32,
+      head: [['Código', 'Verba', 'Base', 'DU', 'Dias DSR', 'DSR (R$)', 'Total']],
+      body: r.detalheVerbas.map((v) => [
+        v.codigo || '—',
+        v.nome,
+        fmtBRL(v.base),
+        String(v.diasUteis),
+        String(v.diasDsr),
+        fmtBRL(v.dsr),
+        fmtBRL(v.total),
+      ]),
+      foot: [[
+        '',
+        'TOTAL',
+        fmtBRL(r.totalBase),
+        '',
+        '',
+        fmtBRL(r.totalDsr),
+        fmtBRL(r.totalBase + r.totalDsr),
+      ]],
+      theme: 'grid',
+      headStyles: { fillColor: [57, 52, 33] },
+      footStyles: { fillColor: [225, 232, 242], textColor: 20, fontStyle: 'bold' },
+      styles: { fontSize: 9 },
+    });
+
+    const finalY = (doc as any).lastAutoTable?.finalY ?? 60;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Fórmulas:', 14, finalY + 8);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    let y = finalY + 14;
+    r.detalheVerbas.forEach((v) => {
+      if (y > 275) {
+        doc.addPage();
+        y = 20;
+      }
+      const linha = `• ${v.nome}: ${v.formula}`;
+      const partes = doc.splitTextToSize(linha, pageW - 28);
+      doc.text(partes, 14, y);
+      y += partes.length * 4 + 1;
+    });
+  });
+
+  // Rodapé em todas as páginas
+  const totalPages = doc.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setFontSize(7);
+    doc.setTextColor(120);
+    doc.text(
+      'Cálculo estimativo. Pode variar conforme CCT e particularidades. Consulte um profissional.',
+      pageW / 2,
+      290,
+      { align: 'center' },
+    );
+    doc.text(`Página ${i} de ${totalPages}`, pageW - 14, 290, { align: 'right' });
+  }
+
+  doc.save(`apuracao-dsr-anual-${ano}.pdf`);
+}
