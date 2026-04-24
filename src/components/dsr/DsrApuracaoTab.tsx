@@ -232,9 +232,13 @@ export default function DsrApuracaoTab({ empresa, competencia }: Props) {
                           </TableCell>
                         </TableRow>
                         {m.resultado.detalheVerbas.map((v) => (
-                          <TableRow key={`${m.competencia}-${v.verbaId}`}>
+                          <TableRow key={`${m.competencia}-${v.verbaId}-${v.colaborador || ''}`}>
                             <TableCell className="pl-6 text-xs text-muted-foreground" colSpan={3}>
-                              ↳ {v.nome} <span className="opacity-70">— {v.formula}</span>
+                              ↳ {v.nome}
+                              {v.colaborador && (
+                                <span className="ml-1 font-medium text-foreground/80">· {v.colaborador}</span>
+                              )}
+                              <span className="opacity-70"> — {v.formula}</span>
                             </TableCell>
                             <TableCell className="text-right text-xs">{fmtBRL(v.base)}</TableCell>
                             <TableCell className="text-right text-xs">{fmtBRL(v.dsr)}</TableCell>
@@ -329,6 +333,7 @@ export default function DsrApuracaoTab({ empresa, competencia }: Props) {
               <TableHeader>
                 <TableRow>
                   <TableHead>Verba</TableHead>
+                  <TableHead>Colaborador</TableHead>
                   <TableHead className="text-right">Base</TableHead>
                   <TableHead className="text-center">DU</TableHead>
                   <TableHead className="text-center">DSR (dias)</TableHead>
@@ -337,12 +342,13 @@ export default function DsrApuracaoTab({ empresa, competencia }: Props) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {r.detalheVerbas.map((v) => (
-                  <TableRow key={v.verbaId}>
+                {r.detalheVerbas.map((v, idx) => (
+                  <TableRow key={`${v.verbaId}-${v.colaborador || ''}-${idx}`}>
                     <TableCell>
                       <div className="font-medium">{v.nome}</div>
                       <div className="text-xs text-muted-foreground">{v.formula}</div>
                     </TableCell>
+                    <TableCell className="text-sm">{v.colaborador || '—'}</TableCell>
                     <TableCell className="text-right">{fmtBRL(v.base)}</TableCell>
                     <TableCell className="text-center">{v.diasUteis}</TableCell>
                     <TableCell className="text-center">{v.diasDsr}</TableCell>

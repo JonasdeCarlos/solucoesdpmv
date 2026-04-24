@@ -48,10 +48,11 @@ export function gerarPdfApuracaoDsr(r: DsrMonthlyResult, contagem: ContagemDiasM
 
   // Tabela: detalhamento por verba
   autoTable(doc, {
-    head: [['Código', 'Verba', 'Base', 'DU', 'Dias DSR', 'DSR (R$)', 'Total']],
+    head: [['Código', 'Verba', 'Colaborador', 'Base', 'DU', 'Dias DSR', 'DSR (R$)', 'Total']],
     body: r.detalheVerbas.map((v) => [
       v.codigo || '—',
       v.nome,
+      v.colaborador || '—',
       fmtBRL(v.base),
       String(v.diasUteis),
       String(v.diasDsr),
@@ -61,6 +62,7 @@ export function gerarPdfApuracaoDsr(r: DsrMonthlyResult, contagem: ContagemDiasM
     foot: [[
       '',
       'TOTAL',
+      '',
       fmtBRL(r.totalBase),
       '',
       '',
@@ -86,7 +88,7 @@ export function gerarPdfApuracaoDsr(r: DsrMonthlyResult, contagem: ContagemDiasM
       doc.addPage();
       y = 20;
     }
-    doc.text(`• ${v.nome}: ${v.formula}`, 14, y);
+    doc.text(`• ${v.nome}${v.colaborador ? ` (${v.colaborador})` : ''}: ${v.formula}`, 14, y);
     y += 5;
   });
 
@@ -177,10 +179,11 @@ export function gerarPdfApuracaoDsrAnual(
 
     autoTable(doc, {
       startY: 32,
-      head: [['Código', 'Verba', 'Base', 'DU', 'Dias DSR', 'DSR (R$)', 'Total']],
+      head: [['Código', 'Verba', 'Colaborador', 'Base', 'DU', 'Dias DSR', 'DSR (R$)', 'Total']],
       body: r.detalheVerbas.map((v) => [
         v.codigo || '—',
         v.nome,
+        v.colaborador || '—',
         fmtBRL(v.base),
         String(v.diasUteis),
         String(v.diasDsr),
@@ -190,6 +193,7 @@ export function gerarPdfApuracaoDsrAnual(
       foot: [[
         '',
         'TOTAL',
+        '',
         fmtBRL(r.totalBase),
         '',
         '',
@@ -214,7 +218,7 @@ export function gerarPdfApuracaoDsrAnual(
         doc.addPage();
         y = 20;
       }
-      const linha = `• ${v.nome}: ${v.formula}`;
+      const linha = `• ${v.nome}${v.colaborador ? ` (${v.colaborador})` : ''}: ${v.formula}`;
       const partes = doc.splitTextToSize(linha, pageW - 28);
       doc.text(partes, 14, y);
       y += partes.length * 4 + 1;

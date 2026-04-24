@@ -180,11 +180,19 @@ export function apurarDsr(
 ): { resultado: DsrMonthlyResult; erro?: string } {
   // Agrupar lançamentos por verba (somar bases)
   const verbaMap = new Map(verbas.map((v) => [v.id, v]));
-  const baseMap = new Map<string, number>();
+  // Agrupar por colaborador+verba para separar o cálculo individualmente
+  const baseMap = new Map<string, { verbaId: string; colaborador: string; base: number }>();
   lancamentos
     .filter((l) => l.competencia === competencia && (!empresaNome || l.empresaNome === empresaNome))
     .forEach((l) => {
-      baseMap.set(l.verbaId, (baseMap.get(l.verbaId) || 0) + baseDoLancamento(l));
+      const colab = (l.colaborador || '').trim() || '— sem colaborador —';
+      const key = `${l.verbaId}::${colab}`;
+      const cur = baseMap.get(key);
+      if (cur) {
+        cur.base += baseDoLancamento(l);
+      } else {
+        baseMap.set(key, { verbaId: l.verbaId, colaborador: colab, base: baseDoLancamento(l) });
+      }
     });
 
   // Para cada verba com base > 0, calcular contagem específica (cada verba pode customizar domingo/feriado)
@@ -196,7 +204,7 @@ export function apurarDsr(
   // Contagem global (para exibição no header da apuração)
   const contagemGlobal = contarDiasMes(competencia, feriadosMunicipais, overridesNacionais, opts);
 
-  for (const [verbaId, base] of baseMap.entries()) {
+  for (const { verbaId, colaborador, base } of baseMap.values()) {
     const verba = verbaMap.get(verbaId);
     if (!verba) continue;
     totalBase += base;
@@ -206,6 +214,7 @@ export function apurarDsr(
         verbaId,
         codigo: verba.codigo,
         nome: verba.nome,
+        colaborador,
         base,
         diasUteis: contagemGlobal.diasUteis,
         diasDsr: 0,
@@ -229,6 +238,7 @@ export function apurarDsr(
         verbaId,
         codigo: verba.codigo,
         nome: verba.nome,
+        colaborador,
         base,
         diasUteis: 0,
         diasDsr: cont.diasDsr,
@@ -245,6 +255,7 @@ export function apurarDsr(
       verbaId,
       codigo: verba.codigo,
       nome: verba.nome,
+      colaborador,
       base,
       diasUteis: cont.diasUteis,
       diasDsr: cont.diasDsr,
@@ -275,10 +286,10 @@ export function exportarCsvApuracao(r: DsrMonthlyResult): string {
   linhas.push(`Apuração DSR;Competência ${r.competencia};Empresa ${r.empresaNome || '-'}`);
   linhas.push(`Dias úteis;${r.diasUteis};Dias DSR;${r.diasDsr};Domingos;${r.domingos};Feriados não úteis;${r.feriadosNaoUteis}`);
   linhas.push('');
-  linhas.push('Código;Verba;Base;DU;DSR(dias);DSR(R$);Total;Memória');
+  linhas.push('Código;Verba;Colaborador;Base;DU;DSR(dias);DSR(R$);Total;Memória');
   r.detalheVerbas.forEach((v) => {
     linhas.push(
-      `${v.codigo};${v.nome};${v.base.toFixed(2)};${v.diasUteis};${v.diasDsr};${v.dsr.toFixed(2)};${v.total.toFixed(2)};${v.formula}`,
+      `${v.codigo};${v.nome};${v.colaborador || ''};${v.base.toFixed(2)};${v.diasUteis};${v.diasDsr};${v.dsr.toFixed(2)};${v.total.toFixed(2)};${v.formula}`,
     );
   });
   linhas.push('');
