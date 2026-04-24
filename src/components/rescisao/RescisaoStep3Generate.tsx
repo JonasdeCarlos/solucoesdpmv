@@ -134,7 +134,9 @@ const RescisaoStep3Generate: React.FC<Props> = ({ capaData, files, onBack, onFin
             </Button>
           </div>
           <div className="border rounded-md overflow-hidden bg-muted/20" style={{ height: 500 }}>
-            <embed src={`${previewUrl}#toolbar=1&navpanes=0`} type="application/pdf" className="w-full h-full" />
+            <object data={`${previewUrl}#toolbar=1&navpanes=0`} type="application/pdf" className="w-full h-full">
+              <iframe src={previewUrl} title="Pré-visualização PDF" className="w-full h-full border-0" />
+            </object>
           </div>
         </div>
       )}
