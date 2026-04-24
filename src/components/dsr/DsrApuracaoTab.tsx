@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -220,8 +220,8 @@ export default function DsrApuracaoTab({ empresa, competencia }: Props) {
                   </TableHeader>
                   <TableBody>
                     {apuracoesAno.map((m) => (
-                      <>
-                        <TableRow key={m.competencia} className="bg-muted/20">
+                      <Fragment key={m.competencia}>
+                        <TableRow className="bg-muted/20">
                           <TableCell className="font-mono text-xs font-semibold">{m.competencia}</TableCell>
                           <TableCell className="text-center">{m.resultado.diasUteis}</TableCell>
                           <TableCell className="text-center">{m.resultado.diasDsr}</TableCell>
@@ -242,13 +242,13 @@ export default function DsrApuracaoTab({ empresa, competencia }: Props) {
                           </TableRow>
                         ))}
                         {m.resultado.detalheVerbas.length === 0 && (
-                          <TableRow key={`${m.competencia}-empty`}>
+                          <TableRow>
                             <TableCell colSpan={6} className="pl-6 text-xs text-muted-foreground italic">
                               Sem lançamentos nesta competência.
                             </TableCell>
                           </TableRow>
                         )}
-                      </>
+                      </Fragment>
                     ))}
                     {totaisAno && (
                       <TableRow className="bg-muted/30 font-semibold">
