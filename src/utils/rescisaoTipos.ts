@@ -50,8 +50,6 @@ export const RESCISAO_TIPOS: RescisaoTipoConfig[] = [
     documentos: [
       { documento: 'TRCT/TQRCT', empregado: '1 via', empregador: '2 vias' },
       { documento: 'Pedido de Demissão', empregado: '—', empregador: '1 via' },
-      { documento: 'Aviso Prévio', empregado: '1 via', empregador: '1 via' },
-      { documento: 'Extrato FGTS', empregado: '1 via', empregador: '1 via' },
       { documento: 'Folha de Ponto (se houver)', empregado: '1 via', empregador: '1 via' },
       { documento: 'Comprovante de pagamento', empregado: '1 via', empregador: '1 via' },
     ],
