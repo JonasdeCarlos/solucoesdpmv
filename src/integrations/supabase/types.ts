@@ -437,6 +437,48 @@ export type Database = {
         }
         Relationships: []
       }
+      dsr_monthly_results: {
+        Row: {
+          competencia: string
+          detalhe_verbas: Json | null
+          dias_dsr: number
+          dias_uteis: number
+          domingos: number
+          empresa_nome: string
+          feriados_nao_uteis: number
+          gerado_em: string
+          id: string
+          total_base: number
+          total_dsr: number
+        }
+        Insert: {
+          competencia: string
+          detalhe_verbas?: Json | null
+          dias_dsr?: number
+          dias_uteis?: number
+          domingos?: number
+          empresa_nome?: string
+          feriados_nao_uteis?: number
+          gerado_em?: string
+          id?: string
+          total_base?: number
+          total_dsr?: number
+        }
+        Update: {
+          competencia?: string
+          detalhe_verbas?: Json | null
+          dias_dsr?: number
+          dias_uteis?: number
+          domingos?: number
+          empresa_nome?: string
+          feriados_nao_uteis?: number
+          gerado_em?: string
+          id?: string
+          total_base?: number
+          total_dsr?: number
+        }
+        Relationships: []
+      }
       empregados: {
         Row: {
           cpf: string
@@ -469,22 +511,61 @@ export type Database = {
       }
       feriados_municipais: {
         Row: {
+          conta_dia_nao_util: boolean
+          conta_dsr: boolean
           created_at: string
           data: string
           descricao: string
+          escopo: string
           id: string
+          municipio: string | null
+          uf: string | null
         }
         Insert: {
+          conta_dia_nao_util?: boolean
+          conta_dsr?: boolean
           created_at?: string
           data: string
           descricao: string
+          escopo?: string
           id?: string
+          municipio?: string | null
+          uf?: string | null
         }
         Update: {
+          conta_dia_nao_util?: boolean
+          conta_dsr?: boolean
           created_at?: string
           data?: string
           descricao?: string
+          escopo?: string
           id?: string
+          municipio?: string | null
+          uf?: string | null
+        }
+        Relationships: []
+      }
+      feriados_nacionais_overrides: {
+        Row: {
+          ano: number
+          chave: string
+          created_at: string
+          id: string
+          ponto_facultativo: boolean
+        }
+        Insert: {
+          ano: number
+          chave: string
+          created_at?: string
+          id?: string
+          ponto_facultativo?: boolean
+        }
+        Update: {
+          ano?: number
+          chave?: string
+          created_at?: string
+          id?: string
+          ponto_facultativo?: boolean
         }
         Relationships: []
       }
@@ -523,6 +604,62 @@ export type Database = {
           status?: string
         }
         Relationships: []
+      }
+      provision_entries: {
+        Row: {
+          centro_custo: string | null
+          colaborador: string | null
+          competencia: string
+          created_at: string
+          empresa_nome: string
+          id: string
+          observacao: string | null
+          quantidade: number | null
+          tipo_lancamento: string
+          updated_at: string
+          valor: number
+          valor_unitario: number | null
+          verba_id: string | null
+        }
+        Insert: {
+          centro_custo?: string | null
+          colaborador?: string | null
+          competencia: string
+          created_at?: string
+          empresa_nome?: string
+          id?: string
+          observacao?: string | null
+          quantidade?: number | null
+          tipo_lancamento?: string
+          updated_at?: string
+          valor?: number
+          valor_unitario?: number | null
+          verba_id?: string | null
+        }
+        Update: {
+          centro_custo?: string | null
+          colaborador?: string | null
+          competencia?: string
+          created_at?: string
+          empresa_nome?: string
+          id?: string
+          observacao?: string | null
+          quantidade?: number | null
+          tipo_lancamento?: string
+          updated_at?: string
+          valor?: number
+          valor_unitario?: number | null
+          verba_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "provision_entries_verba_id_fkey"
+            columns: ["verba_id"]
+            isOneToOne: false
+            referencedRelation: "verbas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       rescisao_cover_templates: {
         Row: {
@@ -893,33 +1030,57 @@ export type Database = {
       verbas: {
         Row: {
           calcula_dsr: boolean
+          codigo: string | null
+          considera_domingo_dsr: boolean
+          considera_feriado_dsr: boolean
           created_at: string
           id: string
+          incide_dsr: boolean
           incide_fgts: boolean
           nome: string
+          observacoes: string | null
           padrao_pd: string
           referencia_padrao: string | null
+          regra_dsr: string
+          regra_dsr_custom: string | null
           tipo_calculo: string
+          tipo_lancamento: string
         }
         Insert: {
           calcula_dsr?: boolean
+          codigo?: string | null
+          considera_domingo_dsr?: boolean
+          considera_feriado_dsr?: boolean
           created_at?: string
           id?: string
+          incide_dsr?: boolean
           incide_fgts?: boolean
           nome: string
+          observacoes?: string | null
           padrao_pd?: string
           referencia_padrao?: string | null
+          regra_dsr?: string
+          regra_dsr_custom?: string | null
           tipo_calculo?: string
+          tipo_lancamento?: string
         }
         Update: {
           calcula_dsr?: boolean
+          codigo?: string | null
+          considera_domingo_dsr?: boolean
+          considera_feriado_dsr?: boolean
           created_at?: string
           id?: string
+          incide_dsr?: boolean
           incide_fgts?: boolean
           nome?: string
+          observacoes?: string | null
           padrao_pd?: string
           referencia_padrao?: string | null
+          regra_dsr?: string
+          regra_dsr_custom?: string | null
           tipo_calculo?: string
+          tipo_lancamento?: string
         }
         Relationships: []
       }
