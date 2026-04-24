@@ -124,10 +124,24 @@ export default function DsrApuracaoTab({ empresa, competencia }: Props) {
   };
 
   const handleClearAno = async () => {
-    if (!confirm(`Limpar todas as apurações salvas de ${ano}?`)) return;
-    const { error } = await deletePeriodo(empresa, `${ano}-01`, `${ano}-12`);
-    if (error) toast.error('Erro ao limpar apurações do ano.');
-    else toast.success(`Apurações de ${ano} removidas.`);
+    if (!confirm(
+      '⚠️ RESET TOTAL DO MÓDULO DSR\n\n' +
+      'Esta ação vai APAGAR DEFINITIVAMENTE:\n' +
+      '• TODAS as apurações salvas (todas empresas, todos os anos)\n' +
+      '• TODOS os lançamentos de provisões (todas empresas, todas competências)\n\n' +
+      'Esta ação é IRREVERSÍVEL. Continuar?'
+    )) return;
+    if (!confirm('Tem certeza absoluta? Digite OK na próxima confirmação.\n\nÚltima chance — clicar em OK abaixo apaga tudo.')) return;
+
+    const { error: errAp } = await supabase.from('dsr_monthly_results' as any).delete().not('id', 'is', null);
+    const { error: errEn } = await supabase.from('provision_entries' as any).delete().not('id', 'is', null);
+    if (errAp || errEn) {
+      toast.error('Erro ao apagar dados. Verifique os logs.');
+      return;
+    }
+    toast.success('Módulo DSR resetado: todas as apurações e lançamentos foram apagados.');
+    // Recarrega a página para limpar todos os caches/locais
+    setTimeout(() => window.location.reload(), 800);
   };
 
   const downloadCsvAno = () => {
@@ -278,7 +292,7 @@ export default function DsrApuracaoTab({ empresa, competencia }: Props) {
                     <Save className="w-4 h-4 mr-1" />Salvar todas as apurações
                   </Button>
                   <Button variant="outline" onClick={handleClearAno}>
-                    <Trash2 className="w-4 h-4 mr-1 text-destructive" />Limpar apurações do ano
+                    <Trash2 className="w-4 h-4 mr-1 text-destructive" />Apagar TUDO (reset)
                   </Button>
                 </div>
               </>
