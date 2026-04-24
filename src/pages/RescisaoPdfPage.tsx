@@ -13,12 +13,25 @@ import RescisaoStep2Upload from '@/components/rescisao/RescisaoStep2Upload';
 import RescisaoStep3Generate from '@/components/rescisao/RescisaoStep3Generate';
 import StepIndicator from '@/components/StepIndicator';
 import type { UploadedFile } from '@/types/rescisaoDossier';
+import type { RescisaoTipoId } from '@/utils/rescisaoTipos';
 
 type WizardStep = 0 | 1 | 2;
 
 const STEPS = ['Dados da Capa', 'Upload Documentos', 'Gerar PDF Final'];
 
-const emptyCapaData = () => ({
+interface CapaState {
+  employeeName: string;
+  terminationDate: string;
+  paymentDateSuggested: string;
+  paymentDateFinal: string;
+  companyName: string;
+  companyCnpj: string;
+  competenceMonth: string;
+  checkedBy: string;
+  rescisaoTipo: RescisaoTipoId;
+}
+
+const emptyCapaData = (): CapaState => ({
   employeeName: '',
   terminationDate: '',
   paymentDateSuggested: '',
@@ -27,6 +40,7 @@ const emptyCapaData = () => ({
   companyCnpj: '',
   competenceMonth: '',
   checkedBy: '',
+  rescisaoTipo: 'sem_justa_causa',
 });
 
 const RescisaoPdfPage: React.FC = () => {

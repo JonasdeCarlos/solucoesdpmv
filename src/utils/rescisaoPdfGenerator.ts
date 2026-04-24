@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import { format } from 'date-fns';
+import { DOCUMENTOS_COMUNS, getRescisaoTipoConfig, type RescisaoTipoId, type RescisaoDocLinha } from './rescisaoTipos';
 
 interface CapaParams {
   employeeName: string;
@@ -9,6 +10,7 @@ interface CapaParams {
   companyCnpj: string;
   competenceMonth: string;
   checkedBy: string;
+  rescisaoTipo?: RescisaoTipoId;
 }
 
 /** Carrega logo como base64 a partir do public folder */
@@ -60,9 +62,12 @@ export async function gerarCapaRescisao(params: CapaParams): Promise<jsPDF> {
   doc.text('Finalizamos a Rescisão solicitada.', mx, y);
   y += 10;
 
+  const tipoCfg = getRescisaoTipoConfig(params.rescisaoTipo ?? 'sem_justa_causa');
+
   // Tabela de dados
   const tableData = [
     ['EMPREGADO:', params.employeeName.toUpperCase()],
+    ['TIPO DE RESCISÃO:', tipoCfg.label.toUpperCase()],
     ['DATA RESCISÃO:', formatDateBR(params.terminationDate)],
     ['DATA LIMITE DE PAGAMENTO:', formatDateBR(params.paymentDateFinal)],
   ];
@@ -86,73 +91,40 @@ export async function gerarCapaRescisao(params: CapaParams): Promise<jsPDF> {
     y += rowH;
   }
 
-  y += 7;
-
-  // Instruções
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(57, 52, 33);
-  doc.text('Se atente para as instruções a seguir:', mx, y);
-  y += 8;
+  y += 6;
 
   const greenColor: [number, number, number] = [98, 142, 63]; // #628E3F
 
-  const sections = [
-    {
-      title: 'AVISO PRÉVIO',
-      items: ['Deve ser assinado em 2 vias sendo 1 via para o EMPREGADOR e 1 via para o EMPREGADO (se demissão sem justa causa ou por justa causa).'],
-    },
-    {
-      title: 'RECIBO E TERMO DE QUITAÇÃO DA RESCISÃO',
-      items: ['Deve ser assinado em 4 vias, sendo 2 vias para o EMPREGADOR e 2 vias para o EMPREGADO.'],
-    },
-    {
-      title: 'REQUERIMENTO DO SEGURO DESEMPREGO (SE HOUVER)',
-      items: ['Coletar assinatura na parte inferior, preencher com a data da assinatura e destacar para arquivo e comprovação de fornecimento. Observar linha pontilhada.'],
-    },
-    {
-      title: 'PEDIDO DE ASO (SE HOUVER)',
-      items: ['Imprimir em 2 vias e colher assinatura em 1 das vias como comprovação de entrega (reter).'],
-    },
-    {
-      title: 'RECOLHIMENTO RESCISÓRIO FGTS (SE HOUVER)',
-      items: ['Realizar recolhimento, se atentar para a data de vencimento.'],
-    },
-    {
-      title: 'FOLHA DE PONTO (SE HOUVER)',
-      items: ['Documento para conferência.'],
-    },
-  ];
+  // === Tabela 1: Documentos comuns ===
+  y = renderDocsTable(doc, {
+    title: 'DOCUMENTOS COMUNS A TODAS AS RESCISÕES',
+    rows: DOCUMENTOS_COMUNS,
+    startY: y,
+    mx,
+    textW,
+    ph,
+    greenColor,
+  });
 
-  for (const s of sections) {
-    if (y > ph - 45) break;
+  y += 4;
 
-    // Título da seção com marcador verde
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
-
-    // Desenhar marcador gráfico (quadrado verde)
-    doc.setFillColor(...greenColor);
-    doc.rect(mx, y - 3, 3, 3, 'F');
-
-    doc.setTextColor(...greenColor);
-    doc.text(s.title, mx + 5, y);
-    y += 5;
-
-    // Itens com dash
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(80, 80, 80);
-    for (const item of s.items) {
-      const lines = doc.splitTextToSize(`\u2013  ${item}`, textW - 8);
-      doc.text(lines, mx + 5, y);
-      y += lines.length * 4.2 + 2;
-    }
-
-    y += 2;
-  }
+  // === Tabela 2: Documentos específicos do tipo ===
+  y = renderDocsTable(doc, {
+    title: tipoCfg.label.toUpperCase(),
+    rows: tipoCfg.documentos,
+    startY: y,
+    mx,
+    textW,
+    ph,
+    greenColor,
+  });
 
   // Fechamento
-  y = Math.max(y + 3, ph - 55);
+  y = Math.max(y + 5, ph - 50);
+  if (y > ph - 35) {
+    doc.addPage();
+    y = 20;
+  }
   doc.setTextColor(57, 52, 33);
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
@@ -178,6 +150,102 @@ export async function gerarCapaRescisao(params: CapaParams): Promise<jsPDF> {
   }
 
   return doc;
+}
+
+interface RenderDocsTableArgs {
+  title: string;
+  rows: RescisaoDocLinha[];
+  startY: number;
+  mx: number;
+  textW: number;
+  ph: number;
+  greenColor: [number, number, number];
+}
+
+/** Renderiza uma tabela de documentos x vias e retorna o novo Y. */
+function renderDocsTable(doc: jsPDF, args: RenderDocsTableArgs): number {
+  const { title, rows, mx, textW, ph, greenColor } = args;
+  let y = args.startY;
+
+  // Quebra de página se faltar espaço para título + cabeçalho + 1 linha
+  if (y > ph - 40) {
+    doc.addPage();
+    y = 20;
+  }
+
+  // Título da seção
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setFillColor(...greenColor);
+  doc.rect(mx, y - 3, 3, 3, 'F');
+  doc.setTextColor(...greenColor);
+  doc.text(title, mx + 5, y);
+  y += 4;
+
+  // Larguras de coluna
+  const cDoc = textW * 0.40;
+  const cEmp = textW * 0.13;
+  const cEmpd = textW * 0.13;
+  const cObs = textW - cDoc - cEmp - cEmpd;
+  const headerH = 7;
+  const rowH = 6;
+
+  // Cabeçalho
+  doc.setFillColor(...greenColor);
+  doc.rect(mx, y, textW, headerH, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.text('DOCUMENTO', mx + 2, y + 4.8);
+  doc.text('EMPREGADO', mx + cDoc + cEmp / 2, y + 4.8, { align: 'center' });
+  doc.text('EMPREGADOR', mx + cDoc + cEmp + cEmpd / 2, y + 4.8, { align: 'center' });
+  doc.text('OBSERVAÇÕES', mx + cDoc + cEmp + cEmpd + 2, y + 4.8);
+  y += headerH;
+
+  // Linhas
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setDrawColor(200);
+  doc.setLineWidth(0.2);
+
+  rows.forEach((r, idx) => {
+    // Quebra de página entre linhas se necessário
+    if (y + rowH > ph - 50) {
+      doc.addPage();
+      y = 20;
+    }
+
+    // Wrap das colunas que podem exceder
+    const docLines = doc.splitTextToSize(r.documento, cDoc - 4);
+    const obsLines = doc.splitTextToSize(r.observacoes ?? '', cObs - 4);
+    const linhas = Math.max(docLines.length, obsLines.length, 1);
+    const h = Math.max(rowH, linhas * 3.6 + 2);
+
+    // Zebra
+    if (idx % 2 === 0) {
+      doc.setFillColor(245, 247, 240);
+      doc.rect(mx, y, textW, h, 'F');
+    }
+
+    // Bordas
+    doc.rect(mx, y, cDoc, h);
+    doc.rect(mx + cDoc, y, cEmp, h);
+    doc.rect(mx + cDoc + cEmp, y, cEmpd, h);
+    doc.rect(mx + cDoc + cEmp + cEmpd, y, cObs, h);
+
+    doc.setTextColor(57, 52, 33);
+    doc.text(docLines, mx + 2, y + 4);
+    doc.text(r.empregado, mx + cDoc + cEmp / 2, y + 4, { align: 'center' });
+    doc.text(r.empregador, mx + cDoc + cEmp + cEmpd / 2, y + 4, { align: 'center' });
+    if (obsLines.length) {
+      doc.setTextColor(100, 100, 100);
+      doc.text(obsLines, mx + cDoc + cEmp + cEmpd + 2, y + 4);
+    }
+
+    y += h;
+  });
+
+  return y;
 }
 
 function formatDateBR(dateStr: string): string {

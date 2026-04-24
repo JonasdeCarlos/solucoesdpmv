@@ -5,6 +5,7 @@ import { Download, Eye, Loader2, CheckCircle, ExternalLink } from 'lucide-react'
 import { format } from 'date-fns';
 import { gerarCapaRescisao, imageToPdfArrayBuffer } from '@/utils/rescisaoPdfGenerator';
 import type { UploadedFile } from '@/types/rescisaoDossier';
+import type { RescisaoTipoId } from '@/utils/rescisaoTipos';
 
 // pdf-lib for merging
 async function loadPdfLib() {
@@ -21,6 +22,7 @@ interface CapaData {
   companyCnpj: string;
   competenceMonth: string;
   checkedBy: string;
+  rescisaoTipo: RescisaoTipoId;
 }
 
 interface Props {

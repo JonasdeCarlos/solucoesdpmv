@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import { calcularDataPagamentoSugerida, formatCompetencia } from '@/utils/rescisaoDateUtils';
 import { useClientes } from '@/hooks/useClientes';
 import { type Client, createEmptyClient } from '@/types/client';
+import { RESCISAO_TIPOS, type RescisaoTipoId } from '@/utils/rescisaoTipos';
 
 interface CapaData {
   employeeName: string;
@@ -20,6 +21,7 @@ interface CapaData {
   companyCnpj: string;
   competenceMonth: string;
   checkedBy: string;
+  rescisaoTipo: RescisaoTipoId;
 }
 
 interface Props {
@@ -143,6 +145,26 @@ const RescisaoStep1Capa: React.FC<Props> = ({ data, onChange, onNext }) => {
             onChange={(e) => update('employeeName', e.target.value)}
             placeholder="Nome completo"
           />
+        </div>
+
+        <div className="space-y-2 md:col-span-2">
+          <Label>Tipo de Rescisão *</Label>
+          <Select
+            value={data.rescisaoTipo}
+            onValueChange={(v) => update('rescisaoTipo', v as RescisaoTipoId)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione o tipo de rescisão" />
+            </SelectTrigger>
+            <SelectContent>
+              {RESCISAO_TIPOS.map(t => (
+                <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            Define a tabela de documentos/vias exibida na capa.
+          </p>
         </div>
 
         <div className="space-y-2">
