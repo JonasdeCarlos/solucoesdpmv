@@ -1,7 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { type DsrMonthlyResult } from '@/types/dsr';
-import { type ContagemDiasMes } from './dsrCalculations';
+import { type DsrMonthlyResult, type FeriadoExtendido, type FeriadoNacionalOverride } from '@/types/dsr';
+import { type ContagemDiasMes, feriadosNacionaisDoAno } from './dsrCalculations';
 
 const fmtBRL = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
