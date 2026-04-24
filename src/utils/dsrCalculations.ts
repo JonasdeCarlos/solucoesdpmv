@@ -180,11 +180,19 @@ export function apurarDsr(
 ): { resultado: DsrMonthlyResult; erro?: string } {
   // Agrupar lançamentos por verba (somar bases)
   const verbaMap = new Map(verbas.map((v) => [v.id, v]));
-  const baseMap = new Map<string, number>();
+  // Agrupar por colaborador+verba para separar o cálculo individualmente
+  const baseMap = new Map<string, { verbaId: string; colaborador: string; base: number }>();
   lancamentos
     .filter((l) => l.competencia === competencia && (!empresaNome || l.empresaNome === empresaNome))
     .forEach((l) => {
-      baseMap.set(l.verbaId, (baseMap.get(l.verbaId) || 0) + baseDoLancamento(l));
+      const colab = (l.colaborador || '').trim() || '— sem colaborador —';
+      const key = `${l.verbaId}::${colab}`;
+      const cur = baseMap.get(key);
+      if (cur) {
+        cur.base += baseDoLancamento(l);
+      } else {
+        baseMap.set(key, { verbaId: l.verbaId, colaborador: colab, base: baseDoLancamento(l) });
+      }
     });
 
   // Para cada verba com base > 0, calcular contagem específica (cada verba pode customizar domingo/feriado)
@@ -196,7 +204,7 @@ export function apurarDsr(
   // Contagem global (para exibição no header da apuração)
   const contagemGlobal = contarDiasMes(competencia, feriadosMunicipais, overridesNacionais, opts);
 
-  for (const [verbaId, base] of baseMap.entries()) {
+  for (const { verbaId, colaborador, base } of baseMap.values()) {
     const verba = verbaMap.get(verbaId);
     if (!verba) continue;
     totalBase += base;
@@ -206,6 +214,7 @@ export function apurarDsr(
         verbaId,
         codigo: verba.codigo,
         nome: verba.nome,
+        colaborador,
         base,
         diasUteis: contagemGlobal.diasUteis,
         diasDsr: 0,
@@ -229,6 +238,7 @@ export function apurarDsr(
         verbaId,
         codigo: verba.codigo,
         nome: verba.nome,
+        colaborador,
         base,
         diasUteis: 0,
         diasDsr: cont.diasDsr,
@@ -245,6 +255,7 @@ export function apurarDsr(
       verbaId,
       codigo: verba.codigo,
       nome: verba.nome,
+      colaborador,
       base,
       diasUteis: cont.diasUteis,
       diasDsr: cont.diasDsr,
