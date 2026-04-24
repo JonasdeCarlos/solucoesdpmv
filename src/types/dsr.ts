@@ -51,6 +51,7 @@ export interface DsrVerbaDetalhe {
   verbaId: string;
   codigo: string;
   nome: string;
+  colaborador?: string;
   base: number;
   diasUteis: number;
   diasDsr: number;
