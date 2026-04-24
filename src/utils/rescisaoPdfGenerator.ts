@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf';
 import { format } from 'date-fns';
-import { DOCUMENTOS_COMUNS, getRescisaoTipoConfig, type RescisaoTipoId, type RescisaoDocLinha } from './rescisaoTipos';
+import { getRescisaoTipoConfig, type RescisaoTipoId, type RescisaoDocLinha } from './rescisaoTipos';
 
 interface CapaParams {
   employeeName: string;
@@ -95,20 +95,7 @@ export async function gerarCapaRescisao(params: CapaParams): Promise<jsPDF> {
 
   const greenColor: [number, number, number] = [98, 142, 63]; // #628E3F
 
-  // === Tabela 1: Documentos comuns ===
-  y = renderDocsTable(doc, {
-    title: 'DOCUMENTOS COMUNS A TODAS AS RESCISÕES',
-    rows: DOCUMENTOS_COMUNS,
-    startY: y,
-    mx,
-    textW,
-    ph,
-    greenColor,
-  });
-
-  y += 4;
-
-  // === Tabela 2: Documentos específicos do tipo ===
+  // === Documentos específicos do tipo selecionado ===
   y = renderDocsTable(doc, {
     title: tipoCfg.label.toUpperCase(),
     rows: tipoCfg.documentos,
