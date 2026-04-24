@@ -1,12 +1,16 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { FileDown, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { useFeriadosExtendidos, useProvisionEntries, useVerbasDsr, useDsrResults } from '@/hooks/useDsrModule';
 import { apurarDsr, contarDiasMes, exportarCsvApuracao } from '@/utils/dsrCalculations';
 import { gerarPdfApuracaoDsr } from '@/utils/dsrPdfGenerator';
+import { supabase } from '@/integrations/supabase/client';
+import { type ProvisionEntry, type DsrMonthlyResult } from '@/types/dsr';
 
 const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -20,6 +24,40 @@ export default function DsrApuracaoTab({ empresa, competencia }: Props) {
   const { entries } = useProvisionEntries(empresa, competencia);
   const { feriados, overrides } = useFeriadosExtendidos();
   const { saveResult } = useDsrResults();
+  const [anualMode, setAnualMode] = useState(false);
+  const ano = competencia ? Number(competencia.split('-')[0]) : new Date().getFullYear();
+  const [entriesAno, setEntriesAno] = useState<ProvisionEntry[]>([]);
+  const [loadingAno, setLoadingAno] = useState(false);
+
+  useEffect(() => {
+    if (!anualMode || !competencia) return;
+    setLoadingAno(true);
+    (async () => {
+      let q = supabase
+        .from('provision_entries' as any)
+        .select('*')
+        .gte('competencia', `${ano}-01`)
+        .lte('competencia', `${ano}-12`);
+      if (empresa) q = q.eq('empresa_nome', empresa);
+      const { data } = await q;
+      setEntriesAno(
+        ((data as any[]) || []).map((d) => ({
+          id: d.id,
+          empresaNome: d.empresa_nome,
+          competencia: d.competencia,
+          centroCusto: d.centro_custo || '',
+          colaborador: d.colaborador || '',
+          verbaId: d.verba_id,
+          tipoLancamento: d.tipo_lancamento,
+          valor: Number(d.valor) || 0,
+          quantidade: Number(d.quantidade) || 0,
+          valorUnitario: Number(d.valor_unitario) || 0,
+          observacao: d.observacao || '',
+        })),
+      );
+      setLoadingAno(false);
+    })();
+  }, [anualMode, ano, empresa, competencia]);
 
   const apuracao = useMemo(() => {
     if (!competencia) return null;
@@ -30,6 +68,29 @@ export default function DsrApuracaoTab({ empresa, competencia }: Props) {
     if (!competencia) return null;
     return contarDiasMes(competencia, feriados, overrides);
   }, [competencia, feriados, overrides]);
+
+  const apuracoesAno = useMemo(() => {
+    if (!anualMode) return [];
+    const meses: { competencia: string; resultado: DsrMonthlyResult; erro?: string }[] = [];
+    for (let m = 1; m <= 12; m++) {
+      const comp = `${ano}-${String(m).padStart(2, '0')}`;
+      const entriesMes = entriesAno.filter((e) => e.competencia === comp);
+      const ap = apurarDsr(empresa, comp, verbas, entriesMes, feriados, overrides);
+      meses.push({ competencia: comp, resultado: ap.resultado, erro: ap.erro });
+    }
+    return meses;
+  }, [anualMode, ano, empresa, verbas, entriesAno, feriados, overrides]);
+
+  const totaisAno = useMemo(() => {
+    if (!anualMode) return null;
+    return apuracoesAno.reduce(
+      (acc, m) => ({
+        base: acc.base + m.resultado.totalBase,
+        dsr: acc.dsr + m.resultado.totalDsr,
+      }),
+      { base: 0, dsr: 0 },
+    );
+  }, [anualMode, apuracoesAno]);
 
   if (!competencia) {
     return <p className="text-sm text-muted-foreground">Selecione uma competência na aba “Lançamentos”.</p>;
@@ -55,8 +116,130 @@ export default function DsrApuracaoTab({ empresa, competencia }: Props) {
     else toast.success('Apuração salva.');
   };
 
+  const downloadCsvAno = () => {
+    const linhas: string[] = ['Competência;Dias úteis;Dias DSR;Total base;Total DSR;Total geral'];
+    apuracoesAno.forEach((m) => {
+      const r = m.resultado;
+      linhas.push(
+        [
+          r.competencia,
+          r.diasUteis,
+          r.diasDsr,
+          r.totalBase.toFixed(2).replace('.', ','),
+          r.totalDsr.toFixed(2).replace('.', ','),
+          (r.totalBase + r.totalDsr).toFixed(2).replace('.', ','),
+        ].join(';'),
+      );
+    });
+    if (totaisAno) {
+      linhas.push(
+        [
+          `TOTAL ${ano}`,
+          '',
+          '',
+          totaisAno.base.toFixed(2).replace('.', ','),
+          totaisAno.dsr.toFixed(2).replace('.', ','),
+          (totaisAno.base + totaisAno.dsr).toFixed(2).replace('.', ','),
+        ].join(';'),
+      );
+    }
+    const blob = new Blob([linhas.join('\n')], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `apuracao-dsr-${ano}-anual.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const saveAllAno = async () => {
+    let ok = 0;
+    let fail = 0;
+    for (const m of apuracoesAno) {
+      if (m.resultado.totalBase === 0 && m.resultado.totalDsr === 0) continue;
+      const { error } = await saveResult(m.resultado);
+      if (error) fail++;
+      else ok++;
+    }
+    if (fail) toast.error(`${fail} meses falharam.`);
+    else toast.success(`${ok} apurações salvas.`);
+  };
+
   return (
     <div className="space-y-6">
+      <Card>
+        <CardContent className="pt-6 flex items-center justify-between">
+          <div>
+            <Label className="text-base">Apurar o ano todo ({ano})</Label>
+            <p className="text-xs text-muted-foreground">
+              Calcula DSR de janeiro a dezembro de {ano} usando os lançamentos cadastrados em cada competência.
+            </p>
+          </div>
+          <Switch checked={anualMode} onCheckedChange={setAnualMode} />
+        </CardContent>
+      </Card>
+
+      {anualMode && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Apuração anual — {ano}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loadingAno ? (
+              <p className="text-sm text-muted-foreground">Carregando lançamentos do ano…</p>
+            ) : (
+              <>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Competência</TableHead>
+                      <TableHead className="text-center">DU</TableHead>
+                      <TableHead className="text-center">DSR (dias)</TableHead>
+                      <TableHead className="text-right">Total base</TableHead>
+                      <TableHead className="text-right">Total DSR</TableHead>
+                      <TableHead className="text-right">Total geral</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {apuracoesAno.map((m) => (
+                      <TableRow key={m.competencia}>
+                        <TableCell className="font-mono text-xs">{m.competencia}</TableCell>
+                        <TableCell className="text-center">{m.resultado.diasUteis}</TableCell>
+                        <TableCell className="text-center">{m.resultado.diasDsr}</TableCell>
+                        <TableCell className="text-right">{fmtBRL(m.resultado.totalBase)}</TableCell>
+                        <TableCell className="text-right">{fmtBRL(m.resultado.totalDsr)}</TableCell>
+                        <TableCell className="text-right font-medium">
+                          {fmtBRL(m.resultado.totalBase + m.resultado.totalDsr)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {totaisAno && (
+                      <TableRow className="bg-muted/30 font-semibold">
+                        <TableCell>Total {ano}</TableCell>
+                        <TableCell />
+                        <TableCell />
+                        <TableCell className="text-right">{fmtBRL(totaisAno.base)}</TableCell>
+                        <TableCell className="text-right">{fmtBRL(totaisAno.dsr)}</TableCell>
+                        <TableCell className="text-right">{fmtBRL(totaisAno.base + totaisAno.dsr)}</TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+
+                <div className="flex gap-2 mt-4">
+                  <Button variant="outline" onClick={downloadCsvAno}>
+                    <FileDown className="w-4 h-4 mr-1" />Exportar CSV anual
+                  </Button>
+                  <Button variant="outline" onClick={saveAllAno}>
+                    <Save className="w-4 h-4 mr-1" />Salvar todas as apurações
+                  </Button>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {apuracao.erro && (
         <div className="p-3 border-l-4 border-destructive bg-destructive/10 text-sm">
           ⚠️ {apuracao.erro}
