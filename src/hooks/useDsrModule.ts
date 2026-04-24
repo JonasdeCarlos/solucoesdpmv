@@ -244,5 +244,23 @@ export function useDsrResults() {
     return { data: (data as any[]) || [], error };
   };
 
-  return { saveResult, fetchPeriodo };
+  const deleteResult = async (empresaNome: string, competencia: string) => {
+    let q = supabase.from('dsr_monthly_results' as any).delete().eq('competencia', competencia);
+    q = q.eq('empresa_nome', empresaNome || '');
+    const { error } = await q;
+    return { error };
+  };
+
+  const deletePeriodo = async (empresaNome: string, compIni: string, compFim: string) => {
+    let q = supabase
+      .from('dsr_monthly_results' as any)
+      .delete()
+      .gte('competencia', compIni)
+      .lte('competencia', compFim);
+    q = q.eq('empresa_nome', empresaNome || '');
+    const { error } = await q;
+    return { error };
+  };
+
+  return { saveResult, fetchPeriodo, deleteResult, deletePeriodo };
 }
