@@ -133,13 +133,23 @@ export default function DsrApuracaoTab({ empresa, competencia }: Props) {
     )) return;
     if (!confirm('Tem certeza absoluta? Digite OK na próxima confirmação.\n\nÚltima chance — clicar em OK abaixo apaga tudo.')) return;
 
-    const { error: errAp } = await supabase.from('dsr_monthly_results' as any).delete().not('id', 'is', null);
-    const { error: errEn } = await supabase.from('provision_entries' as any).delete().not('id', 'is', null);
+    // PostgREST exige um filtro WHERE para DELETE.
+    // Usa created_at >= época para casar todas as linhas de forma segura.
+    const epoca = '1900-01-01T00:00:00Z';
+    const { error: errAp, count: cAp } = await supabase
+      .from('dsr_monthly_results' as any)
+      .delete({ count: 'exact' })
+      .gte('gerado_em', epoca);
+    const { error: errEn, count: cEn } = await supabase
+      .from('provision_entries' as any)
+      .delete({ count: 'exact' })
+      .gte('created_at', epoca);
     if (errAp || errEn) {
-      toast.error('Erro ao apagar dados. Verifique os logs.');
+      console.error('Reset DSR falhou:', { errAp, errEn });
+      toast.error(`Erro ao apagar dados: ${errAp?.message || errEn?.message}`);
       return;
     }
-    toast.success('Módulo DSR resetado: todas as apurações e lançamentos foram apagados.');
+    toast.success(`Módulo DSR resetado: ${cAp ?? 0} apuração(ões) e ${cEn ?? 0} lançamento(s) apagados.`);
     // Recarrega a página para limpar todos os caches/locais
     setTimeout(() => window.location.reload(), 800);
   };
