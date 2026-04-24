@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { useProvisionEntries, useVerbasDsr } from '@/hooks/useDsrModule';
 import { type ProvisionEntry } from '@/types/dsr';
 import { baseDoLancamento } from '@/utils/dsrCalculations';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -40,11 +41,21 @@ export default function DsrEntriesTab({ empresa, setEmpresa, competencia, setCom
   const { verbas } = useVerbasDsr();
   const { entries, saveEntry, deleteEntry } = useProvisionEntries(empresa, competencia);
   const [draft, setDraft] = useState<ProvisionEntry>(emptyEntry(empresa, competencia));
+  const [mesesAlvo, setMesesAlvo] = useState<number[]>([]);
+
+  const ano = competencia ? Number(competencia.split('-')[0]) : new Date().getFullYear();
+  const mesesNomes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
   // Sincroniza draft com filtros
   if (draft.empresaNome !== empresa || draft.competencia !== competencia) {
     setDraft({ ...draft, empresaNome: empresa, competencia });
   }
+
+  const toggleMes = (m: number) => {
+    setMesesAlvo((prev) => prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m].sort((a,b)=>a-b));
+  };
+  const selecionarAnoTodo = () => setMesesAlvo([1,2,3,4,5,6,7,8,9,10,11,12]);
+  const limparSelecao = () => setMesesAlvo([]);
 
   const handleSave = async () => {
     if (!competencia) return toast.error('Informe a competência (AAAA-MM).');
@@ -55,12 +66,26 @@ export default function DsrEntriesTab({ empresa, setEmpresa, competencia, setCom
     if (baseDoLancamento(final) <= 0) {
       return toast.error('Informe um valor (ou quantidade × valor unitário) positivo.');
     }
-    const { error } = await saveEntry(final);
-    if (error) toast.error('Erro ao salvar.');
-    else {
-      toast.success('Lançamento salvo.');
-      setDraft(emptyEntry(empresa, competencia));
+
+    // Define lista de competências alvo
+    const competenciasAlvo = mesesAlvo.length > 0
+      ? mesesAlvo.map((m) => `${ano}-${String(m).padStart(2, '0')}`)
+      : [competencia];
+
+    let ok = 0;
+    let fail = 0;
+    for (const comp of competenciasAlvo) {
+      const row: ProvisionEntry = { ...final, id: crypto.randomUUID(), competencia: comp };
+      const { error } = await saveEntry(row);
+      if (error) fail++;
+      else ok++;
     }
+    if (fail) toast.error(`${fail} lançamentos falharam.`);
+    if (ok) toast.success(competenciasAlvo.length > 1
+      ? `${ok} lançamentos criados (${competenciasAlvo.length} meses).`
+      : 'Lançamento salvo.');
+    setDraft(emptyEntry(empresa, competencia));
+    setMesesAlvo([]);
   };
 
   const verbaSelecionada = verbas.find((v) => v.id === draft.verbaId);
@@ -165,6 +190,40 @@ export default function DsrEntriesTab({ empresa, setEmpresa, competencia, setCom
           <div className="flex gap-2">
             <Button onClick={handleSave}><Save className="w-4 h-4 mr-1" />Adicionar</Button>
             <Button variant="outline" onClick={() => setDraft(emptyEntry(empresa, competencia))}><Plus className="w-4 h-4 mr-1" />Limpar</Button>
+          </div>
+
+          <div className="border-t pt-3 mt-2">
+            <div className="flex items-center justify-between mb-2">
+              <Label>Replicar para múltiplos meses de {ano}</Label>
+              <div className="flex gap-2">
+                <Button type="button" size="sm" variant="outline" onClick={selecionarAnoTodo}>Ano todo</Button>
+                <Button type="button" size="sm" variant="ghost" onClick={limparSelecao}>Limpar seleção</Button>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground mb-2">
+              Se nenhum mês for marcado, o lançamento é criado apenas na competência atual ({competencia || '—'}).
+              Marque um ou mais meses para replicar o mesmo valor em cada competência.
+            </p>
+            <div className="grid grid-cols-4 md:grid-cols-12 gap-2">
+              {mesesNomes.map((nome, idx) => {
+                const m = idx + 1;
+                const checked = mesesAlvo.includes(m);
+                return (
+                  <label
+                    key={m}
+                    className={`flex items-center gap-1 text-xs px-2 py-1 border rounded cursor-pointer ${checked ? 'bg-primary/10 border-primary/40' : ''}`}
+                  >
+                    <Checkbox checked={checked} onCheckedChange={() => toggleMes(m)} />
+                    <span>{nome}</span>
+                  </label>
+                );
+              })}
+            </div>
+            {mesesAlvo.length > 0 && (
+              <p className="text-xs mt-2">
+                Será criado <strong>1 lançamento por mês</strong> em <strong>{mesesAlvo.length}</strong> competência(s) de {ano}.
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>
