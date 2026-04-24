@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { FileDown, Save } from 'lucide-react';
+import { FileDown, Save, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useFeriadosExtendidos, useProvisionEntries, useVerbasDsr, useDsrResults } from '@/hooks/useDsrModule';
 import { apurarDsr, contarDiasMes, exportarCsvApuracao } from '@/utils/dsrCalculations';
@@ -23,7 +23,7 @@ export default function DsrApuracaoTab({ empresa, competencia }: Props) {
   const { verbas } = useVerbasDsr();
   const { entries } = useProvisionEntries(empresa, competencia);
   const { feriados, overrides } = useFeriadosExtendidos();
-  const { saveResult } = useDsrResults();
+  const { saveResult, deleteResult, deletePeriodo } = useDsrResults();
   const [anualMode, setAnualMode] = useState(false);
   const ano = competencia ? Number(competencia.split('-')[0]) : new Date().getFullYear();
   const [entriesAno, setEntriesAno] = useState<ProvisionEntry[]>([]);
@@ -114,6 +114,20 @@ export default function DsrApuracaoTab({ empresa, competencia }: Props) {
     const { error } = await saveResult(r);
     if (error) toast.error('Erro ao salvar apuração.');
     else toast.success('Apuração salva.');
+  };
+
+  const handleClear = async () => {
+    if (!confirm(`Limpar apuração salva de ${r.competencia}?`)) return;
+    const { error } = await deleteResult(empresa, r.competencia);
+    if (error) toast.error('Erro ao limpar apuração.');
+    else toast.success('Apuração removida.');
+  };
+
+  const handleClearAno = async () => {
+    if (!confirm(`Limpar todas as apurações salvas de ${ano}?`)) return;
+    const { error } = await deletePeriodo(empresa, `${ano}-01`, `${ano}-12`);
+    if (error) toast.error('Erro ao limpar apurações do ano.');
+    else toast.success(`Apurações de ${ano} removidas.`);
   };
 
   const downloadCsvAno = () => {
@@ -233,6 +247,9 @@ export default function DsrApuracaoTab({ empresa, competencia }: Props) {
                   <Button variant="outline" onClick={saveAllAno}>
                     <Save className="w-4 h-4 mr-1" />Salvar todas as apurações
                   </Button>
+                  <Button variant="outline" onClick={handleClearAno}>
+                    <Trash2 className="w-4 h-4 mr-1 text-destructive" />Limpar apurações do ano
+                  </Button>
                 </div>
               </>
             )}
@@ -326,6 +343,9 @@ export default function DsrApuracaoTab({ empresa, competencia }: Props) {
             </Button>
             <Button variant="outline" onClick={handleSave}>
               <Save className="w-4 h-4 mr-1" />Salvar apuração
+            </Button>
+            <Button variant="outline" onClick={handleClear}>
+              <Trash2 className="w-4 h-4 mr-1 text-destructive" />Limpar apuração
             </Button>
           </div>
         </CardContent>
