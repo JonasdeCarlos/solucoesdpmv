@@ -8,7 +8,7 @@ import { FileDown, Save, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useFeriadosExtendidos, useProvisionEntries, useVerbasDsr, useDsrResults } from '@/hooks/useDsrModule';
 import { apurarDsr, contarDiasMes, exportarCsvApuracao } from '@/utils/dsrCalculations';
-import { gerarPdfApuracaoDsr } from '@/utils/dsrPdfGenerator';
+import { gerarPdfApuracaoDsr, gerarPdfApuracaoDsrAnual } from '@/utils/dsrPdfGenerator';
 import { supabase } from '@/integrations/supabase/client';
 import { type ProvisionEntry, type DsrMonthlyResult } from '@/types/dsr';
 
@@ -264,6 +264,9 @@ export default function DsrApuracaoTab({ empresa, competencia }: Props) {
                 </Table>
 
                 <div className="flex gap-2 mt-4">
+                  <Button onClick={() => gerarPdfApuracaoDsrAnual(ano, empresa, apuracoesAno)}>
+                    <FileDown className="w-4 h-4 mr-1" />Exportar PDF anual
+                  </Button>
                   <Button variant="outline" onClick={downloadCsvAno}>
                     <FileDown className="w-4 h-4 mr-1" />Exportar CSV anual
                   </Button>
