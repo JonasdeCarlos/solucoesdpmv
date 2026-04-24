@@ -286,10 +286,10 @@ export function exportarCsvApuracao(r: DsrMonthlyResult): string {
   linhas.push(`Apuração DSR;Competência ${r.competencia};Empresa ${r.empresaNome || '-'}`);
   linhas.push(`Dias úteis;${r.diasUteis};Dias DSR;${r.diasDsr};Domingos;${r.domingos};Feriados não úteis;${r.feriadosNaoUteis}`);
   linhas.push('');
-  linhas.push('Código;Verba;Base;DU;DSR(dias);DSR(R$);Total;Memória');
+  linhas.push('Código;Verba;Colaborador;Base;DU;DSR(dias);DSR(R$);Total;Memória');
   r.detalheVerbas.forEach((v) => {
     linhas.push(
-      `${v.codigo};${v.nome};${v.base.toFixed(2)};${v.diasUteis};${v.diasDsr};${v.dsr.toFixed(2)};${v.total.toFixed(2)};${v.formula}`,
+      `${v.codigo};${v.nome};${v.colaborador || ''};${v.base.toFixed(2)};${v.diasUteis};${v.diasDsr};${v.dsr.toFixed(2)};${v.total.toFixed(2)};${v.formula}`,
     );
   });
   linhas.push('');
