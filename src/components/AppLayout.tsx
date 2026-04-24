@@ -1,6 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import logoMonteVerde from '@/assets/logo-monte-verde.png';
-import { Calculator, Users, FileText, Receipt, Clock, DollarSign, Percent, Building2, FileStack, ClipboardCheck, LogOut, FileCog } from 'lucide-react';
+import { Calculator, Users, FileText, Receipt, Clock, DollarSign, Percent, Building2, FileStack, ClipboardCheck, LogOut, FileCog, CalendarDays } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -17,6 +17,7 @@ const NAV_ITEMS = [
   { to: '/rescisao-pdf', label: 'Montador PDF', icon: FileStack },
   { to: '/jornada', label: 'Verif. Jornada', icon: ClipboardCheck },
   { to: '/pdf-tools', label: 'Central de PDF', icon: FileCog },
+  { to: '/provisoes-dsr', label: 'Provisões DSR', icon: CalendarDays },
 ];
 
 const AppLayout = () => {
