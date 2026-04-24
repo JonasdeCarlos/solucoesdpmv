@@ -344,6 +344,9 @@ export default function DsrApuracaoTab({ empresa, competencia }: Props) {
             <Button variant="outline" onClick={handleSave}>
               <Save className="w-4 h-4 mr-1" />Salvar apuração
             </Button>
+            <Button variant="outline" onClick={handleClear}>
+              <Trash2 className="w-4 h-4 mr-1 text-destructive" />Limpar apuração
+            </Button>
           </div>
         </CardContent>
       </Card>
