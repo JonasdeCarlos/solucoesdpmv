@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Trash2, Save, Pencil, X } from 'lucide-react';
+import { Plus, Trash2, Save, Pencil, X, CopyPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import { useProvisionEntries, useVerbasDsr } from '@/hooks/useDsrModule';
 import { useEmpregados } from '@/hooks/useEmpregados';
@@ -62,12 +62,67 @@ export default function DsrEntriesTab({ empresa, setEmpresa, competencia, setCom
   const [bulkMeses, setBulkMeses] = useState<number[]>([1,2,3,4,5,6,7,8,9,10,11,12]);
   const [bulkSaving, setBulkSaving] = useState(false);
 
+  // ── Replicar competência atual → ano todo ──
+  const [replicMesesAlvo, setReplicMesesAlvo] = useState<number[]>([]);
+  const [replicSobrescrever, setReplicSobrescrever] = useState(false);
+  const [replicSaving, setReplicSaving] = useState(false);
+
   const ano = competencia ? Number(competencia.split('-')[0]) : new Date().getFullYear();
   const mesesNomes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
   const empregadosEmpresa = empregados.filter(
     (e) => !empresa || e.empresaNome.trim().toUpperCase() === empresa.trim().toUpperCase(),
   );
+
+  const mesAtual = competencia ? Number(competencia.split('-')[1]) : 0;
+  const mesesParaReplicar = (replicMesesAlvo.length > 0
+    ? replicMesesAlvo
+    : [1,2,3,4,5,6,7,8,9,10,11,12]
+  ).filter((m) => m !== mesAtual);
+
+  const toggleReplicMes = (m: number) => {
+    setReplicMesesAlvo((prev) => prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m].sort((a,b)=>a-b));
+  };
+
+  const handleReplicarAno = async () => {
+    if (!competencia) return toast.error('Selecione uma competência.');
+    if (entries.length === 0) return toast.error('Não há lançamentos nesta competência para replicar.');
+    if (mesesParaReplicar.length === 0) return toast.error('Selecione ao menos um mês de destino diferente da competência atual.');
+
+    const totalPrev = entries.length * mesesParaReplicar.length;
+    if (!confirm(`Replicar ${entries.length} lançamento(s) de ${competencia} para ${mesesParaReplicar.length} mês(es)?\nSerão criados ${totalPrev} novo(s) lançamento(s).${replicSobrescrever ? '\n\nLançamentos existentes nos meses de destino serão APAGADOS antes da cópia.' : ''}`)) return;
+
+    setReplicSaving(true);
+    let ok = 0, fail = 0;
+
+    // Sobrescrever: apaga entries existentes nesses meses para a empresa atual
+    if (replicSobrescrever) {
+      const compsAlvo = mesesParaReplicar.map((m) => `${ano}-${String(m).padStart(2, '0')}`);
+      const { data: existentes } = await supabase
+        .from('provision_entries' as any)
+        .select('id')
+        .eq('empresa_nome', empresa || '')
+        .in('competencia', compsAlvo);
+      const ids = ((existentes as any[]) || []).map((d) => d.id);
+      if (ids.length > 0) {
+        await supabase.from('provision_entries' as any).delete().in('id', ids);
+      }
+    }
+
+    for (const m of mesesParaReplicar) {
+      const comp = `${ano}-${String(m).padStart(2, '0')}`;
+      for (const e of entries) {
+        const row: ProvisionEntry = { ...e, id: crypto.randomUUID(), competencia: comp };
+        const { error } = await saveEntry(row);
+        if (error) fail++; else ok++;
+      }
+    }
+    setReplicSaving(false);
+    if (fail) toast.error(`${fail} lançamentos falharam.`);
+    if (ok) toast.success(`${ok} lançamento(s) criados em ${mesesParaReplicar.length} mês(es).`);
+    setReplicMesesAlvo([]);
+    setReplicSobrescrever(false);
+  };
 
   const bulkVerba = verbas.find((v) => v.id === bulkVerbaId);
   const bulkTipo = bulkVerba?.tipoLancamento || 'valor_fixo';
@@ -547,6 +602,60 @@ export default function DsrEntriesTab({ empresa, setEmpresa, competencia, setCom
           <CardTitle>Lançamentos da competência {competencia || '—'}</CardTitle>
         </CardHeader>
         <CardContent>
+          {entries.length > 0 && (
+            <div className="mb-4 p-3 border rounded-md bg-muted/20 space-y-3">
+              <div className="flex items-start justify-between gap-3 flex-wrap">
+                <div>
+                  <p className="text-sm font-medium">Replicar lançamentos desta competência</p>
+                  <p className="text-xs text-muted-foreground">
+                    Copia os <strong>{entries.length}</strong> lançamento(s) de <strong>{competencia}</strong> para os demais meses de {ano}.
+                  </p>
+                </div>
+                <Button onClick={handleReplicarAno} disabled={replicSaving}>
+                  <CopyPlus className="w-4 h-4 mr-1" />
+                  {replicSaving ? 'Replicando…' : `Replicar para ${mesesParaReplicar.length || 11} mês(es)`}
+                </Button>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <Label className="text-xs">Meses de destino (desmarque para ignorar — o mês atual é sempre ignorado)</Label>
+                  <div className="flex gap-2">
+                    <Button type="button" size="sm" variant="outline" onClick={() => setReplicMesesAlvo([1,2,3,4,5,6,7,8,9,10,11,12])}>Ano todo</Button>
+                    <Button type="button" size="sm" variant="ghost" onClick={() => setReplicMesesAlvo([])}>Limpar</Button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-6 md:grid-cols-12 gap-2">
+                  {mesesNomes.map((nome, idx) => {
+                    const m = idx + 1;
+                    const isAtual = m === mesAtual;
+                    const checked = replicMesesAlvo.length === 0 ? !isAtual : replicMesesAlvo.includes(m);
+                    return (
+                      <label
+                        key={m}
+                        className={`flex items-center gap-1 text-xs px-2 py-1 border rounded ${isAtual ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'} ${checked && !isAtual ? 'bg-primary/10 border-primary/40' : ''}`}
+                      >
+                        <Checkbox
+                          checked={checked && !isAtual}
+                          disabled={isAtual}
+                          onCheckedChange={() => !isAtual && toggleReplicMes(m)}
+                        />
+                        <span>{nome}{isAtual ? ' •' : ''}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <label className="flex items-center gap-2 text-xs">
+                <Checkbox checked={replicSobrescrever} onCheckedChange={(v) => setReplicSobrescrever(!!v)} />
+                <span>
+                  Sobrescrever: apagar lançamentos já existentes nos meses de destino antes de copiar.
+                </span>
+              </label>
+            </div>
+          )}
+
           {entries.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nenhum lançamento.</p>
           ) : (
