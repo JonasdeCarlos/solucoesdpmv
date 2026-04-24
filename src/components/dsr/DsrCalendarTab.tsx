@@ -6,10 +6,11 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Printer } from 'lucide-react';
 import { toast } from 'sonner';
 import { useFeriadosExtendidos } from '@/hooks/useDsrModule';
 import { feriadosNacionaisDoAno } from '@/utils/dsrCalculations';
+import { gerarPdfTabelaFeriados } from '@/utils/dsrPdfGenerator';
 import { type FeriadoExtendido } from '@/types/dsr';
 
 function emptyFeriado(): Omit<FeriadoExtendido, 'id'> {
@@ -58,7 +59,16 @@ export default function DsrCalendarTab() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Feriados Nacionais ({ano})</CardTitle>
+          <CardTitle className="flex items-center justify-between">
+            <span>Feriados Nacionais ({ano})</span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => gerarPdfTabelaFeriados(ano, feriados, overrides)}
+            >
+              <Printer className="w-4 h-4 mr-1" />Imprimir tabela {ano}
+            </Button>
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex items-center gap-2 mb-2">
@@ -125,6 +135,7 @@ export default function DsrCalendarTab() {
                 <SelectContent>
                   <SelectItem value="municipal">Municipal</SelectItem>
                   <SelectItem value="estadual">Estadual</SelectItem>
+                  <SelectItem value="sindical">Sindical</SelectItem>
                   <SelectItem value="interno">Interno</SelectItem>
                 </SelectContent>
               </Select>
