@@ -203,6 +203,10 @@ export default function DsrApuracaoTab({ empresa, competencia }: Props) {
               <p className="text-sm text-muted-foreground">Carregando lançamentos do ano…</p>
             ) : (
               <>
+                <p className="text-xs text-muted-foreground mb-3">
+                  {entriesAno.length} lançamento(s) encontrado(s) em {ano}
+                  {empresa ? ` para "${empresa}"` : ' (todas as empresas)'}.
+                </p>
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -216,16 +220,35 @@ export default function DsrApuracaoTab({ empresa, competencia }: Props) {
                   </TableHeader>
                   <TableBody>
                     {apuracoesAno.map((m) => (
-                      <TableRow key={m.competencia}>
-                        <TableCell className="font-mono text-xs">{m.competencia}</TableCell>
-                        <TableCell className="text-center">{m.resultado.diasUteis}</TableCell>
-                        <TableCell className="text-center">{m.resultado.diasDsr}</TableCell>
-                        <TableCell className="text-right">{fmtBRL(m.resultado.totalBase)}</TableCell>
-                        <TableCell className="text-right">{fmtBRL(m.resultado.totalDsr)}</TableCell>
-                        <TableCell className="text-right font-medium">
-                          {fmtBRL(m.resultado.totalBase + m.resultado.totalDsr)}
-                        </TableCell>
-                      </TableRow>
+                      <>
+                        <TableRow key={m.competencia} className="bg-muted/20">
+                          <TableCell className="font-mono text-xs font-semibold">{m.competencia}</TableCell>
+                          <TableCell className="text-center">{m.resultado.diasUteis}</TableCell>
+                          <TableCell className="text-center">{m.resultado.diasDsr}</TableCell>
+                          <TableCell className="text-right">{fmtBRL(m.resultado.totalBase)}</TableCell>
+                          <TableCell className="text-right">{fmtBRL(m.resultado.totalDsr)}</TableCell>
+                          <TableCell className="text-right font-medium">
+                            {fmtBRL(m.resultado.totalBase + m.resultado.totalDsr)}
+                          </TableCell>
+                        </TableRow>
+                        {m.resultado.detalheVerbas.map((v) => (
+                          <TableRow key={`${m.competencia}-${v.verbaId}`}>
+                            <TableCell className="pl-6 text-xs text-muted-foreground" colSpan={3}>
+                              ↳ {v.nome} <span className="opacity-70">— {v.formula}</span>
+                            </TableCell>
+                            <TableCell className="text-right text-xs">{fmtBRL(v.base)}</TableCell>
+                            <TableCell className="text-right text-xs">{fmtBRL(v.dsr)}</TableCell>
+                            <TableCell className="text-right text-xs">{fmtBRL(v.total)}</TableCell>
+                          </TableRow>
+                        ))}
+                        {m.resultado.detalheVerbas.length === 0 && (
+                          <TableRow key={`${m.competencia}-empty`}>
+                            <TableCell colSpan={6} className="pl-6 text-xs text-muted-foreground italic">
+                              Sem lançamentos nesta competência.
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </>
                     ))}
                     {totaisAno && (
                       <TableRow className="bg-muted/30 font-semibold">
