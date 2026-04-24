@@ -8,9 +8,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Plus, Trash2, Save, Pencil, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useProvisionEntries, useVerbasDsr } from '@/hooks/useDsrModule';
+import { useEmpregados } from '@/hooks/useEmpregados';
 import { type ProvisionEntry } from '@/types/dsr';
 import { baseDoLancamento } from '@/utils/dsrCalculations';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Users } from 'lucide-react';
 
 const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -40,13 +44,83 @@ interface Props {
 export default function DsrEntriesTab({ empresa, setEmpresa, competencia, setCompetencia }: Props) {
   const { verbas } = useVerbasDsr();
   const { entries, saveEntry, deleteEntry } = useProvisionEntries(empresa, competencia);
+  const { empregados } = useEmpregados();
   const [draft, setDraft] = useState<ProvisionEntry>(emptyEntry(empresa, competencia));
   const [mesesAlvo, setMesesAlvo] = useState<number[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [replicarEdicao, setReplicarEdicao] = useState(false);
 
+  // ── Lançamento em massa (todos colaboradores × meses) ──
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkVerbaId, setBulkVerbaId] = useState('');
+  const [bulkValor, setBulkValor] = useState<number>(0);
+  const [bulkQtd, setBulkQtd] = useState<number>(0);
+  const [bulkUnit, setBulkUnit] = useState<number>(0);
+  const [bulkObs, setBulkObs] = useState('');
+  const [bulkCC, setBulkCC] = useState('');
+  const [bulkColaboradores, setBulkColaboradores] = useState<string[]>([]);
+  const [bulkMeses, setBulkMeses] = useState<number[]>([1,2,3,4,5,6,7,8,9,10,11,12]);
+  const [bulkSaving, setBulkSaving] = useState(false);
+
   const ano = competencia ? Number(competencia.split('-')[0]) : new Date().getFullYear();
   const mesesNomes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+  const empregadosEmpresa = empregados.filter(
+    (e) => !empresa || e.empresaNome.trim().toUpperCase() === empresa.trim().toUpperCase(),
+  );
+
+  const bulkVerba = verbas.find((v) => v.id === bulkVerbaId);
+  const bulkTipo = bulkVerba?.tipoLancamento || 'valor_fixo';
+  const bulkBase = bulkTipo === 'valor_fixo' ? bulkValor : bulkQtd * bulkUnit;
+  const bulkTotalLancamentos = bulkColaboradores.length * bulkMeses.length;
+
+  const toggleBulkColab = (nome: string) => {
+    setBulkColaboradores((prev) =>
+      prev.includes(nome) ? prev.filter((n) => n !== nome) : [...prev, nome],
+    );
+  };
+  const toggleBulkMes = (m: number) => {
+    setBulkMeses((prev) => prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m].sort((a,b)=>a-b));
+  };
+  const selecionarTodosColabs = () => setBulkColaboradores(empregadosEmpresa.map((e) => e.nome));
+  const limparColabs = () => setBulkColaboradores([]);
+
+  const handleBulkSave = async () => {
+    if (!empresa) return toast.error('Informe a empresa nos filtros.');
+    if (!bulkVerbaId) return toast.error('Selecione uma verba.');
+    if (bulkColaboradores.length === 0) return toast.error('Selecione ao menos um colaborador.');
+    if (bulkMeses.length === 0) return toast.error('Selecione ao menos um mês.');
+    if (bulkBase <= 0) return toast.error('Informe um valor positivo.');
+
+    setBulkSaving(true);
+    let ok = 0, fail = 0;
+    for (const colab of bulkColaboradores) {
+      for (const m of bulkMeses) {
+        const comp = `${ano}-${String(m).padStart(2, '0')}`;
+        const row: ProvisionEntry = {
+          id: crypto.randomUUID(),
+          empresaNome: empresa,
+          competencia: comp,
+          centroCusto: bulkCC,
+          colaborador: colab,
+          verbaId: bulkVerbaId,
+          tipoLancamento: bulkTipo,
+          valor: bulkTipo === 'valor_fixo' ? bulkValor : 0,
+          quantidade: bulkTipo === 'valor_fixo' ? 0 : bulkQtd,
+          valorUnitario: bulkTipo === 'valor_fixo' ? 0 : bulkUnit,
+          observacao: bulkObs,
+        };
+        const { error } = await saveEntry(row);
+        if (error) fail++; else ok++;
+      }
+    }
+    setBulkSaving(false);
+    if (fail) toast.error(`${fail} lançamentos falharam.`);
+    if (ok) toast.success(`${ok} lançamentos criados (${bulkColaboradores.length} colaborador(es) × ${bulkMeses.length} mês(es)).`);
+    setBulkOpen(false);
+    // Reset parcial
+    setBulkValor(0); setBulkQtd(0); setBulkUnit(0); setBulkObs('');
+  };
 
   // Sincroniza draft com filtros
   if (!editingId && (draft.empresaNome !== empresa || draft.competencia !== competencia)) {
@@ -160,6 +234,159 @@ export default function DsrEntriesTab({ empresa, setEmpresa, competencia, setCom
                 onChange={(e) => setCompetencia(e.target.value)}
               />
             </div>
+          </div>
+
+          <div className="mt-4 pt-4 border-t">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div>
+                <Label className="text-base">Lançamento em massa</Label>
+                <p className="text-xs text-muted-foreground">
+                  Crie o mesmo lançamento para vários colaboradores em múltiplos meses de {ano}.
+                </p>
+              </div>
+              <Dialog open={bulkOpen} onOpenChange={setBulkOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" disabled={!empresa}>
+                    <Users className="w-4 h-4 mr-1" />
+                    Lançar para colaboradores no ano todo
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-3xl">
+                  <DialogHeader>
+                    <DialogTitle>Lançamento em massa — {empresa || '(empresa não definida)'} · {ano}</DialogTitle>
+                  </DialogHeader>
+
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div className="md:col-span-2">
+                        <Label>Verba</Label>
+                        <Select value={bulkVerbaId} onValueChange={setBulkVerbaId}>
+                          <SelectTrigger><SelectValue placeholder="Selecione…" /></SelectTrigger>
+                          <SelectContent>
+                            {verbas.map((v) => (
+                              <SelectItem key={v.id} value={v.id}>
+                                {v.codigo ? `${v.codigo} — ` : ''}{v.nome}{v.incideDsr ? ' (DSR)' : ''}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label>Centro de custo</Label>
+                        <Input value={bulkCC} onChange={(e) => setBulkCC(e.target.value)} />
+                      </div>
+                    </div>
+
+                    {bulkTipo === 'valor_fixo' ? (
+                      <div className="md:max-w-xs">
+                        <Label>Valor (R$)</Label>
+                        <Input
+                          type="number" step="0.01"
+                          value={bulkValor || ''}
+                          onChange={(e) => setBulkValor(Number(e.target.value) || 0)}
+                        />
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        <div>
+                          <Label>Quantidade</Label>
+                          <Input type="number" step="0.01" value={bulkQtd || ''}
+                            onChange={(e) => setBulkQtd(Number(e.target.value) || 0)} />
+                        </div>
+                        <div>
+                          <Label>Valor unitário (R$)</Label>
+                          <Input type="number" step="0.01" value={bulkUnit || ''}
+                            onChange={(e) => setBulkUnit(Number(e.target.value) || 0)} />
+                        </div>
+                        <div className="flex items-end">
+                          <p className="text-sm">Total: <strong>{fmtBRL(bulkBase)}</strong></p>
+                        </div>
+                      </div>
+                    )}
+
+                    <div>
+                      <Label>Observação</Label>
+                      <Input value={bulkObs} onChange={(e) => setBulkObs(e.target.value)} />
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <Label>Colaboradores ({empregadosEmpresa.length} cadastrado(s))</Label>
+                        <div className="flex gap-2">
+                          <Button type="button" size="sm" variant="outline" onClick={selecionarTodosColabs}>Todos</Button>
+                          <Button type="button" size="sm" variant="ghost" onClick={limparColabs}>Limpar</Button>
+                        </div>
+                      </div>
+                      {empregadosEmpresa.length === 0 ? (
+                        <p className="text-xs text-muted-foreground italic">
+                          Nenhum colaborador cadastrado para esta empresa. Cadastre em "Empregados".
+                        </p>
+                      ) : (
+                        <ScrollArea className="h-40 border rounded p-2">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
+                            {empregadosEmpresa.map((emp) => {
+                              const checked = bulkColaboradores.includes(emp.nome);
+                              return (
+                                <label key={emp.id} className={`flex items-center gap-2 text-xs px-2 py-1 rounded cursor-pointer ${checked ? 'bg-primary/10' : ''}`}>
+                                  <Checkbox checked={checked} onCheckedChange={() => toggleBulkColab(emp.nome)} />
+                                  <span>{emp.nome}{emp.funcao ? ` · ${emp.funcao}` : ''}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </ScrollArea>
+                      )}
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <Label>Meses de {ano}</Label>
+                        <div className="flex gap-2">
+                          <Button type="button" size="sm" variant="outline"
+                            onClick={() => setBulkMeses([1,2,3,4,5,6,7,8,9,10,11,12])}>Ano todo</Button>
+                          <Button type="button" size="sm" variant="ghost" onClick={() => setBulkMeses([])}>Limpar</Button>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-4 md:grid-cols-12 gap-2">
+                        {mesesNomes.map((nome, idx) => {
+                          const m = idx + 1;
+                          const checked = bulkMeses.includes(m);
+                          return (
+                            <label key={m}
+                              className={`flex items-center gap-1 text-xs px-2 py-1 border rounded cursor-pointer ${checked ? 'bg-primary/10 border-primary/40' : ''}`}>
+                              <Checkbox checked={checked} onCheckedChange={() => toggleBulkMes(m)} />
+                              <span>{nome}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {bulkTotalLancamentos > 0 && (
+                      <div className="text-sm p-3 bg-muted/40 rounded">
+                        Serão criados <strong>{bulkTotalLancamentos}</strong> lançamento(s):{' '}
+                        {bulkColaboradores.length} colaborador(es) × {bulkMeses.length} mês(es) ·{' '}
+                        valor unitário <strong>{fmtBRL(bulkBase)}</strong> ·{' '}
+                        total geral <strong>{fmtBRL(bulkBase * bulkTotalLancamentos)}</strong>.
+                      </div>
+                    )}
+                  </div>
+
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setBulkOpen(false)} disabled={bulkSaving}>Cancelar</Button>
+                    <Button onClick={handleBulkSave} disabled={bulkSaving}>
+                      <Save className="w-4 h-4 mr-1" />
+                      {bulkSaving ? 'Salvando…' : `Criar ${bulkTotalLancamentos || ''} lançamento(s)`}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
+            {!empresa && (
+              <p className="text-xs text-destructive mt-2">
+                Informe o nome da empresa acima para habilitar o lançamento em massa.
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>
