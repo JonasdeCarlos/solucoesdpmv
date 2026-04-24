@@ -27,6 +27,7 @@ const emptyCapaData = () => ({
   companyCnpj: '',
   competenceMonth: '',
   checkedBy: '',
+  rescisaoTipo: 'sem_justa_causa' as const,
 });
 
 const RescisaoPdfPage: React.FC = () => {
