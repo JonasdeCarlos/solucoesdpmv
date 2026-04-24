@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Plus, Trash2, Save } from 'lucide-react';
+import { Pencil, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useVerbasDsr } from '@/hooks/useDsrModule';
 import { type VerbaDsr } from '@/types/dsr';
@@ -30,6 +31,7 @@ function emptyVerba(): VerbaDsr {
 export default function DsrVerbasTab() {
   const { verbas, saveVerba, deleteVerba, loading } = useVerbasDsr();
   const [draft, setDraft] = useState<VerbaDsr>(emptyVerba());
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const handleSave = async () => {
     if (!draft.nome.trim()) {
@@ -39,8 +41,9 @@ export default function DsrVerbasTab() {
     const { error } = await saveVerba(draft);
     if (error) toast.error('Erro ao salvar verba.');
     else {
-      toast.success('Verba salva.');
+      toast.success(editingId ? 'Verba atualizada.' : 'Verba salva.');
       setDraft(emptyVerba());
+      setEditingId(null);
     }
   };
 
@@ -48,14 +51,33 @@ export default function DsrVerbasTab() {
     if (!confirm('Excluir esta verba?')) return;
     const { error } = await deleteVerba(id);
     if (error) toast.error('Erro ao excluir.');
-    else toast.success('Verba excluída.');
+    else {
+      toast.success('Verba excluída.');
+      if (editingId === id) {
+        setDraft(emptyVerba());
+        setEditingId(null);
+      }
+    }
+  };
+
+  const handleEdit = (v: VerbaDsr) => {
+    setDraft({ ...v });
+    setEditingId(v.id);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleCancelEdit = () => {
+    setDraft(emptyVerba());
+    setEditingId(null);
   };
 
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Cadastro de Verba</CardTitle>
+          <CardTitle>
+            {editingId ? 'Editando verba' : 'Cadastro de Verba'}
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -135,8 +157,19 @@ export default function DsrVerbasTab() {
           </div>
 
           <div className="flex gap-2">
-            <Button onClick={handleSave}><Save className="w-4 h-4 mr-1" />Salvar verba</Button>
-            <Button variant="outline" onClick={() => setDraft(emptyVerba())}><Plus className="w-4 h-4 mr-1" />Nova</Button>
+            <Button onClick={handleSave}>
+              <Save className="w-4 h-4 mr-1" />
+              {editingId ? 'Atualizar verba' : 'Salvar verba'}
+            </Button>
+            {editingId ? (
+              <Button variant="outline" onClick={handleCancelEdit}>
+                <X className="w-4 h-4 mr-1" />Cancelar edição
+              </Button>
+            ) : (
+              <Button variant="outline" onClick={() => setDraft(emptyVerba())}>
+                <Plus className="w-4 h-4 mr-1" />Nova
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -160,22 +193,31 @@ export default function DsrVerbasTab() {
                   <TableHead className="text-center">DSR</TableHead>
                   <TableHead className="text-center">Dom.</TableHead>
                   <TableHead className="text-center">Fer.</TableHead>
-                  <TableHead className="w-[80px]"></TableHead>
+                  <TableHead className="w-[120px] text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {verbas.map((v) => (
-                  <TableRow key={v.id} className="cursor-pointer" onClick={() => setDraft(v)}>
+                  <TableRow
+                    key={v.id}
+                    className={`cursor-pointer ${editingId === v.id ? 'bg-accent/50' : ''}`}
+                    onClick={() => handleEdit(v)}
+                  >
                     <TableCell className="font-mono text-xs">{v.codigo || '—'}</TableCell>
                     <TableCell>{v.nome}</TableCell>
                     <TableCell className="text-xs">{v.tipoLancamento === 'valor_fixo' ? 'Valor fixo' : 'Qtd × Valor'}</TableCell>
                     <TableCell className="text-center">{v.incideDsr ? '✓' : '—'}</TableCell>
                     <TableCell className="text-center">{v.consideraDomingoDsr ? '✓' : '—'}</TableCell>
                     <TableCell className="text-center">{v.consideraFeriadoDsr ? '✓' : '—'}</TableCell>
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      <Button variant="ghost" size="sm" onClick={() => handleDelete(v.id)}>
-                        <Trash2 className="w-4 h-4 text-destructive" />
-                      </Button>
+                    <TableCell onClick={(e) => e.stopPropagation()} className="text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => handleEdit(v)} title="Editar">
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleDelete(v.id)} title="Excluir">
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
