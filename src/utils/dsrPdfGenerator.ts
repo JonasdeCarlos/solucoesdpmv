@@ -242,3 +242,84 @@ export function gerarPdfApuracaoDsrAnual(
 
   doc.save(`apuracao-dsr-anual-${ano}.pdf`);
 }
+
+/**
+ * Gera PDF com a tabela consolidada de feriados (nacionais + cadastrados).
+ */
+export function gerarPdfTabelaFeriados(
+  ano: number,
+  feriadosCadastrados: FeriadoExtendido[],
+  overrides: FeriadoNacionalOverride[],
+) {
+  const doc = new jsPDF();
+  const pageW = doc.internal.pageSize.getWidth();
+
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`Tabela de Feriados — ${ano}`, pageW / 2, 18, { align: 'center' });
+
+  const overrideMap = new Map(
+    overrides.filter((o) => o.ano === ano).map((o) => [o.chave, o.pontoFacultativo]),
+  );
+
+  const nacionais = feriadosNacionaisDoAno(ano).map((f) => {
+    const fac = !!overrideMap.get(f.chave);
+    return {
+      data: f.data,
+      nome: f.nome,
+      local: '—',
+      escopo: fac ? 'nacional (facultativo)' : 'nacional',
+      naoUtil: !fac,
+      dsr: !fac,
+    };
+  });
+
+  const cadastradosNoAno = feriadosCadastrados
+    .filter((f) => f.data.startsWith(`${ano}-`))
+    .map((f) => ({
+      data: f.data,
+      nome: f.nome,
+      local: [f.municipio, f.uf].filter(Boolean).join('/') || '—',
+      escopo: f.escopo,
+      naoUtil: f.contaDiaNaoUtil,
+      dsr: f.contaDsr,
+    }));
+
+  const todos = [...nacionais, ...cadastradosNoAno].sort((a, b) => a.data.localeCompare(b.data));
+
+  autoTable(doc, {
+    startY: 28,
+    head: [['Data', 'Feriado', 'Município/UF', 'Escopo', 'Não útil', 'DSR']],
+    body: todos.map((f) => [
+      f.data.split('-').reverse().join('/'),
+      f.nome,
+      f.local,
+      f.escopo,
+      f.naoUtil ? 'Sim' : 'Não',
+      f.dsr ? 'Sim' : 'Não',
+    ]),
+    theme: 'grid',
+    headStyles: { fillColor: [98, 142, 63] },
+    styles: { fontSize: 9 },
+    columnStyles: {
+      0: { halign: 'center', cellWidth: 22 },
+      4: { halign: 'center' },
+      5: { halign: 'center' },
+    },
+  });
+
+  const totalPages = doc.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setFontSize(7);
+    doc.setTextColor(120);
+    doc.text(
+      `Total: ${todos.length} feriado(s) em ${ano}. Inclui nacionais (com override de ponto facultativo) e cadastrados.`,
+      pageW / 2,
+      290,
+      { align: 'center' },
+    );
+  }
+
+  doc.save(`feriados-${ano}.pdf`);
+}
