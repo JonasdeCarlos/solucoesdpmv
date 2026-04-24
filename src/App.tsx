@@ -18,6 +18,7 @@ import EncargosPage from "./pages/EncargosPage";
 import CprbPage from "./pages/CprbPage";
 import JornadaPage from "./pages/JornadaPage";
 import PdfToolsPage from "./pages/PdfToolsPage";
+import ProvisoesDsrPage from "./pages/ProvisoesDsrPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -49,6 +50,7 @@ const App = () => (
               <Route path="/rescisao-pdf" element={<RescisaoPdfPage />} />
               <Route path="/jornada" element={<JornadaPage />} />
               <Route path="/pdf-tools" element={<PdfToolsPage />} />
+              <Route path="/provisoes-dsr" element={<ProvisoesDsrPage />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
