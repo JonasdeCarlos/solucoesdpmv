@@ -6,12 +6,13 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Trash2, Printer } from 'lucide-react';
+import { Plus, Trash2, Printer, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { useFeriadosExtendidos } from '@/hooks/useDsrModule';
 import { feriadosNacionaisDoAno } from '@/utils/dsrCalculations';
 import { gerarPdfTabelaFeriados } from '@/utils/dsrPdfGenerator';
 import { type FeriadoExtendido } from '@/types/dsr';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 
 function emptyFeriado(): Omit<FeriadoExtendido, 'id'> {
   return {
@@ -26,9 +27,11 @@ function emptyFeriado(): Omit<FeriadoExtendido, 'id'> {
 }
 
 export default function DsrCalendarTab() {
-  const { feriados, overrides, addFeriado, deleteFeriado, setOverrideNacional } = useFeriadosExtendidos();
+  const { feriados, overrides, addFeriado, updateFeriado, deleteFeriado, setOverrideNacional } =
+    useFeriadosExtendidos();
   const [ano, setAno] = useState<number>(new Date().getFullYear());
   const [draft, setDraft] = useState<Omit<FeriadoExtendido, 'id'>>(emptyFeriado());
+  const [editing, setEditing] = useState<FeriadoExtendido | null>(null);
 
   const nacionais = useMemo(() => feriadosNacionaisDoAno(ano), [ano]);
   const overrideMap = useMemo(
@@ -53,6 +56,20 @@ export default function DsrCalendarTab() {
     if (!confirm('Excluir feriado?')) return;
     await deleteFeriado(id);
     toast.success('Excluído.');
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editing) return;
+    if (!editing.data || !editing.nome.trim()) {
+      toast.error('Preencha data e nome.');
+      return;
+    }
+    const { error } = await updateFeriado(editing);
+    if (error) toast.error('Erro ao salvar.');
+    else {
+      toast.success('Feriado atualizado.');
+      setEditing(null);
+    }
   };
 
   return (
@@ -192,7 +209,10 @@ export default function DsrCalendarTab() {
                     <TableCell className="capitalize">{f.escopo}</TableCell>
                     <TableCell className="text-center">{f.contaDiaNaoUtil ? '✓' : '—'}</TableCell>
                     <TableCell className="text-center">{f.contaDsr ? '✓' : '—'}</TableCell>
-                    <TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="ghost" size="sm" onClick={() => setEditing(f)}>
+                        <Pencil className="w-4 h-4" />
+                      </Button>
                       <Button variant="ghost" size="sm" onClick={() => handleDelete(f.id)}>
                         <Trash2 className="w-4 h-4 text-destructive" />
                       </Button>
@@ -204,6 +224,85 @@ export default function DsrCalendarTab() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Editar feriado</DialogTitle>
+          </DialogHeader>
+          {editing && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                <div>
+                  <Label>Data</Label>
+                  <Input
+                    type="date"
+                    value={editing.data}
+                    onChange={(e) => setEditing({ ...editing, data: e.target.value })}
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <Label>Nome</Label>
+                  <Input
+                    value={editing.nome}
+                    onChange={(e) => setEditing({ ...editing, nome: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label>Escopo</Label>
+                  <Select
+                    value={editing.escopo}
+                    onValueChange={(v) => setEditing({ ...editing, escopo: v as any })}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="municipal">Municipal</SelectItem>
+                      <SelectItem value="estadual">Estadual</SelectItem>
+                      <SelectItem value="sindical">Sindical</SelectItem>
+                      <SelectItem value="interno">Interno</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                <div>
+                  <Label>Município</Label>
+                  <Input
+                    value={editing.municipio}
+                    onChange={(e) => setEditing({ ...editing, municipio: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label>UF</Label>
+                  <Input
+                    maxLength={2}
+                    value={editing.uf}
+                    onChange={(e) => setEditing({ ...editing, uf: e.target.value.toUpperCase() })}
+                  />
+                </div>
+                <div className="flex items-center justify-between p-3 border rounded-md">
+                  <Label>Não útil</Label>
+                  <Switch
+                    checked={editing.contaDiaNaoUtil}
+                    onCheckedChange={(v) => setEditing({ ...editing, contaDiaNaoUtil: v })}
+                  />
+                </div>
+                <div className="flex items-center justify-between p-3 border rounded-md">
+                  <Label>Conta DSR</Label>
+                  <Switch
+                    checked={editing.contaDsr}
+                    onCheckedChange={(v) => setEditing({ ...editing, contaDsr: v })}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditing(null)}>Cancelar</Button>
+            <Button onClick={handleSaveEdit}>Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
