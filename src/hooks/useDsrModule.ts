@@ -138,6 +138,23 @@ export function useFeriadosExtendidos() {
     return { error };
   };
 
+  const updateFeriado = async (f: FeriadoExtendido) => {
+    const { error } = await supabase
+      .from('feriados_municipais' as any)
+      .update({
+        data: f.data,
+        descricao: f.nome,
+        municipio: f.municipio,
+        uf: f.uf,
+        escopo: f.escopo,
+        conta_dia_nao_util: f.contaDiaNaoUtil,
+        conta_dsr: f.contaDsr,
+      })
+      .eq('id', f.id);
+    if (!error) await fetchAll();
+    return { error };
+  };
+
   const setOverrideNacional = async (ano: number, chave: string, pontoFacultativo: boolean) => {
     const { error } = await supabase
       .from('feriados_nacionais_overrides' as any)
@@ -146,7 +163,7 @@ export function useFeriadosExtendidos() {
     return { error };
   };
 
-  return { feriados, overrides, loading, addFeriado, deleteFeriado, setOverrideNacional, refresh: fetchAll };
+  return { feriados, overrides, loading, addFeriado, updateFeriado, deleteFeriado, setOverrideNacional, refresh: fetchAll };
 }
 
 // ──────────── Lançamentos de provisões ────────────
