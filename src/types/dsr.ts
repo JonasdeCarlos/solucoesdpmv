@@ -1,6 +1,6 @@
 export type TipoLancamento = 'valor_fixo' | 'qtd_x_valor';
 export type RegraDsr = 'padrao' | 'custom';
-export type EscopoFeriado = 'nacional' | 'estadual' | 'municipal' | 'interno';
+export type EscopoFeriado = 'nacional' | 'estadual' | 'municipal' | 'interno' | 'sindical';
 
 export interface VerbaDsr {
   id: string;
