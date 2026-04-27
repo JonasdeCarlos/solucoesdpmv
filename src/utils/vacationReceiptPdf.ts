@@ -111,11 +111,11 @@ export function generateVacationReceiptPDF(data: VacationReceiptData, result: Va
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8.5);
   const memo = [
-    `RB = ${formatCurrency(data.salaryBase)} + ${formatCurrency(data.avgVariables)} + ${formatCurrency(data.otherPayItems)} = ${formatCurrency(result.baseRemuneration)}`,
+    `RB = ${[data.salaryBase, data.avgVariables, data.otherPayItems].filter(hasValue).map(formatCurrency).join(' + ')} = ${formatCurrency(result.baseRemuneration)}`,
     `VF = RB ÷ 30 × ${data.vacationDays} = ${formatCurrency(result.vacationValue)}`,
     `T = VF ÷ 3 = ${formatCurrency(result.oneThirdValue)}`,
-    data.abonoEnabled ? `VA = RB ÷ 30 × ${data.abonoDays} = ${formatCurrency(result.abonoValue)}; TA = VA ÷ 3 = ${formatCurrency(result.abonoOneThirdValue)}` : 'Abono pecuniário: não informado',
-    `Líquido = ${formatCurrency(result.grossTotal)} - ${formatCurrency(data.discountsValue)} = ${formatCurrency(result.netTotal)}`,
+    ...(data.abonoEnabled && result.abonoValue > 0 ? [`VA = RB ÷ 30 × ${data.abonoDays} = ${formatCurrency(result.abonoValue)}; TA = VA ÷ 3 = ${formatCurrency(result.abonoOneThirdValue)}`] : []),
+    data.discountsValue > 0 ? `Líquido = ${formatCurrency(result.grossTotal)} - ${formatCurrency(data.discountsValue)} = ${formatCurrency(result.netTotal)}` : `Líquido = ${formatCurrency(result.netTotal)}`,
   ];
   doc.text(memo, MARGIN, y);
   y += memo.length * 4.5 + 14;
