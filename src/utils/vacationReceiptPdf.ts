@@ -17,6 +17,11 @@ function cleanFilePart(value: string): string {
   return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase();
 }
 
+function hasValue(value: string | number | undefined | null): boolean {
+  if (typeof value === 'number') return Math.abs(value) > 0.004;
+  return Boolean(String(value || '').trim());
+}
+
 export function createVacationReceiptFileName(data: VacationReceiptData): string {
   const employee = cleanFilePart(data.employeeName || 'empregado');
   const start = data.leaveStart || new Date().toISOString().split('T')[0];
@@ -34,18 +39,26 @@ export function generateVacationReceiptPDF(data: VacationReceiptData, result: Va
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
-  doc.text(`Empregador: ${data.companyName || '{{empresa_razao_social}}'} — CNPJ/CPF: ${data.companyDoc || '{{empresa_cnpj}}'}`, MARGIN, y, { maxWidth: CONTENT_WIDTH });
+  const employer = [`Empregador: ${data.companyName || '{{empresa_razao_social}}'}`, hasValue(data.companyDoc) ? `CNPJ/CPF: ${data.companyDoc}` : ''].filter(Boolean).join(' — ');
+  const employee = [`Empregado: ${data.employeeName || '{{empregado_nome}}'}`, hasValue(data.employeeCpf) ? `CPF: ${data.employeeCpf}` : ''].filter(Boolean).join(' — ');
+  doc.text(employer, MARGIN, y, { maxWidth: CONTENT_WIDTH });
   y += 6;
-  doc.text(`Empregado: ${data.employeeName || '{{empregado_nome}}'} — CPF: ${data.employeeCpf || '{{empregado_cpf}}'}`, MARGIN, y, { maxWidth: CONTENT_WIDTH });
+  doc.text(employee, MARGIN, y, { maxWidth: CONTENT_WIDTH });
   y += 6;
-  const meta = [`Cargo/Função: ${data.role || '-'}`, `Matrícula: ${data.registration || '-'}`, `PIS: ${data.pis || '-'}`, `Setor: ${data.department || '-'}`];
-  doc.text(meta.join('   |   '), MARGIN, y, { maxWidth: CONTENT_WIDTH });
-  y += 10;
+  const meta = [[data.role, 'Cargo/Função'], [data.registration, 'Matrícula'], [data.pis, 'PIS'], [data.department, 'Setor']]
+    .filter(([value]) => hasValue(value))
+    .map(([value, label]) => `${label}: ${value}`);
+  if (meta.length) {
+    doc.text(meta.join('   |   '), MARGIN, y, { maxWidth: CONTENT_WIDTH });
+    y += 6;
+  }
+  y += 4;
 
   const paragraph = `Recebi de ${data.companyName || '{{empresa_razao_social}}'} a importância líquida de ${formatCurrency(result.netTotal)}, referente às férias ${data.vacationType.toLowerCase()} do período aquisitivo de ${formatDateBR(data.acquisitionStart)} a ${formatDateBR(data.acquisitionEnd)}, com gozo de ${formatDateBR(data.leaveStart)} a ${formatDateBR(data.leaveEnd)} e retorno em ${formatDateBR(data.returnDate)}.`;
   doc.setFontSize(10);
-  doc.text(doc.splitTextToSize(paragraph, CONTENT_WIDTH), MARGIN, y);
-  y += doc.splitTextToSize(paragraph, CONTENT_WIDTH).length * 5 + 6;
+  const paragraphLines = doc.splitTextToSize(paragraph, CONTENT_WIDTH);
+  doc.text(paragraphLines, MARGIN, y, { maxWidth: CONTENT_WIDTH, align: 'justify' });
+  y += paragraphLines.length * 5 + 6;
 
   autoTable(doc, {
     startY: y,
