@@ -146,7 +146,6 @@ export function VacationReceiptModule() {
     const items: string[] = [];
     const pairs = [
       ['Período aquisitivo', data.acquisitionStart, data.acquisitionEnd],
-      ['Período concessivo', data.concessionStart, data.concessionEnd],
       ['Período de gozo', data.leaveStart, data.leaveEnd],
     ];
     pairs.forEach(([label, start, end]) => {
@@ -158,7 +157,7 @@ export function VacationReceiptModule() {
 
   const validateStep = (target = step) => {
     if (target === 0 && (!data.companyName || !data.employeeName.trim() || !data.employeeCpf.trim())) return 'Selecione empresa e informe nome/CPF do empregado.';
-    if (target === 1 && (!data.acquisitionStart || !data.acquisitionEnd || !data.concessionStart || !data.concessionEnd || !data.leaveStart || !data.leaveEnd || data.vacationDays <= 0 || !data.returnDate)) return 'Preencha todos os períodos obrigatórios com datas válidas.';
+    if (target === 1 && (!data.acquisitionStart || !data.acquisitionEnd || !data.leaveStart || !data.leaveEnd || data.vacationDays <= 0 || !data.returnDate)) return 'Preencha todos os períodos obrigatórios com datas válidas.';
     if (target === 1 && warnings.length) return warnings[0];
     if (target === 2 && (data.salaryBase <= 0 || data.avgVariables < 0 || data.otherPayItems < 0 || data.discountsValue < 0)) return 'Informe remuneração positiva e não use valores negativos.';
     if (target === 2 && data.abonoEnabled && (data.abonoDays <= 0 || data.abonoDays > maxAbonoDays)) return `Informe dias vendidos entre 1 e ${maxAbonoDays}.`;
@@ -192,8 +191,8 @@ export function VacationReceiptModule() {
     department: data.department,
     acquisition_start: data.acquisitionStart,
     acquisition_end: data.acquisitionEnd,
-    concession_start: data.concessionStart,
-    concession_end: data.concessionEnd,
+    concession_start: null,
+    concession_end: null,
     leave_start: data.leaveStart,
     leave_end: data.leaveEnd,
     vacation_days: data.vacationDays,
