@@ -8,9 +8,11 @@ import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useClientes } from '@/hooks/useClientes';
 import { useVerbas } from '@/hooks/useVerbas';
 import { useFeriadosMunicipais } from '@/hooks/useFeriadosMunicipais';
+import { VacationReceiptModule } from '@/components/recibo/VacationReceiptModule';
 import {
   type ReciboData, type ReciboLinha,
   createEmptyReciboData, createEmptyLinha,
@@ -204,6 +206,14 @@ const ReciboPage = () => {
           <CalendarDays className="w-4 h-4 mr-1" /> Feriados Municipais
         </Button>
       </div>
+
+      <Tabs defaultValue="recibo-avulso" className="space-y-6">
+        <TabsList className="flex w-full max-w-xl justify-start">
+          <TabsTrigger value="recibo-avulso">Recibo Avulso</TabsTrigger>
+          <TabsTrigger value="ferias">Cálculo de Férias + Emissão de Recibo</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="recibo-avulso" className="space-y-6">
 
       {/* Bloco 1 — Identificação */}
       <Card>
@@ -607,6 +617,13 @@ const ReciboPage = () => {
           </div>
         </CardContent>
       </Card>
+
+        </TabsContent>
+
+        <TabsContent value="ferias">
+          <VacationReceiptModule />
+        </TabsContent>
+      </Tabs>
 
       {/* Dialog Feriados Municipais */}
       <Dialog open={feriadoDialogOpen} onOpenChange={setFeriadoDialogOpen}>
