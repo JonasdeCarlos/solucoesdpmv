@@ -275,8 +275,6 @@ export function VacationReceiptModule() {
           <div><Label>Aquisitivo início *</Label><Input type="date" value={data.acquisitionStart} onChange={(e) => update({ acquisitionStart: e.target.value })} /></div>
           <div><Label>Aquisitivo fim *</Label><Input type="date" value={data.acquisitionEnd} onChange={(e) => update({ acquisitionEnd: e.target.value })} /></div>
           <div><Label>Tipo</Label><Select value={data.vacationType} onValueChange={(v) => update({ vacationType: v as VacationType })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Integrais">Integrais</SelectItem><SelectItem value="Proporcionais">Proporcionais</SelectItem><SelectItem value="Fracionadas">Fracionadas</SelectItem></SelectContent></Select></div>
-          <div><Label>Concessivo início *</Label><Input type="date" value={data.concessionStart} onChange={(e) => update({ concessionStart: e.target.value })} /></div>
-          <div><Label>Concessivo fim *</Label><Input type="date" value={data.concessionEnd} onChange={(e) => update({ concessionEnd: e.target.value })} /></div>
           <div><Label>Dias de férias *</Label><Input type="number" min={1} value={data.vacationDays || ''} onChange={(e) => update({ vacationDays: Number(e.target.value) || 0 })} /></div>
           <div><Label>Gozo início *</Label><Input type="date" value={data.leaveStart} onChange={(e) => update({ leaveStart: e.target.value })} /></div>
           <div><Label>Gozo fim *</Label><Input type="date" value={data.leaveEnd} onChange={(e) => update({ leaveEnd: e.target.value })} /></div>
