@@ -1027,6 +1027,174 @@ export type Database = {
         }
         Relationships: []
       }
+      vacation_calculations: {
+        Row: {
+          abono_days: number
+          abono_enabled: boolean
+          abono_one_third_value: number
+          abono_value: number
+          acquisition_end: string
+          acquisition_start: string
+          avg_variables: number
+          base_remuneration: number
+          company_doc: string
+          company_id: string | null
+          company_name: string
+          concession_end: string
+          concession_start: string
+          created_at: string
+          created_by: string | null
+          department: string | null
+          discounts_desc: string | null
+          discounts_value: number
+          employee_cpf: string
+          employee_name: string
+          fraction_description: string | null
+          gross_total: number
+          id: string
+          leave_end: string
+          leave_start: string
+          net_total: number
+          one_third_value: number
+          other_pay_items: number
+          pay_date: string
+          pay_method: string
+          pis: string | null
+          registration: string | null
+          responsible_cpf: string | null
+          responsible_name: string | null
+          responsible_role: string | null
+          return_date: string
+          role: string | null
+          salary_base: number
+          signature_date: string
+          signature_place: string
+          updated_at: string
+          vacation_days: number
+          vacation_type: string
+          vacation_value: number
+        }
+        Insert: {
+          abono_days?: number
+          abono_enabled?: boolean
+          abono_one_third_value?: number
+          abono_value?: number
+          acquisition_end: string
+          acquisition_start: string
+          avg_variables?: number
+          base_remuneration?: number
+          company_doc?: string
+          company_id?: string | null
+          company_name?: string
+          concession_end: string
+          concession_start: string
+          created_at?: string
+          created_by?: string | null
+          department?: string | null
+          discounts_desc?: string | null
+          discounts_value?: number
+          employee_cpf: string
+          employee_name: string
+          fraction_description?: string | null
+          gross_total?: number
+          id?: string
+          leave_end: string
+          leave_start: string
+          net_total?: number
+          one_third_value?: number
+          other_pay_items?: number
+          pay_date: string
+          pay_method?: string
+          pis?: string | null
+          registration?: string | null
+          responsible_cpf?: string | null
+          responsible_name?: string | null
+          responsible_role?: string | null
+          return_date: string
+          role?: string | null
+          salary_base?: number
+          signature_date?: string
+          signature_place?: string
+          updated_at?: string
+          vacation_days?: number
+          vacation_type?: string
+          vacation_value?: number
+        }
+        Update: {
+          abono_days?: number
+          abono_enabled?: boolean
+          abono_one_third_value?: number
+          abono_value?: number
+          acquisition_end?: string
+          acquisition_start?: string
+          avg_variables?: number
+          base_remuneration?: number
+          company_doc?: string
+          company_id?: string | null
+          company_name?: string
+          concession_end?: string
+          concession_start?: string
+          created_at?: string
+          created_by?: string | null
+          department?: string | null
+          discounts_desc?: string | null
+          discounts_value?: number
+          employee_cpf?: string
+          employee_name?: string
+          fraction_description?: string | null
+          gross_total?: number
+          id?: string
+          leave_end?: string
+          leave_start?: string
+          net_total?: number
+          one_third_value?: number
+          other_pay_items?: number
+          pay_date?: string
+          pay_method?: string
+          pis?: string | null
+          registration?: string | null
+          responsible_cpf?: string | null
+          responsible_name?: string | null
+          responsible_role?: string | null
+          return_date?: string
+          role?: string | null
+          salary_base?: number
+          signature_date?: string
+          signature_place?: string
+          updated_at?: string
+          vacation_days?: number
+          vacation_type?: string
+          vacation_value?: number
+        }
+        Relationships: []
+      }
+      vacation_receipts: {
+        Row: {
+          calculation_id: string
+          created_at: string
+          file_name: string
+          id: string
+          pdf_data: Json
+          template_version: string
+        }
+        Insert: {
+          calculation_id: string
+          created_at?: string
+          file_name?: string
+          id?: string
+          pdf_data?: Json
+          template_version?: string
+        }
+        Update: {
+          calculation_id?: string
+          created_at?: string
+          file_name?: string
+          id?: string
+          pdf_data?: Json
+          template_version?: string
+        }
+        Relationships: []
+      }
       verbas: {
         Row: {
           calcula_dsr: boolean
