@@ -233,9 +233,10 @@ export function VacationReceiptModule() {
     setSaving(true);
     const fileInfo = generateVacationReceiptPDF(data, result, alsoPdf ? 'save' : 'blob') as any;
     const { data: saved, error } = await supabase.from('vacation_calculations' as any).insert(buildRow()).select('id').single();
-    if (!error && saved?.id) {
+    const savedCalculation = saved as any;
+    if (!error && savedCalculation?.id) {
       await supabase.from('vacation_receipts' as any).insert({
-        calculation_id: saved.id,
+        calculation_id: savedCalculation.id,
         template_version: 'recibo-ferias-v1',
         pdf_data: { ...data, ...result },
         file_name: fileInfo.fileName || '',
