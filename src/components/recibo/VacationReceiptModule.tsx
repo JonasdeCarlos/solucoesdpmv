@@ -146,7 +146,6 @@ export function VacationReceiptModule() {
     const items: string[] = [];
     const pairs = [
       ['Período aquisitivo', data.acquisitionStart, data.acquisitionEnd],
-      ['Período concessivo', data.concessionStart, data.concessionEnd],
       ['Período de gozo', data.leaveStart, data.leaveEnd],
     ];
     pairs.forEach(([label, start, end]) => {
@@ -158,7 +157,7 @@ export function VacationReceiptModule() {
 
   const validateStep = (target = step) => {
     if (target === 0 && (!data.companyName || !data.employeeName.trim() || !data.employeeCpf.trim())) return 'Selecione empresa e informe nome/CPF do empregado.';
-    if (target === 1 && (!data.acquisitionStart || !data.acquisitionEnd || !data.concessionStart || !data.concessionEnd || !data.leaveStart || !data.leaveEnd || data.vacationDays <= 0 || !data.returnDate)) return 'Preencha todos os períodos obrigatórios com datas válidas.';
+    if (target === 1 && (!data.acquisitionStart || !data.acquisitionEnd || !data.leaveStart || !data.leaveEnd || data.vacationDays <= 0 || !data.returnDate)) return 'Preencha todos os períodos obrigatórios com datas válidas.';
     if (target === 1 && warnings.length) return warnings[0];
     if (target === 2 && (data.salaryBase <= 0 || data.avgVariables < 0 || data.otherPayItems < 0 || data.discountsValue < 0)) return 'Informe remuneração positiva e não use valores negativos.';
     if (target === 2 && data.abonoEnabled && (data.abonoDays <= 0 || data.abonoDays > maxAbonoDays)) return `Informe dias vendidos entre 1 e ${maxAbonoDays}.`;
@@ -192,8 +191,8 @@ export function VacationReceiptModule() {
     department: data.department,
     acquisition_start: data.acquisitionStart,
     acquisition_end: data.acquisitionEnd,
-    concession_start: data.concessionStart,
-    concession_end: data.concessionEnd,
+    concession_start: null,
+    concession_end: null,
     leave_start: data.leaveStart,
     leave_end: data.leaveEnd,
     vacation_days: data.vacationDays,
@@ -276,8 +275,6 @@ export function VacationReceiptModule() {
           <div><Label>Aquisitivo início *</Label><Input type="date" value={data.acquisitionStart} onChange={(e) => update({ acquisitionStart: e.target.value })} /></div>
           <div><Label>Aquisitivo fim *</Label><Input type="date" value={data.acquisitionEnd} onChange={(e) => update({ acquisitionEnd: e.target.value })} /></div>
           <div><Label>Tipo</Label><Select value={data.vacationType} onValueChange={(v) => update({ vacationType: v as VacationType })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Integrais">Integrais</SelectItem><SelectItem value="Proporcionais">Proporcionais</SelectItem><SelectItem value="Fracionadas">Fracionadas</SelectItem></SelectContent></Select></div>
-          <div><Label>Concessivo início *</Label><Input type="date" value={data.concessionStart} onChange={(e) => update({ concessionStart: e.target.value })} /></div>
-          <div><Label>Concessivo fim *</Label><Input type="date" value={data.concessionEnd} onChange={(e) => update({ concessionEnd: e.target.value })} /></div>
           <div><Label>Dias de férias *</Label><Input type="number" min={1} value={data.vacationDays || ''} onChange={(e) => update({ vacationDays: Number(e.target.value) || 0 })} /></div>
           <div><Label>Gozo início *</Label><Input type="date" value={data.leaveStart} onChange={(e) => update({ leaveStart: e.target.value })} /></div>
           <div><Label>Gozo fim *</Label><Input type="date" value={data.leaveEnd} onChange={(e) => update({ leaveEnd: e.target.value })} /></div>
@@ -305,7 +302,7 @@ export function VacationReceiptModule() {
     return (
       <div className="space-y-4">
         <Table><TableBody>
-          {[['Remuneração base para férias', result.baseRemuneration], ['Valor das férias', result.vacationValue], ['1/3 constitucional', result.oneThirdValue], ...(data.abonoEnabled ? [['Abono', result.abonoValue], ['1/3 sobre abono', result.abonoOneThirdValue]] : []), ['Descontos', -data.discountsValue], ['Total bruto', result.grossTotal], ['Valor líquido', result.netTotal]].map(([label, value]) => <TableRow key={String(label)}><TableCell className="font-medium">{label}</TableCell><TableCell className="text-right font-semibold">{formatCurrency(Number(value))}</TableCell></TableRow>)}
+          {[['Remuneração base para férias', result.baseRemuneration], ['Valor das férias', result.vacationValue], ['1/3 constitucional', result.oneThirdValue], ...(data.abonoEnabled ? [['Abono', result.abonoValue], ['1/3 sobre abono', result.abonoOneThirdValue]] : []), ...(data.discountsValue > 0 ? [['Descontos', -data.discountsValue]] : []), ['Total bruto', result.grossTotal], ['Valor líquido', result.netTotal]].filter(([, value]) => Number(value) !== 0).map(([label, value]) => <TableRow key={String(label)}><TableCell className="font-medium">{label}</TableCell><TableCell className="text-right font-semibold">{formatCurrency(Number(value))}</TableCell></TableRow>)}
         </TableBody></Table>
         <Card><CardContent className="pt-4 text-sm space-y-1"><p><strong>Memória:</strong></p><p>RB = {formatCurrency(data.salaryBase)} + {formatCurrency(data.avgVariables)} + {formatCurrency(data.otherPayItems)} = {formatCurrency(result.baseRemuneration)}</p><p>VF = RB ÷ 30 × {data.vacationDays} = {formatCurrency(result.vacationValue)}</p><p>T = VF ÷ 3 = {formatCurrency(result.oneThirdValue)}</p>{data.abonoEnabled && <p>VA = RB ÷ 30 × {data.abonoDays} = {formatCurrency(result.abonoValue)}; TA = VA ÷ 3 = {formatCurrency(result.abonoOneThirdValue)}</p>}<p>Líquido = {formatCurrency(result.grossTotal)} - {formatCurrency(data.discountsValue)} = {formatCurrency(result.netTotal)}</p></CardContent></Card>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4"><div><Label>Local da assinatura</Label><Input value={data.signaturePlace} onChange={(e) => update({ signaturePlace: e.target.value })} /></div><div><Label>Data da assinatura</Label><Input type="date" value={data.signatureDate} onChange={(e) => update({ signatureDate: e.target.value })} /></div><div><Label>Responsável/cargo</Label><Input value={data.responsibleName} onChange={(e) => update({ responsibleName: e.target.value })} placeholder="Nome do responsável" /></div></div>
