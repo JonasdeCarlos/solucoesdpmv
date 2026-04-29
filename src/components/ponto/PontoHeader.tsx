@@ -2,11 +2,16 @@ import React from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Check, ChevronsUpDown } from 'lucide-react';
 import { type PontoIdentificacao, type PontoConfig, type DiaSemanaKey, type JornadaSemanal } from '@/types/ponto';
 import { useClientes } from '@/hooks/useClientes';
 import { useEmpregados } from '@/hooks/useEmpregados';
+import { cn } from '@/lib/utils';
 
 interface Props {
   identificacao: PontoIdentificacao;
@@ -18,6 +23,14 @@ interface Props {
 const PontoHeader: React.FC<Props> = ({ identificacao, config, onIdentificacaoChange, onConfigChange }) => {
   const { clientes } = useClientes();
   const { empregados } = useEmpregados();
+  const [clienteOpen, setClienteOpen] = React.useState(false);
+  const [empregadoOpen, setEmpregadoOpen] = React.useState(false);
+
+  const collator = React.useMemo(() => new Intl.Collator('pt-BR', { sensitivity: 'base' }), []);
+  const clientesOrdenados = React.useMemo(
+    () => [...clientes].sort((a, b) => collator.compare(a.nome, b.nome)),
+    [clientes, collator]
+  );
 
   const setId = (field: keyof PontoIdentificacao, val: string) =>
     onIdentificacaoChange({ ...identificacao, [field]: val });
@@ -25,9 +38,9 @@ const PontoHeader: React.FC<Props> = ({ identificacao, config, onIdentificacaoCh
     onConfigChange({ ...config, [field]: val });
 
   const handleClienteSelect = (clienteId: string) => {
-    if (clienteId === '__manual__') return;
     const c = clientes.find(cl => cl.id === clienteId);
     if (!c) return;
+    setClienteOpen(false);
     onIdentificacaoChange({
       ...identificacao,
       empresaNome: c.nome,
@@ -42,12 +55,15 @@ const PontoHeader: React.FC<Props> = ({ identificacao, config, onIdentificacaoCh
   // Filter employees by selected company
   const empregadosDaEmpresa = React.useMemo(() => {
     if (!identificacao.empresaNome) return [];
-    return empregados.filter(e => e.empresaNome === identificacao.empresaNome);
-  }, [empregados, identificacao.empresaNome]);
+    return empregados
+      .filter(e => e.empresaNome === identificacao.empresaNome)
+      .sort((a, b) => collator.compare(a.nome, b.nome));
+  }, [empregados, identificacao.empresaNome, collator]);
 
   const handleEmpregadoSelect = (empId: string) => {
     const emp = empregados.find(e => e.id === empId);
     if (!emp) return;
+    setEmpregadoOpen(false);
     onIdentificacaoChange({
       ...identificacao,
       empregadoNome: emp.nome,
@@ -68,18 +84,33 @@ const PontoHeader: React.FC<Props> = ({ identificacao, config, onIdentificacaoCh
             {clientes.length > 0 && (
               <div>
                 <Label className="text-xs">Selecionar cliente cadastrado</Label>
-                <Select onValueChange={handleClienteSelect}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Preencher a partir de um cliente..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {clientes.map(c => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.nome} ({c.tipo === 'PJ' ? c.cnpj : c.cpf})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Popover open={clienteOpen} onOpenChange={setClienteOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" role="combobox" aria-expanded={clienteOpen} className="w-full justify-between font-normal">
+                      <span className="truncate">{identificacao.empresaNome || 'Pesquisar e selecionar cliente...'}</span>
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Pesquisar empresa..." />
+                      <CommandList>
+                        <CommandEmpty>Nenhuma empresa encontrada.</CommandEmpty>
+                        <CommandGroup>
+                          {clientesOrdenados.map(c => {
+                            const doc = c.tipo === 'PJ' ? c.cnpj : c.cpf;
+                            return (
+                              <CommandItem key={c.id} value={`${c.nome} ${doc}`} onSelect={() => handleClienteSelect(c.id)}>
+                                <Check className={cn('mr-2 h-4 w-4', identificacao.empresaNome === c.nome ? 'opacity-100' : 'opacity-0')} />
+                                <span className="truncate">{c.nome} {doc ? `(${doc})` : ''}</span>
+                              </CommandItem>
+                            );
+                          })}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
             )}
             <div>
@@ -105,18 +136,30 @@ const PontoHeader: React.FC<Props> = ({ identificacao, config, onIdentificacaoCh
             {empregadosDaEmpresa.length > 0 && (
               <div>
                 <Label className="text-xs">Selecionar funcionário da empresa</Label>
-                <Select onValueChange={handleEmpregadoSelect}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecionar funcionário cadastrado..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {empregadosDaEmpresa.map(emp => (
-                      <SelectItem key={emp.id} value={emp.id}>
-                        {emp.nome} {emp.cpf ? `(${emp.cpf})` : ''}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Popover open={empregadoOpen} onOpenChange={setEmpregadoOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" role="combobox" aria-expanded={empregadoOpen} className="w-full justify-between font-normal">
+                      <span className="truncate">{identificacao.empregadoNome || 'Pesquisar e selecionar funcionário...'}</span>
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Pesquisar empregado..." />
+                      <CommandList>
+                        <CommandEmpty>Nenhum empregado encontrado.</CommandEmpty>
+                        <CommandGroup>
+                          {empregadosDaEmpresa.map(emp => (
+                            <CommandItem key={emp.id} value={`${emp.nome} ${emp.cpf} ${emp.funcao}`} onSelect={() => handleEmpregadoSelect(emp.id)}>
+                              <Check className={cn('mr-2 h-4 w-4', identificacao.empregadoNome === emp.nome ? 'opacity-100' : 'opacity-0')} />
+                              <span className="truncate">{emp.nome} {emp.cpf ? `(${emp.cpf})` : ''}</span>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
             )}
             <div>
