@@ -30,44 +30,35 @@ export function isValidTime(val: string): boolean {
   return !isNaN(parseHHMM(val));
 }
 
-/** Calculate minutes between two times, handling overnight (next day) */
-function diffMinutes(start: number, end: number): number {
-  if (end >= start) return end - start;
-  return (24 * 60 - start) + end; // overnight
+/** Normalize markings into a continuous timeline, adding 24h when a marking crosses midnight. */
+function normalizeMarks(marks: number[]): number[] {
+  const normalized: number[] = [];
+
+  marks.forEach((mark, index) => {
+    let value = mark;
+    if (index > 0) {
+      while (value <= normalized[index - 1]) value += 24 * 60;
+    }
+    normalized.push(value);
+  });
+
+  return normalized;
 }
 
-/** Calculate overlap in minutes between [a1,a2) and [b1,b2), handling overnight windows */
-function overlapMinutes(workStart: number, workEnd: number, winStart: number, winEnd: number): number {
-  // Normalize overnight ranges by extending to next day concept
-  const ranges: [number, number][] = [];
-  
-  // Work range
-  const wRanges: [number, number][] = [];
-  if (workEnd > workStart) {
-    wRanges.push([workStart, workEnd]);
-  } else if (workEnd < workStart) {
-    // overnight work
-    wRanges.push([workStart, 24 * 60]);
-    wRanges.push([0, workEnd]);
-  }
-
-  // Night window range
-  const nRanges: [number, number][] = [];
-  if (winEnd > winStart) {
-    nRanges.push([winStart, winEnd]);
-  } else if (winEnd < winStart) {
-    // overnight window (e.g. 22:00-05:00)
-    nRanges.push([winStart, 24 * 60]);
-    nRanges.push([0, winEnd]);
-  }
+/** Calculate overlap in minutes against a daily recurring window on an absolute minute timeline. */
+function overlapRecurringWindow(workStart: number, workEnd: number, winStart: number, winEnd: number): number {
+  if (workEnd <= workStart) return 0;
 
   let total = 0;
-  for (const w of wRanges) {
-    for (const n of nRanges) {
-      const start = Math.max(w[0], n[0]);
-      const end = Math.min(w[1], n[1]);
-      if (end > start) total += end - start;
-    }
+  const maxDay = Math.ceil(workEnd / (24 * 60)) + 1;
+
+  for (let day = -1; day <= maxDay; day++) {
+    const base = day * 24 * 60;
+    const start = base + winStart;
+    const end = base + (winStart >= winEnd ? 24 * 60 + winEnd : winEnd);
+    const overlapStart = Math.max(workStart, start);
+    const overlapEnd = Math.min(workEnd, end);
+    if (overlapEnd > overlapStart) total += overlapEnd - overlapStart;
   }
 
   return total;
@@ -87,9 +78,9 @@ export function calcularDia(dia: PontoDia, config: PontoConfig): PontoDiaCalcula
     intervaloDevido: 0,
   };
 
-  // Parse all valid markings
-  const marks = dia.marcacoes.map(m => parseHHMM(m));
-  const validMarks = marks.filter(m => !isNaN(m));
+  // Parse all valid markings. Empty interval fields are ignored, so a night shift can be
+  // entered only as Entrada/Saída (e.g. 19:00 → 06:30) even in the 4-column layout.
+  const validMarks = dia.marcacoes.map(m => parseHHMM(m)).filter(m => !isNaN(m));
 
   if (validMarks.length < 2) {
     // Not enough markings to calculate
@@ -101,37 +92,23 @@ export function calcularDia(dia: PontoDia, config: PontoConfig): PontoDiaCalcula
     return result;
   }
 
-  // Calculate based on pairs: Entry/Exit pattern
-  // For 4 marks: [entry, exitInt, entryInt, exit]
-  // For 6 marks: [entry, exitInt1, entryInt1, exitInt2, entryInt2, exit]
-  const numMarks = dia.marcacoes.length;
-  const entrada = marks[0];
-  const saida = marks[numMarks - 1];
+  const normalizedMarks = normalizeMarks(validMarks);
 
-  if (isNaN(entrada) || isNaN(saida)) {
-    const cumprir = parseHHMM(dia.horasACumprir);
-    if (!isNaN(cumprir) && dia.tipoDia === 'normal') {
-      result.saldoMinutos = -cumprir;
-      result.saldoAntesTolerancia = -cumprir;
-    }
-    return result;
+  // Calculate as pairs: Entrada/Saída, Entrada/Saída... This supports both
+  // full interval markings and direct overnight pairs without forcing the last column.
+  let totalTrabalho = 0;
+  for (let i = 0; i < normalizedMarks.length - 1; i += 2) {
+    totalTrabalho += normalizedMarks[i + 1] - normalizedMarks[i];
   }
 
-  // Gross work
-  result.trabalhoBruto = diffMinutes(entrada, saida);
-
-  // Calculate intervals (pairs of exits/entries in the middle)
   let totalIntervalos = 0;
-  // Middle marks form interval pairs: [1,2], [3,4] for 6-mark mode; [1,2] for 4-mark mode
-  for (let i = 1; i < numMarks - 1; i += 2) {
-    const exitInt = marks[i];
-    const entryInt = marks[i + 1];
-    if (!isNaN(exitInt) && !isNaN(entryInt)) {
-      totalIntervalos += diffMinutes(exitInt, entryInt);
-    }
+  for (let i = 1; i < normalizedMarks.length - 1; i += 2) {
+    totalIntervalos += normalizedMarks[i + 1] - normalizedMarks[i];
   }
+
+  result.trabalhoBruto = totalTrabalho + totalIntervalos;
   result.intervalos = totalIntervalos;
-  result.trabalhoLiquido = result.trabalhoBruto - totalIntervalos;
+  result.trabalhoLiquido = totalTrabalho;
 
   // Interval alert
   const intervaloMin = parseHHMM(config.intervaloMinimo);
@@ -162,16 +139,9 @@ export function calcularDia(dia: PontoDia, config: PontoConfig): PontoDiaCalcula
   const noturnoFim = parseHHMM(config.noturnoFim);
 
   if (!isNaN(noturnoInicio) && !isNaN(noturnoFim)) {
-    // Total night work = overlap of gross period minus overlap of intervals
-    let nightWork = overlapMinutes(entrada, saida, noturnoInicio, noturnoFim);
-
-    // Subtract interval overlaps with night window
-    for (let i = 1; i < numMarks - 1; i += 2) {
-      const exitInt = marks[i];
-      const entryInt = marks[i + 1];
-      if (!isNaN(exitInt) && !isNaN(entryInt)) {
-        nightWork -= overlapMinutes(exitInt, entryInt, noturnoInicio, noturnoFim);
-      }
+    let nightWork = 0;
+    for (let i = 0; i < normalizedMarks.length - 1; i += 2) {
+      nightWork += overlapRecurringWindow(normalizedMarks[i], normalizedMarks[i + 1], noturnoInicio, noturnoFim);
     }
 
     result.noturnoReal = Math.max(0, nightWork);
