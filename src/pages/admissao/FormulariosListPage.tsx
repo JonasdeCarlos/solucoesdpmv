@@ -8,7 +8,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Plus, Edit, Copy, Trash2, FileText, Link2 } from 'lucide-react';
+import { Plus, Edit, Copy, Trash2, FileText, Link2, MessageCircle } from 'lucide-react';
 import { useAdmissaoTemplates } from '@/hooks/useAdmissaoTemplates';
 import { toast } from 'sonner';
 
