@@ -12,6 +12,29 @@ import { Plus, Edit, Copy, Trash2, FileText, Link2, MessageCircle } from 'lucide
 import { useAdmissaoTemplates } from '@/hooks/useAdmissaoTemplates';
 import { toast } from 'sonner';
 
+const copyToClipboard = async (text: string) => {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.setAttribute('readonly', '');
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-9999px';
+    textArea.style.top = '0';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+
+    try {
+      return document.execCommand('copy');
+    } finally {
+      document.body.removeChild(textArea);
+    }
+  }
+};
+
 const FormulariosListPage = () => {
   const { templates, loading, create, duplicate, remove } = useAdmissaoTemplates();
   const [open, setOpen] = useState(false);
@@ -94,7 +117,8 @@ const FormulariosListPage = () => {
                   : window.location.origin;
                 const url = `${origin}/admissao/publico/${t.id}`;
                 try {
-                  await navigator.clipboard.writeText(url);
+                  const copied = await copyToClipboard(url);
+                  if (!copied) throw new Error('Clipboard copy failed');
                   toast.success('Link público copiado!');
                 } catch {
                   toast.message('Copie o link', { description: url });
@@ -117,7 +141,8 @@ const FormulariosListPage = () => {
                 const url = `${origin}/admissao/publico/${t.id}`;
                 const text = `Prezado Cliente,\n\nPara que o processo de admissão seja realizado sem divergências, pedimos gentilmente para que se preencha o formulário abaixo preenchendo de forma íntegra todos os campos obrigatórios.\n\nAgradecemos a colaboração.\n\n${url}\n\nQualquer dúvida estamos à disposição.\n\nAtenciosamente,\n\nDepartamento Pessoal\nMonte Verde Contabilidade`;
                 try {
-                  await navigator.clipboard.writeText(text);
+                  const copied = await copyToClipboard(text);
+                  if (!copied) throw new Error('Clipboard copy failed');
                   toast.success('Texto para WhatsApp copiado!');
                 } catch {
                   toast.message('Copie o texto', { description: text });
