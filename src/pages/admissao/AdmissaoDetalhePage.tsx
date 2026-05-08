@@ -3,13 +3,14 @@ import { Link, useParams } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Copy as CopyIcon, FileDown, RefreshCw, Loader2 } from 'lucide-react';
+import { ArrowLeft, Copy as CopyIcon, FileDown, RefreshCw, Loader2, Trash2 } from 'lucide-react';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import {
   AdmissionRequest, getRequestById, STATUS_LABELS, useAdmissaoRequests, AdmissionStatus,
 } from '@/hooks/useAdmissaoRequests';
+import { useNavigate } from 'react-router-dom';
 import { listFilesForRequest } from '@/hooks/useAdmissaoFiles';
 import type { AdmissionFileRow } from '@/utils/admissao/dossieBuilder';
 import { buildDossie, extractEmployeeIdentity } from '@/utils/admissao/dossieBuilder';
@@ -21,10 +22,12 @@ const STATUSES: AdmissionStatus[] = ['rascunho','enviado','em_analise','pendente
 
 const AdmissaoDetalhePage = () => {
   const { id = '' } = useParams();
-  const { updateStatus } = useAdmissaoRequests();
+  const { updateStatus, remove } = useAdmissaoRequests();
+  const navigate = useNavigate();
   const [req, setReq] = useState<AdmissionRequest | null>(null);
   const [files, setFiles] = useState<AdmissionFileRow[]>([]);
   const [busy, setBusy] = useState(false);
+  const [hasDossie, setHasDossie] = useState(false);
 
   const reload = async () => {
     const r = await getRequestById(id);
@@ -32,6 +35,12 @@ const AdmissaoDetalhePage = () => {
     if (r) {
       const fs = await listFilesForRequest(r.id);
       setFiles(fs);
+      const { data: dossiers } = await supabase
+        .from('admission_dossiers' as any)
+        .select('id')
+        .eq('request_id', r.id)
+        .limit(1);
+      setHasDossie(!!(dossiers && dossiers.length));
     }
   };
 
@@ -80,6 +89,7 @@ const AdmissaoDetalhePage = () => {
       } as any);
 
       toast.success('Dossiê gerado');
+      setHasDossie(true);
     } catch (e) {
       console.error(e);
       toast.error('Falha ao gerar dossiê');
@@ -89,6 +99,30 @@ const AdmissaoDetalhePage = () => {
   };
 
   const answers = req.status === 'rascunho' ? req.draft_answers : req.answers;
+  const ident = extractEmployeeIdentity(req.template_schema_snapshot, answers);
+  const collabName = req.employee_name || ident.name || '(sem nome)';
+  const headerTitle = `${req.company_name || '—'} · ${collabName}`;
+
+  const handleDelete = async () => {
+    if (!confirm(`Excluir admissão "${headerTitle}"? Os arquivos enviados também serão removidos.`)) return;
+    setBusy(true);
+    try {
+      // remove storage files
+      const paths = files.map((f) => f.storage_path).filter(Boolean);
+      if (paths.length) await supabase.storage.from('admissao-uploads').remove(paths);
+      // remove file rows + dossiers + request
+      await supabase.from('admission_files' as any).delete().eq('request_id', req.id);
+      await supabase.from('admission_dossiers' as any).delete().eq('request_id', req.id);
+      await remove(req.id);
+      toast.success('Admissão excluída');
+      navigate('/admissao/escritorio');
+    } catch (e) {
+      console.error(e);
+      toast.error('Falha ao excluir');
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -107,12 +141,17 @@ const AdmissaoDetalhePage = () => {
           {busy ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <FileDown className="w-4 h-4 mr-1" />}
           Gerar Dossiê PDF
         </Button>
+        {hasDossie && (
+          <Button variant="destructive" size="sm" onClick={handleDelete} disabled={busy}>
+            <Trash2 className="w-4 h-4 mr-1" /> Excluir
+          </Button>
+        )}
       </div>
 
       <Card className="p-4 space-y-2">
         <div className="flex items-center gap-2">
           <h2 className="text-xl font-bold flex-1">
-            {req.employee_name || extractEmployeeIdentity(req.template_schema_snapshot, answers).name || '(sem nome)'}
+            {headerTitle}
           </h2>
           <Badge>{STATUS_LABELS[req.status]}</Badge>
         </div>
