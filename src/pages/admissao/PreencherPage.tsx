@@ -168,9 +168,11 @@ const PreencherPage = () => {
           <img src={logoMonteVerde} alt="Monte Verde Contabilidade" className="h-20 w-auto" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold">{req.template_name_snapshot}</h1>
+          <h1 className="text-2xl font-bold">
+            {req.company_name || '—'}{req.employee_name ? ` - ${req.employee_name}` : ''}
+          </h1>
           <p className="text-sm text-muted-foreground">
-            {req.company_name}{req.company_cnpj && ` · ${req.company_cnpj}`}
+            {req.template_name_snapshot}{req.company_cnpj && ` · ${req.company_cnpj}`}
           </p>
         </div>
         <Progress value={progress} />
