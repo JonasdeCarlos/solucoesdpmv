@@ -8,7 +8,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Plus, Edit, Copy, Trash2, FileText } from 'lucide-react';
+import { Plus, Edit, Copy, Trash2, FileText, Link2 } from 'lucide-react';
 import { useAdmissaoTemplates } from '@/hooks/useAdmissaoTemplates';
 import { toast } from 'sonner';
 
@@ -80,6 +80,23 @@ const FormulariosListPage = () => {
               <Link to={`/admissao/escritorio/formularios/${t.id}`}>
                 <Edit className="w-4 h-4 mr-1" /> Editar
               </Link>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!t.is_published}
+              title={t.is_published ? 'Copiar link público' : 'Publique o formulário para gerar o link'}
+              onClick={async () => {
+                const url = `${window.location.origin}/admissao/publico/${t.id}`;
+                try {
+                  await navigator.clipboard.writeText(url);
+                  toast.success('Link público copiado!');
+                } catch {
+                  toast.message('Copie o link', { description: url });
+                }
+              }}
+            >
+              <Link2 className="w-4 h-4 mr-1" /> Link público
             </Button>
             <Button variant="outline" size="sm" onClick={() => duplicate(t.id)}>
               <Copy className="w-4 h-4 mr-1" /> Duplicar

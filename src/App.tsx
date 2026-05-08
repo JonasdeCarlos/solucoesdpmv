@@ -29,6 +29,7 @@ import FormularioEditorPage from "./pages/admissao/FormularioEditorPage";
 import AdmissaoNovaPage from "./pages/admissao/AdmissaoNovaPage";
 import AdmissaoDetalhePage from "./pages/admissao/AdmissaoDetalhePage";
 import PreencherPage from "./pages/admissao/PreencherPage";
+import PublicoNovaPage from "./pages/admissao/PublicoNovaPage";
 
 const queryClient = new QueryClient();
 
@@ -43,6 +44,8 @@ const App = () => (
             <Route path="/auth" element={<AuthPage />} />
             {/* Admissão — público (cliente preenchendo) */}
             <Route path="/admissao/preencher/:token" element={<PreencherPage />} />
+            {/* Link aberto por formulário (cria a admissão automaticamente) */}
+            <Route path="/admissao/publico/:templateId" element={<PublicoNovaPage />} />
             {/* Admissão — escritório (senha) */}
             <Route path="/admissao/escritorio/login" element={<EscritorioLoginPage />} />
             <Route element={<OfficeGuard />}>
