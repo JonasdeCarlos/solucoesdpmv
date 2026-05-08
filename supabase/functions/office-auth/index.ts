@@ -25,7 +25,7 @@ Deno.serve(async (req) => {
     }
     const ok = password === expected;
     return new Response(JSON.stringify({ ok }), {
-      status: ok ? 200 : 401,
+      status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (e) {
