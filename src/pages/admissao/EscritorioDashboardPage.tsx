@@ -4,8 +4,9 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Eye, Copy as CopyIcon, FileText } from 'lucide-react';
+import { Plus, Eye, Copy as CopyIcon, FileText, Trash2 } from 'lucide-react';
 import { useAdmissaoRequests, STATUS_LABELS, AdmissionStatus } from '@/hooks/useAdmissaoRequests';
+import { extractEmployeeIdentity } from '@/utils/admissao/dossieBuilder';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -14,7 +15,7 @@ import { toast } from 'sonner';
 const ALL_STATUSES: ('all' | AdmissionStatus)[] = ['all','rascunho','enviado','em_analise','pendente','aprovado','concluido','cancelado'];
 
 const EscritorioDashboardPage = () => {
-  const { requests, loading } = useAdmissaoRequests();
+  const { requests, loading, remove } = useAdmissaoRequests();
   const [q, setQ] = useState('');
   const [status, setStatus] = useState<'all' | AdmissionStatus>('all');
 
@@ -35,6 +36,13 @@ const EscritorioDashboardPage = () => {
     const url = `${window.location.origin}/admissao/preencher/${token}`;
     await navigator.clipboard.writeText(url);
     toast.success('Link copiado');
+  };
+
+  const handleDelete = async (id: string, label: string) => {
+    if (!confirm(`Excluir admissão "${label}"? Esta ação não pode ser desfeita.`)) return;
+    const { error } = await remove(id);
+    if (error) toast.error('Erro ao excluir');
+    else toast.success('Admissão excluída');
   };
 
   return (
@@ -75,14 +83,21 @@ const EscritorioDashboardPage = () => {
 
       <div className="grid gap-3">
         {filtered.map((r) => (
+          (() => {
+            const ans = r.status === 'rascunho' ? r.draft_answers : r.answers;
+            const ident = extractEmployeeIdentity(r.template_schema_snapshot, ans);
+            const collab = r.employee_name || ident.name || '(sem nome)';
+            const company = r.company_name || '—';
+            const title = `${company} · ${collab}`;
+            return (
           <Card key={r.id} className="p-4 flex items-center gap-3">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <h3 className="font-semibold truncate">{r.employee_name || '(sem nome)'}</h3>
+                <h3 className="font-semibold truncate">{title}</h3>
                 <Badge variant="secondary">{STATUS_LABELS[r.status]}</Badge>
               </div>
               <p className="text-xs text-muted-foreground truncate">
-                {r.company_name || '—'} · {r.template_name_snapshot}
+                {r.template_name_snapshot}
               </p>
               <p className="text-xs text-muted-foreground">
                 Criada em {new Date(r.created_at).toLocaleString('pt-BR')}
@@ -96,7 +111,12 @@ const EscritorioDashboardPage = () => {
                 <Eye className="w-4 h-4 mr-1" /> Abrir
               </Link>
             </Button>
+            <Button variant="outline" size="sm" onClick={() => handleDelete(r.id, title)}>
+              <Trash2 className="w-4 h-4 text-destructive" />
+            </Button>
           </Card>
+            );
+          })()
         ))}
       </div>
     </div>
