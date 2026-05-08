@@ -87,7 +87,12 @@ const FormulariosListPage = () => {
               disabled={!t.is_published}
               title={t.is_published ? 'Copiar link público' : 'Publique o formulário para gerar o link'}
               onClick={async () => {
-                const url = `${window.location.origin}/admissao/publico/${t.id}`;
+                const PUBLISHED = 'https://calculo-clt-agora.lovable.app';
+                const origin = window.location.hostname.includes('id-preview--') ||
+                  window.location.hostname.includes('lovableproject.com')
+                  ? PUBLISHED
+                  : window.location.origin;
+                const url = `${origin}/admissao/publico/${t.id}`;
                 try {
                   await navigator.clipboard.writeText(url);
                   toast.success('Link público copiado!');
