@@ -14,6 +14,171 @@ export type Database = {
   }
   public: {
     Tables: {
+      admission_dossiers: {
+        Row: {
+          file_name: string
+          generated_at: string
+          id: string
+          pdf_path: string
+          request_id: string
+        }
+        Insert: {
+          file_name?: string
+          generated_at?: string
+          id?: string
+          pdf_path: string
+          request_id: string
+        }
+        Update: {
+          file_name?: string
+          generated_at?: string
+          id?: string
+          pdf_path?: string
+          request_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admission_dossiers_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "admission_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      admission_files: {
+        Row: {
+          field_key: string
+          id: string
+          mime_type: string
+          original_name: string
+          request_id: string
+          size_bytes: number
+          sort_order: number
+          storage_path: string
+          uploaded_at: string
+        }
+        Insert: {
+          field_key: string
+          id?: string
+          mime_type?: string
+          original_name: string
+          request_id: string
+          size_bytes?: number
+          sort_order?: number
+          storage_path: string
+          uploaded_at?: string
+        }
+        Update: {
+          field_key?: string
+          id?: string
+          mime_type?: string
+          original_name?: string
+          request_id?: string
+          size_bytes?: number
+          sort_order?: number
+          storage_path?: string
+          uploaded_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admission_files_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "admission_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      admission_form_templates: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          is_published: boolean
+          name: string
+          schema_json: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          id?: string
+          is_published?: boolean
+          name?: string
+          schema_json?: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          is_published?: boolean
+          name?: string
+          schema_json?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      admission_requests: {
+        Row: {
+          answers: Json
+          company_cnpj: string
+          company_name: string
+          created_at: string
+          draft_answers: Json
+          employee_name: string
+          id: string
+          status: string
+          submitted_at: string | null
+          template_id: string | null
+          template_name_snapshot: string
+          template_schema_snapshot: Json
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          answers?: Json
+          company_cnpj?: string
+          company_name?: string
+          created_at?: string
+          draft_answers?: Json
+          employee_name?: string
+          id?: string
+          status?: string
+          submitted_at?: string | null
+          template_id?: string | null
+          template_name_snapshot?: string
+          template_schema_snapshot?: Json
+          token: string
+          updated_at?: string
+        }
+        Update: {
+          answers?: Json
+          company_cnpj?: string
+          company_name?: string
+          created_at?: string
+          draft_answers?: Json
+          employee_name?: string
+          id?: string
+          status?: string
+          submitted_at?: string | null
+          template_id?: string | null
+          template_name_snapshot?: string
+          template_schema_snapshot?: Json
+          token?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admission_requests_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "admission_form_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       banco_horas: {
         Row: {
           created_at: string
