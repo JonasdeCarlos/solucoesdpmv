@@ -154,7 +154,20 @@ const AdmissaoDetalhePage = () => {
                     </div>
                   );
                 }
-                const display = Array.isArray(v) ? v.join(', ') : (v ?? '');
+                let display: React.ReactNode = '';
+                if (f.type === 'work_schedule' && v && typeof v === 'object' && (v as any).dias) {
+                  const ws = v as any;
+                  const lines = ws.dias
+                    .filter((d: any) => d.ativo && (d.marcacoes || []).some((m: string) => m))
+                    .map((d: any) => `${d.dia}: ${(d.marcacoes || []).filter(Boolean).join(' - ')}`);
+                  display = lines.length ? <span className="whitespace-pre-line">{lines.join('\n')}</span> : '';
+                } else if (Array.isArray(v)) {
+                  display = v.join(', ');
+                } else if (v && typeof v === 'object') {
+                  display = JSON.stringify(v);
+                } else {
+                  display = v ?? '';
+                }
                 return (
                   <div key={f.id} className="grid grid-cols-3 gap-2 text-sm">
                     <dt className="text-muted-foreground">{f.label}</dt>
