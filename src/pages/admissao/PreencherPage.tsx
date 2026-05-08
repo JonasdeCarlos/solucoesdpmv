@@ -14,6 +14,7 @@ import WorkScheduleField from '@/components/admissao/preencher/WorkScheduleField
 import { isValidCpf, isValidEmail, isValidCep } from '@/utils/admissao/validators';
 import { isFieldEmpty } from '@/utils/admissao/formSchema';
 import { toast } from 'sonner';
+import logoMonteVerde from '@/assets/monte-verde-logo.png';
 
 const PreencherPage = () => {
   const { token = '' } = useParams();
@@ -163,6 +164,9 @@ const PreencherPage = () => {
   return (
     <div className="min-h-screen bg-muted/30 py-8 px-4">
       <div className="max-w-2xl mx-auto space-y-4">
+        <div className="flex justify-center pb-2">
+          <img src={logoMonteVerde} alt="Monte Verde Contabilidade" className="h-20 w-auto" />
+        </div>
         <div>
           <h1 className="text-2xl font-bold">{req.template_name_snapshot}</h1>
           <p className="text-sm text-muted-foreground">
