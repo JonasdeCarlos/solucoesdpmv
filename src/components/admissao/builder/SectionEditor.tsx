@@ -48,7 +48,7 @@ const SectionEditor = ({ section, onChange, onDelete }: Props) => {
 
   const fieldTypes: FieldType[] = [
     'short_text','long_text','number','date','email','phone','cpf','cep',
-    'dropdown','radio','checkbox','file',
+    'dropdown','radio','checkbox','file','work_schedule',
   ];
 
   return (
