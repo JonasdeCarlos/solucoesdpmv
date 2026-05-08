@@ -30,6 +30,7 @@ import AdmissaoNovaPage from "./pages/admissao/AdmissaoNovaPage";
 import AdmissaoDetalhePage from "./pages/admissao/AdmissaoDetalhePage";
 import PreencherPage from "./pages/admissao/PreencherPage";
 import PublicoNovaPage from "./pages/admissao/PublicoNovaPage";
+import ArquivoPage from "./pages/admissao/ArquivoPage";
 
 const queryClient = new QueryClient();
 
@@ -55,6 +56,7 @@ const App = () => (
                 <Route path="/admissao/escritorio/formularios/:id" element={<FormularioEditorPage />} />
                 <Route path="/admissao/escritorio/admissoes/nova" element={<AdmissaoNovaPage />} />
                 <Route path="/admissao/escritorio/admissoes/:id" element={<AdmissaoDetalhePage />} />
+                <Route path="/admissao/escritorio/arquivo" element={<ArquivoPage />} />
               </Route>
             </Route>
             <Route
