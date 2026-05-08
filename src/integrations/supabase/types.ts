@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      admission_archive: {
+        Row: {
+          admission_completed: boolean
+          archived_at: string
+          company_cnpj: string
+          company_name: string
+          employee_name: string
+          id: string
+          original_created_at: string | null
+          original_request_id: string | null
+          previous_status: string
+          request_snapshot: Json
+          responsible_name: string
+          template_name: string
+        }
+        Insert: {
+          admission_completed?: boolean
+          archived_at?: string
+          company_cnpj?: string
+          company_name?: string
+          employee_name?: string
+          id?: string
+          original_created_at?: string | null
+          original_request_id?: string | null
+          previous_status?: string
+          request_snapshot?: Json
+          responsible_name?: string
+          template_name?: string
+        }
+        Update: {
+          admission_completed?: boolean
+          archived_at?: string
+          company_cnpj?: string
+          company_name?: string
+          employee_name?: string
+          id?: string
+          original_created_at?: string | null
+          original_request_id?: string | null
+          previous_status?: string
+          request_snapshot?: Json
+          responsible_name?: string
+          template_name?: string
+        }
+        Relationships: []
+      }
       admission_dossiers: {
         Row: {
           file_name: string
