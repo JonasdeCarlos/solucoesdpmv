@@ -10,6 +10,7 @@ import {
 import { useAdmissaoFiles } from '@/hooks/useAdmissaoFiles';
 import FieldRenderer from '@/components/admissao/preencher/FieldRenderer';
 import FileUploadField from '@/components/admissao/preencher/FileUploadField';
+import WorkScheduleField from '@/components/admissao/preencher/WorkScheduleField';
 import { isValidCpf, isValidEmail, isValidCep } from '@/utils/admissao/validators';
 import { isFieldEmpty } from '@/utils/admissao/formSchema';
 import { toast } from 'sonner';
@@ -197,6 +198,17 @@ const PreencherPage = () => {
                       const { error } = await deleteFile(id, path);
                       if (error) toast.error('Erro ao remover');
                     }}
+                  />
+                );
+              }
+              if (f.type === 'work_schedule') {
+                return (
+                  <WorkScheduleField
+                    key={f.id}
+                    field={f}
+                    value={answers[f.field_key]}
+                    onChange={(v) => setAnswers({ ...answers, [f.field_key]: v })}
+                    error={sectionErrors[f.field_key]}
                   />
                 );
               }

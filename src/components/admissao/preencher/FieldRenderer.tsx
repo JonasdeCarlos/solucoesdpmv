@@ -106,6 +106,9 @@ const FieldRenderer = ({ field, value, onChange, error }: Props) => {
     case 'file':
       control = null; // handled by FileUploadField in parent
       break;
+    case 'work_schedule':
+      control = null; // handled by WorkScheduleField in parent
+      break;
   }
 
   return (
