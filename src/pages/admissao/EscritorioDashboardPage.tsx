@@ -5,12 +5,18 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Eye, Copy as CopyIcon, FileText, Trash2 } from 'lucide-react';
-import { useAdmissaoRequests, STATUS_LABELS, AdmissionStatus } from '@/hooks/useAdmissaoRequests';
+import { useAdmissaoRequests, STATUS_LABELS, AdmissionStatus, AdmissionRequest } from '@/hooks/useAdmissaoRequests';
 import { extractEmployeeIdentity } from '@/utils/admissao/dossieBuilder';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { supabase } from '@/integrations/supabase/client';
 
 const ALL_STATUSES: ('all' | AdmissionStatus)[] = ['all','rascunho','enviado','em_analise','pendente','aprovado','concluido','cancelado'];
 
@@ -18,6 +24,11 @@ const EscritorioDashboardPage = () => {
   const { requests, loading, remove } = useAdmissaoRequests();
   const [q, setQ] = useState('');
   const [status, setStatus] = useState<'all' | AdmissionStatus>('all');
+  const [delTarget, setDelTarget] = useState<AdmissionRequest | null>(null);
+  const [delTitle, setDelTitle] = useState('');
+  const [completed, setCompleted] = useState<'sim' | 'nao' | ''>('');
+  const [responsible, setResponsible] = useState('');
+  const [busy, setBusy] = useState(false);
 
   const filtered = useMemo(() => {
     return requests.filter((r) => {
@@ -38,11 +49,42 @@ const EscritorioDashboardPage = () => {
     toast.success('Link copiado');
   };
 
-  const handleDelete = async (id: string, label: string) => {
-    if (!confirm(`Excluir admissão "${label}"? Esta ação não pode ser desfeita.`)) return;
-    const { error } = await remove(id);
-    if (error) toast.error('Erro ao excluir');
-    else toast.success('Admissão excluída');
+  const openDelete = (req: AdmissionRequest, title: string) => {
+    setDelTarget(req);
+    setDelTitle(title);
+    setCompleted('');
+    setResponsible('');
+  };
+
+  const confirmDelete = async () => {
+    if (!delTarget) return;
+    if (!completed) return toast.error('Informe se a admissão foi concluída');
+    if (!responsible.trim()) return toast.error('Informe o responsável pela admissão');
+    setBusy(true);
+    const r = delTarget;
+    const { error: archErr } = await supabase
+      .from('admission_archive' as any)
+      .insert({
+        original_request_id: r.id,
+        employee_name: r.employee_name || '',
+        company_name: r.company_name || '',
+        company_cnpj: r.company_cnpj || '',
+        template_name: r.template_name_snapshot || '',
+        previous_status: r.status,
+        original_created_at: r.created_at,
+        request_snapshot: r as any,
+        admission_completed: completed === 'sim',
+        responsible_name: responsible.trim(),
+      } as any);
+    if (archErr) {
+      setBusy(false);
+      return toast.error('Erro ao arquivar');
+    }
+    const { error } = await remove(r.id);
+    setBusy(false);
+    if (error) return toast.error('Erro ao excluir');
+    toast.success('Admissão arquivada e excluída');
+    setDelTarget(null);
   };
 
   return (
@@ -111,7 +153,7 @@ const EscritorioDashboardPage = () => {
                 <Eye className="w-4 h-4 mr-1" /> Abrir
               </Link>
             </Button>
-            <Button variant="outline" size="sm" onClick={() => handleDelete(r.id, title)}>
+            <Button variant="outline" size="sm" onClick={() => openDelete(r, title)}>
               <Trash2 className="w-4 h-4 text-destructive" />
             </Button>
           </Card>
@@ -119,6 +161,42 @@ const EscritorioDashboardPage = () => {
           })()
         ))}
       </div>
+
+      <Dialog open={!!delTarget} onOpenChange={(o) => !o && setDelTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Excluir admissão</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            "{delTitle}" será arquivada antes da exclusão. Responda os campos abaixo para confirmar.
+          </p>
+          <div className="space-y-3 pt-2">
+            <div className="space-y-2">
+              <Label>A admissão foi concluída? *</Label>
+              <RadioGroup value={completed} onValueChange={(v) => setCompleted(v as any)}>
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem id="adm-sim" value="sim" />
+                  <Label htmlFor="adm-sim" className="font-normal">Sim</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem id="adm-nao" value="nao" />
+                  <Label htmlFor="adm-nao" className="font-normal">Não</Label>
+                </div>
+              </RadioGroup>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="resp">Responsável pela admissão *</Label>
+              <Input id="resp" value={responsible} onChange={(e) => setResponsible(e.target.value)} placeholder="Nome do responsável" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDelTarget(null)} disabled={busy}>Cancelar</Button>
+            <Button onClick={confirmDelete} disabled={busy} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {busy ? 'Arquivando...' : 'Arquivar e excluir'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
