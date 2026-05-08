@@ -20,6 +20,15 @@ import JornadaPage from "./pages/JornadaPage";
 import PdfToolsPage from "./pages/PdfToolsPage";
 import ProvisoesDsrPage from "./pages/ProvisoesDsrPage";
 import NotFound from "./pages/NotFound";
+import EscritorioLoginPage from "./pages/admissao/EscritorioLoginPage";
+import EscritorioLayout from "./components/admissao/EscritorioLayout";
+import OfficeGuard from "./components/admissao/OfficeGuard";
+import EscritorioDashboardPage from "./pages/admissao/EscritorioDashboardPage";
+import FormulariosListPage from "./pages/admissao/FormulariosListPage";
+import FormularioEditorPage from "./pages/admissao/FormularioEditorPage";
+import AdmissaoNovaPage from "./pages/admissao/AdmissaoNovaPage";
+import AdmissaoDetalhePage from "./pages/admissao/AdmissaoDetalhePage";
+import PreencherPage from "./pages/admissao/PreencherPage";
 
 const queryClient = new QueryClient();
 
@@ -32,6 +41,19 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/auth" element={<AuthPage />} />
+            {/* Admissão — público (cliente preenchendo) */}
+            <Route path="/admissao/preencher/:token" element={<PreencherPage />} />
+            {/* Admissão — escritório (senha) */}
+            <Route path="/admissao/escritorio/login" element={<EscritorioLoginPage />} />
+            <Route element={<OfficeGuard />}>
+              <Route element={<EscritorioLayout />}>
+                <Route path="/admissao/escritorio" element={<EscritorioDashboardPage />} />
+                <Route path="/admissao/escritorio/formularios" element={<FormulariosListPage />} />
+                <Route path="/admissao/escritorio/formularios/:id" element={<FormularioEditorPage />} />
+                <Route path="/admissao/escritorio/admissoes/nova" element={<AdmissaoNovaPage />} />
+                <Route path="/admissao/escritorio/admissoes/:id" element={<AdmissaoDetalhePage />} />
+              </Route>
+            </Route>
             <Route
               element={
                 <ProtectedRoute>
