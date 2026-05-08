@@ -15,6 +15,7 @@ import { getTemplateById, useAdmissaoTemplates, AdmissionTemplate } from '@/hook
 import { FormSchema, FormSection } from '@/utils/admissao/formSchema';
 import { toast } from 'sonner';
 import FieldRenderer from '@/components/admissao/preencher/FieldRenderer';
+import WorkScheduleField from '@/components/admissao/preencher/WorkScheduleField';
 
 const FormularioEditorPage = () => {
   const { id = '' } = useParams();
@@ -120,7 +121,11 @@ const FormularioEditorPage = () => {
                   {sec.description && <p className="text-sm text-muted-foreground">{sec.description}</p>}
                 </div>
                 {sec.fields.map((f) => (
-                  <FieldRenderer key={f.id} field={f} value="" onChange={() => {}} />
+                  f.type === 'work_schedule' ? (
+                    <WorkScheduleField key={f.id} field={f} value={undefined} onChange={() => {}} />
+                  ) : (
+                    <FieldRenderer key={f.id} field={f} value="" onChange={() => {}} />
+                  )
                 ))}
               </div>
             ))}
