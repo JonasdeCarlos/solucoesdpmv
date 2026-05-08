@@ -5,6 +5,33 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import TimeInput from '@/components/ponto/TimeInput';
 import { FormField, WorkScheduleValue, defaultWorkSchedule } from '@/utils/admissao/formSchema';
 
+function parseHHMM(s: string): number | null {
+  if (!/^\d{2}:\d{2}$/.test(s)) return null;
+  const [h, m] = s.split(':').map(Number);
+  if (isNaN(h) || isNaN(m)) return null;
+  return h * 60 + m;
+}
+
+function dayMinutes(marcacoes: string[]): number {
+  let total = 0;
+  for (let i = 0; i + 1 < marcacoes.length; i += 2) {
+    const a = parseHHMM(marcacoes[i]);
+    const b = parseHHMM(marcacoes[i + 1]);
+    if (a == null || b == null) continue;
+    let diff = b - a;
+    if (diff < 0) diff += 24 * 60; // crosses midnight
+    total += diff;
+  }
+  return total;
+}
+
+function fmtMin(min: number): string {
+  if (!min) return '00:00';
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
 interface Props {
   field: FormField;
   value: WorkScheduleValue | undefined;
@@ -27,6 +54,9 @@ const WorkScheduleField = ({ field, value, onChange, error }: Props) => {
   const slotLabels = v.slots === 6 ? ['Entrada', 'S.Int.1', 'E.Int.1', 'S.Int.2', 'E.Int.2', 'Saída']
     : v.slots === 2 ? ['Entrada', 'Saída']
     : ['Entrada', 'Saída Int.', 'Ent. Int.', 'Saída'];
+
+  const dayTotals = v.dias.map((d) => d.ativo ? dayMinutes(d.marcacoes) : 0);
+  const weekTotal = dayTotals.reduce((a, b) => a + b, 0);
 
   const setSlots = (s: 2 | 4 | 6) => {
     onChange({
@@ -98,6 +128,7 @@ const WorkScheduleField = ({ field, value, onChange, error }: Props) => {
               {slotLabels.map((l, i) => (
                 <th key={i} className="p-2 text-center text-xs">{l}</th>
               ))}
+              <th className="p-2 text-center text-xs">Total</th>
             </tr>
           </thead>
           <tbody>
@@ -112,8 +143,15 @@ const WorkScheduleField = ({ field, value, onChange, error }: Props) => {
                     <TimeInput value={m} onChange={(val) => setMarc(di, si, val)} disabled={!d.ativo} />
                   </td>
                 ))}
+                <td className="p-2 text-center font-mono text-xs tabular-nums">
+                  {d.ativo ? fmtMin(dayTotals[di]) : '—'}
+                </td>
               </tr>
             ))}
+            <tr className="border-t bg-muted/30 font-semibold">
+              <td className="p-2" colSpan={2 + v.slots}>Total semanal</td>
+              <td className="p-2 text-center font-mono tabular-nums">{fmtMin(weekTotal)}</td>
+            </tr>
           </tbody>
         </table>
       </div>
