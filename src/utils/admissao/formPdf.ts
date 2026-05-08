@@ -97,6 +97,16 @@ export function buildFormPdf(
         const arr = answers[field.field_key];
         const count = Array.isArray(arr) ? arr.length : 0;
         displayValue = count > 0 ? `${count} arquivo(s) anexado(s) — ver dossiê` : 'Não informado';
+      } else if (field.type === 'work_schedule') {
+        const v = answers[field.field_key];
+        if (!v?.dias?.length) {
+          displayValue = 'Não informado';
+        } else {
+          const lines = v.dias
+            .filter((d: any) => d.ativo && d.marcacoes.some((m: string) => m))
+            .map((d: any) => `${d.dia}: ${d.marcacoes.map((m: string) => m || '--:--').join('  ')}`);
+          displayValue = lines.length ? lines.join('\n') : 'Não informado';
+        }
       } else {
         displayValue = fmtValue(field, answers[field.field_key]);
       }

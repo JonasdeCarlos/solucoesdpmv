@@ -10,7 +10,8 @@ export type FieldType =
   | 'dropdown'
   | 'radio'
   | 'checkbox'
-  | 'file';
+  | 'file'
+  | 'work_schedule';
 
 export const FIELD_TYPE_LABELS: Record<FieldType, string> = {
   short_text: 'Resposta curta',
@@ -25,6 +26,7 @@ export const FIELD_TYPE_LABELS: Record<FieldType, string> = {
   radio: 'Múltipla escolha',
   checkbox: 'Caixas de seleção',
   file: 'Upload de arquivo',
+  work_schedule: 'Jornada de trabalho',
 };
 
 export interface FieldOption {
@@ -44,6 +46,8 @@ export interface FormField {
   multiple?: boolean;
   accept?: string[]; // e.g. ['pdf','jpg','png','heic']
   max_size_mb?: number;
+  // work_schedule defaults
+  schedule_slots?: 2 | 4 | 6;
 }
 
 export interface FormSection {
@@ -100,6 +104,9 @@ export function newField(type: FieldType): FormField {
     base.accept = ['pdf', 'jpg', 'png', 'heic', 'webp'];
     base.max_size_mb = 20;
   }
+  if (type === 'work_schedule') {
+    base.schedule_slots = 4;
+  }
   return base;
 }
 
@@ -115,5 +122,27 @@ export function isFieldEmpty(field: FormField, value: unknown): boolean {
   if (value === null || value === undefined) return true;
   if (typeof value === 'string') return value.trim() === '';
   if (Array.isArray(value)) return value.length === 0;
+  if (field.type === 'work_schedule') {
+    const v = value as any;
+    if (!v?.dias) return true;
+    return !v.dias.some((d: any) => d.ativo && (d.marcacoes || []).some((m: string) => m && m.includes(':')));
+  }
   return false;
+}
+
+export interface WorkScheduleValue {
+  slots: 2 | 4 | 6;
+  dias: { dia: string; ativo: boolean; marcacoes: string[] }[];
+}
+
+export function defaultWorkSchedule(slots: 2 | 4 | 6 = 4): WorkScheduleValue {
+  const nomes = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+  return {
+    slots,
+    dias: nomes.map((dia, i) => ({
+      dia,
+      ativo: i < 5,
+      marcacoes: Array(slots).fill(''),
+    })),
+  };
 }
