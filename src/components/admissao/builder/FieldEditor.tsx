@@ -17,7 +17,7 @@ interface Props {
 
 const TYPES: FieldType[] = [
   'short_text','long_text','number','date','email','phone','cpf','cep',
-  'dropdown','radio','checkbox','file',
+  'dropdown','radio','checkbox','file','work_schedule',
 ];
 
 const FieldEditor = ({ field, onChange, onDelete }: Props) => {
