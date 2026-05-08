@@ -103,6 +103,29 @@ const FormulariosListPage = () => {
             >
               <Link2 className="w-4 h-4 mr-1" /> Link público
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!t.is_published}
+              title={t.is_published ? 'Copiar texto para WhatsApp' : 'Publique o formulário para gerar o texto'}
+              onClick={async () => {
+                const PUBLISHED = 'https://calculo-clt-agora.lovable.app';
+                const origin = window.location.hostname.includes('id-preview--') ||
+                  window.location.hostname.includes('lovableproject.com')
+                  ? PUBLISHED
+                  : window.location.origin;
+                const url = `${origin}/admissao/publico/${t.id}`;
+                const text = `Prezado Cliente,\n\nPara que o processo de admissão seja realizado sem divergências, pedimos gentilmente para que se preencha o formulário abaixo preenchendo de forma íntegra todos os campos obrigatórios.\n\nAgradecemos a colaboração.\n\n${url}\n\nQualquer dúvida estamos à disposição.\n\nAtenciosamente,\n\nDepartamento Pessoal\nMonte Verde Contabilidade`;
+                try {
+                  await navigator.clipboard.writeText(text);
+                  toast.success('Texto para WhatsApp copiado!');
+                } catch {
+                  toast.message('Copie o texto', { description: text });
+                }
+              }}
+            >
+              <MessageCircle className="w-4 h-4 mr-1" /> WhatsApp
+            </Button>
             <Button variant="outline" size="sm" onClick={() => duplicate(t.id)}>
               <Copy className="w-4 h-4 mr-1" /> Duplicar
             </Button>
