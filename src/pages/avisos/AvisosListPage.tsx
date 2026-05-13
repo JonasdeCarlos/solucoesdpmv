@@ -58,7 +58,7 @@ const AvisosListPage = () => {
     const msg = buildWhatsappMessage(a);
     const ok = await copyToClipboard(msg);
     if (ok) {
-      toast.success('Mensagem copiada para área de transferência.');
+      toast.success('Mensagem copiada para a área de transferência.');
     } else {
       setMsgDialog({ text: msg });
     }
@@ -252,7 +252,7 @@ const AvisosListPage = () => {
           <DialogFooter>
             <Button variant="outline" onClick={async () => {
               const ok = await copyToClipboard(msgDialog?.text || '');
-              if (ok) { toast.success('Copiado!'); setMsgDialog(null); }
+              if (ok) { toast.success('Mensagem copiada para a área de transferência.'); setMsgDialog(null); }
               else toast.error('Use Ctrl+C para copiar.');
             }}>Tentar copiar novamente</Button>
             <Button onClick={() => setMsgDialog(null)}>Fechar</Button>
