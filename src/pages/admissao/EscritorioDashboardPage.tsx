@@ -4,7 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Eye, Copy as CopyIcon, FileText, Trash2, AlertCircle } from 'lucide-react';
+import { Plus, Eye, Copy as CopyIcon, FileText, Trash2, AlertCircle, UserRound } from 'lucide-react';
 import { useAdmissaoRequests, STATUS_LABELS, AdmissionStatus, AdmissionRequest } from '@/hooks/useAdmissaoRequests';
 import { extractEmployeeIdentity } from '@/utils/admissao/dossieBuilder';
 import {
@@ -21,7 +21,7 @@ import { supabase } from '@/integrations/supabase/client';
 const ALL_STATUSES: ('all' | AdmissionStatus)[] = ['all','rascunho','enviado','em_analise','pendente','aguardando_documentos','aguardando_informacoes','aguardando_sst','aprovado','concluido','cancelado'];
 
 const EscritorioDashboardPage = () => {
-  const { requests, loading, remove } = useAdmissaoRequests();
+  const { requests, loading, remove, updateResponsible } = useAdmissaoRequests();
   const [q, setQ] = useState('');
   const [status, setStatus] = useState<'all' | AdmissionStatus>('all');
   const [delTarget, setDelTarget] = useState<AdmissionRequest | null>(null);
@@ -29,6 +29,10 @@ const EscritorioDashboardPage = () => {
   const [completed, setCompleted] = useState<'sim' | 'nao' | ''>('');
   const [responsible, setResponsible] = useState('');
   const [busy, setBusy] = useState(false);
+
+  const [xferTarget, setXferTarget] = useState<AdmissionRequest | null>(null);
+  const [xferName, setXferName] = useState('');
+  const [xferBusy, setXferBusy] = useState(false);
 
   const filtered = useMemo(() => {
     return requests.filter((r) => {
@@ -54,6 +58,23 @@ const EscritorioDashboardPage = () => {
     setDelTitle(title);
     setCompleted('');
     setResponsible('');
+  };
+
+  const openTransfer = (req: AdmissionRequest) => {
+    setXferTarget(req);
+    setXferName(req.responsible_name || '');
+  };
+
+  const confirmTransfer = async () => {
+    if (!xferTarget) return;
+    if (!xferName.trim()) return toast.error('Informe o nome do novo responsável');
+    setXferBusy(true);
+    const { error } = await updateResponsible(xferTarget.id, xferName.trim());
+    setXferBusy(false);
+    if (error) return toast.error('Erro ao transferir responsável');
+    toast.success('Responsável transferido');
+    setXferTarget(null);
+    setXferName('');
   };
 
   const confirmDelete = async () => {
@@ -164,6 +185,9 @@ const EscritorioDashboardPage = () => {
                 <Eye className="w-4 h-4 mr-1" /> Abrir
               </Link>
             </Button>
+            <Button variant="outline" size="sm" title="Transferir responsável" onClick={() => openTransfer(r)}>
+              <UserRound className="w-4 h-4" />
+            </Button>
             <Button variant="outline" size="sm" onClick={() => openDelete(r, title)}>
               <Trash2 className="w-4 h-4 text-destructive" />
             </Button>
@@ -172,6 +196,35 @@ const EscritorioDashboardPage = () => {
           })()
         ))}
       </div>
+
+      {/* Dialog de transferência de responsável */}
+      <Dialog open={!!xferTarget} onOpenChange={(o) => !o && setXferTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Transferir responsável</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            {xferTarget ? `${xferTarget.company_name || '—'} · ${xferTarget.employee_name || '—'}` : ''}
+          </p>
+          <div className="space-y-3 pt-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="xfer-resp">Novo responsável</Label>
+              <Input
+                id="xfer-resp"
+                value={xferName}
+                onChange={(e) => setXferName(e.target.value)}
+                placeholder="Nome do funcionário"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setXferTarget(null)} disabled={xferBusy}>Cancelar</Button>
+            <Button onClick={confirmTransfer} disabled={xferBusy}>
+              {xferBusy ? 'Transferindo...' : 'Transferir'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!delTarget} onOpenChange={(o) => !o && setDelTarget(null)}>
         <DialogContent>
