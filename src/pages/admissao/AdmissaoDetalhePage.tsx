@@ -24,11 +24,11 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
-const STATUSES: AdmissionStatus[] = ['rascunho','enviado','em_analise','pendente','aprovado','concluido','cancelado'];
+const STATUSES: AdmissionStatus[] = ['rascunho','enviado','em_analise','pendente','aguardando_documentos','aguardando_informacoes','aguardando_sst','aprovado','concluido','cancelado'];
 
 const AdmissaoDetalhePage = () => {
   const { id = '' } = useParams();
-  const { updateStatus, remove } = useAdmissaoRequests();
+  const { updateStatus, updateResponsible, remove } = useAdmissaoRequests();
   const navigate = useNavigate();
   const [req, setReq] = useState<AdmissionRequest | null>(null);
   const [files, setFiles] = useState<AdmissionFileRow[]>([]);
@@ -37,11 +37,13 @@ const AdmissaoDetalhePage = () => {
   const [delOpen, setDelOpen] = useState(false);
   const [completed, setCompleted] = useState<'sim' | 'nao' | ''>('');
   const [responsible, setResponsible] = useState('');
+  const [respEdit, setRespEdit] = useState('');
 
   const reload = async () => {
     const r = await getRequestById(id);
     setReq(r);
     if (r) {
+      setRespEdit(r.responsible_name || '');
       const fs = await listFilesForRequest(r.id);
       setFiles(fs);
       const { data: dossiers } = await supabase
