@@ -31,6 +31,10 @@ import AdmissaoDetalhePage from "./pages/admissao/AdmissaoDetalhePage";
 import PreencherPage from "./pages/admissao/PreencherPage";
 import PublicoNovaPage from "./pages/admissao/PublicoNovaPage";
 import ArquivoPage from "./pages/admissao/ArquivoPage";
+import AvisosListPage from "./pages/avisos/AvisosListPage";
+import AvisosImportPage from "./pages/avisos/AvisosImportPage";
+import AvisoEmpresasPage from "./pages/avisos/AvisoEmpresasPage";
+import AvisoDetailPage from "./pages/avisos/AvisoDetailPage";
 
 const queryClient = new QueryClient();
 
@@ -57,6 +61,10 @@ const App = () => (
                 <Route path="/admissao/escritorio/admissoes/nova" element={<AdmissaoNovaPage />} />
                 <Route path="/admissao/escritorio/admissoes/:id" element={<AdmissaoDetalhePage />} />
                 <Route path="/admissao/escritorio/arquivo" element={<ArquivoPage />} />
+                <Route path="/admissao/escritorio/avisos" element={<AvisosListPage />} />
+                <Route path="/admissao/escritorio/avisos/import" element={<AvisosImportPage />} />
+                <Route path="/admissao/escritorio/avisos/empresas" element={<AvisoEmpresasPage />} />
+                <Route path="/admissao/escritorio/avisos/:id" element={<AvisoDetailPage />} />
               </Route>
             </Route>
             <Route
