@@ -227,6 +227,227 @@ export type Database = {
           },
         ]
       }
+      aviso_contact_attempts: {
+        Row: {
+          attempt_type: string
+          aviso_id: string
+          call_channel: string | null
+          call_date: string | null
+          id: string
+          marked_at: string
+          marked_by: string
+          metadata: Json
+          notes: string
+        }
+        Insert: {
+          attempt_type: string
+          aviso_id: string
+          call_channel?: string | null
+          call_date?: string | null
+          id?: string
+          marked_at?: string
+          marked_by?: string
+          metadata?: Json
+          notes?: string
+        }
+        Update: {
+          attempt_type?: string
+          aviso_id?: string
+          call_channel?: string | null
+          call_date?: string | null
+          id?: string
+          marked_at?: string
+          marked_by?: string
+          metadata?: Json
+          notes?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aviso_contact_attempts_aviso_id_fkey"
+            columns: ["aviso_id"]
+            isOneToOne: false
+            referencedRelation: "avisos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      aviso_empresas: {
+        Row: {
+          ativo: boolean
+          cnpj: string
+          code: string
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          cnpj?: string
+          code: string
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          cnpj?: string
+          code?: string
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      aviso_imports: {
+        Row: {
+          emission_date: string | null
+          emission_time: string | null
+          errors_json: Json
+          file_name: string
+          file_path: string | null
+          id: string
+          ignorados: number
+          imported_at: string
+          imported_by: string
+          novos: number
+          total_empresas: number
+          total_rows: number
+        }
+        Insert: {
+          emission_date?: string | null
+          emission_time?: string | null
+          errors_json?: Json
+          file_name?: string
+          file_path?: string | null
+          id?: string
+          ignorados?: number
+          imported_at?: string
+          imported_by?: string
+          novos?: number
+          total_empresas?: number
+          total_rows?: number
+        }
+        Update: {
+          emission_date?: string | null
+          emission_time?: string | null
+          errors_json?: Json
+          file_name?: string
+          file_path?: string | null
+          id?: string
+          ignorados?: number
+          imported_at?: string
+          imported_by?: string
+          novos?: number
+          total_empresas?: number
+          total_rows?: number
+        }
+        Relationships: []
+      }
+      avisos: {
+        Row: {
+          aviso1_at: string | null
+          aviso1_by: string | null
+          aviso2_at: string | null
+          aviso2_by: string | null
+          aviso3_at: string | null
+          aviso3_by: string | null
+          created_at: string
+          due_date: string | null
+          employee_code: string
+          employee_name: string
+          empresa_cnpj: string
+          empresa_code: string
+          empresa_id: string | null
+          empresa_name: string
+          id: string
+          import_id: string | null
+          limit_date: string | null
+          motivo: string
+          motivo_original: string
+          no_response_at: string | null
+          no_response_by: string | null
+          observacoes: string
+          source_emission_date: string | null
+          status: string
+          unique_hash: string
+          updated_at: string
+        }
+        Insert: {
+          aviso1_at?: string | null
+          aviso1_by?: string | null
+          aviso2_at?: string | null
+          aviso2_by?: string | null
+          aviso3_at?: string | null
+          aviso3_by?: string | null
+          created_at?: string
+          due_date?: string | null
+          employee_code?: string
+          employee_name?: string
+          empresa_cnpj?: string
+          empresa_code?: string
+          empresa_id?: string | null
+          empresa_name?: string
+          id?: string
+          import_id?: string | null
+          limit_date?: string | null
+          motivo?: string
+          motivo_original?: string
+          no_response_at?: string | null
+          no_response_by?: string | null
+          observacoes?: string
+          source_emission_date?: string | null
+          status?: string
+          unique_hash: string
+          updated_at?: string
+        }
+        Update: {
+          aviso1_at?: string | null
+          aviso1_by?: string | null
+          aviso2_at?: string | null
+          aviso2_by?: string | null
+          aviso3_at?: string | null
+          aviso3_by?: string | null
+          created_at?: string
+          due_date?: string | null
+          employee_code?: string
+          employee_name?: string
+          empresa_cnpj?: string
+          empresa_code?: string
+          empresa_id?: string | null
+          empresa_name?: string
+          id?: string
+          import_id?: string | null
+          limit_date?: string | null
+          motivo?: string
+          motivo_original?: string
+          no_response_at?: string | null
+          no_response_by?: string | null
+          observacoes?: string
+          source_emission_date?: string | null
+          status?: string
+          unique_hash?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avisos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "aviso_empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "avisos_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "aviso_imports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       banco_horas: {
         Row: {
           created_at: string
