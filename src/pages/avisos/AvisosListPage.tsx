@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Copy, Phone, X, ExternalLink, CheckSquare } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAvisos } from '@/hooks/useAvisos';
+import { useAvisoEmpresas } from '@/hooks/useAvisoEmpresas';
 import { useOperatorName } from '@/hooks/useOperatorName';
 import { MOTIVO_CATEGORIES, STATUS_OPTIONS, formatBR, formatCnpj, statusLabel } from '@/utils/avisos/normalize';
 import { buildWhatsappMessage } from '@/utils/avisos/whatsappMessage';
@@ -22,11 +23,11 @@ const STATUS_COLOR: Record<string, string> = {
 
 const AvisosListPage = () => {
   const { items, loading, updateAviso, addAttempt, refresh } = useAvisos();
+  const { empresas } = useAvisoEmpresas();
   const { ensure } = useOperatorName();
   const [params, setParams] = useSearchParams();
 
-  const [empresaQ, setEmpresaQ] = useState(params.get('empresa') || '');
-  const [cnpjQ, setCnpjQ] = useState(params.get('cnpj') || '');
+  const [empresaF, setEmpresaF] = useState(params.get('empresa') || 'all');
   const [motivoF, setMotivoF] = useState<string>('all');
   const [statusF, setStatusF] = useState<string>('all');
   const [dueFrom, setDueFrom] = useState('');
@@ -38,8 +39,7 @@ const AvisosListPage = () => {
 
   const filtered = useMemo(() => {
     return items.filter((a) => {
-      if (empresaQ && !`${a.empresa_code} ${a.empresa_name}`.toLowerCase().includes(empresaQ.toLowerCase())) return false;
-      if (cnpjQ && !a.empresa_cnpj.includes(cnpjQ.replace(/\D/g, ''))) return false;
+      if (empresaF !== 'all' && a.empresa_code !== empresaF) return false;
       if (motivoF !== 'all' && a.motivo !== motivoF) return false;
       if (statusF !== 'all' && a.status !== statusF) return false;
       if (dueFrom && (!a.due_date || a.due_date < dueFrom)) return false;
@@ -48,7 +48,7 @@ const AvisosListPage = () => {
       if (impTo && a.created_at.slice(0, 10) > impTo) return false;
       return true;
     });
-  }, [items, empresaQ, cnpjQ, motivoF, statusF, dueFrom, dueTo, impFrom, impTo]);
+  }, [items, empresaF, motivoF, statusF, dueFrom, dueTo, impFrom, impTo]);
 
   const copyMsg = async (a: any) => {
     const msg = buildWhatsappMessage(a);
@@ -96,8 +96,13 @@ const AvisosListPage = () => {
       </div>
 
       <Card className="p-4 grid grid-cols-1 md:grid-cols-4 gap-3">
-        <Input placeholder="Empresa (código/nome)" value={empresaQ} onChange={(e) => setEmpresaQ(e.target.value)} />
-        <Input placeholder="CNPJ" value={cnpjQ} onChange={(e) => setCnpjQ(e.target.value)} />
+        <Select value={empresaF} onValueChange={setEmpresaF}>
+          <SelectTrigger><SelectValue placeholder="Empresa" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas as empresas</SelectItem>
+            {empresas.map((e) => <SelectItem key={e.id} value={e.code}>{e.code} — {e.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
         <Select value={motivoF} onValueChange={setMotivoF}>
           <SelectTrigger><SelectValue placeholder="Motivo" /></SelectTrigger>
           <SelectContent>
@@ -124,7 +129,7 @@ const AvisosListPage = () => {
         </div>
         <div className="md:col-span-2 flex justify-end items-center gap-2">
           <span className="text-xs text-muted-foreground">{filtered.length} avisos</span>
-          <Button variant="outline" size="sm" onClick={() => { setEmpresaQ(''); setCnpjQ(''); setMotivoF('all'); setStatusF('all'); setDueFrom(''); setDueTo(''); setImpFrom(''); setImpTo(''); setParams({}); }}>Limpar</Button>
+          <Button variant="outline" size="sm" onClick={() => { setEmpresaF('all'); setMotivoF('all'); setStatusF('all'); setDueFrom(''); setDueTo(''); setImpFrom(''); setImpTo(''); setParams({}); }}>Limpar</Button>
         </div>
       </Card>
 
