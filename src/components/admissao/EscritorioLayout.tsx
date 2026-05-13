@@ -9,6 +9,8 @@ import { useAdmissaoRequests } from '@/hooks/useAdmissaoRequests';
 const EscritorioLayout = () => {
   const { logout } = useOfficeAuth();
   const nav = useNavigate();
+  const { requests } = useAdmissaoRequests();
+  const untendedCount = requests.filter((r) => !r.responsible_name).length;
 
   return (
     <div className="min-h-screen bg-background">
