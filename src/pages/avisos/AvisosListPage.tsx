@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Copy, Phone, X, ExternalLink, CheckSquare } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAvisos } from '@/hooks/useAvisos';
+import { useAvisoEmpresas } from '@/hooks/useAvisoEmpresas';
 import { useOperatorName } from '@/hooks/useOperatorName';
 import { MOTIVO_CATEGORIES, STATUS_OPTIONS, formatBR, formatCnpj, statusLabel } from '@/utils/avisos/normalize';
 import { buildWhatsappMessage } from '@/utils/avisos/whatsappMessage';
