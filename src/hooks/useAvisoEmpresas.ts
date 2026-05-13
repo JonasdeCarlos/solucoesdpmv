@@ -19,5 +19,18 @@ export function useAvisoEmpresas() {
 
   useEffect(() => { refresh(); }, [refresh]);
 
+  // Atualização em tempo real quando novas empresas são cadastradas
+  useEffect(() => {
+    const channel = supabase
+      .channel('aviso-empresas-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'aviso_empresas' },
+        () => { refresh(); }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [refresh]);
+
   return { empresas, loading, refresh };
 }
