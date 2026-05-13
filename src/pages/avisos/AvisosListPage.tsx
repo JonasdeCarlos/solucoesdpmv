@@ -24,7 +24,7 @@ const STATUS_COLOR: Record<string, string> = {
 
 const AvisosListPage = () => {
   const { items, loading, updateAviso, addAttempt, refresh } = useAvisos();
-  const { empresas } = useAvisoEmpresas();
+  const { empresas, setEmpresaDefaultResponsavel } = useAvisoEmpresas();
   const { ensure } = useOperatorName();
   const [params, setParams] = useSearchParams();
 
@@ -37,6 +37,7 @@ const AvisosListPage = () => {
   const [impTo, setImpTo] = useState('');
 
   const [callDialog, setCallDialog] = useState<{ id: string } | null>(null);
+  const [respEdit, setRespEdit] = useState<Record<string, string>>({});
 
   const filtered = useMemo(() => {
     return items.filter((a) => {
@@ -82,6 +83,18 @@ const AvisosListPage = () => {
     const op = ensure() || 'desconhecido';
     await updateAviso(a.id, { status });
     await addAttempt(a.id, { attempt_type: 'status_change', marked_by: op, notes: `Status → ${statusLabel(status)}` });
+  };
+
+  const saveResponsavel = async (a: any) => {
+    const novo = (respEdit[a.id] ?? a.responsavel ?? '').trim();
+    if (novo === (a.responsavel || '')) {
+      setRespEdit((s) => { const n = { ...s }; delete n[a.id]; return n; });
+      return;
+    }
+    await updateAviso(a.id, { responsavel: novo });
+    await setEmpresaDefaultResponsavel(a.empresa_code, novo);
+    setRespEdit((s) => { const n = { ...s }; delete n[a.id]; return n; });
+    toast.success(novo ? `Responsável definido: ${novo}` : 'Responsável removido.');
   };
 
   return (
@@ -159,7 +172,17 @@ const AvisosListPage = () => {
                   <div className="text-xs text-muted-foreground mt-0.5">
                     {a.empresa_code} — {a.empresa_name} • CNPJ {formatCnpj(a.empresa_cnpj)}
                     {a.source_emission_date && <> • Emissão PDF: {formatBR(a.source_emission_date)}</>}
-                    {a.responsavel && <> • Resp.: <b className="text-foreground">{a.responsavel}</b></>}
+                  </div>
+                  <div className="flex items-center gap-2 mt-1.5">
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">Responsável:</span>
+                    <Input
+                      className="h-7 text-xs max-w-[240px]"
+                      placeholder="Atribuir responsável"
+                      value={respEdit[a.id] ?? a.responsavel ?? ''}
+                      onChange={(ev) => setRespEdit((s) => ({ ...s, [a.id]: ev.target.value }))}
+                      onBlur={() => saveResponsavel(a)}
+                      onKeyDown={(ev) => { if (ev.key === 'Enter') (ev.target as HTMLInputElement).blur(); }}
+                    />
                   </div>
                   <div className="flex flex-wrap gap-2 mt-2 text-[11px]">
                     {[1, 2, 3].map((n) => {
