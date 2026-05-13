@@ -35,7 +35,7 @@ const EscritorioLayout = () => {
       </header>
       <nav className="border-b bg-card/50">
         <div className="container max-w-6xl mx-auto px-4 flex gap-1">
-          <NavTab to="/admissao/escritorio" end icon={<ClipboardList className="w-4 h-4" />} label="Admissões" />
+          <NavTab to="/admissao/escritorio" end icon={<ClipboardList className="w-4 h-4" />} label="Admissões" badge={untendedCount > 0 ? untendedCount : undefined} />
           <NavTab to="/admissao/escritorio/formularios" icon={<FileText className="w-4 h-4" />} label="Formulários" />
           <NavTab to="/admissao/escritorio/arquivo" icon={<Archive className="w-4 h-4" />} label="Arquivo" />
         </div>
