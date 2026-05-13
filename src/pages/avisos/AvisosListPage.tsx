@@ -90,8 +90,8 @@ const AvisosListPage = () => {
           <p className="text-sm text-muted-foreground">Gestão e tratamento dos avisos extraídos dos PDFs.</p>
         </div>
         <div className="flex gap-2">
-          <Link to="/admissao/escritorio/avisos/empresas"><Button variant="outline">Empresas</Button></Link>
-          <Link to="/admissao/escritorio/avisos/import"><Button>Importar PDF</Button></Link>
+          <Link to="/avisos/empresas"><Button variant="outline">Empresas</Button></Link>
+          <Link to="/avisos/import"><Button>Importar PDF</Button></Link>
         </div>
       </div>
 
@@ -183,7 +183,7 @@ const AvisosListPage = () => {
                         {STATUS_OPTIONS.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
                       </SelectContent>
                     </Select>
-                    <Link to={`/admissao/escritorio/avisos/${a.id}`}><Button size="sm" variant="ghost"><ExternalLink className="w-3 h-3" /></Button></Link>
+                    <Link to={`/avisos/${a.id}`}><Button size="sm" variant="ghost"><ExternalLink className="w-3 h-3" /></Button></Link>
                   </div>
                 </div>
               </div>

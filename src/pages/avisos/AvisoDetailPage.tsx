@@ -53,7 +53,7 @@ const AvisoDetailPage = () => {
 
   return (
     <div className="space-y-4">
-      <Link to="/admissao/escritorio/avisos" className="text-sm text-muted-foreground flex items-center gap-1"><ArrowLeft className="w-4 h-4" /> Avisos</Link>
+      <Link to="/avisos" className="text-sm text-muted-foreground flex items-center gap-1"><ArrowLeft className="w-4 h-4" /> Avisos</Link>
 
       <Card className="p-4 space-y-2">
         <div className="flex items-center gap-2 flex-wrap">
