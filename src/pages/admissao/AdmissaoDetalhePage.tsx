@@ -210,6 +210,28 @@ const AdmissaoDetalhePage = () => {
             </SelectContent>
           </Select>
         </div>
+        <div className="flex items-center gap-2 pt-2">
+          <span className="text-sm whitespace-nowrap">Responsável:</span>
+          <Input
+            value={respEdit}
+            onChange={(e) => setRespEdit(e.target.value)}
+            placeholder="Funcionário tratando a demanda"
+            className="max-w-xs"
+          />
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={respEdit === (req.responsible_name || '')}
+            onClick={async () => {
+              const { error } = await updateResponsible(req.id, respEdit.trim());
+              if (error) return toast.error('Erro ao salvar responsável');
+              await reload();
+              toast.success('Responsável atualizado');
+            }}
+          >
+            Salvar
+          </Button>
+        </div>
       </Card>
 
       <Card className="p-4">
