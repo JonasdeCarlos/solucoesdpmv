@@ -2,29 +2,13 @@ export async function copyToClipboard(text: string): Promise<boolean> {
   const value = text ?? '';
   if (!value) return false;
 
-  const copyViaEvent = () => {
-    let copied = false;
-    const handler = (event: ClipboardEvent) => {
-      event.clipboardData?.setData('text/plain', value);
-      event.preventDefault();
-      copied = true;
-    };
-
-    document.addEventListener('copy', handler);
-    try {
-      const ok = document.execCommand('copy');
-      return ok && copied;
-    } finally {
-      document.removeEventListener('copy', handler);
-    }
-  };
-
   try {
-    if (copyViaEvent()) {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(value);
       return true;
     }
   } catch (_) {
-    // fall through to other clipboard strategies
+    // fall through to textarea strategy
   }
 
   try {
@@ -43,15 +27,6 @@ export async function copyToClipboard(text: string): Promise<boolean> {
     const ok = document.execCommand('copy');
     document.body.removeChild(ta);
     if (ok) return true;
-  } catch (_) {
-    // fall through to async clipboard
-  }
-
-  try {
-    if (navigator.clipboard && window.isSecureContext) {
-      await navigator.clipboard.writeText(value);
-      return true;
-    }
   } catch (_) {
     // no-op
   }
