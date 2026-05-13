@@ -61,10 +61,6 @@ const App = () => (
                 <Route path="/admissao/escritorio/admissoes/nova" element={<AdmissaoNovaPage />} />
                 <Route path="/admissao/escritorio/admissoes/:id" element={<AdmissaoDetalhePage />} />
                 <Route path="/admissao/escritorio/arquivo" element={<ArquivoPage />} />
-                <Route path="/admissao/escritorio/avisos" element={<AvisosListPage />} />
-                <Route path="/admissao/escritorio/avisos/import" element={<AvisosImportPage />} />
-                <Route path="/admissao/escritorio/avisos/empresas" element={<AvisoEmpresasPage />} />
-                <Route path="/admissao/escritorio/avisos/:id" element={<AvisoDetailPage />} />
               </Route>
             </Route>
             <Route
@@ -85,6 +81,10 @@ const App = () => (
               <Route path="/rescisao-pdf" element={<RescisaoPdfPage />} />
               <Route path="/jornada" element={<JornadaPage />} />
               <Route path="/pdf-tools" element={<PdfToolsPage />} />
+              <Route path="/avisos" element={<AvisosListPage />} />
+              <Route path="/avisos/import" element={<AvisosImportPage />} />
+              <Route path="/avisos/empresas" element={<AvisoEmpresasPage />} />
+              <Route path="/avisos/:id" element={<AvisoDetailPage />} />
               <Route path="/provisoes-dsr" element={<ProvisoesDsrPage />} />
             </Route>
             <Route path="*" element={<NotFound />} />

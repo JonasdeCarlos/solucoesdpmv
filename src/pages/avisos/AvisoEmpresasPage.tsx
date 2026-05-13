@@ -17,7 +17,7 @@ const AvisoEmpresasPage = () => {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Empresas</h1>
-        <Link to="/admissao/escritorio/avisos"><Button variant="outline">← Avisos</Button></Link>
+        <Link to="/avisos"><Button variant="outline">← Avisos</Button></Link>
       </div>
       <Input placeholder="Buscar por código / nome / CNPJ" value={q} onChange={(e) => setQ(e.target.value)} />
       <Card className="p-0 overflow-hidden">
@@ -32,7 +32,7 @@ const AvisoEmpresasPage = () => {
                   <td className="p-2">{e.name}</td>
                   <td className="p-2 font-mono text-xs">{formatCnpj(e.cnpj)}</td>
                   <td className="p-2 text-right">
-                    <Link to={`/admissao/escritorio/avisos?empresa=${encodeURIComponent(e.code)}`}>
+                    <Link to={`/avisos?empresa=${encodeURIComponent(e.code)}`}>
                       <Button size="sm" variant="outline">Ver avisos</Button>
                     </Link>
                   </td>
