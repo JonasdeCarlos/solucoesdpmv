@@ -12,6 +12,7 @@ import { useAvisoEmpresas } from '@/hooks/useAvisoEmpresas';
 import { useOperatorName } from '@/hooks/useOperatorName';
 import { MOTIVO_CATEGORIES, STATUS_OPTIONS, formatBR, formatCnpj, statusLabel } from '@/utils/avisos/normalize';
 import { buildWhatsappMessage } from '@/utils/avisos/whatsappMessage';
+import { copyToClipboard } from '@/utils/clipboard';
 import CallDialog from '@/components/avisos/CallDialog';
 
 const STATUS_COLOR: Record<string, string> = {
@@ -52,8 +53,9 @@ const AvisosListPage = () => {
 
   const copyMsg = async (a: any) => {
     const msg = buildWhatsappMessage(a);
-    await navigator.clipboard.writeText(msg);
-    toast.success('Mensagem copiada para área de transferência.');
+    const ok = await copyToClipboard(msg);
+    if (ok) toast.success('Mensagem copiada para área de transferência.');
+    else toast.error('Não foi possível copiar. Selecione e copie manualmente.');
   };
 
   const markAviso = async (a: any, n: 1 | 2 | 3) => {

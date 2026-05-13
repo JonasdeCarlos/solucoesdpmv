@@ -72,7 +72,11 @@ const AvisoDetailPage = () => {
       <Card className="p-4 space-y-2">
         <h3 className="font-semibold">Mensagem WhatsApp</h3>
         <pre className="bg-muted p-3 rounded text-sm whitespace-pre-wrap">{msg}</pre>
-        <Button size="sm" onClick={() => { navigator.clipboard.writeText(msg); toast.success('Copiada.'); }}>
+        <Button size="sm" onClick={async () => {
+          const ok = await (await import('@/utils/clipboard')).copyToClipboard(msg);
+          if (ok) toast.success('Copiada.');
+          else toast.error('Não foi possível copiar.');
+        }}>
           <Copy className="w-3 h-3 mr-1" /> Copiar
         </Button>
       </Card>
