@@ -116,31 +116,49 @@ export function buildFormPdf(
       y += labelLines.length * 12 + 2;
 
       doc.setFont('helvetica', 'normal');
-      let displayValue: string;
+      let displayValue: string = '';
       if (field.type === 'file') {
         const arr = answers[field.field_key];
         const count = Array.isArray(arr) ? arr.length : 0;
         displayValue = count > 0 ? `${count} arquivo(s) anexado(s) — ver dossiê` : 'Não informado';
       } else if (field.type === 'work_schedule') {
         const v = answers[field.field_key];
-        if (!v?.dias?.length) {
+        const dias = Array.isArray(v?.dias) ? v.dias : [];
+        if (!dias.length) {
           displayValue = 'Não informado';
         } else {
           let weekTotal = 0;
-          const lines = v.dias
-            .filter((d: any) => d.ativo && d.marcacoes.some((m: string) => m))
-            .map((d: any) => {
-              const mins = dayMinutes(d.marcacoes);
-              weekTotal += mins;
-              const marc = d.marcacoes.map((m: string) => m || '--:--').join('  ');
-              return `${d.dia}: ${marc}   Total: ${fmtMin(mins)}`;
-            });
-          if (lines.length) {
-            lines.push(`Total semanal: ${fmtMin(weekTotal)}`);
-            displayValue = lines.join('\n');
-          } else {
-            displayValue = 'Não informado';
+          const renderLines: string[] = [];
+          for (const d of dias) {
+            const marc = Array.isArray(d?.marcacoes) ? d.marcacoes : [];
+            if (!d?.ativo) {
+              renderLines.push(`${d?.dia ?? '-'}: Folga`);
+              continue;
+            }
+            const mins = dayMinutes(marc);
+            weekTotal += mins;
+            const marcTxt = marc.length
+              ? marc.map((m: string) => (m && /^\d{2}:\d{2}$/.test(m) ? m : '--:--')).join('  ')
+              : '—';
+            renderLines.push(`${d?.dia ?? '-'}: ${marcTxt}   Total: ${fmtMin(mins)}`);
           }
+          renderLines.push(`Total semanal: ${fmtMin(weekTotal)}`);
+          // Render line-by-line for guaranteed multi-line layout
+          doc.setFont('courier', 'normal');
+          doc.setFontSize(9);
+          for (const ln of renderLines) {
+            const wrapped = doc.splitTextToSize(ln, CONTENT_W);
+            ensureSpace(wrapped.length * 11 + 2);
+            const isTotal = ln.startsWith('Total semanal');
+            if (isTotal) doc.setFont('courier', 'bold');
+            doc.text(wrapped, MARGIN, y);
+            if (isTotal) doc.setFont('courier', 'normal');
+            y += wrapped.length * 11;
+          }
+          y += 6;
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(10);
+          continue;
         }
       } else {
         displayValue = fmtValue(field, answers[field.field_key]);
