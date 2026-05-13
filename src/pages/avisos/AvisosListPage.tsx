@@ -23,11 +23,11 @@ const STATUS_COLOR: Record<string, string> = {
 
 const AvisosListPage = () => {
   const { items, loading, updateAviso, addAttempt, refresh } = useAvisos();
+  const { empresas } = useAvisoEmpresas();
   const { ensure } = useOperatorName();
   const [params, setParams] = useSearchParams();
 
-  const [empresaQ, setEmpresaQ] = useState(params.get('empresa') || '');
-  const [cnpjQ, setCnpjQ] = useState(params.get('cnpj') || '');
+  const [empresaF, setEmpresaF] = useState(params.get('empresa') || 'all');
   const [motivoF, setMotivoF] = useState<string>('all');
   const [statusF, setStatusF] = useState<string>('all');
   const [dueFrom, setDueFrom] = useState('');
