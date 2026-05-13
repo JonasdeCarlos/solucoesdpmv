@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 export interface AvisoEmpresa {
   id: string; code: string; name: string; cnpj: string; ativo: boolean;
+  responsavel: string;
   created_at: string; updated_at: string;
 }
 
@@ -32,5 +33,24 @@ export function useAvisoEmpresas() {
     return () => { supabase.removeChannel(channel); };
   }, [refresh]);
 
-  return { empresas, loading, refresh };
+  const updateEmpresa = async (id: string, patch: Partial<AvisoEmpresa>) => {
+    const { error } = await supabase.from('aviso_empresas' as any).update(patch as any).eq('id', id);
+    if (!error) await refresh();
+    return { error };
+  };
+
+  const setResponsavelAndPropagate = async (empresa: AvisoEmpresa, responsavel: string) => {
+    const { error } = await supabase.from('aviso_empresas' as any)
+      .update({ responsavel } as any).eq('id', empresa.id);
+    if (error) return { error };
+    // Propaga para avisos abertos/em_tratamento/sem_retorno (não concluídos) da empresa
+    await supabase.from('avisos' as any)
+      .update({ responsavel } as any)
+      .eq('empresa_id', empresa.id)
+      .neq('status', 'concluido');
+    await refresh();
+    return { error: null };
+  };
+
+  return { empresas, loading, refresh, updateEmpresa, setResponsavelAndPropagate };
 }
