@@ -52,5 +52,16 @@ export function useAvisoEmpresas() {
     return { error: null };
   };
 
-  return { empresas, loading, refresh, updateEmpresa, setResponsavelAndPropagate };
+  // Atualiza somente a empresa (default p/ próximas importações), sem mexer em avisos existentes
+  const setEmpresaDefaultResponsavel = async (empresaCode: string, responsavel: string) => {
+    const emp = empresas.find((e) => e.code === empresaCode);
+    if (!emp) return { error: new Error('empresa não encontrada') };
+    if ((emp.responsavel || '') === responsavel) return { error: null };
+    const { error } = await supabase.from('aviso_empresas' as any)
+      .update({ responsavel } as any).eq('id', emp.id);
+    if (!error) await refresh();
+    return { error };
+  };
+
+  return { empresas, loading, refresh, updateEmpresa, setResponsavelAndPropagate, setEmpresaDefaultResponsavel };
 }
