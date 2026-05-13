@@ -116,7 +116,7 @@ export function buildFormPdf(
       y += labelLines.length * 12 + 2;
 
       doc.setFont('helvetica', 'normal');
-      let displayValue: string;
+      let displayValue: string = '';
       if (field.type === 'file') {
         const arr = answers[field.field_key];
         const count = Array.isArray(arr) ? arr.length : 0;
