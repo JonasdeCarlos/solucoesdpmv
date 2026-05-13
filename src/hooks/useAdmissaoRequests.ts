@@ -7,6 +7,9 @@ export type AdmissionStatus =
   | 'enviado'
   | 'em_analise'
   | 'pendente'
+  | 'aguardando_documentos'
+  | 'aguardando_informacoes'
+  | 'aguardando_sst'
   | 'aprovado'
   | 'concluido'
   | 'cancelado';
@@ -16,6 +19,9 @@ export const STATUS_LABELS: Record<AdmissionStatus, string> = {
   enviado: 'Enviado',
   em_analise: 'Em análise',
   pendente: 'Pendente',
+  aguardando_documentos: 'Aguardando documentos',
+  aguardando_informacoes: 'Aguardando informações',
+  aguardando_sst: 'Aguardando SST',
   aprovado: 'Aprovado',
   concluido: 'Concluído',
   cancelado: 'Cancelado',
@@ -31,6 +37,7 @@ export interface AdmissionRequest {
   employee_name: string;
   token: string;
   status: AdmissionStatus;
+  responsible_name: string;
   draft_answers: Record<string, any>;
   answers: Record<string, any>;
   submitted_at: string | null;
@@ -50,6 +57,7 @@ function normalize(row: any): AdmissionRequest {
     employee_name: row.employee_name || '',
     token: row.token,
     status: (row.status || 'rascunho') as AdmissionStatus,
+    responsible_name: row.responsible_name || '',
     draft_answers: row.draft_answers || {},
     answers: row.answers || {},
     submitted_at: row.submitted_at,
@@ -118,6 +126,15 @@ export function useAdmissaoRequests() {
     return { error };
   };
 
+  const updateResponsible = async (id: string, responsible_name: string) => {
+    const { error } = await supabase
+      .from('admission_requests' as any)
+      .update({ responsible_name } as any)
+      .eq('id', id);
+    if (!error) await fetchAll();
+    return { error };
+  };
+
   const remove = async (id: string) => {
     const { error } = await supabase
       .from('admission_requests' as any)
@@ -127,7 +144,7 @@ export function useAdmissaoRequests() {
     return { error };
   };
 
-  return { requests, loading, fetchAll, create, updateStatus, remove };
+  return { requests, loading, fetchAll, create, updateStatus, updateResponsible, remove };
 }
 
 export async function getRequestByToken(token: string): Promise<AdmissionRequest | null> {
