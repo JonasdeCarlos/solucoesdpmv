@@ -4,10 +4,13 @@ import { LogOut, FileText, ClipboardList, ArrowLeft, Archive } from 'lucide-reac
 import { useOfficeAuth } from '@/hooks/useOfficeAuth';
 import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'sonner';
+import { useAdmissaoRequests } from '@/hooks/useAdmissaoRequests';
 
 const EscritorioLayout = () => {
   const { logout } = useOfficeAuth();
   const nav = useNavigate();
+  const { requests } = useAdmissaoRequests();
+  const untendedCount = requests.filter((r) => !r.responsible_name).length;
 
   return (
     <div className="min-h-screen bg-background">
@@ -32,7 +35,7 @@ const EscritorioLayout = () => {
       </header>
       <nav className="border-b bg-card/50">
         <div className="container max-w-6xl mx-auto px-4 flex gap-1">
-          <NavTab to="/admissao/escritorio" end icon={<ClipboardList className="w-4 h-4" />} label="Admissões" />
+          <NavTab to="/admissao/escritorio" end icon={<ClipboardList className="w-4 h-4" />} label="Admissões" badge={untendedCount > 0 ? untendedCount : undefined} />
           <NavTab to="/admissao/escritorio/formularios" icon={<FileText className="w-4 h-4" />} label="Formulários" />
           <NavTab to="/admissao/escritorio/arquivo" icon={<Archive className="w-4 h-4" />} label="Arquivo" />
         </div>
@@ -44,7 +47,7 @@ const EscritorioLayout = () => {
   );
 };
 
-const NavTab = ({ to, label, icon, end }: { to: string; label: string; icon: React.ReactNode; end?: boolean }) => (
+const NavTab = ({ to, label, icon, end, badge }: { to: string; label: string; icon: React.ReactNode; end?: boolean; badge?: number }) => (
   <NavLink
     to={to}
     end={end}
@@ -55,6 +58,11 @@ const NavTab = ({ to, label, icon, end }: { to: string; label: string; icon: Rea
     }
   >
     {icon}{label}
+    {badge !== undefined && (
+      <span className="ml-0.5 inline-flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold px-1.5 py-0 min-w-[18px]">
+        {badge}
+      </span>
+    )}
   </NavLink>
 );
 

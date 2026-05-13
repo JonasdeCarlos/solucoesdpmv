@@ -4,7 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Eye, Copy as CopyIcon, FileText, Trash2 } from 'lucide-react';
+import { Plus, Eye, Copy as CopyIcon, FileText, Trash2, AlertCircle } from 'lucide-react';
 import { useAdmissaoRequests, STATUS_LABELS, AdmissionStatus, AdmissionRequest } from '@/hooks/useAdmissaoRequests';
 import { extractEmployeeIdentity } from '@/utils/admissao/dossieBuilder';
 import {
@@ -131,11 +131,17 @@ const EscritorioDashboardPage = () => {
             const collab = r.employee_name || ident.name || '(sem nome)';
             const company = r.company_name || '—';
             const title = `${company} · ${collab}`;
+            const untended = !r.responsible_name;
             return (
-          <Card key={r.id} className="p-4 flex items-center gap-3">
+          <Card key={r.id} className={`p-4 flex items-center gap-3 ${untended ? 'border-l-4 border-l-orange-400' : ''}`}>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="font-semibold truncate">{title}</h3>
+                {untended && (
+                  <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+                    <AlertCircle className="w-3 h-3 mr-0.5 inline" /> Sem responsável
+                  </Badge>
+                )}
                 <Badge variant="secondary">{STATUS_LABELS[r.status]}</Badge>
               </div>
               <p className="text-xs text-muted-foreground truncate">
