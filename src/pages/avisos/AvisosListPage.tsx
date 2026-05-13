@@ -23,6 +23,12 @@ const STATUS_COLOR: Record<string, string> = {
   concluido: 'bg-green-500/10 text-green-700 border-green-500/30',
 };
 
+const TRI_STATE = [
+  { value: 'all', label: 'Todos' },
+  { value: 'yes', label: 'Sim' },
+  { value: 'no', label: 'Não' },
+];
+
 const AvisosListPage = () => {
   const { items, loading, updateAviso, addAttempt, refresh } = useAvisos();
   const { empresas, setEmpresaDefaultResponsavel } = useAvisoEmpresas();
@@ -32,6 +38,11 @@ const AvisosListPage = () => {
   const [empresaF, setEmpresaF] = useState(params.get('empresa') || 'all');
   const [motivoF, setMotivoF] = useState<string>('all');
   const [statusF, setStatusF] = useState<string>('all');
+  const [a1F, setA1F] = useState<string>('all');
+  const [a2F, setA2F] = useState<string>('all');
+  const [a3F, setA3F] = useState<string>('all');
+  const [noRespF, setNoRespF] = useState<string>('all');
+  const [callF, setCallF] = useState<string>('all');
   const [dueFrom, setDueFrom] = useState('');
   const [dueTo, setDueTo] = useState('');
   const [impFrom, setImpFrom] = useState('');
@@ -46,13 +57,54 @@ const AvisosListPage = () => {
       if (empresaF !== 'all' && a.empresa_code !== empresaF) return false;
       if (motivoF !== 'all' && a.motivo !== motivoF) return false;
       if (statusF !== 'all' && a.status !== statusF) return false;
+      if (a1F !== 'all') {
+        const has = !!a.aviso1_at;
+        if (a1F === 'yes' && !has) return false;
+        if (a1F === 'no' && has) return false;
+      }
+      if (a2F !== 'all') {
+        const has = !!a.aviso2_at;
+        if (a2F === 'yes' && !has) return false;
+        if (a2F === 'no' && has) return false;
+      }
+      if (a3F !== 'all') {
+        const has = !!a.aviso3_at;
+        if (a3F === 'yes' && !has) return false;
+        if (a3F === 'no' && has) return false;
+      }
+      if (noRespF !== 'all') {
+        const has = !!a.no_response_at;
+        if (noRespF === 'yes' && !has) return false;
+        if (noRespF === 'no' && has) return false;
+      }
+      if (callF !== 'all') {
+        const has = !!a.has_call;
+        if (callF === 'yes' && !has) return false;
+        if (callF === 'no' && has) return false;
+      }
       if (dueFrom && (!a.due_date || a.due_date < dueFrom)) return false;
       if (dueTo && (!a.due_date || a.due_date > dueTo)) return false;
       if (impFrom && a.created_at.slice(0, 10) < impFrom) return false;
       if (impTo && a.created_at.slice(0, 10) > impTo) return false;
       return true;
     });
-  }, [items, empresaF, motivoF, statusF, dueFrom, dueTo, impFrom, impTo]);
+  }, [items, empresaF, motivoF, statusF, a1F, a2F, a3F, noRespF, callF, dueFrom, dueTo, impFrom, impTo]);
+
+  const clearFilters = () => {
+    setEmpresaF('all');
+    setMotivoF('all');
+    setStatusF('all');
+    setA1F('all');
+    setA2F('all');
+    setA3F('all');
+    setNoRespF('all');
+    setCallF('all');
+    setDueFrom('');
+    setDueTo('');
+    setImpFrom('');
+    setImpTo('');
+    setParams({});
+  };
 
   const copyMsg = async (a: any) => {
     const msg = buildWhatsappMessage(a);
@@ -137,19 +189,49 @@ const AvisosListPage = () => {
             {STATUS_OPTIONS.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
           </SelectContent>
         </Select>
+        <Select value={a1F} onValueChange={setA1F}>
+          <SelectTrigger><SelectValue placeholder="Aviso 1" /></SelectTrigger>
+          <SelectContent>
+            {TRI_STATE.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={a2F} onValueChange={setA2F}>
+          <SelectTrigger><SelectValue placeholder="Aviso 2" /></SelectTrigger>
+          <SelectContent>
+            {TRI_STATE.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={a3F} onValueChange={setA3F}>
+          <SelectTrigger><SelectValue placeholder="Aviso 3" /></SelectTrigger>
+          <SelectContent>
+            {TRI_STATE.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={noRespF} onValueChange={setNoRespF}>
+          <SelectTrigger><SelectValue placeholder="Sem retorno" /></SelectTrigger>
+          <SelectContent>
+            {TRI_STATE.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={callF} onValueChange={setCallF}>
+          <SelectTrigger><SelectValue placeholder="Ligação" /></SelectTrigger>
+          <SelectContent>
+            {TRI_STATE.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
         <div className="flex gap-2 items-center">
-          <span className="text-xs text-muted-foreground">Vencimento:</span>
+          <span className="text-xs text-muted-foreground whitespace-nowrap">Venc.:</span>
           <Input type="date" value={dueFrom} onChange={(e) => setDueFrom(e.target.value)} />
           <Input type="date" value={dueTo} onChange={(e) => setDueTo(e.target.value)} />
         </div>
         <div className="flex gap-2 items-center">
-          <span className="text-xs text-muted-foreground">Importação:</span>
+          <span className="text-xs text-muted-foreground whitespace-nowrap">Import.:</span>
           <Input type="date" value={impFrom} onChange={(e) => setImpFrom(e.target.value)} />
           <Input type="date" value={impTo} onChange={(e) => setImpTo(e.target.value)} />
         </div>
         <div className="md:col-span-2 flex justify-end items-center gap-2">
           <span className="text-xs text-muted-foreground">{filtered.length} avisos</span>
-          <Button variant="outline" size="sm" onClick={() => { setEmpresaF('all'); setMotivoF('all'); setStatusF('all'); setDueFrom(''); setDueTo(''); setImpFrom(''); setImpTo(''); setParams({}); }}>Limpar</Button>
+          <Button variant="outline" size="sm" onClick={clearFilters}>Limpar</Button>
         </div>
       </Card>
 

@@ -25,6 +25,7 @@ export interface AvisoRow {
   responsavel: string;
   created_at: string;
   updated_at: string;
+  has_call?: boolean;
 }
 
 export function useAvisos() {
@@ -38,7 +39,29 @@ export function useAvisos() {
       .select('*')
       .order('due_date', { ascending: true })
       .limit(2000);
-    if (!error && data) setItems(data as any);
+    if (error || !data) {
+      setLoading(false);
+      return;
+    }
+    const avisos = data as any[];
+
+    // fetch call attempts to compute has_call
+    const ids = avisos.map((a) => a.id);
+    let callMap: Record<string, boolean> = {};
+    if (ids.length > 0) {
+      const { data: attempts } = await supabase
+        .from('aviso_contact_attempts' as any)
+        .select('aviso_id')
+        .in('aviso_id', ids)
+        .eq('attempt_type', 'call');
+      if (attempts) {
+        for (const row of attempts as any[]) {
+          callMap[row.aviso_id] = true;
+        }
+      }
+    }
+
+    setItems(avisos.map((a) => ({ ...a, has_call: !!callMap[a.id] })));
     setLoading(false);
   }, []);
 
