@@ -18,7 +18,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { supabase } from '@/integrations/supabase/client';
 
-const ALL_STATUSES: ('all' | AdmissionStatus)[] = ['all','rascunho','enviado','em_analise','pendente','aprovado','concluido','cancelado'];
+const ALL_STATUSES: ('all' | AdmissionStatus)[] = ['all','rascunho','enviado','em_analise','pendente','aguardando_documentos','aguardando_informacoes','aguardando_sst','aprovado','concluido','cancelado'];
 
 const EscritorioDashboardPage = () => {
   const { requests, loading, remove } = useAdmissaoRequests();
@@ -141,6 +141,11 @@ const EscritorioDashboardPage = () => {
               <p className="text-xs text-muted-foreground truncate">
                 {r.template_name_snapshot}
               </p>
+              {r.responsible_name && (
+                <p className="text-xs text-muted-foreground truncate">
+                  Responsável: {r.responsible_name}
+                </p>
+              )}
               <p className="text-xs text-muted-foreground">
                 Criada em {new Date(r.created_at).toLocaleString('pt-BR')}
               </p>

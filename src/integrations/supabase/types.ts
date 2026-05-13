@@ -174,6 +174,7 @@ export type Database = {
           draft_answers: Json
           employee_name: string
           id: string
+          responsible_name: string
           status: string
           submitted_at: string | null
           template_id: string | null
@@ -190,6 +191,7 @@ export type Database = {
           draft_answers?: Json
           employee_name?: string
           id?: string
+          responsible_name?: string
           status?: string
           submitted_at?: string | null
           template_id?: string | null
@@ -206,6 +208,7 @@ export type Database = {
           draft_answers?: Json
           employee_name?: string
           id?: string
+          responsible_name?: string
           status?: string
           submitted_at?: string | null
           template_id?: string | null
