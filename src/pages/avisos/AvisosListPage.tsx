@@ -157,6 +157,7 @@ const AvisosListPage = () => {
                   <div className="text-xs text-muted-foreground mt-0.5">
                     {a.empresa_code} — {a.empresa_name} • CNPJ {formatCnpj(a.empresa_cnpj)}
                     {a.source_emission_date && <> • Emissão PDF: {formatBR(a.source_emission_date)}</>}
+                    {a.responsavel && <> • Resp.: <b className="text-foreground">{a.responsavel}</b></>}
                   </div>
                   <div className="flex flex-wrap gap-2 mt-2 text-[11px]">
                     {[1, 2, 3].map((n) => {

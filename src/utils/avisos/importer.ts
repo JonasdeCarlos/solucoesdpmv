@@ -56,15 +56,17 @@ export async function processarImportacao(opts: {
     // Upsert empresa
     const cnpjNorm = normalizeCnpj(emp.cnpj);
     let empresaId: string | null = null;
+    let empresaResponsavel = '';
     try {
       const { data: existing } = await supabase
         .from('aviso_empresas' as any)
-        .select('id')
+        .select('id, responsavel')
         .eq('code', emp.code)
         .eq('cnpj', cnpjNorm)
         .maybeSingle();
       if (existing) {
         empresaId = (existing as any).id;
+        empresaResponsavel = (existing as any).responsavel || '';
         await supabase.from('aviso_empresas' as any).update({ name: emp.name }).eq('id', empresaId);
       } else {
         const { data: ins } = await supabase
@@ -118,6 +120,7 @@ export async function processarImportacao(opts: {
           import_id: importId,
           unique_hash: hash,
           status: 'aberto',
+          responsavel: empresaResponsavel,
         } as any);
         if (error) {
           if (error.code === '23505') ignorados++;

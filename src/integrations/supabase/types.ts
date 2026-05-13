@@ -279,6 +279,7 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          responsavel: string
           updated_at: string
         }
         Insert: {
@@ -288,6 +289,7 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          responsavel?: string
           updated_at?: string
         }
         Update: {
@@ -297,6 +299,7 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          responsavel?: string
           updated_at?: string
         }
         Relationships: []
@@ -370,6 +373,7 @@ export type Database = {
           no_response_at: string | null
           no_response_by: string | null
           observacoes: string
+          responsavel: string
           source_emission_date: string | null
           status: string
           unique_hash: string
@@ -398,6 +402,7 @@ export type Database = {
           no_response_at?: string | null
           no_response_by?: string | null
           observacoes?: string
+          responsavel?: string
           source_emission_date?: string | null
           status?: string
           unique_hash: string
@@ -426,6 +431,7 @@ export type Database = {
           no_response_at?: string | null
           no_response_by?: string | null
           observacoes?: string
+          responsavel?: string
           source_emission_date?: string | null
           status?: string
           unique_hash?: string

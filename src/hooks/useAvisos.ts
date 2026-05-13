@@ -22,6 +22,7 @@ export interface AvisoRow {
   aviso3_at: string | null; aviso3_by: string | null;
   no_response_at: string | null; no_response_by: string | null;
   observacoes: string;
+  responsavel: string;
   created_at: string;
   updated_at: string;
 }
