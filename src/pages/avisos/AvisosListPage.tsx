@@ -14,6 +14,7 @@ import { MOTIVO_CATEGORIES, STATUS_OPTIONS, formatBR, formatCnpj, statusLabel } 
 import { buildWhatsappMessage } from '@/utils/avisos/whatsappMessage';
 import { copyToClipboard } from '@/utils/clipboard';
 import CallDialog from '@/components/avisos/CallDialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
 const STATUS_COLOR: Record<string, string> = {
   sem_retorno: 'bg-destructive/15 text-destructive border-destructive/30',
@@ -38,6 +39,7 @@ const AvisosListPage = () => {
 
   const [callDialog, setCallDialog] = useState<{ id: string } | null>(null);
   const [respEdit, setRespEdit] = useState<Record<string, string>>({});
+  const [msgDialog, setMsgDialog] = useState<{ text: string } | null>(null);
 
   const filtered = useMemo(() => {
     return items.filter((a) => {
@@ -55,8 +57,11 @@ const AvisosListPage = () => {
   const copyMsg = async (a: any) => {
     const msg = buildWhatsappMessage(a);
     const ok = await copyToClipboard(msg);
-    if (ok) toast.success('Mensagem copiada para área de transferência.');
-    else toast.error('Não foi possível copiar. Selecione e copie manualmente.');
+    if (ok) {
+      toast.success('Mensagem copiada para área de transferência.');
+    } else {
+      setMsgDialog({ text: msg });
+    }
   };
 
   const markAviso = async (a: any, n: 1 | 2 | 3) => {
@@ -229,6 +234,31 @@ const AvisosListPage = () => {
         avisoId={callDialog?.id || ''}
         onDone={() => { setCallDialog(null); refresh(); }}
       />
+
+      <Dialog open={!!msgDialog} onOpenChange={(o) => !o && setMsgDialog(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Copiar mensagem</DialogTitle>
+            <DialogDescription>
+              Cópia automática indisponível neste navegador. Selecione o texto e pressione Ctrl+C (ou Cmd+C).
+            </DialogDescription>
+          </DialogHeader>
+          <textarea
+            readOnly
+            value={msgDialog?.text || ''}
+            className="w-full h-56 p-2 text-sm border rounded-md font-mono bg-muted/30"
+            ref={(el) => { if (el) { el.focus(); el.select(); } }}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={async () => {
+              const ok = await copyToClipboard(msgDialog?.text || '');
+              if (ok) { toast.success('Copiado!'); setMsgDialog(null); }
+              else toast.error('Use Ctrl+C para copiar.');
+            }}>Tentar copiar novamente</Button>
+            <Button onClick={() => setMsgDialog(null)}>Fechar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
