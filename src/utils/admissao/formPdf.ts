@@ -1,6 +1,30 @@
 import jsPDF from 'jspdf';
 import { FormSchema, FormField } from './formSchema';
 
+function parseHHMM(s: string): number | null {
+  if (typeof s !== 'string' || !/^\d{2}:\d{2}$/.test(s)) return null;
+  const [h, m] = s.split(':').map(Number);
+  if (isNaN(h) || isNaN(m)) return null;
+  return h * 60 + m;
+}
+function fmtMin(min: number): string {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+function dayMinutes(marcacoes: string[]): number {
+  let total = 0;
+  for (let i = 0; i + 1 < marcacoes.length; i += 2) {
+    const a = parseHHMM(marcacoes[i]);
+    const b = parseHHMM(marcacoes[i + 1]);
+    if (a == null || b == null) continue;
+    let diff = b - a;
+    if (diff < 0) diff += 24 * 60;
+    total += diff;
+  }
+  return total;
+}
+
 function fmtValue(field: FormField, value: any): string {
   if (value === null || value === undefined || value === '') return 'Não informado';
   if (Array.isArray(value)) {
@@ -102,10 +126,21 @@ export function buildFormPdf(
         if (!v?.dias?.length) {
           displayValue = 'Não informado';
         } else {
+          let weekTotal = 0;
           const lines = v.dias
             .filter((d: any) => d.ativo && d.marcacoes.some((m: string) => m))
-            .map((d: any) => `${d.dia}: ${d.marcacoes.map((m: string) => m || '--:--').join('  ')}`);
-          displayValue = lines.length ? lines.join('\n') : 'Não informado';
+            .map((d: any) => {
+              const mins = dayMinutes(d.marcacoes);
+              weekTotal += mins;
+              const marc = d.marcacoes.map((m: string) => m || '--:--').join('  ');
+              return `${d.dia}: ${marc}   Total: ${fmtMin(mins)}`;
+            });
+          if (lines.length) {
+            lines.push(`Total semanal: ${fmtMin(weekTotal)}`);
+            displayValue = lines.join('\n');
+          } else {
+            displayValue = 'Não informado';
+          }
         }
       } else {
         displayValue = fmtValue(field, answers[field.field_key]);

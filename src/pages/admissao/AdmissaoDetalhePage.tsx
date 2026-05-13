@@ -17,6 +17,12 @@ import { buildDossie, extractEmployeeIdentity } from '@/utils/admissao/dossieBui
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { saveAs } from 'file-saver';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 const STATUSES: AdmissionStatus[] = ['rascunho','enviado','em_analise','pendente','aprovado','concluido','cancelado'];
 
@@ -28,6 +34,9 @@ const AdmissaoDetalhePage = () => {
   const [files, setFiles] = useState<AdmissionFileRow[]>([]);
   const [busy, setBusy] = useState(false);
   const [hasDossie, setHasDossie] = useState(false);
+  const [delOpen, setDelOpen] = useState(false);
+  const [completed, setCompleted] = useState<'sim' | 'nao' | ''>('');
+  const [responsible, setResponsible] = useState('');
 
   const reload = async () => {
     const r = await getRequestById(id);
@@ -103,10 +112,34 @@ const AdmissaoDetalhePage = () => {
   const collabName = req.employee_name || ident.name || '(sem nome)';
   const headerTitle = `${req.company_name || '—'} · ${collabName}`;
 
-  const handleDelete = async () => {
-    if (!confirm(`Excluir admissão "${headerTitle}"? Os arquivos enviados também serão removidos.`)) return;
+  const openDelete = () => {
+    setCompleted('');
+    setResponsible('');
+    setDelOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!req) return;
+    if (!completed) return toast.error('Informe se a admissão foi concluída');
+    if (!responsible.trim()) return toast.error('Informe o responsável pela admissão');
     setBusy(true);
     try {
+      const { error: archErr } = await supabase
+        .from('admission_archive' as any)
+        .insert({
+          original_request_id: req.id,
+          employee_name: req.employee_name || ident.name || '',
+          company_name: req.company_name || '',
+          company_cnpj: req.company_cnpj || '',
+          template_name: req.template_name_snapshot || '',
+          previous_status: req.status,
+          original_created_at: req.created_at,
+          request_snapshot: req as any,
+          admission_completed: completed === 'sim',
+          responsible_name: responsible.trim(),
+        } as any);
+      if (archErr) throw archErr;
+
       // remove storage files
       const paths = files.map((f) => f.storage_path).filter(Boolean);
       if (paths.length) await supabase.storage.from('admissao-uploads').remove(paths);
@@ -114,7 +147,8 @@ const AdmissaoDetalhePage = () => {
       await supabase.from('admission_files' as any).delete().eq('request_id', req.id);
       await supabase.from('admission_dossiers' as any).delete().eq('request_id', req.id);
       await remove(req.id);
-      toast.success('Admissão excluída');
+      toast.success('Admissão arquivada e excluída');
+      setDelOpen(false);
       navigate('/admissao/escritorio');
     } catch (e) {
       console.error(e);
@@ -142,7 +176,7 @@ const AdmissaoDetalhePage = () => {
           Gerar Dossiê PDF
         </Button>
         {hasDossie && (
-          <Button variant="destructive" size="sm" onClick={handleDelete} disabled={busy}>
+          <Button variant="destructive" size="sm" onClick={openDelete} disabled={busy}>
             <Trash2 className="w-4 h-4 mr-1" /> Excluir
           </Button>
         )}
@@ -234,6 +268,42 @@ const AdmissaoDetalhePage = () => {
           </ul>
         )}
       </Card>
+
+      <Dialog open={delOpen} onOpenChange={(o) => !busy && setDelOpen(o)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Excluir admissão</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            "{headerTitle}" será arquivada antes da exclusão. Responda os campos abaixo para confirmar.
+          </p>
+          <div className="space-y-3 pt-2">
+            <div className="space-y-2">
+              <Label>A admissão foi concluída? *</Label>
+              <RadioGroup value={completed} onValueChange={(v) => setCompleted(v as any)}>
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem id="adm-sim" value="sim" />
+                  <Label htmlFor="adm-sim" className="font-normal">Sim</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem id="adm-nao" value="nao" />
+                  <Label htmlFor="adm-nao" className="font-normal">Não</Label>
+                </div>
+              </RadioGroup>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="resp">Responsável pela admissão *</Label>
+              <Input id="resp" value={responsible} onChange={(e) => setResponsible(e.target.value)} placeholder="Nome do responsável" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDelOpen(false)} disabled={busy}>Cancelar</Button>
+            <Button onClick={confirmDelete} disabled={busy} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {busy ? 'Arquivando...' : 'Arquivar e excluir'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
