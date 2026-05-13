@@ -108,11 +108,12 @@ const AvisosListPage = () => {
 
   const copyMsg = async (a: any) => {
     const msg = buildWhatsappMessage(a);
+    setMsgDialog({ text: msg });
     const ok = await copyToClipboard(msg);
     if (ok) {
       toast.success('Mensagem copiada para a área de transferência.');
     } else {
-      setMsgDialog({ text: msg });
+      toast.error('Não foi possível copiar automaticamente. O texto foi gerado abaixo para copiar manualmente.');
     }
   };
 
@@ -322,7 +323,7 @@ const AvisosListPage = () => {
           <DialogHeader>
             <DialogTitle>Copiar mensagem</DialogTitle>
             <DialogDescription>
-              Cópia automática indisponível neste navegador. Selecione o texto e pressione Ctrl+C (ou Cmd+C).
+              Texto gerado para WhatsApp. Se não colar automaticamente, selecione abaixo e pressione Ctrl+C (ou Cmd+C).
             </DialogDescription>
           </DialogHeader>
           <textarea
