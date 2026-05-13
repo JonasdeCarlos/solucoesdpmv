@@ -42,7 +42,14 @@ export function useAvisos() {
     setLoading(false);
   }, []);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => {
+    refresh();
+    const ch = supabase
+      .channel('avisos-rt')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'avisos' }, () => { refresh(); })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [refresh]);
 
   const updateAviso = async (id: string, patch: Partial<AvisoRow>) => {
     const { error } = await supabase.from('avisos' as any).update(patch as any).eq('id', id);
