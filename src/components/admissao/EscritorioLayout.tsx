@@ -1,6 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { LogOut, FileText, ClipboardList, ArrowLeft, Archive, Bell } from 'lucide-react';
+import { LogOut, FileText, ClipboardList, ArrowLeft, Archive } from 'lucide-react';
 import { useOfficeAuth } from '@/hooks/useOfficeAuth';
 import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -38,7 +38,6 @@ const EscritorioLayout = () => {
           <NavTab to="/admissao/escritorio" end icon={<ClipboardList className="w-4 h-4" />} label="Admissões" badge={untendedCount > 0 ? untendedCount : undefined} />
           <NavTab to="/admissao/escritorio/formularios" icon={<FileText className="w-4 h-4" />} label="Formulários" />
           <NavTab to="/admissao/escritorio/arquivo" icon={<Archive className="w-4 h-4" />} label="Arquivo" />
-          <NavTab to="/admissao/escritorio/avisos" icon={<Bell className="w-4 h-4" />} label="Avisos" />
         </div>
       </nav>
       <main className="container max-w-6xl mx-auto px-4 py-6">
