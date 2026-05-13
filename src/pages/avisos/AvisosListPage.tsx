@@ -96,8 +96,13 @@ const AvisosListPage = () => {
       </div>
 
       <Card className="p-4 grid grid-cols-1 md:grid-cols-4 gap-3">
-        <Input placeholder="Empresa (código/nome)" value={empresaQ} onChange={(e) => setEmpresaQ(e.target.value)} />
-        <Input placeholder="CNPJ" value={cnpjQ} onChange={(e) => setCnpjQ(e.target.value)} />
+        <Select value={empresaF} onValueChange={setEmpresaF}>
+          <SelectTrigger><SelectValue placeholder="Empresa" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas as empresas</SelectItem>
+            {empresas.map((e) => <SelectItem key={e.id} value={e.code}>{e.code} — {e.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
         <Select value={motivoF} onValueChange={setMotivoF}>
           <SelectTrigger><SelectValue placeholder="Motivo" /></SelectTrigger>
           <SelectContent>
