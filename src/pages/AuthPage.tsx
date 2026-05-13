@@ -17,6 +17,8 @@ const AuthPage = () => {
   const [busy, setBusy] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showReset, setShowReset] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
 
   useEffect(() => {
     if (!loading && user) navigate('/', { replace: true });
@@ -44,22 +46,6 @@ const AuthPage = () => {
     toast.success('Login efetuado!');
   };
 
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setBusy(true);
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { emailRedirectTo: window.location.origin },
-    });
-    setBusy(false);
-    if (error) {
-      toast.error(error.message.includes('already registered') ? 'Este e-mail já está cadastrado.' : error.message);
-      return;
-    }
-    toast.success('Cadastro realizado!');
-  };
-
   const handleGoogle = async () => {
     setBusy(true);
     const result = await lovable.auth.signInWithOAuth('google', { redirect_uri: window.location.origin });
@@ -67,6 +53,25 @@ const AuthPage = () => {
       setBusy(false);
       toast.error('Não foi possível entrar com o Google.');
     }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) {
+      toast.error('Informe o e-mail cadastrado.');
+      return;
+    }
+    setBusy(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + '/auth',
+    });
+    setBusy(false);
+    if (error) {
+      toast.error('Erro ao enviar link: ' + error.message);
+      return;
+    }
+    setResetSent(true);
+    toast.success('Link de recuperação enviado! Verifique sua caixa de entrada.');
   };
 
   return (
