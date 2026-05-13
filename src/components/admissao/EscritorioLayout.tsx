@@ -4,6 +4,7 @@ import { LogOut, FileText, ClipboardList, ArrowLeft, Archive } from 'lucide-reac
 import { useOfficeAuth } from '@/hooks/useOfficeAuth';
 import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'sonner';
+import { useAdmissaoRequests } from '@/hooks/useAdmissaoRequests';
 
 const EscritorioLayout = () => {
   const { logout } = useOfficeAuth();
