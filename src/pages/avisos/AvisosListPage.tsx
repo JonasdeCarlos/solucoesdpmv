@@ -129,7 +129,7 @@ const AvisosListPage = () => {
         </div>
         <div className="md:col-span-2 flex justify-end items-center gap-2">
           <span className="text-xs text-muted-foreground">{filtered.length} avisos</span>
-          <Button variant="outline" size="sm" onClick={() => { setEmpresaQ(''); setCnpjQ(''); setMotivoF('all'); setStatusF('all'); setDueFrom(''); setDueTo(''); setImpFrom(''); setImpTo(''); setParams({}); }}>Limpar</Button>
+          <Button variant="outline" size="sm" onClick={() => { setEmpresaF('all'); setMotivoF('all'); setStatusF('all'); setDueFrom(''); setDueTo(''); setImpFrom(''); setImpTo(''); setParams({}); }}>Limpar</Button>
         </div>
       </Card>
 
