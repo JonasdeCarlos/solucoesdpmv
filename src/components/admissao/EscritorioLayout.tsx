@@ -47,7 +47,7 @@ const EscritorioLayout = () => {
   );
 };
 
-const NavTab = ({ to, label, icon, end }: { to: string; label: string; icon: React.ReactNode; end?: boolean }) => (
+const NavTab = ({ to, label, icon, end, badge }: { to: string; label: string; icon: React.ReactNode; end?: boolean; badge?: number }) => (
   <NavLink
     to={to}
     end={end}
@@ -58,6 +58,11 @@ const NavTab = ({ to, label, icon, end }: { to: string; label: string; icon: Rea
     }
   >
     {icon}{label}
+    {badge !== undefined && (
+      <span className="ml-0.5 inline-flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold px-1.5 py-0 min-w-[18px]">
+        {badge}
+      </span>
+    )}
   </NavLink>
 );
 
