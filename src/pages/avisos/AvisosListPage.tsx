@@ -39,8 +39,7 @@ const AvisosListPage = () => {
 
   const filtered = useMemo(() => {
     return items.filter((a) => {
-      if (empresaQ && !`${a.empresa_code} ${a.empresa_name}`.toLowerCase().includes(empresaQ.toLowerCase())) return false;
-      if (cnpjQ && !a.empresa_cnpj.includes(cnpjQ.replace(/\D/g, ''))) return false;
+      if (empresaF !== 'all' && a.empresa_code !== empresaF) return false;
       if (motivoF !== 'all' && a.motivo !== motivoF) return false;
       if (statusF !== 'all' && a.status !== statusF) return false;
       if (dueFrom && (!a.due_date || a.due_date < dueFrom)) return false;
@@ -49,7 +48,7 @@ const AvisosListPage = () => {
       if (impTo && a.created_at.slice(0, 10) > impTo) return false;
       return true;
     });
-  }, [items, empresaQ, cnpjQ, motivoF, statusF, dueFrom, dueTo, impFrom, impTo]);
+  }, [items, empresaF, motivoF, statusF, dueFrom, dueTo, impFrom, impTo]);
 
   const copyMsg = async (a: any) => {
     const msg = buildWhatsappMessage(a);
