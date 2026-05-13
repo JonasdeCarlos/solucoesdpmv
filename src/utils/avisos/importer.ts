@@ -19,6 +19,21 @@ export interface ImportSummary {
   errors: any[];
 }
 
+/** Tenta uma operação até 3 vezes em caso de falha de rede transitória. */
+async function withRetry<T>(label: string, fn: () => Promise<T>, attempts = 3): Promise<T> {
+  let lastErr: any;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (e: any) {
+      lastErr = e;
+      console.warn(`[importer] ${label} tentativa ${i + 1} falhou:`, e?.message || e);
+      await new Promise((r) => setTimeout(r, 500 * (i + 1)));
+    }
+  }
+  throw lastErr;
+}
+
 export async function processarImportacao(opts: {
   parsed: ParsedPdf;
   fileName: string;
@@ -28,11 +43,8 @@ export async function processarImportacao(opts: {
   const { parsed, fileName, filePath, importedBy } = opts;
   const errors: any[] = [];
   const emissionIso = parseEmissionDate(parsed.emission_date);
-  let totalRows = 0;
-  let novos = 0;
-  let ignorados = 0;
 
-  // Cria registro de import
+  // 1. Cria registro de import
   const { data: importRow, error: impErr } = await supabase
     .from('aviso_imports' as any)
     .insert({
@@ -52,91 +64,106 @@ export async function processarImportacao(opts: {
   if (impErr || !importRow) throw new Error(impErr?.message || 'Falha ao criar import');
   const importId = (importRow as any).id;
 
-  for (const emp of parsed.empresas) {
-    // Upsert empresa
-    const cnpjNorm = normalizeCnpj(emp.cnpj);
-    let empresaId: string | null = null;
-    let empresaResponsavel = '';
-    try {
-      const { data: existing } = await supabase
+  // 2. Bulk upsert empresas (1 roundtrip)
+  const empresasPayload = parsed.empresas.map((e) => ({
+    code: e.code,
+    name: e.name,
+    cnpj: normalizeCnpj(e.cnpj),
+  }));
+
+  let empresasMap = new Map<string, { id: string; responsavel: string }>();
+  try {
+    const { error: upErr } = await withRetry('upsert empresas', async () => {
+      return await supabase
         .from('aviso_empresas' as any)
-        .select('id, responsavel')
-        .eq('code', emp.code)
-        .eq('cnpj', cnpjNorm)
-        .maybeSingle();
-      if (existing) {
-        empresaId = (existing as any).id;
-        empresaResponsavel = (existing as any).responsavel || '';
-        await supabase.from('aviso_empresas' as any).update({ name: emp.name }).eq('id', empresaId);
-      } else {
-        const { data: ins } = await supabase
-          .from('aviso_empresas' as any)
-          .insert({ code: emp.code, name: emp.name, cnpj: cnpjNorm } as any)
-          .select('id').single();
-        empresaId = (ins as any)?.id ?? null;
-      }
-    } catch (e: any) {
-      errors.push({ empresa: emp.code, msg: e?.message });
+        .upsert(empresasPayload as any, { onConflict: 'code,cnpj', ignoreDuplicates: false });
+    });
+    if (upErr) errors.push({ stage: 'upsert_empresas', msg: upErr.message });
+
+    // Busca ids + responsavel atual
+    const codes = empresasPayload.map((e) => e.code);
+    const { data: empresas, error: selErr } = await withRetry('select empresas', async () =>
+      await supabase.from('aviso_empresas' as any).select('id, code, cnpj, responsavel').in('code', codes)
+    );
+    if (selErr) errors.push({ stage: 'select_empresas', msg: selErr.message });
+    for (const e of (empresas || []) as any[]) {
+      empresasMap.set(`${e.code}|${e.cnpj}`, { id: e.id, responsavel: e.responsavel || '' });
     }
+  } catch (e: any) {
+    errors.push({ stage: 'empresas', msg: e?.message });
+  }
 
-    for (const linha of emp.linhas) {
-      totalRows++;
-      try {
-        const motivo = categorizarMotivo(linha.motivo);
-        const { due, limit } = parseVencimento(linha.vencimento_raw);
-        const hash = await makeUniqueHash({
-          cnpj: cnpjNorm,
-          empresaCode: emp.code,
-          employeeCode: linha.employee_code,
-          employeeName: linha.employee_name,
-          motivo,
-          due, limit,
-        });
+  // 3. Monta payload de avisos com hash
+  const linhasFlat: Array<{ row: any; empresa: typeof parsed.empresas[number] }> = [];
+  for (const emp of parsed.empresas) {
+    for (const l of emp.linhas) linhasFlat.push({ row: l, empresa: emp });
+  }
+  const totalRows = linhasFlat.length;
 
-        // Verifica existência
-        const { data: existing } = await supabase
-          .from('avisos' as any)
-          .select('id, status')
-          .eq('unique_hash', hash)
-          .maybeSingle();
-
-        if (existing) {
-          ignorados++;
-          continue;
-        }
-
-        const { error } = await supabase.from('avisos' as any).insert({
-          empresa_id: empresaId,
-          empresa_code: emp.code,
-          empresa_name: emp.name,
-          empresa_cnpj: cnpjNorm,
-          employee_code: linha.employee_code,
-          employee_name: linha.employee_name,
-          motivo,
-          motivo_original: linha.motivo,
-          due_date: due,
-          limit_date: limit,
-          source_emission_date: emissionIso,
-          import_id: importId,
-          unique_hash: hash,
-          status: 'aberto',
-          responsavel: empresaResponsavel,
-        } as any);
-        if (error) {
-          if (error.code === '23505') ignorados++;
-          else { errors.push({ linha, msg: error.message }); }
-        } else {
-          novos++;
-        }
-      } catch (e: any) {
-        errors.push({ linha, msg: e?.message });
-      }
+  const avisosPayload: any[] = [];
+  for (const { row, empresa } of linhasFlat) {
+    try {
+      const cnpjNorm = normalizeCnpj(empresa.cnpj);
+      const motivo = categorizarMotivo(row.motivo);
+      const { due, limit } = parseVencimento(row.vencimento_raw);
+      const hash = await makeUniqueHash({
+        cnpj: cnpjNorm,
+        empresaCode: empresa.code,
+        employeeCode: row.employee_code,
+        employeeName: row.employee_name,
+        motivo, due, limit,
+      });
+      const empInfo = empresasMap.get(`${empresa.code}|${cnpjNorm}`);
+      avisosPayload.push({
+        empresa_id: empInfo?.id ?? null,
+        empresa_code: empresa.code,
+        empresa_name: empresa.name,
+        empresa_cnpj: cnpjNorm,
+        employee_code: row.employee_code,
+        employee_name: row.employee_name,
+        motivo,
+        motivo_original: row.motivo,
+        due_date: due,
+        limit_date: limit,
+        source_emission_date: emissionIso,
+        import_id: importId,
+        unique_hash: hash,
+        status: 'aberto',
+        responsavel: empInfo?.responsavel ?? '',
+      });
+    } catch (e: any) {
+      errors.push({ linha: row, msg: e?.message });
     }
   }
 
-  await supabase.from('aviso_imports' as any).update({
-    total_rows: totalRows, novos, ignorados, errors_json: errors,
-  } as any).eq('id', importId);
+  // 4. Bulk insert avisos em chunks, ignorando duplicados pelo unique_hash
+  let novos = 0;
+  const CHUNK = 100;
+  for (let i = 0; i < avisosPayload.length; i += CHUNK) {
+    const chunk = avisosPayload.slice(i, i + CHUNK);
+    try {
+      const { data, error } = await withRetry(`insert avisos ${i}`, async () =>
+        await supabase
+          .from('avisos' as any)
+          .upsert(chunk as any, { onConflict: 'unique_hash', ignoreDuplicates: true })
+          .select('id')
+      );
+      if (error) {
+        errors.push({ stage: `insert_avisos_${i}`, msg: error.message });
+      } else {
+        novos += (data?.length ?? 0);
+      }
+    } catch (e: any) {
+      errors.push({ stage: `insert_avisos_${i}`, msg: e?.message });
+    }
+  }
+  const ignorados = Math.max(0, totalRows - novos - errors.filter((e) => e.linha).length);
+
+  await withRetry('update import', async () =>
+    await supabase.from('aviso_imports' as any).update({
+      total_rows: totalRows, novos, ignorados, errors_json: errors,
+    } as any).eq('id', importId)
+  ).catch((e) => console.error('[importer] falha ao atualizar import row:', e));
 
   return { importId, totalEmpresas: parsed.empresas.length, totalRows, novos, ignorados, errors };
 }
