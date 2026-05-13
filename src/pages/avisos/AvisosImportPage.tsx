@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Upload, FileText, Loader2, AlertCircle } from 'lucide-react';
@@ -16,6 +17,7 @@ const AvisosImportPage = () => {
   const [logOpen, setLogOpen] = useState<any | null>(null);
   const { imports, refresh } = useAvisoImports();
   const { ensure } = useOperatorName();
+  const navigate = useNavigate();
 
   const handleFile = async (file: File) => {
     if (!file) return;
@@ -36,7 +38,9 @@ const AvisosImportPage = () => {
       setStage('Processando avisos (dedupe)...');
       const summary = await processarImportacao({ parsed, fileName: file.name, filePath: path, importedBy: operator });
 
-      toast.success(`Importação concluída: ${summary.novos} novos, ${summary.ignorados} repetidos.`);
+      toast.success(`Importação concluída: ${summary.novos} novos, ${summary.ignorados} repetidos.`, {
+        action: summary.novos > 0 ? { label: 'Ver avisos', onClick: () => navigate('/avisos') } : undefined,
+      });
       await refresh();
     } catch (e: any) {
       console.error(e);
