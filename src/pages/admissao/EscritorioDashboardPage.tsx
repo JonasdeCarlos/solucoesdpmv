@@ -4,13 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Plus, Eye, Copy as CopyIcon, FileText, Trash2, UserAlert } from 'lucide-react';
+import { Plus, Eye, Copy as CopyIcon, FileText, Trash2, AlertCircle } from 'lucide-react';
 import { useAdmissaoRequests, STATUS_LABELS, AdmissionStatus, AdmissionRequest } from '@/hooks/useAdmissaoRequests';
 import { extractEmployeeIdentity } from '@/utils/admissao/dossieBuilder';
 import {
