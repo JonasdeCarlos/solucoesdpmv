@@ -107,17 +107,12 @@ export async function processarImportacao(opts: {
       const motivo = categorizarMotivo(row.motivo);
       const { due, limit } = parseVencimento(row.vencimento_raw);
       const hash = await makeUniqueHash({
-        cnpj: cnpjNorm,
-        empresaCode: empresa.code,
-        employeeCode: row.employee_code,
         employeeName: row.employee_name,
-        motivo, due, limit,
+        motivo, due,
       });
       const dedupeKey = buildAvisoDedupeKey({
-        empresaCode: empresa.code,
-        employeeCode: row.employee_code,
         employeeName: row.employee_name,
-        motivo, due, limit,
+        motivo, due,
       });
       const empInfo = empresasMap.get(`${empresa.code}|${cnpjNorm}`);
       avisosPayload.push({
