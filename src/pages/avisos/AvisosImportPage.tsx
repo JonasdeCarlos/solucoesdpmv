@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Upload, FileText, Loader2, AlertCircle } from 'lucide-react';
+import { Upload, FileText, Loader2, AlertCircle, BarChart3 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { processarImportacao, type ParsedPdf } from '@/utils/avisos/importer';
 import { useAvisoImports } from '@/hooks/useAvisoImports';
@@ -81,7 +81,7 @@ const AvisosImportPage = () => {
         ) : (
           <div className="space-y-2">
             {imports.map((imp) => (
-              <div key={imp.id} className="border rounded-lg p-3 text-sm grid grid-cols-1 md:grid-cols-6 gap-2 items-center">
+              <div key={imp.id} className="border rounded-lg p-3 text-sm grid grid-cols-1 md:grid-cols-7 gap-2 items-center">
                 <div className="md:col-span-2">
                   <div className="font-medium truncate">{imp.file_name}</div>
                   <div className="text-xs text-muted-foreground">{new Date(imp.imported_at).toLocaleString('pt-BR')}</div>
@@ -89,8 +89,17 @@ const AvisosImportPage = () => {
                 <div className="text-xs"><span className="text-muted-foreground">Empresas:</span> <b>{imp.total_empresas}</b></div>
                 <div className="text-xs"><span className="text-muted-foreground">Linhas:</span> <b>{imp.total_rows}</b></div>
                 <div className="text-xs text-green-700"><span className="text-muted-foreground">Novos:</span> <b>{imp.novos}</b></div>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs text-muted-foreground">Ignorados: <b>{imp.ignorados}</b></span>
+                <div className="text-xs text-amber-700"><span className="text-muted-foreground">Já existentes:</span> <b>{imp.ignorados}</b></div>
+                <div className="flex items-center justify-end gap-1">
+                  <Button variant="outline" size="sm" onClick={() => setReportOpen({
+                    fileName: imp.file_name,
+                    totalEmpresas: imp.total_empresas,
+                    totalRows: imp.total_rows,
+                    novos: imp.novos,
+                    ignorados: imp.ignorados,
+                  })}>
+                    <BarChart3 className="w-3 h-3 mr-1" /> Relatório
+                  </Button>
                   <Button variant="outline" size="sm" onClick={() => setLogOpen(imp)}>
                     <AlertCircle className="w-3 h-3 mr-1" /> Log
                   </Button>
