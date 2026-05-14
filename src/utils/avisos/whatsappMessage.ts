@@ -15,6 +15,8 @@ export function buildWhatsappMessage(a: AvisoMsgInput): string {
   const limite = formatBR(a.limit_date);
 
   const linhas: string[] = [];
+  linhas.push('⚠️ *AVISO DE VENCIMENTO — MUITO IMPORTANTE* ⚠️');
+  linhas.push('');
   linhas.push('Olá! 👋');
   linhas.push('');
   linhas.push('Segue *aviso de vencimento* para acompanhamento:');
