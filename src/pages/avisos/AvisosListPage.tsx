@@ -227,6 +227,11 @@ const AvisosListPage = () => {
             {TRI_STATE.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
           </SelectContent>
         </Select>
+        <Input
+          placeholder="Filtrar por responsável"
+          value={respF}
+          onChange={(e) => setRespF(e.target.value)}
+        />
         <div className="flex gap-3 items-center md:col-span-2">
           <span className="text-xs text-muted-foreground whitespace-nowrap">Venc.:</span>
           <Input type="date" value={dueFrom} onChange={(e) => setDueFrom(e.target.value)} />
