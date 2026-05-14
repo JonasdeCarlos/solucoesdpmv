@@ -105,6 +105,7 @@ const AvisosListPage = () => {
     setA3F('all');
     setNoRespF('all');
     setCallF('all');
+    setRespF('');
     setDueFrom('');
     setDueTo('');
     setImpFrom('');
