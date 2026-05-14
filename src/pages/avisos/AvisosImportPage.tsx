@@ -15,6 +15,7 @@ const AvisosImportPage = () => {
   const [busy, setBusy] = useState(false);
   const [stage, setStage] = useState('');
   const [logOpen, setLogOpen] = useState<any | null>(null);
+  const [reportOpen, setReportOpen] = useState<null | { fileName: string; totalEmpresas: number; totalRows: number; novos: number; ignorados: number }>(null);
   const { imports, refresh } = useAvisoImports();
   const { ensure } = useOperatorName();
   const navigate = useNavigate();
@@ -38,9 +39,14 @@ const AvisosImportPage = () => {
       setStage('Processando avisos (dedupe)...');
       const summary = await processarImportacao({ parsed, fileName: file.name, filePath: path, importedBy: operator });
 
-      toast.success(`Importação concluída: ${summary.novos} novos, ${summary.ignorados} repetidos.`, {
-        action: summary.novos > 0 ? { label: 'Ver avisos', onClick: () => navigate('/avisos') } : undefined,
+      setReportOpen({
+        fileName: file.name,
+        totalEmpresas: summary.totalEmpresas,
+        totalRows: summary.totalRows,
+        novos: summary.novos,
+        ignorados: summary.ignorados,
       });
+      toast.success(`Importação concluída: ${summary.novos} novos, ${summary.ignorados} já existentes.`);
       await refresh();
     } catch (e: any) {
       console.error(e);
@@ -101,6 +107,41 @@ const AvisosImportPage = () => {
           <pre className="text-xs bg-muted p-3 rounded max-h-[400px] overflow-auto">
             {JSON.stringify(logOpen?.errors_json || [], null, 2)}
           </pre>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!reportOpen} onOpenChange={(o) => !o && setReportOpen(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Relatório de importação</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-sm">
+            <p className="text-muted-foreground truncate">Arquivo: <b className="text-foreground">{reportOpen?.fileName}</b></p>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="border rounded-lg p-3">
+                <div className="text-xs text-muted-foreground">Empresas</div>
+                <div className="text-2xl font-bold">{reportOpen?.totalEmpresas ?? 0}</div>
+              </div>
+              <div className="border rounded-lg p-3">
+                <div className="text-xs text-muted-foreground">Linhas no PDF</div>
+                <div className="text-2xl font-bold">{reportOpen?.totalRows ?? 0}</div>
+              </div>
+              <div className="border rounded-lg p-3 bg-green-500/5 border-green-500/30">
+                <div className="text-xs text-green-700">Novos avisos gerados</div>
+                <div className="text-2xl font-bold text-green-700">{reportOpen?.novos ?? 0}</div>
+              </div>
+              <div className="border rounded-lg p-3 bg-amber-500/5 border-amber-500/30">
+                <div className="text-xs text-amber-700">Já existentes (ignorados)</div>
+                <div className="text-2xl font-bold text-amber-700">{reportOpen?.ignorados ?? 0}</div>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setReportOpen(null)}>Fechar</Button>
+              {(reportOpen?.novos ?? 0) > 0 && (
+                <Button onClick={() => { setReportOpen(null); navigate('/avisos'); }}>Ver avisos</Button>
+              )}
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
