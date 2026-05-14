@@ -221,12 +221,12 @@ const AvisosListPage = () => {
             {TRI_STATE.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
           </SelectContent>
         </Select>
-        <div className="flex gap-2 items-center">
+        <div className="flex gap-3 items-center md:col-span-2">
           <span className="text-xs text-muted-foreground whitespace-nowrap">Venc.:</span>
           <Input type="date" value={dueFrom} onChange={(e) => setDueFrom(e.target.value)} />
           <Input type="date" value={dueTo} onChange={(e) => setDueTo(e.target.value)} />
         </div>
-        <div className="flex gap-2 items-center">
+        <div className="flex gap-3 items-center md:col-span-2">
           <span className="text-xs text-muted-foreground whitespace-nowrap">Import.:</span>
           <Input type="date" value={impFrom} onChange={(e) => setImpFrom(e.target.value)} />
           <Input type="date" value={impTo} onChange={(e) => setImpTo(e.target.value)} />
