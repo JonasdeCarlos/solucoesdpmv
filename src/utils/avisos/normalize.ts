@@ -26,7 +26,9 @@ export function normalizeText(s: string): string {
 
 export function categorizarMotivo(raw: string): MotivoCategoria {
   const n = normalizeText(raw);
-  if (n.includes('EXPERIENCIA') && n.includes('PRORROG')) return 'Contrato experiência prorrogação';
+  // Tolera typos comuns do OCR: "PRORROG", "PRROROG", "PRRORROG", "PROROG", etc.
+  const isProrrog = /PR+O?R+O?G/.test(n);
+  if (n.includes('EXPERIENCIA') && isProrrog) return 'Contrato experiência prorrogação';
   if (n.includes('EXPERIENCIA')) return 'Contrato experiência 1º vencimento';
   if (n.includes('AVISO PREVIO')) return 'Aviso Prévio de rescisão';
   if (n.includes('MONITORAMENTO') && n.includes('ADMISSIONAL')) return 'Monitoramento de Saúde - Admissional';
@@ -75,7 +77,8 @@ export async function makeUniqueHash(parts: {
   employeeName: string; motivo: string; due: string | null; limit: string | null;
 }): Promise<string> {
   const key = [
-    normalizeCnpj(parts.cnpj),
+    // CNPJ removido do hash: o OCR pode retornar valores diferentes entre execuções.
+    // empresa_code já identifica a empresa de forma única e estável.
     parts.empresaCode.trim(),
     parts.employeeCode.trim(),
     normalizeText(parts.employeeName),
