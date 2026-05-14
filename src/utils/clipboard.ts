@@ -1,6 +1,23 @@
-export async function copyToClipboard(text: string): Promise<boolean> {
+type CopySourceElement = HTMLTextAreaElement | HTMLInputElement;
+
+function copyUsingElement(element: CopySourceElement): boolean {
+  try {
+    element.focus({ preventScroll: true });
+    element.select();
+    element.setSelectionRange(0, element.value.length);
+    return document.execCommand('copy');
+  } catch (_) {
+    return false;
+  }
+}
+
+export async function copyToClipboard(text: string, sourceElement?: CopySourceElement | null): Promise<boolean> {
   const value = text ?? '';
   if (!value) return false;
+
+  if (sourceElement && copyUsingElement(sourceElement)) {
+    return true;
+  }
 
   try {
     if (navigator.clipboard && window.isSecureContext) {
@@ -16,15 +33,14 @@ export async function copyToClipboard(text: string): Promise<boolean> {
     ta.value = value;
     ta.setAttribute('readonly', '');
     ta.style.position = 'fixed';
-    ta.style.top = '-1000px';
-    ta.style.left = '-1000px';
-    ta.style.width = '2px';
-    ta.style.height = '2px';
+    ta.style.top = '0';
+    ta.style.left = '0';
+    ta.style.width = '1px';
+    ta.style.height = '1px';
+    ta.style.opacity = '0.01';
+    ta.style.pointerEvents = 'none';
     document.body.appendChild(ta);
-    ta.focus();
-    ta.select();
-    ta.setSelectionRange(0, value.length);
-    const ok = document.execCommand('copy');
+    const ok = copyUsingElement(ta);
     document.body.removeChild(ta);
     if (ok) return true;
   } catch (_) {
