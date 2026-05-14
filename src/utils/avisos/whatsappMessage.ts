@@ -9,19 +9,24 @@ export interface AvisoMsgInput {
 }
 
 export function buildWhatsappMessage(a: AvisoMsgInput): string {
-  const parts: string[] = [];
-  parts.push(a.employee_name.trim());
-  parts.push(a.motivo);
-  let dataStr = formatBR(a.due_date);
-  if (a.limit_date) dataStr += ` (Limite: ${formatBR(a.limit_date)})`;
-  if (dataStr) parts.push(dataStr);
-  const linha = parts.filter(Boolean).join(' — ');
+  const nome = a.employee_name.trim();
+  const motivo = a.motivo;
+  const due = formatBR(a.due_date);
+  const limite = formatBR(a.limit_date);
 
-  return [
-    'Prezado(a) Cliente, se atente para os avisos de vencimento a seguir:',
-    '',
-    `- ${linha}.`,
-    '',
-    'Contate-nos para que possamos dar o tratamento necessário, evitando o pagamento de encargos desnecessários.',
-  ].join('\n');
+  const linhas: string[] = [];
+  linhas.push('Olá! 👋');
+  linhas.push('');
+  linhas.push('Segue *aviso de vencimento* para acompanhamento:');
+  linhas.push('');
+  linhas.push(`• *Colaborador:* ${nome}`);
+  linhas.push(`• *Motivo:* ${motivo}`);
+  if (due) linhas.push(`• *Vencimento:* ${due}`);
+  if (limite) linhas.push(`• *Data limite:* ${limite}`);
+  linhas.push('');
+  linhas.push('Por favor, entre em contato para darmos o tratamento necessário e evitar encargos desnecessários.');
+  linhas.push('');
+  linhas.push('_Monte Verde Contabilidade_');
+
+  return linhas.join('\n');
 }
