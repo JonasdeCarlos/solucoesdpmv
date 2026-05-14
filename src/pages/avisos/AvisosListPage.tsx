@@ -84,13 +84,17 @@ const AvisosListPage = () => {
         if (callF === 'yes' && !has) return false;
         if (callF === 'no' && has) return false;
       }
+      if (respF.trim()) {
+        const r = (a.responsavel || '').toLowerCase();
+        if (!r.includes(respF.toLowerCase())) return false;
+      }
       if (dueFrom && (!a.due_date || a.due_date < dueFrom)) return false;
       if (dueTo && (!a.due_date || a.due_date > dueTo)) return false;
       if (impFrom && a.created_at.slice(0, 10) < impFrom) return false;
       if (impTo && a.created_at.slice(0, 10) > impTo) return false;
       return true;
     });
-  }, [items, empresaF, motivoF, statusF, a1F, a2F, a3F, noRespF, callF, dueFrom, dueTo, impFrom, impTo]);
+  }, [items, empresaF, motivoF, statusF, a1F, a2F, a3F, noRespF, callF, respF, dueFrom, dueTo, impFrom, impTo]);
 
   const clearFilters = () => {
     setEmpresaF('all');
