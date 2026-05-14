@@ -143,7 +143,7 @@ export async function processarImportacao(opts: {
     }
   }
 
-  // 4. Bulk insert avisos em chunks, ignorando duplicados pelo unique_hash
+  // 4. Bulk insert avisos em chunks, ignorando duplicados pela chave estável
   let novos = 0;
   const CHUNK = 100;
   for (let i = 0; i < avisosPayload.length; i += CHUNK) {
