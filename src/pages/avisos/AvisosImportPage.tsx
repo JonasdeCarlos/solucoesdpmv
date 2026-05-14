@@ -81,7 +81,7 @@ const AvisosImportPage = () => {
         ) : (
           <div className="space-y-2">
             {imports.map((imp) => (
-              <div key={imp.id} className="border rounded-lg p-3 text-sm grid grid-cols-1 md:grid-cols-6 gap-2 items-center">
+              <div key={imp.id} className="border rounded-lg p-3 text-sm grid grid-cols-1 md:grid-cols-7 gap-2 items-center">
                 <div className="md:col-span-2">
                   <div className="font-medium truncate">{imp.file_name}</div>
                   <div className="text-xs text-muted-foreground">{new Date(imp.imported_at).toLocaleString('pt-BR')}</div>
