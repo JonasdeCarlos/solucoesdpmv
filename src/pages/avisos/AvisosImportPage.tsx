@@ -10,6 +10,11 @@ import { useOperatorName } from '@/hooks/useOperatorName';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
+const sha256File = async (file: File) => {
+  const digest = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
+  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
+};
+
 const AvisosImportPage = () => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
@@ -25,6 +30,26 @@ const AvisosImportPage = () => {
     const operator = ensure() || 'desconhecido';
     setBusy(true);
     try {
+      setStage('Verificando arquivo...');
+      const fileHash = await sha256File(file);
+      const { data: existingImport } = await supabase
+        .from('aviso_imports' as any)
+        .select('id,total_empresas,total_rows,novos,ignorados')
+        .eq('file_hash', fileHash)
+        .maybeSingle();
+      if (existingImport) {
+        const imp = existingImport as any;
+        setReportOpen({
+          fileName: file.name,
+          totalEmpresas: imp.total_empresas ?? 0,
+          totalRows: imp.total_rows ?? 0,
+          novos: 0,
+          ignorados: imp.total_rows ?? imp.ignorados ?? 0,
+        });
+        toast.info('Este mesmo PDF já foi importado; nenhum aviso novo foi gerado.');
+        return;
+      }
+
       setStage('Enviando PDF...');
       const path = `${Date.now()}-${file.name}`;
       const { error: upErr } = await supabase.storage.from('aviso-pdfs').upload(path, file, { contentType: 'application/pdf' });
@@ -37,7 +62,7 @@ const AvisosImportPage = () => {
       const parsed = data as ParsedPdf;
 
       setStage('Processando avisos (dedupe)...');
-      const summary = await processarImportacao({ parsed, fileName: file.name, filePath: path, importedBy: operator });
+      const summary = await processarImportacao({ parsed, fileName: file.name, filePath: path, importedBy: operator, fileHash });
 
       setReportOpen({
         fileName: file.name,
