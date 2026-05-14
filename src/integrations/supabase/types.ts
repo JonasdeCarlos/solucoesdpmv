@@ -358,6 +358,7 @@ export type Database = {
           aviso3_at: string | null
           aviso3_by: string | null
           created_at: string
+          dedupe_key: string
           due_date: string | null
           employee_code: string
           employee_name: string
@@ -387,6 +388,7 @@ export type Database = {
           aviso3_at?: string | null
           aviso3_by?: string | null
           created_at?: string
+          dedupe_key: string
           due_date?: string | null
           employee_code?: string
           employee_name?: string
@@ -416,6 +418,7 @@ export type Database = {
           aviso3_at?: string | null
           aviso3_by?: string | null
           created_at?: string
+          dedupe_key?: string
           due_date?: string | null
           employee_code?: string
           employee_name?: string
