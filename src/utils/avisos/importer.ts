@@ -39,8 +39,9 @@ export async function processarImportacao(opts: {
   fileName: string;
   filePath: string;
   importedBy: string;
+  fileHash?: string;
 }): Promise<ImportSummary> {
-  const { parsed, fileName, filePath, importedBy } = opts;
+  const { parsed, fileName, filePath, importedBy, fileHash } = opts;
   const errors: any[] = [];
   const emissionIso = parseEmissionDate(parsed.emission_date);
 
@@ -58,10 +59,31 @@ export async function processarImportacao(opts: {
       ignorados: 0,
       errors_json: [],
       imported_by: importedBy,
+      file_hash: fileHash || null,
     } as any)
     .select()
     .single();
-  if (impErr || !importRow) throw new Error(impErr?.message || 'Falha ao criar import');
+  if (impErr || !importRow) {
+    if (fileHash && (impErr as any)?.code === '23505') {
+      const { data: existing } = await supabase
+        .from('aviso_imports' as any)
+        .select('id,total_empresas,total_rows,errors_json')
+        .eq('file_hash', fileHash)
+        .maybeSingle();
+      if (existing) {
+        const existingRow = existing as any;
+        return {
+          importId: existingRow.id,
+          totalEmpresas: existingRow.total_empresas ?? parsed.empresas.length,
+          totalRows: existingRow.total_rows ?? 0,
+          novos: 0,
+          ignorados: existingRow.total_rows ?? 0,
+          errors: [...(existingRow.errors_json || []), { stage: 'duplicate_file', msg: 'Arquivo PDF já importado anteriormente.' }],
+        };
+      }
+    }
+    throw new Error(impErr?.message || 'Falha ao criar import');
+  }
   const importId = (importRow as any).id;
 
   // 2. Bulk upsert empresas (1 roundtrip)
