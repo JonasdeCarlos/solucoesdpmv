@@ -15,6 +15,14 @@ const sha256File = async (file: File) => {
   return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
 };
 
+const safeStorageName = (name: string) =>
+  name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9._-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '') || 'arquivo.pdf';
+
 const AvisosImportPage = () => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
@@ -32,10 +40,11 @@ const AvisosImportPage = () => {
     try {
       setStage('Verificando arquivo...');
       const fileHash = await sha256File(file);
+      const legacyFileHash = `name-size:${file.name}|${file.size}`;
       const { data: existingImport } = await supabase
         .from('aviso_imports' as any)
         .select('id,total_empresas,total_rows,novos,ignorados')
-        .eq('file_hash', fileHash)
+        .in('file_hash', [fileHash, legacyFileHash])
         .maybeSingle();
       if (existingImport) {
         const imp = existingImport as any;
@@ -51,7 +60,7 @@ const AvisosImportPage = () => {
       }
 
       setStage('Enviando PDF...');
-      const path = `${Date.now()}-${file.name}`;
+      const path = `${Date.now()}-${safeStorageName(file.name)}`;
       const { error: upErr } = await supabase.storage.from('aviso-pdfs').upload(path, file, { contentType: 'application/pdf' });
       if (upErr) throw upErr;
 
