@@ -66,6 +66,20 @@ export function normalizeCnpj(raw: string): string {
   return (raw || '').replace(/\D/g, '');
 }
 
+export function buildAvisoDedupeKey(parts: {
+  empresaCode: string; employeeCode: string; employeeName: string;
+  motivo: string; due: string | null; limit: string | null;
+}): string {
+  return [
+    parts.empresaCode.trim(),
+    parts.employeeCode.trim(),
+    normalizeText(parts.employeeName),
+    parts.motivo.trim(),
+    parts.due ?? '',
+    parts.limit ?? '',
+  ].join('|');
+}
+
 export function formatCnpj(raw: string): string {
   const d = normalizeCnpj(raw);
   if (d.length !== 14) return raw;

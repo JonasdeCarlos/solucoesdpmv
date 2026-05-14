@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { categorizarMotivo, makeUniqueHash, normalizeCnpj, parseEmissionDate, parseVencimento } from './normalize';
+import { buildAvisoDedupeKey, categorizarMotivo, makeUniqueHash, normalizeCnpj, parseEmissionDate, parseVencimento } from './normalize';
 
 export interface ParsedPdf {
   emission_date?: string;
@@ -113,6 +113,12 @@ export async function processarImportacao(opts: {
         employeeName: row.employee_name,
         motivo, due, limit,
       });
+      const dedupeKey = buildAvisoDedupeKey({
+        empresaCode: empresa.code,
+        employeeCode: row.employee_code,
+        employeeName: row.employee_name,
+        motivo, due, limit,
+      });
       const empInfo = empresasMap.get(`${empresa.code}|${cnpjNorm}`);
       avisosPayload.push({
         empresa_id: empInfo?.id ?? null,
@@ -128,6 +134,7 @@ export async function processarImportacao(opts: {
         source_emission_date: emissionIso,
         import_id: importId,
         unique_hash: hash,
+        dedupe_key: dedupeKey,
         status: 'aberto',
         responsavel: empInfo?.responsavel ?? '',
       });
@@ -145,7 +152,7 @@ export async function processarImportacao(opts: {
       const { data, error } = await withRetry(`insert avisos ${i}`, async () =>
         await supabase
           .from('avisos' as any)
-          .upsert(chunk as any, { onConflict: 'unique_hash', ignoreDuplicates: true })
+          .upsert(chunk as any, { onConflict: 'dedupe_key', ignoreDuplicates: true })
           .select('id')
       );
       if (error) {
