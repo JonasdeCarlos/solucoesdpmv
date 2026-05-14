@@ -67,16 +67,13 @@ export function normalizeCnpj(raw: string): string {
 }
 
 export function buildAvisoDedupeKey(parts: {
-  empresaCode: string; employeeCode: string; employeeName: string;
-  motivo: string; due: string | null; limit: string | null;
+  employeeName: string;
+  motivo: string; due: string | null;
 }): string {
   return [
-    parts.empresaCode.trim(),
-    parts.employeeCode.trim(),
-    normalizeText(parts.employeeName),
     parts.motivo.trim(),
+    normalizeText(parts.employeeName),
     parts.due ?? '',
-    parts.limit ?? '',
   ].join('|');
 }
 
@@ -87,18 +84,15 @@ export function formatCnpj(raw: string): string {
 }
 
 export async function makeUniqueHash(parts: {
-  cnpj: string; empresaCode: string; employeeCode: string;
-  employeeName: string; motivo: string; due: string | null; limit: string | null;
+  employeeName: string; motivo: string; due: string | null;
 }): Promise<string> {
   const key = [
-    // CNPJ removido do hash: o OCR pode retornar valores diferentes entre execuções.
-    // empresa_code já identifica a empresa de forma única e estável.
-    parts.empresaCode.trim(),
-    parts.employeeCode.trim(),
-    normalizeText(parts.employeeName),
+    // Dedup por: tipo de aviso + nome do colaborador + data de vencimento.
+    // A data de emissão do PDF e o limite NÃO entram no hash — o mesmo aviso
+    // reimportado em datas diferentes não deve gerar duplicidade.
     parts.motivo,
+    normalizeText(parts.employeeName),
     parts.due ?? '',
-    parts.limit ?? '',
   ].join('|');
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(key));
   return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('');
