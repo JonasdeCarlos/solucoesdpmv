@@ -43,6 +43,7 @@ const AvisosListPage = () => {
   const [a3F, setA3F] = useState<string>('all');
   const [noRespF, setNoRespF] = useState<string>('all');
   const [callF, setCallF] = useState<string>('all');
+  const [respF, setRespF] = useState('');
   const [dueFrom, setDueFrom] = useState('');
   const [dueTo, setDueTo] = useState('');
   const [impFrom, setImpFrom] = useState('');
@@ -83,13 +84,17 @@ const AvisosListPage = () => {
         if (callF === 'yes' && !has) return false;
         if (callF === 'no' && has) return false;
       }
+      if (respF.trim()) {
+        const r = (a.responsavel || '').toLowerCase();
+        if (!r.includes(respF.toLowerCase())) return false;
+      }
       if (dueFrom && (!a.due_date || a.due_date < dueFrom)) return false;
       if (dueTo && (!a.due_date || a.due_date > dueTo)) return false;
       if (impFrom && a.created_at.slice(0, 10) < impFrom) return false;
       if (impTo && a.created_at.slice(0, 10) > impTo) return false;
       return true;
     });
-  }, [items, empresaF, motivoF, statusF, a1F, a2F, a3F, noRespF, callF, dueFrom, dueTo, impFrom, impTo]);
+  }, [items, empresaF, motivoF, statusF, a1F, a2F, a3F, noRespF, callF, respF, dueFrom, dueTo, impFrom, impTo]);
 
   const clearFilters = () => {
     setEmpresaF('all');
@@ -100,6 +105,7 @@ const AvisosListPage = () => {
     setA3F('all');
     setNoRespF('all');
     setCallF('all');
+    setRespF('');
     setDueFrom('');
     setDueTo('');
     setImpFrom('');
@@ -221,6 +227,11 @@ const AvisosListPage = () => {
             {TRI_STATE.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
           </SelectContent>
         </Select>
+        <Input
+          placeholder="Filtrar por responsável"
+          value={respF}
+          onChange={(e) => setRespF(e.target.value)}
+        />
         <div className="flex gap-3 items-center md:col-span-2">
           <span className="text-xs text-muted-foreground whitespace-nowrap">Venc.:</span>
           <Input type="date" value={dueFrom} onChange={(e) => setDueFrom(e.target.value)} />
