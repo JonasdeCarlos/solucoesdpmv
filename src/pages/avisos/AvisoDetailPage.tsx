@@ -1,5 +1,5 @@
 import { useParams, Link } from 'react-router-dom';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { useAviso, useAvisos } from '@/hooks/useAvisos';
 import { STATUS_OPTIONS, formatBR, formatCnpj, statusLabel } from '@/utils/avisos/normalize';
 import { buildWhatsappMessage } from '@/utils/avisos/whatsappMessage';
+import { copyToClipboard } from '@/utils/clipboard';
 import { useOperatorName } from '@/hooks/useOperatorName';
 import CallDialog from '@/components/avisos/CallDialog';
 
@@ -20,6 +21,7 @@ const AvisoDetailPage = () => {
   const { ensure } = useOperatorName();
   const [obs, setObs] = useState('');
   const [callOpen, setCallOpen] = useState(false);
+  const msgRef = useRef<HTMLTextAreaElement | null>(null);
 
   if (loading || !aviso) return <p className="text-sm text-muted-foreground">Carregando...</p>;
 
@@ -71,11 +73,11 @@ const AvisoDetailPage = () => {
 
       <Card className="p-4 space-y-2">
         <h3 className="font-semibold">Mensagem WhatsApp</h3>
-        <pre className="bg-muted p-3 rounded text-sm whitespace-pre-wrap">{msg}</pre>
+        <Textarea readOnly ref={msgRef} value={msg} className="min-h-48 font-mono text-sm" />
         <Button size="sm" onClick={async () => {
-          const ok = await (await import('@/utils/clipboard')).copyToClipboard(msg);
-          if (ok) toast.success('Copiada.');
-          else toast.error('Não foi possível copiar.');
+          const ok = await copyToClipboard(msg, msgRef.current);
+          if (ok) toast.success('Mensagem copiada para a área de transferência.');
+          else toast.error('Selecione o texto acima e use Ctrl+C para copiar.');
         }}>
           <Copy className="w-3 h-3 mr-1" /> Copiar
         </Button>
