@@ -35,6 +35,7 @@ import AvisosListPage from "./pages/avisos/AvisosListPage";
 import AvisosImportPage from "./pages/avisos/AvisosImportPage";
 import AvisoEmpresasPage from "./pages/avisos/AvisoEmpresasPage";
 import AvisoDetailPage from "./pages/avisos/AvisoDetailPage";
+import UsuariosPage from "./pages/UsuariosPage";
 
 const queryClient = new QueryClient();
 
@@ -86,6 +87,7 @@ const App = () => (
               <Route path="/avisos/empresas" element={<AvisoEmpresasPage />} />
               <Route path="/avisos/:id" element={<AvisoDetailPage />} />
               <Route path="/provisoes-dsr" element={<ProvisoesDsrPage />} />
+              <Route path="/usuarios" element={<UsuariosPage />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -1,7 +1,8 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import logoMonteVerde from '@/assets/logo-monte-verde.png';
-import { Calculator, Users, FileText, Receipt, Clock, DollarSign, Percent, Building2, FileStack, ClipboardCheck, LogOut, FileCog, CalendarDays, UserPlus, Bell } from 'lucide-react';
+import { Calculator, Users, FileText, Receipt, Clock, DollarSign, Percent, Building2, FileStack, ClipboardCheck, LogOut, FileCog, CalendarDays, UserPlus, Bell, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useUserRole } from '@/hooks/useUserRole';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
@@ -24,6 +25,7 @@ const NAV_ITEMS = [
 
 const AppLayout = () => {
   const { user, signOut } = useAuth();
+  const { isAdmin } = useUserRole();
 
   const handleLogout = async () => {
     await signOut();
@@ -56,7 +58,10 @@ const AppLayout = () => {
       <nav className="border-b bg-card/50">
         <div className="container max-w-5xl mx-auto px-4">
           <div className="flex gap-1 overflow-x-auto -mb-px">
-            {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
+            {[
+              ...NAV_ITEMS,
+              ...(isAdmin ? [{ to: '/usuarios', label: 'Usuários', icon: ShieldCheck, end: false }] : []),
+            ].map(({ to, label, icon: Icon, end }) => (
               <NavLink
                 key={to}
                 to={to}
