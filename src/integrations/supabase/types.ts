@@ -309,6 +309,7 @@ export type Database = {
           emission_date: string | null
           emission_time: string | null
           errors_json: Json
+          file_hash: string | null
           file_name: string
           file_path: string | null
           id: string
@@ -323,6 +324,7 @@ export type Database = {
           emission_date?: string | null
           emission_time?: string | null
           errors_json?: Json
+          file_hash?: string | null
           file_name?: string
           file_path?: string | null
           id?: string
@@ -337,6 +339,7 @@ export type Database = {
           emission_date?: string | null
           emission_time?: string | null
           errors_json?: Json
+          file_hash?: string | null
           file_name?: string
           file_path?: string | null
           id?: string
