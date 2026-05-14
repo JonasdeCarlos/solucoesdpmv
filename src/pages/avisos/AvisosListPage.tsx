@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -51,6 +51,7 @@ const AvisosListPage = () => {
   const [callDialog, setCallDialog] = useState<{ id: string } | null>(null);
   const [respEdit, setRespEdit] = useState<Record<string, string>>({});
   const [msgDialog, setMsgDialog] = useState<{ text: string } | null>(null);
+  const msgTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const filtered = useMemo(() => {
     return items.filter((a) => {
@@ -330,11 +331,11 @@ const AvisosListPage = () => {
             readOnly
             value={msgDialog?.text || ''}
             className="w-full h-56 p-2 text-sm border rounded-md font-mono bg-muted/30"
-            ref={(el) => { if (el) { el.focus(); el.select(); } }}
+            ref={(el) => { msgTextareaRef.current = el; if (el) { el.focus(); el.select(); } }}
           />
           <DialogFooter>
             <Button variant="outline" onClick={async () => {
-              const ok = await copyToClipboard(msgDialog?.text || '');
+              const ok = await copyToClipboard(msgDialog?.text || '', msgTextareaRef.current);
               if (ok) { toast.success('Mensagem copiada para a área de transferência.'); setMsgDialog(null); }
               else toast.error('Use Ctrl+C para copiar.');
             }}>Tentar copiar novamente</Button>
