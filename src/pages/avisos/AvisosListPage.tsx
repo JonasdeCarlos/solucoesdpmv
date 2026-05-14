@@ -176,71 +176,100 @@ const AvisosListPage = () => {
       </div>
 
       <Card className="p-4 grid grid-cols-1 md:grid-cols-4 gap-3">
-        <Select value={empresaF} onValueChange={setEmpresaF}>
-          <SelectTrigger><SelectValue placeholder="Empresa" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas as empresas</SelectItem>
-            {empresas.map((e) => <SelectItem key={e.id} value={e.code}>{e.code} — {e.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={motivoF} onValueChange={setMotivoF}>
-          <SelectTrigger><SelectValue placeholder="Motivo" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos os motivos</SelectItem>
-            {MOTIVO_CATEGORIES.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={statusF} onValueChange={setStatusF}>
-          <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos os status</SelectItem>
-            {STATUS_OPTIONS.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={a1F} onValueChange={setA1F}>
-          <SelectTrigger><SelectValue placeholder="Aviso 1" /></SelectTrigger>
-          <SelectContent>
-            {TRI_STATE.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={a2F} onValueChange={setA2F}>
-          <SelectTrigger><SelectValue placeholder="Aviso 2" /></SelectTrigger>
-          <SelectContent>
-            {TRI_STATE.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={a3F} onValueChange={setA3F}>
-          <SelectTrigger><SelectValue placeholder="Aviso 3" /></SelectTrigger>
-          <SelectContent>
-            {TRI_STATE.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={noRespF} onValueChange={setNoRespF}>
-          <SelectTrigger><SelectValue placeholder="Sem retorno" /></SelectTrigger>
-          <SelectContent>
-            {TRI_STATE.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={callF} onValueChange={setCallF}>
-          <SelectTrigger><SelectValue placeholder="Ligação" /></SelectTrigger>
-          <SelectContent>
-            {TRI_STATE.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Input
-          placeholder="Filtrar por responsável"
-          value={respF}
-          onChange={(e) => setRespF(e.target.value)}
-        />
-        <div className="flex gap-3 items-center md:col-span-2">
-          <span className="text-xs text-muted-foreground whitespace-nowrap">Venc.:</span>
-          <Input type="date" value={dueFrom} onChange={(e) => setDueFrom(e.target.value)} />
-          <Input type="date" value={dueTo} onChange={(e) => setDueTo(e.target.value)} />
+        <div className="space-y-1">
+          <span className="text-[11px] text-muted-foreground font-medium">Empresa</span>
+          <Select value={empresaF} onValueChange={setEmpresaF}>
+            <SelectTrigger><SelectValue placeholder="Todas" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as empresas</SelectItem>
+              {empresas.map((e) => <SelectItem key={e.id} value={e.code}>{e.code} — {e.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
         </div>
-        <div className="flex gap-3 items-center md:col-span-2">
-          <span className="text-xs text-muted-foreground whitespace-nowrap">Import.:</span>
-          <Input type="date" value={impFrom} onChange={(e) => setImpFrom(e.target.value)} />
-          <Input type="date" value={impTo} onChange={(e) => setImpTo(e.target.value)} />
+        <div className="space-y-1">
+          <span className="text-[11px] text-muted-foreground font-medium">Motivo</span>
+          <Select value={motivoF} onValueChange={setMotivoF}>
+            <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os motivos</SelectItem>
+              {MOTIVO_CATEGORIES.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <span className="text-[11px] text-muted-foreground font-medium">Status</span>
+          <Select value={statusF} onValueChange={setStatusF}>
+            <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os status</SelectItem>
+              {STATUS_OPTIONS.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <span className="text-[11px] text-muted-foreground font-medium">Aviso 1</span>
+          <Select value={a1F} onValueChange={setA1F}>
+            <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
+            <SelectContent>
+              {TRI_STATE.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <span className="text-[11px] text-muted-foreground font-medium">Aviso 2</span>
+          <Select value={a2F} onValueChange={setA2F}>
+            <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
+            <SelectContent>
+              {TRI_STATE.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <span className="text-[11px] text-muted-foreground font-medium">Aviso 3</span>
+          <Select value={a3F} onValueChange={setA3F}>
+            <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
+            <SelectContent>
+              {TRI_STATE.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <span className="text-[11px] text-muted-foreground font-medium">Sem retorno</span>
+          <Select value={noRespF} onValueChange={setNoRespF}>
+            <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
+            <SelectContent>
+              {TRI_STATE.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <span className="text-[11px] text-muted-foreground font-medium">Ligação</span>
+          <Select value={callF} onValueChange={setCallF}>
+            <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
+            <SelectContent>
+              {TRI_STATE.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <span className="text-[11px] text-muted-foreground font-medium">Responsável</span>
+          <Input placeholder="Digite o nome" value={respF} onChange={(e) => setRespF(e.target.value)} />
+        </div>
+        <div className="space-y-1 md:col-span-2">
+          <span className="text-[11px] text-muted-foreground font-medium">Vencimento</span>
+          <div className="flex gap-3 items-center">
+            <Input type="date" value={dueFrom} onChange={(e) => setDueFrom(e.target.value)} />
+            <span className="text-xs text-muted-foreground whitespace-nowrap">até</span>
+            <Input type="date" value={dueTo} onChange={(e) => setDueTo(e.target.value)} />
+          </div>
+        </div>
+        <div className="space-y-1 md:col-span-2">
+          <span className="text-[11px] text-muted-foreground font-medium">Importação</span>
+          <div className="flex gap-3 items-center">
+            <Input type="date" value={impFrom} onChange={(e) => setImpFrom(e.target.value)} />
+            <span className="text-xs text-muted-foreground whitespace-nowrap">até</span>
+            <Input type="date" value={impTo} onChange={(e) => setImpTo(e.target.value)} />
+          </div>
         </div>
         <div className="md:col-span-2 flex justify-end items-center gap-2">
           <span className="text-xs text-muted-foreground">{filtered.length} avisos</span>
