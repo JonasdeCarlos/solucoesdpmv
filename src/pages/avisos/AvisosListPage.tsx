@@ -43,6 +43,7 @@ const AvisosListPage = () => {
   const [a3F, setA3F] = useState<string>('all');
   const [noRespF, setNoRespF] = useState<string>('all');
   const [callF, setCallF] = useState<string>('all');
+  const [respF, setRespF] = useState('');
   const [dueFrom, setDueFrom] = useState('');
   const [dueTo, setDueTo] = useState('');
   const [impFrom, setImpFrom] = useState('');
