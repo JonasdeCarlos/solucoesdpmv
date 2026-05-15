@@ -493,6 +493,182 @@ export type Database = {
         }
         Relationships: []
       }
+      bh_balances: {
+        Row: {
+          balance_hhmm: string
+          balance_minutes: number
+          competencia: string
+          created_at: string
+          employee_id: string
+          empresa_cnpj: string
+          id: string
+          import_id: string | null
+          is_current: boolean
+          status: string
+          version: number
+        }
+        Insert: {
+          balance_hhmm?: string
+          balance_minutes?: number
+          competencia: string
+          created_at?: string
+          employee_id: string
+          empresa_cnpj?: string
+          id?: string
+          import_id?: string | null
+          is_current?: boolean
+          status?: string
+          version?: number
+        }
+        Update: {
+          balance_hhmm?: string
+          balance_minutes?: number
+          competencia?: string
+          created_at?: string
+          employee_id?: string
+          empresa_cnpj?: string
+          id?: string
+          import_id?: string | null
+          is_current?: boolean
+          status?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bh_balances_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "bh_employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bh_balances_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "bh_imports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bh_employees: {
+        Row: {
+          codigo: string
+          created_at: string
+          daily_minutes_override: number | null
+          empresa_cnpj: string
+          empresa_nome: string
+          id: string
+          nome: string
+          updated_at: string
+        }
+        Insert: {
+          codigo?: string
+          created_at?: string
+          daily_minutes_override?: number | null
+          empresa_cnpj?: string
+          empresa_nome?: string
+          id?: string
+          nome: string
+          updated_at?: string
+        }
+        Update: {
+          codigo?: string
+          created_at?: string
+          daily_minutes_override?: number | null
+          empresa_cnpj?: string
+          empresa_nome?: string
+          id?: string
+          nome?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      bh_imports: {
+        Row: {
+          competencia: string | null
+          empresa_cnpj: string
+          empresa_nome: string
+          errors_json: Json
+          file_hash: string | null
+          file_name: string
+          file_path: string | null
+          id: string
+          imported_at: string
+          imported_by: string
+          total_ok: number
+          total_paginas: number
+          total_pendentes: number
+        }
+        Insert: {
+          competencia?: string | null
+          empresa_cnpj?: string
+          empresa_nome?: string
+          errors_json?: Json
+          file_hash?: string | null
+          file_name?: string
+          file_path?: string | null
+          id?: string
+          imported_at?: string
+          imported_by?: string
+          total_ok?: number
+          total_paginas?: number
+          total_pendentes?: number
+        }
+        Update: {
+          competencia?: string | null
+          empresa_cnpj?: string
+          empresa_nome?: string
+          errors_json?: Json
+          file_hash?: string | null
+          file_name?: string
+          file_path?: string | null
+          id?: string
+          imported_at?: string
+          imported_by?: string
+          total_ok?: number
+          total_paginas?: number
+          total_pendentes?: number
+        }
+        Relationships: []
+      }
+      bh_settings: {
+        Row: {
+          daily_minutes: number
+          employee_id: string | null
+          empresa_cnpj: string | null
+          id: string
+          scope: string
+          trend_threshold_minutes: number
+          updated_at: string
+        }
+        Insert: {
+          daily_minutes?: number
+          employee_id?: string | null
+          empresa_cnpj?: string | null
+          id?: string
+          scope?: string
+          trend_threshold_minutes?: number
+          updated_at?: string
+        }
+        Update: {
+          daily_minutes?: number
+          employee_id?: string | null
+          empresa_cnpj?: string | null
+          id?: string
+          scope?: string
+          trend_threshold_minutes?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bh_settings_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "bh_employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clientes: {
         Row: {
           cnpj: string | null
