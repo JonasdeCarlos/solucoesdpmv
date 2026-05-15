@@ -1,6 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import logoMonteVerde from '@/assets/logo-monte-verde.png';
-import { Calculator, Users, FileText, Receipt, Clock, DollarSign, Percent, Building2, FileStack, ClipboardCheck, LogOut, FileCog, CalendarDays, UserPlus, Bell, ShieldCheck } from 'lucide-react';
+import { Calculator, Users, FileText, Receipt, Clock, DollarSign, Percent, Building2, FileStack, ClipboardCheck, LogOut, FileCog, CalendarDays, UserPlus, Bell, ShieldCheck, Hourglass } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,7 @@ const NAV_ITEMS = [
   { to: '/pdf-tools', label: 'Central de PDF', icon: FileCog },
   { to: '/provisoes-dsr', label: 'Provisões DSR', icon: CalendarDays },
   { to: '/avisos', label: 'Avisos', icon: Bell },
+  { to: '/banco-horas', label: 'Banco de Horas', icon: Hourglass },
   { to: '/admissao/escritorio', label: 'Admissão', icon: UserPlus },
 ];
 
