@@ -36,6 +36,12 @@ import AvisosImportPage from "./pages/avisos/AvisosImportPage";
 import AvisoEmpresasPage from "./pages/avisos/AvisoEmpresasPage";
 import AvisoDetailPage from "./pages/avisos/AvisoDetailPage";
 import UsuariosPage from "./pages/UsuariosPage";
+import BhLayout from "./components/bancohoras/BhLayout";
+import BhDashboardPage from "./pages/bancoHoras/BhDashboardPage";
+import BhImportPage from "./pages/bancoHoras/BhImportPage";
+import BhEmployeesPage from "./pages/bancoHoras/BhEmployeesPage";
+import BhParametrosPage from "./pages/bancoHoras/BhParametrosPage";
+import BhAuditoriaPage from "./pages/bancoHoras/BhAuditoriaPage";
 
 const queryClient = new QueryClient();
 
@@ -88,6 +94,13 @@ const App = () => (
               <Route path="/avisos/:id" element={<AvisoDetailPage />} />
               <Route path="/provisoes-dsr" element={<ProvisoesDsrPage />} />
               <Route path="/usuarios" element={<UsuariosPage />} />
+              <Route path="/banco-horas" element={<BhLayout />}>
+                <Route index element={<BhDashboardPage />} />
+                <Route path="importar" element={<BhImportPage />} />
+                <Route path="colaboradores" element={<BhEmployeesPage />} />
+                <Route path="parametros" element={<BhParametrosPage />} />
+                <Route path="auditoria" element={<BhAuditoriaPage />} />
+              </Route>
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
