@@ -177,7 +177,7 @@ export function exportCsv(rows: ReportRow[], filename: string) {
   URL.revokeObjectURL(url);
 }
 
-export async function exportPdf(rows: ReportRow[], meta: ReportMeta, filename: string) {
+export async function exportPdf(rows: ReportRow[], meta: ReportMeta, _filename?: string): Promise<ArrayBuffer> {
   const doc = new jsPDF({ orientation: 'landscape' });
   const pw = doc.internal.pageSize.getWidth();
   const ph = doc.internal.pageSize.getHeight();
