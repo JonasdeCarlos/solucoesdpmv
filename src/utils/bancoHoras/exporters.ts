@@ -65,6 +65,106 @@ export async function loadMonteVerdeLogo(): Promise<string> {
   return fetchAsDataUrl('/images/logo-monte-verde-pdf.png');
 }
 
+function drawBarChart(
+  doc: jsPDF,
+  x: number, y: number, w: number, h: number,
+  title: string,
+  data: { label: string; value: number }[],
+  color: [number, number, number],
+  valueSuffix = '',
+) {
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(57, 52, 33);
+  doc.text(title, x, y);
+  const cy = y + 3, ch = h - 3;
+  const padL = 12, padB = 10, padT = 4, padR = 2;
+  const plotX = x + padL, plotY = cy + padT;
+  const plotW = w - padL - padR, plotH = ch - padT - padB;
+  doc.setDrawColor(200); doc.setLineWidth(0.2);
+  doc.line(plotX, plotY, plotX, plotY + plotH);
+  doc.line(plotX, plotY + plotH, plotX + plotW, plotY + plotH);
+  const max = Math.max(1, ...data.map((d) => Math.abs(d.value)));
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(6); doc.setTextColor(120);
+  for (let i = 0; i <= 4; i++) {
+    const v = max * (i / 4);
+    const ty = plotY + plotH - (i / 4) * plotH;
+    doc.setDrawColor(235); doc.line(plotX, ty, plotX + plotW, ty);
+    doc.text(`${v.toFixed(0)}${valueSuffix}`, plotX - 1, ty + 1.2, { align: 'right' });
+  }
+  const n = data.length || 1;
+  const slot = plotW / n;
+  const bw = slot * 0.7;
+  const gap = slot * 0.3;
+  data.forEach((d, i) => {
+    const bx = plotX + i * slot + gap / 2;
+    const bh = (Math.abs(d.value) / max) * plotH;
+    const by = plotY + plotH - bh;
+    doc.setFillColor(color[0], color[1], color[2]);
+    doc.rect(bx, by, bw, bh, 'F');
+    doc.setTextColor(80); doc.setFontSize(6);
+    doc.text(d.label, bx + bw / 2, plotY + plotH + 3, { align: 'center' });
+  });
+  doc.setTextColor(0);
+}
+
+function drawStackedBarChart(
+  doc: jsPDF,
+  x: number, y: number, w: number, h: number,
+  title: string,
+  data: { label: string; verde: number; amarelo: number; laranja: number; vermelho: number }[],
+) {
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(57, 52, 33);
+  doc.text(title, x, y);
+  const cy = y + 3, ch = h - 3;
+  const padL = 12, padB = 10, padT = 4, padR = 2;
+  const plotX = x + padL, plotY = cy + padT;
+  const plotW = w - padL - padR, plotH = ch - padT - padB;
+  doc.setDrawColor(200); doc.setLineWidth(0.2);
+  doc.line(plotX, plotY, plotX, plotY + plotH);
+  doc.line(plotX, plotY + plotH, plotX + plotW, plotY + plotH);
+  const max = Math.max(1, ...data.map((d) => d.verde + d.amarelo + d.laranja + d.vermelho));
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(6); doc.setTextColor(120);
+  for (let i = 0; i <= 4; i++) {
+    const v = max * (i / 4);
+    const ty = plotY + plotH - (i / 4) * plotH;
+    doc.setDrawColor(235); doc.line(plotX, ty, plotX + plotW, ty);
+    doc.text(v.toFixed(0), plotX - 1, ty + 1.2, { align: 'right' });
+  }
+  const n = data.length || 1;
+  const slot = plotW / n;
+  const bw = slot * 0.7;
+  const gap = slot * 0.3;
+  const order = ['verde', 'amarelo', 'laranja', 'vermelho'] as const;
+  data.forEach((d, i) => {
+    const bx = plotX + i * slot + gap / 2;
+    let acc = 0;
+    order.forEach((f) => {
+      const val = (d as any)[f] as number;
+      if (val <= 0) return;
+      const segH = (val / max) * plotH;
+      const by = plotY + plotH - acc - segH;
+      const [r, g, b] = FAIXA_RGB[f];
+      doc.setFillColor(r, g, b);
+      doc.rect(bx, by, bw, segH, 'F');
+      acc += segH;
+    });
+    doc.setTextColor(80); doc.setFontSize(6);
+    doc.text(d.label, bx + bw / 2, plotY + plotH + 3, { align: 'center' });
+  });
+  // Mini legenda
+  doc.setFontSize(6);
+  let lx = plotX;
+  const ly = plotY + plotH + 7;
+  order.forEach((f) => {
+    const [r, g, b] = FAIXA_RGB[f];
+    doc.setFillColor(r, g, b);
+    doc.rect(lx, ly - 2.2, 2.5, 2.5, 'F');
+    doc.setTextColor(80);
+    doc.text(FAIXA_LABEL[f], lx + 3.2, ly);
+    lx += 18;
+  });
+  doc.setTextColor(0);
+}
+
 export function exportCsv(rows: ReportRow[], filename: string) {
   const headers = ['Empresa', 'Competência', 'Código', 'Nome', 'BSALDO', 'Saldo (dias)', 'Faixa', 'Tendência', 'Variação (HH:MM)'];
   const lines = [headers.join(';')];
