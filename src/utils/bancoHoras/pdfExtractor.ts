@@ -30,41 +30,81 @@ function parseHHMMsigned(s: string): number | null {
   return sign * (parseInt(m[2], 10) * 60 + parseInt(m[3], 10));
 }
 
+type PItem = { x: number; y: number; w: number; str: string };
+type PLine = { y: number; items: PItem[]; text: string };
+
 /**
  * Agrupa itens de texto da página em linhas por coordenada Y, ordenando por X.
+ * Retorna estrutura com itens posicionais + texto concatenado.
  */
-function pageToLines(textItems: any[]): string[] {
-  type Item = { x: number; y: number; str: string };
-  const items: Item[] = textItems
-    .filter((it: any) => it && it.str !== undefined)
+function pageToStructuredLines(textItems: any[]): PLine[] {
+  const items: PItem[] = textItems
+    .filter((it: any) => it && it.str !== undefined && (it.str || '').trim() !== '')
     .map((it: any) => ({
       x: it.transform?.[4] ?? 0,
       y: Math.round((it.transform?.[5] ?? 0) * 10) / 10,
+      w: it.width ?? 0,
       str: it.str || '',
     }));
-  // bucketize Y with tolerance
   const sortedByY = [...items].sort((a, b) => b.y - a.y);
-  const lines: { y: number; items: Item[] }[] = [];
+  const buckets: { y: number; items: PItem[] }[] = [];
   const TOL = 2.5;
   for (const it of sortedByY) {
-    let bucket = lines.find((l) => Math.abs(l.y - it.y) <= TOL);
+    let bucket = buckets.find((l) => Math.abs(l.y - it.y) <= TOL);
     if (!bucket) {
       bucket = { y: it.y, items: [] };
-      lines.push(bucket);
+      buckets.push(bucket);
     }
     bucket.items.push(it);
   }
-  return lines.map((l) =>
-    l.items
-      .sort((a, b) => a.x - b.x)
-      .map((i) => i.str)
-      .join(' ')
-      .replace(/\s+/g, ' ')
-      .trim(),
-  );
+  return buckets.map((l) => {
+    const sorted = l.items.sort((a, b) => a.x - b.x);
+    return {
+      y: l.y,
+      items: sorted,
+      text: sorted.map((i) => i.str).join(' ').replace(/\s+/g, ' ').trim(),
+    };
+  });
 }
 
-function extractFromLines(lines: string[], pageNum: number): ExtractedRow {
+/**
+ * Dado um rótulo (ex: "NOME:"), localiza o item de texto correspondente e
+ * retorna o conteúdo da próxima linha abaixo, dentro de uma faixa horizontal
+ * alinhada ao rótulo (X do rótulo até o início do próximo rótulo na mesma linha).
+ */
+function valueBelowLabel(
+  structured: PLine[],
+  labelRegex: RegExp,
+  opts: { maxLinesBelow?: number; padRight?: number } = {},
+): string {
+  const maxLinesBelow = opts.maxLinesBelow ?? 4;
+  for (let i = 0; i < structured.length; i++) {
+    const line = structured[i];
+    const labelItemIdx = line.items.findIndex((it) => labelRegex.test(it.str));
+    if (labelItemIdx === -1) continue;
+    const labelItem = line.items[labelItemIdx];
+    // Limite direito = X do próximo item na mesma linha (próximo rótulo) ou +∞
+    const nextItem = line.items[labelItemIdx + 1];
+    const xLeft = labelItem.x - 2;
+    const xRight = nextItem ? nextItem.x - 2 : Number.POSITIVE_INFINITY;
+    // Procurar nas próximas linhas (Y menor) o conteúdo dentro da faixa X
+    for (let j = i + 1; j < Math.min(i + 1 + maxLinesBelow, structured.length); j++) {
+      const below = structured[j];
+      const inside = below.items.filter((it) => it.x >= xLeft && it.x < xRight);
+      if (inside.length === 0) continue;
+      const txt = inside.map((it) => it.str).join(' ').replace(/\s+/g, ' ').trim();
+      if (txt) return txt;
+    }
+    return '';
+  }
+  return '';
+}
+
+function pageToLines(textItems: any[]): string[] {
+  return pageToStructuredLines(textItems).map((l) => l.text);
+}
+
+function extractFromLines(lines: string[], structured: PLine[], pageNum: number): ExtractedRow {
   const all = lines.join('\n');
 
   // Período
@@ -102,48 +142,24 @@ function extractFromLines(lines: string[], pageNum: number): ExtractedRow {
     }
   }
 
-  // Nome do colaborador: após "NOME:"
-  let nome = '';
-  for (let i = 0; i < lines.length; i++) {
-    if (/^NOME:/i.test(lines[i])) {
-      const same = lines[i].replace(/^NOME:\s*/i, '').trim();
-      if (same) {
-        nome = same;
-      } else {
-        for (let j = i + 1; j < Math.min(i + 4, lines.length); j++) {
-          const cand = lines[j].trim();
-          if (cand && !/^ADMISSÃO|^CPF|^C\.T\.P\.S|^Nº|^N° FOLHA|^\d{2}\/\d{2}\/\d{4}/i.test(cand)) {
-            nome = cand;
-            break;
-          }
-        }
-      }
-      break;
-    }
+  // Nome do colaborador: extração posicional sob o rótulo "NOME:"
+  let nome = valueBelowLabel(structured, /^NOME:?$/i, { maxLinesBelow: 4 });
+  // Limpa eventuais sufixos (datas, etc. que possam ter caído na faixa)
+  if (nome) {
+    nome = nome.replace(/\s+\d{2}\/\d{2}\/\d{4}.*$/, '').trim();
   }
 
-  // Código (Nº FOLHA): valor após "Nº FOLHA:" (ou linha abaixo)
-  let codigo = '';
-  const folhaInline = all.match(/N[º°o]\s*FOLHA:\s*([A-Za-z0-9.\-]+)/i);
-  if (folhaInline) codigo = folhaInline[1];
+  // Código (Nº FOLHA): extração posicional sob o rótulo "Nº FOLHA:"
+  let codigo = valueBelowLabel(structured, /^N[º°o]\s*FOLHA:?$/i, { maxLinesBelow: 4 });
+  if (codigo) {
+    // Pega o primeiro token alfanumérico curto
+    const tok = codigo.split(/\s+/).find((t) => /^[A-Za-z0-9.\-/]{1,12}$/.test(t));
+    codigo = tok || codigo.trim();
+  }
+  // Fallback inline (caso o PDF tenha "Nº FOLHA: 15" na mesma linha)
   if (!codigo) {
-    // Tenta achar linha logo após "Nº FOLHA:" header
-    for (let i = 0; i < lines.length; i++) {
-      if (/N[º°o]\s*FOLHA/i.test(lines[i]) && !folhaInline) {
-        // procurar próximo número curto na mesma área (linha 1 ou 2 abaixo)
-        for (let j = i + 1; j < Math.min(i + 3, lines.length); j++) {
-          const tokens = lines[j].split(/\s+/).filter(Boolean);
-          for (const t of tokens) {
-            if (/^\d{1,8}$/.test(t)) {
-              codigo = t;
-              break;
-            }
-          }
-          if (codigo) break;
-        }
-        break;
-      }
-    }
+    const folhaInline = all.match(/N[º°o]\s*FOLHA:\s*([A-Za-z0-9.\-/]+)/i);
+    if (folhaInline) codigo = folhaInline[1];
   }
 
   // BSALDO da linha TOTAIS
@@ -209,8 +225,9 @@ export async function extractPontoPdf(file: File): Promise<ExtractedRow[]> {
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const tc = await page.getTextContent();
-    const lines = pageToLines(tc.items);
-    const row = extractFromLines(lines, i);
+    const structured = pageToStructuredLines(tc.items);
+    const lines = structured.map((l) => l.text);
+    const row = extractFromLines(lines, structured, i);
     if (!row.nome) {
       // Página sem cabeçalho de colaborador (capa, sumário) → ignorar
       continue;
