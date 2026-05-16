@@ -1,10 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Download, FileText } from 'lucide-react';
+import { Download, FileText, ImagePlus, X } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
   LineChart, Line, CartesianGrid,
@@ -15,13 +15,17 @@ import {
 } from '@/utils/bancoHoras/calc';
 import { SaldoChip } from '@/components/bancohoras/SaldoChip';
 import { TrendArrow } from '@/components/bancohoras/TrendArrow';
-import { exportCsv, exportPdf, ReportRow } from '@/utils/bancoHoras/exporters';
+import { exportCsv, exportPdf, ReportRow, loadMonteVerdeLogo } from '@/utils/bancoHoras/exporters';
 
 type FaixaFilter = 'todos' | 'verde' | 'amarelo' | 'laranja' | 'vermelho';
 type SinalFilter = 'todos' | 'positivo' | 'negativo' | 'zero';
 
 export default function BhDashboardPage() {
   const { imports, employees, balances, settings, loading } = useBhAll();
+
+  // Logo da empresa (persistida em localStorage por CNPJ)
+  const [empresaLogo, setEmpresaLogo] = useState<string>('');
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   const empresas = useMemo(() => {
     const map = new Map<string, string>();
@@ -35,6 +39,26 @@ export default function BhDashboardPage() {
   const [sinal, setSinal] = useState<SinalFilter>('todos');
   const [compIni, setCompIni] = useState<string>('');
   const [compFim, setCompFim] = useState<string>('');
+
+  useEffect(() => {
+    if (empresa === 'all') { setEmpresaLogo(''); return; }
+    const k = `bh:logo:${empresa}`;
+    setEmpresaLogo(localStorage.getItem(k) || '');
+  }, [empresa]);
+
+  const onPickLogo = async (f: File) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const data = reader.result as string;
+      setEmpresaLogo(data);
+      if (empresa !== 'all') localStorage.setItem(`bh:logo:${empresa}`, data);
+    };
+    reader.readAsDataURL(f);
+  };
+  const clearLogo = () => {
+    setEmpresaLogo('');
+    if (empresa !== 'all') localStorage.removeItem(`bh:logo:${empresa}`);
+  };
 
   const empById = useMemo(() => new Map(employees.map((e) => [e.id, e])), [employees]);
 
@@ -105,6 +129,18 @@ export default function BhDashboardPage() {
     return Array.from(map.entries()).sort().map(([c, d]) => ({ competencia: competenciaLabel(c), ...d }));
   }, [filteredBalances]);
 
+  // Memória de cálculo (evolução mensal por competência)
+  const memoriaEvolucao = useMemo(() => {
+    const map = new Map<string, { saldoMin: number; colabs: number }>();
+    filteredBalances.forEach((b) => {
+      const cur = map.get(b.competencia) || { saldoMin: 0, colabs: 0 };
+      cur.saldoMin += b.balance_minutes;
+      cur.colabs += 1;
+      map.set(b.competencia, cur);
+    });
+    return Array.from(map.entries()).sort().map(([competencia, v]) => ({ competencia, ...v }));
+  }, [filteredBalances]);
+
   // série por colaborador (se selecionado)
   const serieEmpregado = useMemo(() => {
     if (empregado === 'all') return [];
@@ -157,6 +193,27 @@ export default function BhDashboardPage() {
   if (loading) return <p className="text-sm text-muted-foreground">Carregando…</p>;
 
   const meses = [...new Set(balances.map((b) => b.competencia.slice(0, 7)))].sort();
+
+  const empresaLabelStr = empresa === 'all'
+    ? 'Todas as empresas'
+    : (empresas.find((e) => e.cnpj === empresa)?.nome || empresa);
+
+  const handleExportPdf = async () => {
+    const logoMV = await loadMonteVerdeLogo();
+    await exportPdf(reportRows, {
+      titulo: 'Relatório gerencial — Banco de Horas',
+      empresaLabel: empresaLabelStr,
+      competenciaLabel: ultimoMes ? competenciaLabel(ultimoMes) : undefined,
+      logoMonteVerdeDataUrl: logoMV,
+      logoEmpresaDataUrl: empresaLogo || undefined,
+      kpis: {
+        totalColabs,
+        saldoConsolidadoMin: saldoConsolidado,
+        distFaixa,
+      },
+      evolucao: memoriaEvolucao,
+    }, `banco-horas-${ultimoMes || 'periodo'}.pdf`);
+  };
 
   return (
     <div className="space-y-4">
@@ -222,6 +279,33 @@ export default function BhDashboardPage() {
         </CardContent>
       </Card>
 
+      {empresa !== 'all' && (
+        <Card>
+          <CardContent className="pt-4 flex items-center gap-3 flex-wrap">
+            <div className="text-xs text-muted-foreground">Logo da empresa (aparece no PDF):</div>
+            {empresaLogo ? (
+              <div className="flex items-center gap-2">
+                <img src={empresaLogo} alt="Logo empresa" className="h-10 w-auto object-contain border rounded p-1 bg-white" />
+                <Button size="sm" variant="ghost" onClick={clearLogo}><X className="w-3 h-3 mr-1" /> Remover</Button>
+              </div>
+            ) : (
+              <>
+                <input
+                  ref={logoInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="hidden"
+                  onChange={(e) => e.target.files?.[0] && onPickLogo(e.target.files[0])}
+                />
+                <Button size="sm" variant="outline" onClick={() => logoInputRef.current?.click()}>
+                  <ImagePlus className="w-3 h-3 mr-1" /> Adicionar logo
+                </Button>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card><CardContent className="pt-4">
@@ -250,7 +334,7 @@ export default function BhDashboardPage() {
           <Button size="sm" variant="outline" onClick={() => exportCsv(reportRows, `banco-horas-${ultimoMes || 'periodo'}.csv`)}>
             <Download className="w-3 h-3 mr-1" /> CSV
           </Button>
-          <Button size="sm" variant="outline" onClick={() => exportPdf(reportRows, `Banco de Horas — ${ultimoMes ? competenciaLabel(ultimoMes) : ''}`, `banco-horas-${ultimoMes || 'periodo'}.pdf`)}>
+          <Button size="sm" variant="outline" onClick={handleExportPdf}>
             <FileText className="w-3 h-3 mr-1" /> PDF
           </Button>
         </CardContent></Card>
