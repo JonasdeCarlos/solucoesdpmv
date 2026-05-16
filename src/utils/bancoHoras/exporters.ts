@@ -314,6 +314,9 @@ export async function exportPdf(rows: ReportRow[], meta: ReportMeta, filename: s
   // Top 10 positivos / negativos lado a lado, com legenda explicativa
   if ((meta.topPos && meta.topPos.length > 0) || (meta.topNeg && meta.topNeg.length > 0)) {
     const half = (pw - 28 - 4) / 2;
+    // Reserva espaço para a seção inteira; se não couber, vai para nova página
+    const sectionH = 14 + 6 * Math.max(meta.topPos?.length || 0, meta.topNeg?.length || 0) + 6;
+    if (y + sectionH > ph - 20) { doc.addPage(); y = 14; }
     // Título da seção
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
