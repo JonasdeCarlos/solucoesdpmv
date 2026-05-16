@@ -27,6 +27,18 @@ function buildComp(mm: string, yy: string): { iso: string; label: string } {
   return { iso: `${y}-${m}-01`, label: `${m}/${y}` };
 }
 
+function isPlausibleYear(y: string): boolean {
+  const n = parseInt(y, 10);
+  const current = new Date().getFullYear();
+  // Cartões ponto válidos: entre 2015 e ano corrente + 1
+  return n >= 2015 && n <= current + 1;
+}
+
+function isPlausibleMonth(m: string): boolean {
+  const n = parseInt(m, 10);
+  return n >= 1 && n <= 12;
+}
+
 /**
  * Localiza a competência no texto do PDF tentando múltiplos formatos
  * encontrados em cartões ponto Secullum (Período, Competência, Mês/Ano…).
@@ -34,21 +46,32 @@ function buildComp(mm: string, yy: string): { iso: string; label: string } {
  */
 function findCompetencia(all: string): { iso: string; label: string } {
   const norm = all.replace(/\s+/g, ' ');
+  const tryBuild = (mm: string, yy: string) => {
+    const yFull = normalizeYear(yy);
+    if (!isPlausibleMonth(mm) || !isPlausibleYear(yFull)) return null;
+    return buildComp(mm, yFull);
+  };
   // 1) Período: dd/mm/yyyy até dd/mm/yyyy → usa a data inicial
   let m = norm.match(/Per[íi]?odo:?\s*(\d{1,2})\/(\d{1,2})\/(\d{2,4})\s*(?:at[ée]|a|-|\u2013)\s*(\d{1,2})\/(\d{1,2})\/(\d{2,4})/i);
-  if (m) return buildComp(m[2], m[3]);
+  if (m) { const r = tryBuild(m[2], m[3]); if (r) return r; }
   // 2) Período: dd/mm/yyyy (sem "até")
   m = norm.match(/Per[íi]?odo:?\s*(\d{1,2})\/(\d{1,2})\/(\d{2,4})/i);
-  if (m) return buildComp(m[2], m[3]);
+  if (m) { const r = tryBuild(m[2], m[3]); if (r) return r; }
   // 3) Competência: mm/yyyy
   m = norm.match(/Compet[êe]ncia:?\s*(\d{1,2})\/(\d{2,4})/i);
-  if (m) return buildComp(m[1], m[2]);
+  if (m) { const r = tryBuild(m[1], m[2]); if (r) return r; }
   // 4) Mês/Ano: mm/yyyy
   m = norm.match(/M[êe]s\s*\/?\s*Ano:?\s*(\d{1,2})\/(\d{2,4})/i);
-  if (m) return buildComp(m[1], m[2]);
+  if (m) { const r = tryBuild(m[1], m[2]); if (r) return r; }
   // 5) Referência: mm/yyyy
   m = norm.match(/Refer[êe]ncia:?\s*(\d{1,2})\/(\d{2,4})/i);
-  if (m) return buildComp(m[1], m[2]);
+  if (m) { const r = tryBuild(m[1], m[2]); if (r) return r; }
+  // 6) Varredura global: pega a data plausível mais recente do documento
+  const all2 = Array.from(norm.matchAll(/(\d{1,2})\/(\d{1,2})\/(\d{4})/g))
+    .map((x) => ({ mm: x[2], yy: x[3] }))
+    .filter((x) => isPlausibleMonth(x.mm) && isPlausibleYear(x.yy))
+    .sort((a, b) => (b.yy + b.mm).localeCompare(a.yy + a.mm));
+  if (all2.length > 0) return buildComp(all2[0].mm, all2[0].yy);
   return { iso: '', label: '' };
 }
 
