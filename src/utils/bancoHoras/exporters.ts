@@ -284,6 +284,28 @@ export async function exportPdf(rows: ReportRow[], meta: ReportMeta, filename: s
   y += 5;
   doc.setTextColor(0);
 
+  // Gráficos visuais — Evolução e Distribuição por faixa/mês
+  if ((meta.evolucao && meta.evolucao.length > 0) || (meta.distMes && meta.distMes.length > 0)) {
+    const chartH = 55;
+    if (y + chartH > ph - 20) { doc.addPage(); y = 14; }
+    const half = (pw - 28 - 4) / 2;
+    if (meta.evolucao && meta.evolucao.length > 0) {
+      const evoData = meta.evolucao.map((e) => ({
+        label: competenciaLabel(e.competencia),
+        value: Math.round((e.saldoMin / 60) * 10) / 10,
+      }));
+      drawBarChart(doc, 14, y, half, chartH, 'Evolução do saldo total (horas)', evoData, [98, 142, 63], 'h');
+    }
+    if (meta.distMes && meta.distMes.length > 0) {
+      const dmData = meta.distMes.map((d) => ({
+        label: competenciaLabel(d.competencia),
+        verde: d.verde, amarelo: d.amarelo, laranja: d.laranja, vermelho: d.vermelho,
+      }));
+      drawStackedBarChart(doc, 14 + half + 4, y, half, chartH, 'Distribuição por faixa / mês', dmData);
+    }
+    y += chartH + 8;
+  }
+
   // Memória de cálculo: evolução mensal
   if (meta.evolucao && meta.evolucao.length > 0) {
     autoTable(doc, {
