@@ -200,12 +200,20 @@ export default function BhDashboardPage() {
 
   const handleExportPdf = async () => {
     const logoMV = await loadMonteVerdeLogo();
+    // Resolve logo da empresa: usa a selecionada; se "Todas", tenta usar a única CNPJ do mês
+    let logoEmp = empresaLogo;
+    if (!logoEmp) {
+      const cnpjs = [...new Set(balancesUltimoMes.map((b) => b.empresa_cnpj).filter(Boolean))];
+      if (cnpjs.length === 1) {
+        logoEmp = localStorage.getItem(`bh:logo:${cnpjs[0]}`) || '';
+      }
+    }
     await exportPdf(reportRows, {
       titulo: 'Relatório gerencial — Banco de Horas',
       empresaLabel: empresaLabelStr,
       competenciaLabel: ultimoMes ? competenciaLabel(ultimoMes) : undefined,
       logoMonteVerdeDataUrl: logoMV,
-      logoEmpresaDataUrl: empresaLogo || undefined,
+      logoEmpresaDataUrl: logoEmp || undefined,
       kpis: {
         totalColabs,
         saldoConsolidadoMin: saldoConsolidado,

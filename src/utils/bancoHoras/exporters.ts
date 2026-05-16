@@ -93,54 +93,76 @@ export async function exportPdf(rows: ReportRow[], meta: ReportMeta, filename: s
   const pw = doc.internal.pageSize.getWidth();
   const ph = doc.internal.pageSize.getHeight();
 
-  // Cabeçalho: logos + título
-  let headerY = 10;
+  // Cabeçalho: Monte Verde à esquerda, empresa à direita, título no centro
+  const headerY = 10;
+  const logoH = 18;
+  const logoW = 36;
   const logoMV = meta.logoMonteVerdeDataUrl || (await loadMonteVerdeLogo());
   if (logoMV) {
-    try { doc.addImage(logoMV, 'PNG', 14, headerY, 36, 18); } catch {}
+    try { doc.addImage(logoMV, 'PNG', 14, headerY, logoW, logoH); } catch {}
   }
   if (meta.logoEmpresaDataUrl) {
-    try { doc.addImage(meta.logoEmpresaDataUrl, 'PNG', pw - 14 - 36, headerY, 36, 18); } catch {}
+    try { doc.addImage(meta.logoEmpresaDataUrl, 'PNG', pw - 14 - logoW, headerY, logoW, logoH); } catch {}
   }
 
   doc.setTextColor(57, 52, 33);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(13);
-  doc.text('Monte Verde Contabilidade', pw / 2, headerY + 6, { align: 'center' });
+  doc.text(meta.titulo, pw / 2, headerY + 8, { align: 'center' });
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(11);
-  doc.text(meta.titulo, pw / 2, headerY + 12, { align: 'center' });
-  doc.setFontSize(8);
+  doc.setFontSize(9);
   doc.setTextColor(100);
   const sub = [meta.empresaLabel, meta.competenciaLabel].filter(Boolean).join(' • ');
-  if (sub) doc.text(sub, pw / 2, headerY + 17, { align: 'center' });
-  doc.text(`Gerado em ${new Date().toLocaleString('pt-BR')}`, pw / 2, headerY + 21, { align: 'center' });
+  if (sub) doc.text(sub, pw / 2, headerY + 14, { align: 'center' });
+  doc.setFontSize(7);
+  doc.text(`Gerado em ${new Date().toLocaleString('pt-BR')}`, pw / 2, headerY + 19, { align: 'center' });
   doc.setTextColor(0);
 
-  let y = headerY + 28;
+  let y = headerY + 26;
 
   // KPIs
   if (meta.kpis) {
     const k = meta.kpis;
     const boxW = (pw - 28) / 3;
-    const boxH = 18;
-    const drawBox = (x: number, label: string, value: string) => {
-      doc.setDrawColor(220);
-      doc.setFillColor(245, 247, 242);
-      doc.roundedRect(x, y, boxW, boxH, 2, 2, 'FD');
-      doc.setFontSize(7);
-      doc.setTextColor(100);
-      doc.text(label, x + 3, y + 5);
-      doc.setFontSize(12);
-      doc.setTextColor(57, 52, 33);
-      doc.setFont('helvetica', 'bold');
-      doc.text(value, x + 3, y + 13);
-      doc.setFont('helvetica', 'normal');
-    };
-    drawBox(14, 'COLABORADORES NO MÊS', String(k.totalColabs));
-    drawBox(14 + boxW + 2, 'SALDO CONSOLIDADO', formatHHMM(k.saldoConsolidadoMin));
-    const dist = `Verde ${k.distFaixa.verde || 0} • Amarelo ${k.distFaixa.amarelo || 0} • Laranja ${k.distFaixa.laranja || 0} • Vermelho ${k.distFaixa.vermelho || 0}`;
-    drawBox(14 + (boxW + 2) * 2, 'DISTRIBUIÇÃO POR FAIXA', dist);
+    const boxH = 26;
+    // Caixa 1 — colaboradores
+    doc.setDrawColor(220); doc.setFillColor(245, 247, 242);
+    doc.roundedRect(14, y, boxW, boxH, 2, 2, 'FD');
+    doc.setFontSize(7); doc.setTextColor(100);
+    doc.text('COLABORADORES NO MÊS', 17, y + 5);
+    doc.setFontSize(14); doc.setTextColor(57, 52, 33); doc.setFont('helvetica', 'bold');
+    doc.text(String(k.totalColabs), 17, y + 15);
+    doc.setFont('helvetica', 'normal');
+    // Caixa 2 — saldo consolidado
+    const x2 = 14 + boxW + 2;
+    doc.setDrawColor(220); doc.setFillColor(245, 247, 242);
+    doc.roundedRect(x2, y, boxW, boxH, 2, 2, 'FD');
+    doc.setFontSize(7); doc.setTextColor(100);
+    doc.text('SALDO CONSOLIDADO', x2 + 3, y + 5);
+    doc.setFontSize(14); doc.setTextColor(57, 52, 33); doc.setFont('helvetica', 'bold');
+    doc.text(formatHHMM(k.saldoConsolidadoMin), x2 + 3, y + 15);
+    doc.setFont('helvetica', 'normal');
+    // Caixa 3 — distribuição por faixa em lista vertical com swatches
+    const x3 = 14 + (boxW + 2) * 2;
+    doc.setDrawColor(220); doc.setFillColor(245, 247, 242);
+    doc.roundedRect(x3, y, boxW, boxH, 2, 2, 'FD');
+    doc.setFontSize(7); doc.setTextColor(100);
+    doc.text('DISTRIBUIÇÃO POR FAIXA', x3 + 3, y + 5);
+    doc.setFontSize(8); doc.setTextColor(60);
+    const faixas = ['verde', 'amarelo', 'laranja', 'vermelho'] as const;
+    const colW = (boxW - 6) / 2;
+    faixas.forEach((f, i) => {
+      const col = i % 2;
+      const row = Math.floor(i / 2);
+      const cx = x3 + 3 + col * colW;
+      const cy = y + 11 + row * 7;
+      const [r, g, b] = FAIXA_RGB[f];
+      doc.setFillColor(r, g, b);
+      doc.rect(cx, cy - 3, 3.5, 3.5, 'F');
+      doc.setTextColor(60);
+      doc.text(`${FAIXA_LABEL[f]}: ${k.distFaixa[f] || 0}`, cx + 5, cy);
+    });
+    doc.setTextColor(0);
     y += boxH + 6;
   }
 
@@ -178,27 +200,39 @@ export async function exportPdf(rows: ReportRow[], meta: ReportMeta, filename: s
     y = (doc as any).lastAutoTable.finalY + 6;
   }
 
-  // Top 10 positivos / negativos lado a lado
+  // Top 10 positivos / negativos lado a lado, com legenda explicativa
   if ((meta.topPos && meta.topPos.length > 0) || (meta.topNeg && meta.topNeg.length > 0)) {
     const half = (pw - 28 - 4) / 2;
-    const yStart = y;
+    // Título da seção
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(57, 52, 33);
+    doc.text('Ranking de colaboradores — Top 10 por saldo do mês', 14, y);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(100);
+    doc.text(
+      'Lista os 10 colaboradores com maior saldo credor (horas a receber/folgar) e os 10 com maior saldo devedor (horas a compensar).',
+      14, y + 4,
+    );
+    doc.setTextColor(0);
+    const yStart = y + 8;
     if (meta.topPos && meta.topPos.length > 0) {
       autoTable(doc, {
         startY: yStart,
-        head: [['#', 'Colaborador', 'Saldo']],
+        head: [[{ content: 'Top 10 — Saldo positivo (credor)', colSpan: 3, styles: { halign: 'left' } }], ['#', 'Colaborador', 'Saldo']],
         body: meta.topPos.slice(0, 10).map((t, i) => [String(i + 1), `${t.codigo ? t.codigo + ' — ' : ''}${t.nome}`, formatHHMM(t.minutes)]),
         styles: { fontSize: 8, cellPadding: 1.5 },
         headStyles: { fillColor: [34, 197, 94] },
         margin: { left: 14, right: 14 + half + 4 },
         tableWidth: half,
-        didDrawPage: () => {},
       });
     }
     const yAfterPos = (doc as any).lastAutoTable?.finalY ?? yStart;
     if (meta.topNeg && meta.topNeg.length > 0) {
       autoTable(doc, {
         startY: yStart,
-        head: [['#', 'Colaborador', 'Saldo']],
+        head: [[{ content: 'Top 10 — Saldo negativo (devedor)', colSpan: 3, styles: { halign: 'left' } }], ['#', 'Colaborador', 'Saldo']],
         body: meta.topNeg.slice(0, 10).map((t, i) => [String(i + 1), `${t.codigo ? t.codigo + ' — ' : ''}${t.nome}`, formatHHMM(t.minutes)]),
         styles: { fontSize: 8, cellPadding: 1.5 },
         headStyles: { fillColor: [239, 68, 68] },
