@@ -38,6 +38,7 @@ export interface ReportMeta {
     distFaixa: Record<string, number>;
   };
   evolucao?: { competencia: string; saldoMin: number; colabs: number }[];
+  distMes?: { competencia: string; verde: number; amarelo: number; laranja: number; vermelho: number }[];
   topPos?: { nome: string; codigo?: string; minutes: number }[];
   topNeg?: { nome: string; codigo?: string; minutes: number }[];
   pontosUltimoMes?: { codigo: string; nome: string; bsaldo: string; minutes: number; dias: number; faixa: string }[];
