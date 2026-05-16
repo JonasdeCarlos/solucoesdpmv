@@ -150,18 +150,6 @@ function drawStackedBarChart(
     doc.setTextColor(80); doc.setFontSize(6);
     doc.text(d.label, bx + bw / 2, plotY + plotH + 3, { align: 'center' });
   });
-  // Mini legenda
-  doc.setFontSize(6);
-  let lx = plotX;
-  const ly = plotY + plotH + 7;
-  order.forEach((f) => {
-    const [r, g, b] = FAIXA_RGB[f];
-    doc.setFillColor(r, g, b);
-    doc.rect(lx, ly - 2.2, 2.5, 2.5, 'F');
-    doc.setTextColor(80);
-    doc.text(FAIXA_LABEL[f], lx + 3.2, ly);
-    lx += 18;
-  });
   doc.setTextColor(0);
 }
 
