@@ -38,6 +38,8 @@ export interface ReportMeta {
     distFaixa: Record<string, number>;
   };
   evolucao?: { competencia: string; saldoMin: number; colabs: number }[];
+  topPos?: { nome: string; codigo?: string; minutes: number }[];
+  topNeg?: { nome: string; codigo?: string; minutes: number }[];
   logoMonteVerdeDataUrl?: string;
   logoEmpresaDataUrl?: string;
 }
@@ -137,8 +139,7 @@ export async function exportPdf(rows: ReportRow[], meta: ReportMeta, filename: s
     };
     drawBox(14, 'COLABORADORES NO MÊS', String(k.totalColabs));
     drawBox(14 + boxW + 2, 'SALDO CONSOLIDADO', formatHHMM(k.saldoConsolidadoMin));
-    // distribuição em texto
-    const dist = `V ${k.distFaixa.verde || 0}  •  A ${k.distFaixa.amarelo || 0}  •  L ${k.distFaixa.laranja || 0}  •  R ${k.distFaixa.vermelho || 0}`;
+    const dist = `Verde ${k.distFaixa.verde || 0} • Amarelo ${k.distFaixa.amarelo || 0} • Laranja ${k.distFaixa.laranja || 0} • Vermelho ${k.distFaixa.vermelho || 0}`;
     drawBox(14 + (boxW + 2) * 2, 'DISTRIBUIÇÃO POR FAIXA', dist);
     y += boxH + 6;
   }
@@ -175,6 +176,38 @@ export async function exportPdf(rows: ReportRow[], meta: ReportMeta, filename: s
       margin: { left: 14, right: 14 },
     });
     y = (doc as any).lastAutoTable.finalY + 6;
+  }
+
+  // Top 10 positivos / negativos lado a lado
+  if ((meta.topPos && meta.topPos.length > 0) || (meta.topNeg && meta.topNeg.length > 0)) {
+    const half = (pw - 28 - 4) / 2;
+    const yStart = y;
+    if (meta.topPos && meta.topPos.length > 0) {
+      autoTable(doc, {
+        startY: yStart,
+        head: [['#', 'Colaborador', 'Saldo']],
+        body: meta.topPos.slice(0, 10).map((t, i) => [String(i + 1), `${t.codigo ? t.codigo + ' — ' : ''}${t.nome}`, formatHHMM(t.minutes)]),
+        styles: { fontSize: 8, cellPadding: 1.5 },
+        headStyles: { fillColor: [34, 197, 94] },
+        margin: { left: 14, right: 14 + half + 4 },
+        tableWidth: half,
+        didDrawPage: () => {},
+      });
+    }
+    const yAfterPos = (doc as any).lastAutoTable?.finalY ?? yStart;
+    if (meta.topNeg && meta.topNeg.length > 0) {
+      autoTable(doc, {
+        startY: yStart,
+        head: [['#', 'Colaborador', 'Saldo']],
+        body: meta.topNeg.slice(0, 10).map((t, i) => [String(i + 1), `${t.codigo ? t.codigo + ' — ' : ''}${t.nome}`, formatHHMM(t.minutes)]),
+        styles: { fontSize: 8, cellPadding: 1.5 },
+        headStyles: { fillColor: [239, 68, 68] },
+        margin: { left: 14 + half + 4, right: 14 },
+        tableWidth: half,
+      });
+    }
+    const yAfterNeg = (doc as any).lastAutoTable?.finalY ?? yStart;
+    y = Math.max(yAfterPos, yAfterNeg) + 6;
   }
 
   // Tabela detalhada

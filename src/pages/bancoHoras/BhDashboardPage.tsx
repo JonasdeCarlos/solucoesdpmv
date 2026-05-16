@@ -212,6 +212,14 @@ export default function BhDashboardPage() {
         distFaixa,
       },
       evolucao: memoriaEvolucao,
+      topPos: top10Pos.map((b) => {
+        const e = empById.get(b.employee_id);
+        return { nome: e?.nome || '', codigo: e?.codigo, minutes: b.balance_minutes };
+      }),
+      topNeg: top10Neg.map((b) => {
+        const e = empById.get(b.employee_id);
+        return { nome: e?.nome || '', codigo: e?.codigo, minutes: b.balance_minutes };
+      }),
     }, `banco-horas-${ultimoMes || 'periodo'}.pdf`);
   };
 
