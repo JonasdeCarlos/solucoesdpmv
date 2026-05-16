@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, Upload, AlertTriangle, CheckCircle2, Trash2 } from 'lucide-react';
+import { Loader2, Upload, AlertTriangle, CheckCircle2, Trash2, ImagePlus, X, Building2 } from 'lucide-react';
 import FileDropZone from '@/components/pdftools/FileDropZone';
 import { extractPontoPdf, hashFile, ExtractedRow } from '@/utils/bancoHoras/pdfExtractor';
 import { supabase } from '@/integrations/supabase/client';
@@ -36,6 +36,34 @@ export default function BhImportPage() {
   const [done, setDone] = useState<{ ok: number; pendentes: number; substituidos: number; novos: number } | null>(null);
   const [askClear, setAskClear] = useState(false);
   const [clearing, setClearing] = useState(false);
+  const [empresaLogo, setEmpresaLogo] = useState<string>('');
+  const logoInputRef = useRef<HTMLInputElement>(null);
+
+  const empresaCnpj = rows[0]?.empresa_cnpj || '';
+  const empresaNome = rows[0]?.empresa_nome || '';
+  const competenciaLbl = rows[0]?.competencia_label || '';
+
+  useEffect(() => {
+    if (!empresaCnpj) { setEmpresaLogo(''); return; }
+    setEmpresaLogo(localStorage.getItem(`bh:logo:${empresaCnpj}`) || '');
+  }, [empresaCnpj]);
+
+  const onPickLogo = (f: File) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const data = reader.result as string;
+      setEmpresaLogo(data);
+      if (empresaCnpj) {
+        localStorage.setItem(`bh:logo:${empresaCnpj}`, data);
+        toast.success('Logo salva para esta empresa');
+      }
+    };
+    reader.readAsDataURL(f);
+  };
+  const clearLogo = () => {
+    setEmpresaLogo('');
+    if (empresaCnpj) localStorage.removeItem(`bh:logo:${empresaCnpj}`);
+  };
 
   const handleClearBase = async () => {
     setClearing(true);
@@ -277,6 +305,48 @@ export default function BhImportPage() {
           </div>
         </CardContent>
       </Card>
+
+      {rows.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Building2 className="w-4 h-4" /> Cadastro da empresa extraído do PDF
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-wrap items-center gap-6">
+            <div className="space-y-1 text-sm">
+              <div><span className="text-muted-foreground text-xs">Razão social: </span><strong>{empresaNome || '—'}</strong></div>
+              <div><span className="text-muted-foreground text-xs">CNPJ: </span><span className="font-mono">{empresaCnpj || '—'}</span></div>
+              <div><span className="text-muted-foreground text-xs">Competência: </span><strong>{competenciaLbl || '—'}</strong></div>
+              <div><span className="text-muted-foreground text-xs">Colaboradores: </span>{rows.length}</div>
+            </div>
+            <div className="flex items-center gap-3 ml-auto">
+              <div className="text-xs text-muted-foreground max-w-[180px]">
+                Logo da empresa (será usada no relatório PDF, vinculada ao CNPJ)
+              </div>
+              {empresaLogo ? (
+                <div className="flex items-center gap-2">
+                  <img src={empresaLogo} alt="Logo empresa" className="h-14 w-auto object-contain border rounded p-1 bg-white" />
+                  <Button size="sm" variant="ghost" onClick={clearLogo}><X className="w-3 h-3 mr-1" /> Remover</Button>
+                </div>
+              ) : (
+                <>
+                  <input
+                    ref={logoInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="hidden"
+                    onChange={(e) => e.target.files?.[0] && onPickLogo(e.target.files[0])}
+                  />
+                  <Button size="sm" variant="outline" onClick={() => logoInputRef.current?.click()} disabled={!empresaCnpj}>
+                    <ImagePlus className="w-3 h-3 mr-1" /> Adicionar logo
+                  </Button>
+                </>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {rows.length > 0 && (
         <Card>
