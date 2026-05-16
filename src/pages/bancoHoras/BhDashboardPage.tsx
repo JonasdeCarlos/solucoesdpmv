@@ -231,6 +231,22 @@ export default function BhDashboardPage() {
         const e = empById.get(b.employee_id);
         return { nome: e?.nome || '', codigo: e?.codigo, minutes: b.balance_minutes };
       }),
+      pontosUltimoMes: ultimoMes
+        ? [...balancesUltimoMes]
+            .map((b) => {
+              const e = empById.get(b.employee_id);
+              const dailyMin = e ? getDailyMinutes(settings, b.empresa_cnpj, b.employee_id, e.daily_minutes_override) : 480;
+              return {
+                codigo: e?.codigo || '',
+                nome: e?.nome || '',
+                bsaldo: formatHHMM(b.balance_minutes),
+                minutes: b.balance_minutes,
+                dias: toDays(b.balance_minutes, dailyMin),
+                faixa: classifyFaixa(b.balance_minutes),
+              };
+            })
+            .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' }))
+        : [],
     }, `banco-horas-${ultimoMes || 'periodo'}.pdf`);
     } catch (e: any) {
       console.error('Erro ao exportar PDF:', e);
