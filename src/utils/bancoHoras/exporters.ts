@@ -38,6 +38,7 @@ export interface ReportMeta {
     distFaixa: Record<string, number>;
   };
   evolucao?: { competencia: string; saldoMin: number; colabs: number }[];
+  distMes?: { competencia: string; verde: number; amarelo: number; laranja: number; vermelho: number }[];
   topPos?: { nome: string; codigo?: string; minutes: number }[];
   topNeg?: { nome: string; codigo?: string; minutes: number }[];
   pontosUltimoMes?: { codigo: string; nome: string; bsaldo: string; minutes: number; dias: number; faixa: string }[];
@@ -62,6 +63,106 @@ async function fetchAsDataUrl(url: string): Promise<string> {
 
 export async function loadMonteVerdeLogo(): Promise<string> {
   return fetchAsDataUrl('/images/logo-monte-verde-pdf.png');
+}
+
+function drawBarChart(
+  doc: jsPDF,
+  x: number, y: number, w: number, h: number,
+  title: string,
+  data: { label: string; value: number }[],
+  color: [number, number, number],
+  valueSuffix = '',
+) {
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(57, 52, 33);
+  doc.text(title, x, y);
+  const cy = y + 3, ch = h - 3;
+  const padL = 12, padB = 10, padT = 4, padR = 2;
+  const plotX = x + padL, plotY = cy + padT;
+  const plotW = w - padL - padR, plotH = ch - padT - padB;
+  doc.setDrawColor(200); doc.setLineWidth(0.2);
+  doc.line(plotX, plotY, plotX, plotY + plotH);
+  doc.line(plotX, plotY + plotH, plotX + plotW, plotY + plotH);
+  const max = Math.max(1, ...data.map((d) => Math.abs(d.value)));
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(6); doc.setTextColor(120);
+  for (let i = 0; i <= 4; i++) {
+    const v = max * (i / 4);
+    const ty = plotY + plotH - (i / 4) * plotH;
+    doc.setDrawColor(235); doc.line(plotX, ty, plotX + plotW, ty);
+    doc.text(`${v.toFixed(0)}${valueSuffix}`, plotX - 1, ty + 1.2, { align: 'right' });
+  }
+  const n = data.length || 1;
+  const slot = plotW / n;
+  const bw = slot * 0.7;
+  const gap = slot * 0.3;
+  data.forEach((d, i) => {
+    const bx = plotX + i * slot + gap / 2;
+    const bh = (Math.abs(d.value) / max) * plotH;
+    const by = plotY + plotH - bh;
+    doc.setFillColor(color[0], color[1], color[2]);
+    doc.rect(bx, by, bw, bh, 'F');
+    doc.setTextColor(80); doc.setFontSize(6);
+    doc.text(d.label, bx + bw / 2, plotY + plotH + 3, { align: 'center' });
+  });
+  doc.setTextColor(0);
+}
+
+function drawStackedBarChart(
+  doc: jsPDF,
+  x: number, y: number, w: number, h: number,
+  title: string,
+  data: { label: string; verde: number; amarelo: number; laranja: number; vermelho: number }[],
+) {
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(57, 52, 33);
+  doc.text(title, x, y);
+  const cy = y + 3, ch = h - 3;
+  const padL = 12, padB = 10, padT = 4, padR = 2;
+  const plotX = x + padL, plotY = cy + padT;
+  const plotW = w - padL - padR, plotH = ch - padT - padB;
+  doc.setDrawColor(200); doc.setLineWidth(0.2);
+  doc.line(plotX, plotY, plotX, plotY + plotH);
+  doc.line(plotX, plotY + plotH, plotX + plotW, plotY + plotH);
+  const max = Math.max(1, ...data.map((d) => d.verde + d.amarelo + d.laranja + d.vermelho));
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(6); doc.setTextColor(120);
+  for (let i = 0; i <= 4; i++) {
+    const v = max * (i / 4);
+    const ty = plotY + plotH - (i / 4) * plotH;
+    doc.setDrawColor(235); doc.line(plotX, ty, plotX + plotW, ty);
+    doc.text(v.toFixed(0), plotX - 1, ty + 1.2, { align: 'right' });
+  }
+  const n = data.length || 1;
+  const slot = plotW / n;
+  const bw = slot * 0.7;
+  const gap = slot * 0.3;
+  const order = ['verde', 'amarelo', 'laranja', 'vermelho'] as const;
+  data.forEach((d, i) => {
+    const bx = plotX + i * slot + gap / 2;
+    let acc = 0;
+    order.forEach((f) => {
+      const val = (d as any)[f] as number;
+      if (val <= 0) return;
+      const segH = (val / max) * plotH;
+      const by = plotY + plotH - acc - segH;
+      const [r, g, b] = FAIXA_RGB[f];
+      doc.setFillColor(r, g, b);
+      doc.rect(bx, by, bw, segH, 'F');
+      acc += segH;
+    });
+    doc.setTextColor(80); doc.setFontSize(6);
+    doc.text(d.label, bx + bw / 2, plotY + plotH + 3, { align: 'center' });
+  });
+  // Mini legenda
+  doc.setFontSize(6);
+  let lx = plotX;
+  const ly = plotY + plotH + 7;
+  order.forEach((f) => {
+    const [r, g, b] = FAIXA_RGB[f];
+    doc.setFillColor(r, g, b);
+    doc.rect(lx, ly - 2.2, 2.5, 2.5, 'F');
+    doc.setTextColor(80);
+    doc.text(FAIXA_LABEL[f], lx + 3.2, ly);
+    lx += 18;
+  });
+  doc.setTextColor(0);
 }
 
 export function exportCsv(rows: ReportRow[], filename: string) {
@@ -182,6 +283,28 @@ export async function exportPdf(rows: ReportRow[], meta: ReportMeta, filename: s
   });
   y += 5;
   doc.setTextColor(0);
+
+  // Gráficos visuais — Evolução e Distribuição por faixa/mês
+  if ((meta.evolucao && meta.evolucao.length > 0) || (meta.distMes && meta.distMes.length > 0)) {
+    const chartH = 55;
+    if (y + chartH > ph - 20) { doc.addPage(); y = 14; }
+    const half = (pw - 28 - 4) / 2;
+    if (meta.evolucao && meta.evolucao.length > 0) {
+      const evoData = meta.evolucao.map((e) => ({
+        label: competenciaLabel(e.competencia),
+        value: Math.round((e.saldoMin / 60) * 10) / 10,
+      }));
+      drawBarChart(doc, 14, y, half, chartH, 'Evolução do saldo total (horas)', evoData, [98, 142, 63], 'h');
+    }
+    if (meta.distMes && meta.distMes.length > 0) {
+      const dmData = meta.distMes.map((d) => ({
+        label: d.competencia.includes('/') ? d.competencia : competenciaLabel(d.competencia),
+        verde: d.verde, amarelo: d.amarelo, laranja: d.laranja, vermelho: d.vermelho,
+      }));
+      drawStackedBarChart(doc, 14 + half + 4, y, half, chartH, 'Distribuição por faixa / mês', dmData);
+    }
+    y += chartH + 8;
+  }
 
   // Memória de cálculo: evolução mensal
   if (meta.evolucao && meta.evolucao.length > 0) {
