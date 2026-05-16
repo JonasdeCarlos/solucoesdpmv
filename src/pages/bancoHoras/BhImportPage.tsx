@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, Upload, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Loader2, Upload, AlertTriangle, CheckCircle2, Trash2 } from 'lucide-react';
 import FileDropZone from '@/components/pdftools/FileDropZone';
 import { extractPontoPdf, hashFile, ExtractedRow } from '@/utils/bancoHoras/pdfExtractor';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useUserRole } from '@/hooks/useUserRole';
 import { toast } from 'sonner';
 import { SaldoChip } from '@/components/bancohoras/SaldoChip';
 import {
@@ -23,6 +24,7 @@ type DupChoice = 'substituir' | 'manter' | 'nova_versao';
 
 export default function BhImportPage() {
   const { user } = useAuth();
+  const { isAdmin } = useUserRole();
   const [files, setFiles] = useState<File[]>([]);
   const [parsing, setParsing] = useState(false);
   const [rows, setRows] = useState<ExtractedRow[]>([]);
@@ -32,6 +34,25 @@ export default function BhImportPage() {
   const [askDup, setAskDup] = useState(false);
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState<{ ok: number; pendentes: number; substituidos: number; novos: number } | null>(null);
+  const [askClear, setAskClear] = useState(false);
+  const [clearing, setClearing] = useState(false);
+
+  const handleClearBase = async () => {
+    setClearing(true);
+    try {
+      await supabase.from('bh_balances' as any).delete().not('id', 'is', null);
+      await supabase.from('bh_employees' as any).delete().not('id', 'is', null);
+      await supabase.from('bh_imports' as any).delete().not('id', 'is', null);
+      toast.success('Base do Banco de Horas limpa');
+      setRows([]);
+      setDone(null);
+    } catch (e: any) {
+      toast.error(`Erro ao limpar: ${e?.message || e}`);
+    } finally {
+      setClearing(false);
+      setAskClear(false);
+    }
+  };
 
   const handleParse = async () => {
     if (!files[0]) return;
@@ -242,6 +263,17 @@ export default function BhImportPage() {
                 Salvar saldos
               </Button>
             )}
+            {isAdmin && (
+              <Button
+                variant="destructive"
+                className="ml-auto"
+                onClick={() => setAskClear(true)}
+                disabled={clearing}
+              >
+                {clearing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Trash2 className="w-4 h-4 mr-2" />}
+                Limpar base
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -331,6 +363,27 @@ export default function BhImportPage() {
             <Button variant="outline" onClick={() => doSave('manter')}>Manter existentes</Button>
             <Button variant="outline" onClick={() => doSave('nova_versao')}>Criar nova versão</Button>
             <AlertDialogAction onClick={() => doSave('substituir')}>Substituir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={askClear} onOpenChange={setAskClear}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Limpar base do Banco de Horas?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação irá <strong>apagar todos os saldos, colaboradores e importações</strong> do
+              módulo. Os parâmetros serão preservados. Não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleClearBase}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Sim, limpar tudo
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
