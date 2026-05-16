@@ -280,6 +280,48 @@ export async function exportPdf(rows: ReportRow[], meta: ReportMeta, filename: s
     },
   });
 
+  // Pontos do último mês — listagem alfabética dos colaboradores
+  let yAfterDetail = (doc as any).lastAutoTable?.finalY ?? y;
+  if (meta.pontosUltimoMes && meta.pontosUltimoMes.length > 0) {
+    yAfterDetail += 8;
+    if (yAfterDetail > ph - 40) { doc.addPage(); yAfterDetail = 14; }
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(57, 52, 33);
+    doc.text(
+      `Pontos do último mês${meta.competenciaLabel ? ` — ${meta.competenciaLabel}` : ''}`,
+      14, yAfterDetail,
+    );
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(100);
+    doc.text(
+      'Saldo final (BSALDO) registrado em cada cartão ponto importado no mês mais recente, em ordem alfabética.',
+      14, yAfterDetail + 4,
+    );
+    doc.setTextColor(0);
+    autoTable(doc, {
+      startY: yAfterDetail + 7,
+      head: [['Cód.', 'Colaborador', 'BSALDO', 'Saldo (dias)', 'Faixa']],
+      body: meta.pontosUltimoMes.map((p) => [
+        p.codigo,
+        p.nome,
+        p.bsaldo,
+        p.dias.toFixed(2).replace('.', ','),
+        p.faixa,
+      ]),
+      styles: { fontSize: 8, cellPadding: 1.5 },
+      headStyles: { fillColor: [98, 142, 63] },
+      margin: { left: 14, right: 14 },
+      didParseCell: (data) => {
+        if (data.section === 'body' && data.column.index === 4) {
+          const f = String(data.cell.raw);
+          if (FAIXA_BG[f]) data.cell.styles.fillColor = FAIXA_BG[f];
+        }
+      },
+    });
+  }
+
   doc.setFontSize(7);
   doc.setTextColor(120);
   doc.text(
