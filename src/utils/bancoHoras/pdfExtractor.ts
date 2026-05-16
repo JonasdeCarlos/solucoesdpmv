@@ -75,18 +75,21 @@ function pageToStructuredLines(textItems: any[]): PLine[] {
 function valueBelowLabel(
   structured: PLine[],
   labelRegex: RegExp,
-  opts: { maxLinesBelow?: number; padRight?: number } = {},
+  opts: { maxLinesBelow?: number; maxWidth?: number } = {},
 ): string {
   const maxLinesBelow = opts.maxLinesBelow ?? 4;
+  const maxWidth = opts.maxWidth ?? 220;
   for (let i = 0; i < structured.length; i++) {
     const line = structured[i];
     const labelItemIdx = line.items.findIndex((it) => labelRegex.test(it.str));
     if (labelItemIdx === -1) continue;
     const labelItem = line.items[labelItemIdx];
-    // Limite direito = X do próximo item na mesma linha (próximo rótulo) ou +∞
+    // Limite direito = menor entre X do próximo item na mesma linha
+    // e (X do rótulo + maxWidth), evitando capturar conteúdo de colunas distantes.
     const nextItem = line.items[labelItemIdx + 1];
     const xLeft = labelItem.x - 2;
-    const xRight = nextItem ? nextItem.x - 2 : Number.POSITIVE_INFINITY;
+    const xRightSame = nextItem ? nextItem.x - 2 : Number.POSITIVE_INFINITY;
+    const xRight = Math.min(xRightSame, labelItem.x + maxWidth);
     // Procurar nas próximas linhas (Y menor) o conteúdo dentro da faixa X
     for (let j = i + 1; j < Math.min(i + 1 + maxLinesBelow, structured.length); j++) {
       const below = structured[j];
@@ -143,14 +146,21 @@ function extractFromLines(lines: string[], structured: PLine[], pageNum: number)
   }
 
   // Nome do colaborador: extração posicional sob o rótulo "NOME:"
-  let nome = valueBelowLabel(structured, /^NOME:?$/i, { maxLinesBelow: 4 });
+  let nome = valueBelowLabel(structured, /^NOME:?$/i, { maxLinesBelow: 2, maxWidth: 260 });
   // Limpa eventuais sufixos (datas, etc. que possam ter caído na faixa)
   if (nome) {
     nome = nome.replace(/\s+\d{2}\/\d{2}\/\d{4}.*$/, '').trim();
+    // Remove tokens de horário (HH:MM) e códigos de dia da semana que possam
+    // vir do bloco "HORÁRIO DE TRABALHO" alinhado horizontalmente.
+    nome = nome
+      .replace(/\b(SEG|TER|QUA|QUI|SEX|S[ÁA]B|DOM)\b/gi, '')
+      .replace(/\b\d{1,2}:\d{2}\b/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
   }
 
   // Código (Nº FOLHA): extração posicional sob o rótulo "Nº FOLHA:"
-  let codigo = valueBelowLabel(structured, /^N[º°o]\s*FOLHA:?$/i, { maxLinesBelow: 4 });
+  let codigo = valueBelowLabel(structured, /^N[º°o]\s*FOLHA:?$/i, { maxLinesBelow: 2, maxWidth: 90 });
   if (codigo) {
     // Pega o primeiro token alfanumérico curto
     const tok = codigo.split(/\s+/).find((t) => /^[A-Za-z0-9.\-/]{1,12}$/.test(t));
