@@ -158,7 +158,7 @@ export default function BhDashboardPage() {
 
   // monta linhas do relatório com tendência
   const reportRows = useMemo<ReportRow[]>(() => {
-    return balancesUltimoMes.map((b) => {
+    const list = balancesUltimoMes.map((b) => {
       const emp = empById.get(b.employee_id);
       const dailyMin = emp ? getDailyMinutes(settings, b.empresa_cnpj, b.employee_id, emp.daily_minutes_override) : 480;
       // mês anterior
@@ -183,6 +183,8 @@ export default function BhDashboardPage() {
         variacao,
       };
     });
+    // Ordena alfabeticamente por nome (pt-BR, ignorando acentos/caixa)
+    return list.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' }));
   }, [balancesUltimoMes, balances, empById, settings, threshold]);
 
   const empregadosFiltrados = useMemo(() => {
