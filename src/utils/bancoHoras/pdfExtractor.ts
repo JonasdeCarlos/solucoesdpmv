@@ -169,30 +169,32 @@ function extractFromLines(lines: string[], structured: PLine[], pageNum: number)
   const cnpjMatch = all.match(/(\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2})/);
   const cnpj = cnpjMatch ? cnpjMatch[1] : '';
 
-  // Empresa: linha imediatamente após linha que contenha "EMPRESA:"
-  let empresa = '';
-  for (let i = 0; i < lines.length; i++) {
-    const l = lines[i];
-    if (/EMPRESA:/i.test(l)) {
-      // mesma linha pode ter "EMPRESA: ..." ou nome em linha próxima
-      const same = l.replace(/^.*EMPRESA:\s*/i, '').trim();
-      if (same && !/HORÁRIO|CARGA/i.test(same)) {
-        empresa = same.replace(/HORÁRIO.*/i, '').trim();
-      }
-      if (!empresa) {
-        for (let j = i + 1; j < Math.min(i + 5, lines.length); j++) {
-          const cand = lines[j].trim();
-          if (
-            cand &&
-            !/^CNPJ|^INSCRIÇÃO|^DEPARTAMENTO|^FUNÇÃO|^CARGA|^SEG|^TER|^QUA|^QUI|^SEX|^SAB|^DOM|HORÁRIO/i.test(cand) &&
-            !/^\d{2}\.\d{3}\.\d{3}/.test(cand)
-          ) {
-            empresa = cand;
-            break;
-          }
+  // Empresa: extração posicional sob o rótulo "EMPRESA:" (evita capturar
+  // tokens de colunas adjacentes como "Dia Ent.1 ...").
+  let empresa = valueBelowLabel(structured, /^EMPRESA:?$/i, { maxLinesBelow: 2, maxWidth: 320 });
+  if (empresa) {
+    empresa = empresa
+      .replace(/\bDia\s*Ent\.?\s*\d*\.*/gi, '')
+      .replace(/\bDia\s*Sa[íi]?\.?\s*\d*\.*/gi, '')
+      .replace(/\bEnt\.?\s*\d+\.*/gi, '')
+      .replace(/\bSa[íi]?\.?\s*\d+\.*/gi, '')
+      .replace(/\b(SEG|TER|QUA|QUI|SEX|S[ÁA]B|DOM)\b/gi, '')
+      .replace(/\b\d{1,2}:\d{2}\b/g, '')
+      .replace(/\.{2,}/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+  // Fallback: varredura por linhas se posicional falhar
+  if (!empresa) {
+    for (let i = 0; i < lines.length; i++) {
+      const l = lines[i];
+      if (/EMPRESA:/i.test(l)) {
+        const same = l.replace(/^.*EMPRESA:\s*/i, '').trim();
+        if (same && !/HORÁRIO|CARGA|Dia\s*Ent/i.test(same)) {
+          empresa = same.replace(/HORÁRIO.*/i, '').replace(/Dia\s*Ent.*/i, '').trim();
         }
+        break;
       }
-      break;
     }
   }
 
