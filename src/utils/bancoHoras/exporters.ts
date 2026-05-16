@@ -298,7 +298,7 @@ export async function exportPdf(rows: ReportRow[], meta: ReportMeta, filename: s
     }
     if (meta.distMes && meta.distMes.length > 0) {
       const dmData = meta.distMes.map((d) => ({
-        label: competenciaLabel(d.competencia),
+        label: d.competencia.includes('/') ? d.competencia : competenciaLabel(d.competencia),
         verde: d.verde, amarelo: d.amarelo, laranja: d.laranja, vermelho: d.vermelho,
       }));
       drawStackedBarChart(doc, 14 + half + 4, y, half, chartH, 'Distribuição por faixa / mês', dmData);
