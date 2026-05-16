@@ -15,12 +15,41 @@ export interface ExtractedRow {
   motivo?: string;
 }
 
-function periodoToCompetencia(d1: string): { iso: string; label: string } {
-  // d1 = dd/mm/yyyy
-  const [, m, y] = d1.match(/^(\d{2})\/(\d{2})\/(\d{4})$/) || [];
-  const yy = y;
-  const mm = m;
-  return { iso: `${yy}-${mm}-01`, label: `${mm}/${yy}` };
+function normalizeYear(yy: string): string {
+  if (yy.length === 4) return yy;
+  const n = parseInt(yy, 10);
+  return (n > 50 ? '19' : '20') + yy.padStart(2, '0');
+}
+
+function buildComp(mm: string, yy: string): { iso: string; label: string } {
+  const m = mm.padStart(2, '0');
+  const y = normalizeYear(yy);
+  return { iso: `${y}-${m}-01`, label: `${m}/${y}` };
+}
+
+/**
+ * Localiza a competência no texto do PDF tentando múltiplos formatos
+ * encontrados em cartões ponto Secullum (Período, Competência, Mês/Ano…).
+ * Aceita anos com 2 ou 4 dígitos e ignora datas de emissão (ex.: "01/01/2001").
+ */
+function findCompetencia(all: string): { iso: string; label: string } {
+  const norm = all.replace(/\s+/g, ' ');
+  // 1) Período: dd/mm/yyyy até dd/mm/yyyy → usa a data inicial
+  let m = norm.match(/Per[íi]?odo:?\s*(\d{1,2})\/(\d{1,2})\/(\d{2,4})\s*(?:at[ée]|a|-|\u2013)\s*(\d{1,2})\/(\d{1,2})\/(\d{2,4})/i);
+  if (m) return buildComp(m[2], m[3]);
+  // 2) Período: dd/mm/yyyy (sem "até")
+  m = norm.match(/Per[íi]?odo:?\s*(\d{1,2})\/(\d{1,2})\/(\d{2,4})/i);
+  if (m) return buildComp(m[2], m[3]);
+  // 3) Competência: mm/yyyy
+  m = norm.match(/Compet[êe]ncia:?\s*(\d{1,2})\/(\d{2,4})/i);
+  if (m) return buildComp(m[1], m[2]);
+  // 4) Mês/Ano: mm/yyyy
+  m = norm.match(/M[êe]s\s*\/?\s*Ano:?\s*(\d{1,2})\/(\d{2,4})/i);
+  if (m) return buildComp(m[1], m[2]);
+  // 5) Referência: mm/yyyy
+  m = norm.match(/Refer[êe]ncia:?\s*(\d{1,2})\/(\d{2,4})/i);
+  if (m) return buildComp(m[1], m[2]);
+  return { iso: '', label: '' };
 }
 
 function parseHHMMsigned(s: string): number | null {
@@ -110,9 +139,8 @@ function pageToLines(textItems: any[]): string[] {
 function extractFromLines(lines: string[], structured: PLine[], pageNum: number): ExtractedRow {
   const all = lines.join('\n');
 
-  // Período
-  const periodo = all.match(/Período:\s*(\d{2}\/\d{2}\/\d{4})\s*at[ée]\s*(\d{2}\/\d{2}\/\d{4})/i);
-  const comp = periodo ? periodoToCompetencia(periodo[1]) : { iso: '', label: '' };
+  // Competência (Período / Compet. / Mês/Ano)
+  const comp = findCompetencia(all);
 
   // CNPJ
   const cnpjMatch = all.match(/(\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2})/);
