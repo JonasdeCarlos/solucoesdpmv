@@ -216,11 +216,20 @@ export async function exportPdf(rows: ReportRow[], meta: ReportMeta, filename: s
       14, y + 4,
     );
     doc.setTextColor(0);
-    const yStart = y + 8;
+    // Subtítulos das duas colunas
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(34, 197, 94);
+    doc.text('Top 10 — Saldo positivo (credor)', 14, y + 12);
+    doc.setTextColor(239, 68, 68);
+    doc.text('Top 10 — Saldo negativo (devedor)', 14 + half + 4, y + 12);
+    doc.setTextColor(0);
+    doc.setFont('helvetica', 'normal');
+    const yStart = y + 14;
     if (meta.topPos && meta.topPos.length > 0) {
       autoTable(doc, {
         startY: yStart,
-        head: [[{ content: 'Top 10 — Saldo positivo (credor)', colSpan: 3, styles: { halign: 'left' } }], ['#', 'Colaborador', 'Saldo']],
+        head: [['#', 'Colaborador', 'Saldo']],
         body: meta.topPos.slice(0, 10).map((t, i) => [String(i + 1), `${t.codigo ? t.codigo + ' — ' : ''}${t.nome}`, formatHHMM(t.minutes)]),
         styles: { fontSize: 8, cellPadding: 1.5 },
         headStyles: { fillColor: [34, 197, 94] },
@@ -232,7 +241,7 @@ export async function exportPdf(rows: ReportRow[], meta: ReportMeta, filename: s
     if (meta.topNeg && meta.topNeg.length > 0) {
       autoTable(doc, {
         startY: yStart,
-        head: [[{ content: 'Top 10 — Saldo negativo (devedor)', colSpan: 3, styles: { halign: 'left' } }], ['#', 'Colaborador', 'Saldo']],
+        head: [['#', 'Colaborador', 'Saldo']],
         body: meta.topNeg.slice(0, 10).map((t, i) => [String(i + 1), `${t.codigo ? t.codigo + ' — ' : ''}${t.nome}`, formatHHMM(t.minutes)]),
         styles: { fontSize: 8, cellPadding: 1.5 },
         headStyles: { fillColor: [239, 68, 68] },

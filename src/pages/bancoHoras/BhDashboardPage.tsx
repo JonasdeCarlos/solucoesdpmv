@@ -199,6 +199,7 @@ export default function BhDashboardPage() {
     : (empresas.find((e) => e.cnpj === empresa)?.nome || empresa);
 
   const handleExportPdf = async () => {
+    try {
     const logoMV = await loadMonteVerdeLogo();
     // Resolve logo da empresa: usa a selecionada; se "Todas", tenta usar a única CNPJ do mês
     let logoEmp = empresaLogo;
@@ -229,6 +230,11 @@ export default function BhDashboardPage() {
         return { nome: e?.nome || '', codigo: e?.codigo, minutes: b.balance_minutes };
       }),
     }, `banco-horas-${ultimoMes || 'periodo'}.pdf`);
+    } catch (e: any) {
+      console.error('Erro ao exportar PDF:', e);
+      // eslint-disable-next-line no-alert
+      alert(`Falha ao gerar PDF: ${e?.message || e}`);
+    }
   };
 
   return (
