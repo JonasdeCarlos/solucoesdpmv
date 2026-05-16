@@ -10,6 +10,8 @@ import {
   LineChart, Line, CartesianGrid,
 } from 'recharts';
 import { useBhAll, getDailyMinutes, getTrendThreshold } from '@/hooks/useBancoHorasModulo';
+import { supabase } from '@/integrations/supabase/client';
+import { PDFDocument } from 'pdf-lib';
 import {
   classifyFaixa, formatHHMM, classifyTrend, toDays, FAIXA_CLASS, FAIXA_LABEL, competenciaLabel,
 } from '@/utils/bancoHoras/calc';
@@ -211,7 +213,7 @@ export default function BhDashboardPage() {
         logoEmp = localStorage.getItem(`bh:logo:${cnpjs[0]}`) || '';
       }
     }
-    await exportPdf(reportRows, {
+    const reportBytes = await exportPdf(reportRows, {
       titulo: 'Relatório gerencial — Banco de Horas',
       empresaLabel: empresaLabelStr,
       competenciaLabel: ultimoMes ? competenciaLabel(ultimoMes) : undefined,
@@ -238,23 +240,43 @@ export default function BhDashboardPage() {
         const e = empById.get(b.employee_id);
         return { nome: e?.nome || '', codigo: e?.codigo, minutes: b.balance_minutes };
       }),
-      pontosUltimoMes: ultimoMes
-        ? [...balancesUltimoMes]
-            .map((b) => {
-              const e = empById.get(b.employee_id);
-              const dailyMin = e ? getDailyMinutes(settings, b.empresa_cnpj, b.employee_id, e.daily_minutes_override) : 480;
-              return {
-                codigo: e?.codigo || '',
-                nome: e?.nome || '',
-                bsaldo: formatHHMM(b.balance_minutes),
-                minutes: b.balance_minutes,
-                dias: toDays(b.balance_minutes, dailyMin),
-                faixa: classifyFaixa(b.balance_minutes),
-              };
-            })
-            .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' }))
-        : [],
-    }, `banco-horas-${ultimoMes || 'periodo'}.pdf`);
+    });
+
+    // Anexa os PDFs de cartão ponto importados no último mês (filtrados pela empresa se houver)
+    const merged = await PDFDocument.create();
+    const reportDoc = await PDFDocument.load(reportBytes);
+    const reportPages = await merged.copyPages(reportDoc, reportDoc.getPageIndices());
+    reportPages.forEach((p) => merged.addPage(p));
+
+    if (ultimoMes) {
+      const importsUltMes = imports.filter((i) => {
+        if (!i.file_path) return false;
+        if (i.competencia !== ultimoMes) return false;
+        if (empresa !== 'all' && i.empresa_cnpj !== empresa) return false;
+        return true;
+      });
+      for (const imp of importsUltMes) {
+        try {
+          const { data, error } = await supabase.storage.from('ponto-pdfs').download(imp.file_path!);
+          if (error || !data) continue;
+          const buf = await data.arrayBuffer();
+          const pdf = await PDFDocument.load(buf, { ignoreEncryption: true });
+          const pages = await merged.copyPages(pdf, pdf.getPageIndices());
+          pages.forEach((p) => merged.addPage(p));
+        } catch (err) {
+          console.warn('Falha ao anexar ponto:', imp.file_name, err);
+        }
+      }
+    }
+
+    const out = await merged.save();
+    const blob = new Blob([out], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `banco-horas-${ultimoMes || 'periodo'}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
     } catch (e: any) {
       console.error('Erro ao exportar PDF:', e);
       // eslint-disable-next-line no-alert
