@@ -244,25 +244,24 @@ export async function exportPdf(rows: ReportRow[], meta: ReportMeta, filename: s
     doc.setFontSize(14); doc.setTextColor(57, 52, 33); doc.setFont('helvetica', 'bold');
     doc.text(formatHHMM(k.saldoConsolidadoMin), x2 + 3, y + 15);
     doc.setFont('helvetica', 'normal');
-    // Caixa 3 — distribuição por faixa em lista vertical com swatches
+    // Caixa 3 — distribuição por faixa (uma linha por faixa para caber no box)
     const x3 = 14 + (boxW + 2) * 2;
     doc.setDrawColor(220); doc.setFillColor(245, 247, 242);
     doc.roundedRect(x3, y, boxW, boxH, 2, 2, 'FD');
     doc.setFontSize(7); doc.setTextColor(100);
     doc.text('DISTRIBUIÇÃO POR FAIXA', x3 + 3, y + 5);
-    doc.setFontSize(8); doc.setTextColor(60);
+    doc.setFontSize(7); doc.setTextColor(60);
     const faixas = ['verde', 'amarelo', 'laranja', 'vermelho'] as const;
-    const colW = (boxW - 6) / 2;
+    const total = (k.distFaixa.verde || 0) + (k.distFaixa.amarelo || 0) + (k.distFaixa.laranja || 0) + (k.distFaixa.vermelho || 0);
     faixas.forEach((f, i) => {
-      const col = i % 2;
-      const row = Math.floor(i / 2);
-      const cx = x3 + 3 + col * colW;
-      const cy = y + 11 + row * 7;
+      const cy = y + 10 + i * 4;
       const [r, g, b] = FAIXA_RGB[f];
       doc.setFillColor(r, g, b);
-      doc.rect(cx, cy - 3, 3.5, 3.5, 'F');
+      doc.rect(x3 + 3, cy - 2.5, 2.8, 2.8, 'F');
       doc.setTextColor(60);
-      doc.text(`${FAIXA_LABEL[f]}: ${k.distFaixa[f] || 0}`, cx + 5, cy);
+      const n = k.distFaixa[f] || 0;
+      const pct = total ? ` (${Math.round((n * 100) / total)}%)` : '';
+      doc.text(`${FAIXA_LABEL[f]}: ${n}${pct}`, x3 + 7.5, cy);
     });
     doc.setTextColor(0);
     y += boxH + 6;
