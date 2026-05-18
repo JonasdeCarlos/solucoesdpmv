@@ -206,13 +206,37 @@ const AvisosListPage = () => {
         </div>
         <div className="space-y-1">
           <span className="text-[11px] text-muted-foreground font-medium">Status</span>
-          <Select value={statusF} onValueChange={setStatusF}>
-            <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os status</SelectItem>
-              {STATUS_OPTIONS.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="w-full justify-between text-left font-normal h-9 text-sm">
+                <span className="truncate">
+                  {statusF.length === 0
+                    ? 'Todos os status'
+                    : statusF.length === 1
+                      ? statusLabel(statusF[0])
+                      : `${statusF.length} selecionados`}
+                </span>
+                <ChevronDown className="h-4 w-4 opacity-50 shrink-0 ml-2" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-56">
+              <DropdownMenuLabel>Filtrar por status</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {STATUS_OPTIONS.map((s) => (
+                <DropdownMenuCheckboxItem
+                  key={s.value}
+                  checked={statusF.includes(s.value)}
+                  onCheckedChange={(checked) => {
+                    setStatusF((prev) =>
+                      checked ? [...prev, s.value] : prev.filter((v) => v !== s.value)
+                    );
+                  }}
+                >
+                  {s.label}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
         <div className="space-y-1">
           <span className="text-[11px] text-muted-foreground font-medium">Aviso 1</span>
