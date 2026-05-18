@@ -20,7 +20,16 @@ O documento contém blocos repetidos no formato:
 
 Sua tarefa é extrair TODOS os blocos e linhas do PDF inteiro e devolver APENAS via tool call. Não invente dados.
 Datas devem permanecer no formato DD/MM/AAAA original.
-Para vencimento que tenha "Limite", devolva o texto completo (ex.: "22/06/2026 - Limite 24/05/2026").`;
+Para vencimento que tenha "Limite", devolva o texto completo (ex.: "22/06/2026 - Limite 24/05/2026").
+
+REGRAS CRÍTICAS DE VINCULAÇÃO EMPRESA × LINHAS (siga RIGOROSAMENTE):
+1. Cada linha de funcionário PERTENCE EXCLUSIVAMENTE à última empresa declarada acima dela ("Empresa: CODIGO - NOME" + "CNPJ:") DENTRO DO MESMO BLOCO VISUAL.
+2. Os blocos são delimitados por LINHAS HORIZONTAIS SEPARADORAS (filetes/réguas) e/ou pelo cabeçalho "Empresa:/CNPJ:". JAMAIS atribua uma linha à empresa anterior ou posterior se houver uma linha separadora ou um novo cabeçalho "Empresa:" entre eles.
+3. QUEBRAS DE PÁGINA: se uma página inicia sem repetir "Empresa:/CNPJ:", as linhas continuam pertencendo à última empresa do bloco anterior — APENAS até encontrar uma nova linha separadora ou um novo cabeçalho "Empresa:". Se a página repetir o cabeçalho, use o cabeçalho da página atual.
+4. IGNORE textos de cabeçalho/rodapé como "RELAÇÃO DE VENCIMENTOS", "Página X de Y", data/hora de emissão, números de página, e nomes de colunas ("Código", "Funcionário", "Motivo", "Vencimento", "Limite").
+5. Se houver dúvida sobre a qual empresa uma linha pertence, NÃO inclua a linha (prefira omitir a inventar). Reporte apenas o que estiver inequivocamente dentro de um bloco de empresa.
+6. Para a MESMA empresa que aparece várias vezes (continuação em outra página), MESCLE as linhas dentro do MESMO objeto de empresa no resultado — não duplique a empresa.
+7. Preserve o NOME e o CNPJ exatamente como aparecem no cabeçalho "Empresa:/CNPJ:" — nunca pegue texto de cabeçalho de colunas ou linhas separadoras como nome.`;
 
 const TOOL = {
   type: 'function',
