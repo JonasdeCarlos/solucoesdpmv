@@ -9,7 +9,6 @@ import { toast } from 'sonner';
 const NAV_ITEMS = [
   { to: '/', label: 'Calculadora', icon: Calculator, end: true },
   { to: '/clientes', label: 'Clientes', icon: Users },
-  { to: '/verbas', label: 'Verbas', icon: FileText },
   { to: '/recibo', label: 'Recibo Avulso', icon: Receipt },
   { to: '/ponto', label: 'Apuração de Ponto', icon: Clock },
   { to: '/custo-mensal', label: 'Custo Mensal', icon: DollarSign },
