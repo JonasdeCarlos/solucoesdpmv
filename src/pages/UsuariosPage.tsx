@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Trash2, ShieldCheck, UserPlus } from 'lucide-react';
+import { Loader2, Trash2, ShieldCheck, UserPlus, KeyRound } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Invited {
@@ -27,6 +27,10 @@ export default function UsuariosPage() {
   const [busy, setBusy] = useState(false);
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<AppRole>('user');
+  const [password, setPassword] = useState('');
+  const [pwDialog, setPwDialog] = useState<{ email: string } | null>(null);
+  const [pwValue, setPwValue] = useState('');
+  const [pwBusy, setPwBusy] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -56,14 +60,39 @@ export default function UsuariosPage() {
       role,
       invited_by: user?.email || '',
     } as any);
-    setBusy(false);
     if (error) {
+      setBusy(false);
       toast.error(error.code === '23505' ? 'Este e-mail já está convidado.' : error.message);
       return;
     }
-    toast.success('Convite registrado. Peça ao usuário para fazer cadastro com este e-mail.');
-    setEmail(''); setRole('user');
+    if (password.trim()) {
+      const { error: pwErr } = await supabase.functions.invoke('admin-set-password', {
+        body: { email: normalized, password: password.trim() },
+      });
+      if (pwErr) {
+        toast.error('Convite registrado, mas falhou ao definir senha: ' + pwErr.message);
+      } else {
+        toast.success('Usuário criado com senha definida. Já pode fazer login.');
+      }
+    } else {
+      toast.success('Convite registrado. Peça ao usuário para fazer cadastro com este e-mail.');
+    }
+    setBusy(false);
+    setEmail(''); setRole('user'); setPassword('');
     load();
+  };
+
+  const handleSetPassword = async () => {
+    if (!pwDialog) return;
+    if (pwValue.length < 6) { toast.error('Senha deve ter no mínimo 6 caracteres.'); return; }
+    setPwBusy(true);
+    const { error } = await supabase.functions.invoke('admin-set-password', {
+      body: { email: pwDialog.email, password: pwValue },
+    });
+    setPwBusy(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success('Senha definida com sucesso.');
+    setPwDialog(null); setPwValue('');
   };
 
   const handleRoleChange = async (id: string, newRole: AppRole) => {
@@ -103,6 +132,10 @@ export default function UsuariosPage() {
               <Label htmlFor="inv-email">E-mail</Label>
               <Input id="inv-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="usuario@empresa.com" />
             </div>
+            <div className="md:w-48">
+              <Label htmlFor="inv-pw">Senha (opcional)</Label>
+              <Input id="inv-pw" type="text" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="mín. 6 caracteres" />
+            </div>
             <div className="md:w-44">
               <Label>Papel</Label>
               <Select value={role} onValueChange={(v) => setRole(v as AppRole)}>
@@ -118,6 +151,9 @@ export default function UsuariosPage() {
               {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Convidar'}
             </Button>
           </form>
+          <p className="text-xs text-muted-foreground mt-2">
+            Informando a senha, o usuário é criado já confirmado e pode entrar imediatamente. Sem senha, ele precisará se cadastrar.
+          </p>
         </CardContent>
       </Card>
 
@@ -148,6 +184,9 @@ export default function UsuariosPage() {
                       <SelectItem value="master">Master</SelectItem>
                     </SelectContent>
                   </Select>
+                  <Button variant="outline" size="sm" onClick={() => { setPwDialog({ email: it.email }); setPwValue(''); }} title="Definir/Redefinir senha">
+                    <KeyRound className="w-4 h-4 md:mr-1" /><span className="hidden md:inline">Senha</span>
+                  </Button>
                   <Button variant="ghost" size="icon" onClick={() => handleRemove(it.id, it.email)} title="Remover convite">
                     <Trash2 className="w-4 h-4 text-destructive" />
                   </Button>
@@ -157,6 +196,29 @@ export default function UsuariosPage() {
           )}
         </CardContent>
       </Card>
+
+      {pwDialog && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setPwDialog(null)}>
+          <Card className="w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <CardHeader>
+              <CardTitle className="text-base">Definir senha</CardTitle>
+              <CardDescription>{pwDialog.email}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div>
+                <Label htmlFor="pw-new">Nova senha</Label>
+                <Input id="pw-new" type="text" value={pwValue} onChange={(e) => setPwValue(e.target.value)} placeholder="mín. 6 caracteres" autoFocus />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setPwDialog(null)}>Cancelar</Button>
+                <Button onClick={handleSetPassword} disabled={pwBusy}>
+                  {pwBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Salvar senha'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
