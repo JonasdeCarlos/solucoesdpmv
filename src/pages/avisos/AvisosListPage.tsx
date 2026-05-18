@@ -4,8 +4,16 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
-import { Copy, Phone, X, ExternalLink, CheckSquare } from 'lucide-react';
+import { Copy, Phone, X, ExternalLink, CheckSquare, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAvisos } from '@/hooks/useAvisos';
 import { useAvisoEmpresas } from '@/hooks/useAvisoEmpresas';
@@ -37,7 +45,7 @@ const AvisosListPage = () => {
 
   const [empresaF, setEmpresaF] = useState(params.get('empresa') || 'all');
   const [motivoF, setMotivoF] = useState<string>('all');
-  const [statusF, setStatusF] = useState<string>('all');
+  const [statusF, setStatusF] = useState<string[]>([]);
   const [a1F, setA1F] = useState<string>('all');
   const [a2F, setA2F] = useState<string>('all');
   const [a3F, setA3F] = useState<string>('all');
@@ -58,7 +66,7 @@ const AvisosListPage = () => {
     return items.filter((a) => {
       if (empresaF !== 'all' && a.empresa_code !== empresaF) return false;
       if (motivoF !== 'all' && a.motivo !== motivoF) return false;
-      if (statusF !== 'all' && a.status !== statusF) return false;
+      if (statusF.length > 0 && !statusF.includes(a.status)) return false;
       if (a1F !== 'all') {
         const has = !!a.aviso1_at;
         if (a1F === 'yes' && !has) return false;
@@ -99,7 +107,7 @@ const AvisosListPage = () => {
   const clearFilters = () => {
     setEmpresaF('all');
     setMotivoF('all');
-    setStatusF('all');
+    setStatusF([]);
     setA1F('all');
     setA2F('all');
     setA3F('all');
@@ -198,13 +206,37 @@ const AvisosListPage = () => {
         </div>
         <div className="space-y-1">
           <span className="text-[11px] text-muted-foreground font-medium">Status</span>
-          <Select value={statusF} onValueChange={setStatusF}>
-            <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os status</SelectItem>
-              {STATUS_OPTIONS.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="w-full justify-between text-left font-normal h-9 text-sm">
+                <span className="truncate">
+                  {statusF.length === 0
+                    ? 'Todos os status'
+                    : statusF.length === 1
+                      ? statusLabel(statusF[0])
+                      : `${statusF.length} selecionados`}
+                </span>
+                <ChevronDown className="h-4 w-4 opacity-50 shrink-0 ml-2" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-56">
+              <DropdownMenuLabel>Filtrar por status</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {STATUS_OPTIONS.map((s) => (
+                <DropdownMenuCheckboxItem
+                  key={s.value}
+                  checked={statusF.includes(s.value)}
+                  onCheckedChange={(checked) => {
+                    setStatusF((prev) =>
+                      checked ? [...prev, s.value] : prev.filter((v) => v !== s.value)
+                    );
+                  }}
+                >
+                  {s.label}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
         <div className="space-y-1">
           <span className="text-[11px] text-muted-foreground font-medium">Aviso 1</span>
