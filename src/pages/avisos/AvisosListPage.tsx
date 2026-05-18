@@ -66,7 +66,7 @@ const AvisosListPage = () => {
     return items.filter((a) => {
       if (empresaF !== 'all' && a.empresa_code !== empresaF) return false;
       if (motivoF !== 'all' && a.motivo !== motivoF) return false;
-      if (statusF !== 'all' && a.status !== statusF) return false;
+      if (statusF.length > 0 && !statusF.includes(a.status)) return false;
       if (a1F !== 'all') {
         const has = !!a.aviso1_at;
         if (a1F === 'yes' && !has) return false;
