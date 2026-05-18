@@ -35,27 +35,57 @@ Deno.serve(async (req) => {
       return json({ error: 'E-mail e senha (mín. 6 caracteres) obrigatórios.' }, 400);
     }
 
-    // Find existing user
-    const { data: list, error: listErr } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
-    if (listErr) return json({ error: listErr.message }, 500);
-    const existing = list.users.find((u) => (u.email || '').toLowerCase() === email);
+    // Find existing user by paginating through listUsers
+    let existing: { id: string; email?: string | null } | undefined;
+    for (let page = 1; page <= 20 && !existing; page++) {
+      const { data: list, error: listErr } = await admin.auth.admin.listUsers({ page, perPage: 200 });
+      if (listErr) return json({ error: 'listUsers: ' + listErr.message }, 500);
+      existing = list.users.find((u) => (u.email || '').toLowerCase() === email);
+      if (!list.users.length || list.users.length < 200) break;
+    }
 
     if (existing) {
       const { error } = await admin.auth.admin.updateUserById(existing.id, {
         password,
         email_confirm: true,
       });
-      if (error) return json({ error: error.message }, 500);
+      if (error) return json({ error: 'updateUser: ' + error.message }, 500);
       return json({ ok: true, action: 'updated', user_id: existing.id });
-    } else {
-      const { data, error } = await admin.auth.admin.createUser({
-        email,
-        password,
-        email_confirm: true,
-      });
-      if (error) return json({ error: error.message }, 500);
-      return json({ ok: true, action: 'created', user_id: data.user?.id });
     }
+
+    // Ensure email is whitelisted (trigger requires it)
+    const { data: invited } = await admin
+      .from('invited_emails')
+      .select('email')
+      .eq('email', email)
+      .maybeSingle();
+    if (!invited) {
+      await admin.from('invited_emails').insert({
+        email,
+        role: 'user',
+        invited_by: userData.user.email || 'admin',
+      });
+    }
+
+    const { data, error } = await admin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+    });
+    if (error) {
+      // Fallback: if user actually already exists, try to locate and update
+      if (/already|registered|exists/i.test(error.message)) {
+        const { data: list } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+        const found = list?.users.find((u) => (u.email || '').toLowerCase() === email);
+        if (found) {
+          const { error: upErr } = await admin.auth.admin.updateUserById(found.id, { password, email_confirm: true });
+          if (upErr) return json({ error: 'updateUser(fallback): ' + upErr.message }, 500);
+          return json({ ok: true, action: 'updated', user_id: found.id });
+        }
+      }
+      return json({ error: 'createUser: ' + error.message }, 500);
+    }
+    return json({ ok: true, action: 'created', user_id: data.user?.id });
   } catch (e) {
     return json({ error: (e as Error).message }, 500);
   }
