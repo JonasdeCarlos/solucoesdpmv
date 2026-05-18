@@ -4,8 +4,16 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
-import { Copy, Phone, X, ExternalLink, CheckSquare } from 'lucide-react';
+import { Copy, Phone, X, ExternalLink, CheckSquare, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAvisos } from '@/hooks/useAvisos';
 import { useAvisoEmpresas } from '@/hooks/useAvisoEmpresas';
