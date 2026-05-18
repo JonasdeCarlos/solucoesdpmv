@@ -2,13 +2,18 @@ import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Upload, FileText, Loader2, AlertCircle, BarChart3 } from 'lucide-react';
+import { Upload, FileText, Loader2, AlertCircle, BarChart3, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { processarImportacao, type ParsedPdf } from '@/utils/avisos/importer';
 import { useAvisoImports } from '@/hooks/useAvisoImports';
 import { useOperatorName } from '@/hooks/useOperatorName';
+import { useUserRole } from '@/hooks/useUserRole';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 const sha256File = async (file: File) => {
   const digest = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
@@ -31,7 +36,28 @@ const AvisosImportPage = () => {
   const [reportOpen, setReportOpen] = useState<null | { fileName: string; totalEmpresas: number; totalRows: number; novos: number; ignorados: number }>(null);
   const { imports, refresh } = useAvisoImports();
   const { ensure } = useOperatorName();
+  const { isAdmin } = useUserRole();
+  const [purging, setPurging] = useState(false);
   const navigate = useNavigate();
+
+  const handlePurge = async () => {
+    setPurging(true);
+    try {
+      const { error: e1 } = await supabase.from('aviso_contact_attempts' as any).delete().not('id', 'is', null);
+      if (e1) throw e1;
+      const { error: e2 } = await supabase.from('avisos' as any).delete().not('id', 'is', null);
+      if (e2) throw e2;
+      const { error: e3 } = await supabase.from('aviso_imports' as any).delete().not('id', 'is', null);
+      if (e3) throw e3;
+      toast.success('Base de avisos limpa com sucesso.');
+      await refresh();
+    } catch (e: any) {
+      console.error(e);
+      toast.error('Falha ao limpar: ' + (e?.message || 'erro'));
+    } finally {
+      setPurging(false);
+    }
+  };
 
   const handleFile = async (file: File) => {
     if (!file) return;
