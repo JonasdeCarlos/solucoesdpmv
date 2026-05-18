@@ -48,7 +48,6 @@ export function useAvisoEmpresas() {
       .update({ responsavel } as any)
       .eq('empresa_id', empresa.id)
       .neq('status', 'concluido');
-    await refresh();
     return { error: null };
   };
 
