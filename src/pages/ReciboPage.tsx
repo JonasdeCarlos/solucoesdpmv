@@ -625,6 +625,10 @@ const ReciboPage = () => {
         <TabsContent value="ferias">
           <VacationReceiptModule />
         </TabsContent>
+
+        <TabsContent value="verbas">
+          <VerbasPage />
+        </TabsContent>
       </Tabs>
 
       {/* Dialog Feriados Municipais */}
