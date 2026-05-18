@@ -120,9 +120,35 @@ const AvisosImportPage = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Importar PDF de Avisos</h1>
-        <p className="text-sm text-muted-foreground mt-1">Envie diariamente o PDF "Relação de Vencimentos". Avisos repetidos são ignorados automaticamente.</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold">Importar PDF de Avisos</h1>
+          <p className="text-sm text-muted-foreground mt-1">Envie diariamente o PDF "Relação de Vencimentos". Avisos repetidos são ignorados automaticamente.</p>
+        </div>
+        {isAdmin && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" size="sm" disabled={purging}>
+                {purging ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Trash2 className="w-4 h-4 mr-2" />}
+                Limpar base de avisos
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Limpar TODA a base de avisos?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Esta ação remove permanentemente todos os avisos, tentativas de contato e o histórico de importações. As empresas cadastradas serão mantidas. Não é possível desfazer.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={handlePurge} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                  Sim, limpar tudo
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
       </div>
 
       <Card className="p-6">
