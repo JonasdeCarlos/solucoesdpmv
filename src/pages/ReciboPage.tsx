@@ -13,6 +13,7 @@ import { useClientes } from '@/hooks/useClientes';
 import { useVerbas } from '@/hooks/useVerbas';
 import { useFeriadosMunicipais } from '@/hooks/useFeriadosMunicipais';
 import { VacationReceiptModule } from '@/components/recibo/VacationReceiptModule';
+import VerbasPage from '@/pages/VerbasPage';
 import {
   type ReciboData, type ReciboLinha,
   createEmptyReciboData, createEmptyLinha,
@@ -208,9 +209,10 @@ const ReciboPage = () => {
       </div>
 
       <Tabs defaultValue="recibo-avulso" className="space-y-6">
-        <TabsList className="flex w-full max-w-xl justify-start">
+        <TabsList className="flex w-full max-w-2xl justify-start">
           <TabsTrigger value="recibo-avulso">Recibo Avulso</TabsTrigger>
           <TabsTrigger value="ferias">Cálculo de Férias + Emissão de Recibo</TabsTrigger>
+          <TabsTrigger value="verbas">Verbas</TabsTrigger>
         </TabsList>
 
         <TabsContent value="recibo-avulso" className="space-y-6">
