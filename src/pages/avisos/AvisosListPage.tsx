@@ -107,7 +107,7 @@ const AvisosListPage = () => {
   const clearFilters = () => {
     setEmpresaF('all');
     setMotivoF('all');
-    setStatusF('all');
+    setStatusF([]);
     setA1F('all');
     setA2F('all');
     setA3F('all');
