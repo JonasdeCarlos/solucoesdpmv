@@ -45,7 +45,7 @@ const AvisosListPage = () => {
 
   const [empresaF, setEmpresaF] = useState(params.get('empresa') || 'all');
   const [motivoF, setMotivoF] = useState<string>('all');
-  const [statusF, setStatusF] = useState<string>('all');
+  const [statusF, setStatusF] = useState<string[]>([]);
   const [a1F, setA1F] = useState<string>('all');
   const [a2F, setA2F] = useState<string>('all');
   const [a3F, setA3F] = useState<string>('all');
