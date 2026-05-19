@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,11 +11,27 @@ import { type Client, createEmptyClient } from '@/types/client';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
+const STORAGE_KEY = 'clientes_draft_state_v1';
+
+function loadPersistedDraft() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) as { editing?: Client | null; dialogOpen?: boolean } : null;
+  } catch {
+    return null;
+  }
+}
+
 const ClientesPage = () => {
   const { clientes, loading, saveCliente, deleteCliente } = useClientes();
-  const [editing, setEditing] = useState<Client | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const persisted = loadPersistedDraft();
+  const [editing, setEditing] = useState<Client | null>(persisted?.editing ?? null);
+  const [dialogOpen, setDialogOpen] = useState(persisted?.dialogOpen ?? false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ editing, dialogOpen }));
+  }, [editing, dialogOpen]);
 
   const handleSave = async () => {
     if (!editing) return;
@@ -46,6 +62,11 @@ const ClientesPage = () => {
   const openEdit = (client: Client) => {
     setEditing({ ...client });
     setDialogOpen(true);
+  };
+
+  const handleDialogOpenChange = (open: boolean) => {
+    setDialogOpen(open);
+    if (!open) setEditing(null);
   };
 
   return (
@@ -105,7 +126,7 @@ const ClientesPage = () => {
         </CardContent>
       </Card>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{editing?.nome ? 'Editar Cliente' : 'Novo Cliente'}</DialogTitle>

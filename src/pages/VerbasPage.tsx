@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,11 +14,27 @@ import { Plus, Pencil, Trash2, Check, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 
+const STORAGE_KEY = 'verbas_draft_state_v1';
+
+function loadPersistedDraft() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) as { editing?: Verba | null; dialogOpen?: boolean } : null;
+  } catch {
+    return null;
+  }
+}
+
 const VerbasPage = () => {
   const { verbas, loading, saveVerba, deleteVerba } = useVerbas();
-  const [editing, setEditing] = useState<Verba | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const persisted = loadPersistedDraft();
+  const [editing, setEditing] = useState<Verba | null>(persisted?.editing ?? null);
+  const [dialogOpen, setDialogOpen] = useState(persisted?.dialogOpen ?? false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ editing, dialogOpen }));
+  }, [editing, dialogOpen]);
 
   const handleSave = async () => {
     if (!editing) return;
@@ -49,6 +65,11 @@ const VerbasPage = () => {
   const openEdit = (verba: Verba) => {
     setEditing({ ...verba });
     setDialogOpen(true);
+  };
+
+  const handleDialogOpenChange = (open: boolean) => {
+    setDialogOpen(open);
+    if (!open) setEditing(null);
   };
 
   return (
@@ -128,7 +149,7 @@ const VerbasPage = () => {
         </CardContent>
       </Card>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{editing?.nome ? 'Editar Verba' : 'Nova Verba'}</DialogTitle>

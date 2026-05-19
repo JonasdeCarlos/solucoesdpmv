@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -18,6 +18,7 @@ import type { RescisaoTipoId } from '@/utils/rescisaoTipos';
 type WizardStep = 0 | 1 | 2;
 
 const STEPS = ['Dados da Capa', 'Upload Documentos', 'Gerar PDF Final'];
+const STORAGE_KEY = 'rescisao_pdf_wizard_state_v1';
 
 interface CapaState {
   employeeName: string;
@@ -43,12 +44,36 @@ const emptyCapaData = (): CapaState => ({
   rescisaoTipo: 'sem_justa_causa',
 });
 
+function loadPersistedState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) as {
+      wizardOpen?: boolean;
+      step?: WizardStep;
+      capaData?: CapaState;
+      uploadedFilesMeta?: Array<Pick<UploadedFile, 'id' | 'name' | 'category' | 'sortOrder'>>;
+    } : null;
+  } catch {
+    return null;
+  }
+}
+
 const RescisaoPdfPage: React.FC = () => {
   const { dossiers, loading, createDossier, deleteDossier } = useRescisaoDossiers();
-  const [wizardOpen, setWizardOpen] = useState(false);
-  const [step, setStep] = useState<WizardStep>(0);
-  const [capaData, setCapaData] = useState(emptyCapaData());
+  const persisted = loadPersistedState();
+  const [wizardOpen, setWizardOpen] = useState(persisted?.wizardOpen ?? false);
+  const [step, setStep] = useState<WizardStep>(persisted?.step === 2 ? 1 : persisted?.step ?? 0);
+  const [capaData, setCapaData] = useState(persisted?.capaData ?? emptyCapaData());
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      wizardOpen,
+      step,
+      capaData,
+      uploadedFilesMeta: uploadedFiles.map(({ id, name, category, sortOrder }) => ({ id, name, category, sortOrder })),
+    }));
+  }, [wizardOpen, step, capaData, uploadedFiles]);
 
   const openWizard = () => {
     setCapaData(emptyCapaData());

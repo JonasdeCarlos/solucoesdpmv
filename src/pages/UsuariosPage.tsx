@@ -19,15 +19,27 @@ interface Invited {
   created_at: string;
 }
 
+const STORAGE_KEY = 'usuarios_invite_draft_v1';
+
+function loadPersistedDraft() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) as { email?: string; role?: AppRole; password?: string } : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function UsuariosPage() {
   const { user } = useAuth();
   const { isAdmin, loading: roleLoading } = useUserRole();
+  const persisted = loadPersistedDraft();
   const [list, setList] = useState<Invited[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [email, setEmail] = useState('');
-  const [role, setRole] = useState<AppRole>('user');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState(persisted?.email ?? '');
+  const [role, setRole] = useState<AppRole>(persisted?.role ?? 'user');
+  const [password, setPassword] = useState(persisted?.password ?? '');
   const [pwDialog, setPwDialog] = useState<{ email: string } | null>(null);
   const [pwValue, setPwValue] = useState('');
   const [pwBusy, setPwBusy] = useState(false);
@@ -44,6 +56,10 @@ export default function UsuariosPage() {
   };
 
   useEffect(() => { if (isAdmin) load(); }, [isAdmin]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ email, role, password }));
+  }, [email, role, password]);
 
   if (roleLoading) {
     return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;

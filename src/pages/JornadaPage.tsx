@@ -34,12 +34,12 @@ const JornadaPage: React.FC = () => {
   const [params, setParams] = useState<JornadaParams>(() => loadState()?.params ?? createDefaultParams());
   const [dias, setDias] = useState<JornadaDiaConfig[]>(() => loadState()?.dias ?? createDefaultDias(4));
   const [previewOpen, setPreviewOpen] = useState(false);
-  const [observacoes, setObservacoes] = useState('');
+  const [observacoes, setObservacoes] = useState(() => loadState()?.observacoes ?? '');
 
   // Save to localStorage
   React.useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ params, dias }));
-  }, [params, dias]);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ params, dias, observacoes }));
+  }, [params, dias, observacoes]);
 
   const updateParam = useCallback(<K extends keyof JornadaParams>(key: K, value: JornadaParams[K]) => {
     setParams(prev => ({ ...prev, [key]: value }));

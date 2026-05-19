@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -25,14 +25,29 @@ import { quintoDiaUtilSubsequente, contarDiasUteisMes } from '@/utils/feriados';
 import { Plus, Trash2, FileDown, Copy, Calculator, CalendarDays } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
+const STORAGE_KEY = 'recibo_avulso_state_v1';
+
+function loadPersistedRecibo() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) as ReciboData : createEmptyReciboData();
+  } catch {
+    return createEmptyReciboData();
+  }
+}
+
 const ReciboPage = () => {
   const { clientes } = useClientes();
   const { verbas: verbasDB } = useVerbas();
   const { feriados: feriadosMunicipais, addFeriado, deleteFeriado } = useFeriadosMunicipais();
-  const [recibo, setRecibo] = useState<ReciboData>(createEmptyReciboData());
+  const [recibo, setRecibo] = useState<ReciboData>(loadPersistedRecibo);
   const [feriadoDialogOpen, setFeriadoDialogOpen] = useState(false);
   const [novoFeriado, setNovoFeriado] = useState({ nome: '', dia: '', mes: '' });
   const { toast } = useToast();
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(recibo));
+  }, [recibo]);
 
   // Ao alterar competência, preencher data de emissão e dias úteis/não úteis
   const handleCompetenciaChange = useCallback((comp: string) => {

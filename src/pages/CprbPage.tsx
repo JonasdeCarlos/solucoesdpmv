@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import StepIndicator from '@/components/StepIndicator';
 import CprbStep1Premissas, { CprbPremissas } from '@/components/cprb/CprbStep1Premissas';
@@ -16,6 +16,7 @@ import { distribuirMensal } from '@/utils/cprbCalculations';
 import { toast } from 'sonner';
 
 const STEP_LABELS = ['Premissas', 'Parâmetros Legais', 'Simulação', 'Relatório'];
+const STORAGE_KEY = 'cprb_state_v1';
 
 const defaultPremissas = (): CprbPremissas => {
   const now = new Date();
@@ -50,12 +51,34 @@ const defaultPremissas = (): CprbPremissas => {
   };
 };
 
+function loadPersistedState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) as {
+      activeTab?: string;
+      step?: number;
+      premissas?: CprbPremissas;
+      result?: CprbConsolidatedResult | null;
+      dasResult?: DasConsolidatedResult | null;
+      isCalculated?: boolean;
+    } : null;
+  } catch {
+    return null;
+  }
+}
+
 const CprbPage = () => {
-  const [step, setStep] = useState(1);
-  const [premissas, setPremissas] = useState<CprbPremissas>(defaultPremissas);
-  const [result, setResult] = useState<CprbConsolidatedResult | null>(null);
-  const [dasResult, setDasResult] = useState<DasConsolidatedResult | null>(null);
-  const [isCalculated, setIsCalculated] = useState(false);
+  const persisted = loadPersistedState();
+  const [activeTab, setActiveTab] = useState(persisted?.activeTab ?? 'cprb');
+  const [step, setStep] = useState(persisted?.step ?? 1);
+  const [premissas, setPremissas] = useState<CprbPremissas>(persisted?.premissas ?? defaultPremissas);
+  const [result, setResult] = useState<CprbConsolidatedResult | null>(persisted?.result ?? null);
+  const [dasResult, setDasResult] = useState<DasConsolidatedResult | null>(persisted?.dasResult ?? null);
+  const [isCalculated, setIsCalculated] = useState(persisted?.isCalculated ?? false);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ activeTab, step, premissas, result, dasResult, isCalculated }));
+  }, [activeTab, step, premissas, result, dasResult, isCalculated]);
 
   const { data: legalParams } = useCprbLegalParameters();
   const { data: faixasDb } = useDasAnexosFaixas();
@@ -163,7 +186,7 @@ const CprbPage = () => {
         Simuladores tributários para construtoras — Simples Nacional
       </p>
 
-      <Tabs defaultValue="cprb" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="mb-6">
           <TabsTrigger value="cprb">Comparativo CPRB x Folha</TabsTrigger>
           <TabsTrigger value="das">Simulação DAS (Simples)</TabsTrigger>

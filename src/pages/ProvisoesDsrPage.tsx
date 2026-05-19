@@ -1,16 +1,33 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import DsrVerbasTab from '@/components/dsr/DsrVerbasTab';
 import DsrEntriesTab from '@/components/dsr/DsrEntriesTab';
 import DsrCalendarTab from '@/components/dsr/DsrCalendarTab';
 import DsrApuracaoTab from '@/components/dsr/DsrApuracaoTab';
 
+const STORAGE_KEY = 'provisoes_dsr_filters_v1';
+
+function loadPersistedState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) as { empresa?: string; competencia?: string } : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function ProvisoesDsrPage() {
-  const [empresa, setEmpresa] = useState<string>('');
+  const persisted = loadPersistedState();
+  const [empresa, setEmpresa] = useState<string>(persisted?.empresa ?? '');
   const [competencia, setCompetencia] = useState<string>(() => {
+    if (persisted?.competencia) return persisted.competencia;
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
   });
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ empresa, competencia }));
+  }, [empresa, competencia]);
 
   return (
     <div className="space-y-6">
