@@ -55,6 +55,7 @@ function loadPersistedState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     return raw ? JSON.parse(raw) as {
+      activeTab?: string;
       step?: number;
       premissas?: CprbPremissas;
       result?: CprbConsolidatedResult | null;
@@ -68,6 +69,7 @@ function loadPersistedState() {
 
 const CprbPage = () => {
   const persisted = loadPersistedState();
+  const [activeTab, setActiveTab] = useState(persisted?.activeTab ?? 'cprb');
   const [step, setStep] = useState(persisted?.step ?? 1);
   const [premissas, setPremissas] = useState<CprbPremissas>(persisted?.premissas ?? defaultPremissas);
   const [result, setResult] = useState<CprbConsolidatedResult | null>(persisted?.result ?? null);
@@ -75,8 +77,8 @@ const CprbPage = () => {
   const [isCalculated, setIsCalculated] = useState(persisted?.isCalculated ?? false);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ step, premissas, result, dasResult, isCalculated }));
-  }, [step, premissas, result, dasResult, isCalculated]);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ activeTab, step, premissas, result, dasResult, isCalculated }));
+  }, [activeTab, step, premissas, result, dasResult, isCalculated]);
 
   const { data: legalParams } = useCprbLegalParameters();
   const { data: faixasDb } = useDasAnexosFaixas();
@@ -184,7 +186,7 @@ const CprbPage = () => {
         Simuladores tributários para construtoras — Simples Nacional
       </p>
 
-      <Tabs defaultValue="cprb" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="mb-6">
           <TabsTrigger value="cprb">Comparativo CPRB x Folha</TabsTrigger>
           <TabsTrigger value="das">Simulação DAS (Simples)</TabsTrigger>
