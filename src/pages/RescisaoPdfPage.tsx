@@ -62,7 +62,7 @@ const RescisaoPdfPage: React.FC = () => {
   const { dossiers, loading, createDossier, deleteDossier } = useRescisaoDossiers();
   const persisted = loadPersistedState();
   const [wizardOpen, setWizardOpen] = useState(persisted?.wizardOpen ?? false);
-  const [step, setStep] = useState<WizardStep>(persisted?.step ?? 0);
+  const [step, setStep] = useState<WizardStep>(persisted?.step === 2 ? 1 : persisted?.step ?? 0);
   const [capaData, setCapaData] = useState(persisted?.capaData ?? emptyCapaData());
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
 
