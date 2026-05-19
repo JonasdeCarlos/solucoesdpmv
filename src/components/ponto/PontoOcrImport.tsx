@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
@@ -32,17 +32,32 @@ interface Props {
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/heic', 'image/heif', 'application/pdf'];
+const STORAGE_KEY = 'ponto_ocr_review_state_v1';
+
+function loadPersistedReview() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) as { ocrResult?: OcrResult | null; editableRegistros?: OcrRegistro[]; showReview?: boolean } : null;
+  } catch {
+    return null;
+  }
+}
 
 const PontoOcrImport: React.FC<Props> = ({ config, dias, mesAno, onImportDias }) => {
+  const persisted = loadPersistedReview();
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [ocrResult, setOcrResult] = useState<OcrResult | null>(null);
-  const [editableRegistros, setEditableRegistros] = useState<OcrRegistro[]>([]);
+  const [ocrResult, setOcrResult] = useState<OcrResult | null>(persisted?.ocrResult ?? null);
+  const [editableRegistros, setEditableRegistros] = useState<OcrRegistro[]>(persisted?.editableRegistros ?? []);
   const [showUpload, setShowUpload] = useState(false);
-  const [showReview, setShowReview] = useState(false);
+  const [showReview, setShowReview] = useState(persisted?.showReview ?? false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ocrResult, editableRegistros, showReview }));
+  }, [ocrResult, editableRegistros, showReview]);
 
   const handleFileSelect = useCallback((selectedFiles: FileList | null) => {
     if (!selectedFiles) return;
