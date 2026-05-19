@@ -21,19 +21,36 @@ import {
 } from '@/components/ui/alert-dialog';
 
 type DupChoice = 'substituir' | 'manter' | 'nova_versao';
+const STORAGE_KEY = 'bh_import_state_v1';
+
+function loadPersistedState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) as {
+      rows?: ExtractedRow[];
+      hash?: string;
+      fileMeta?: { name: string; size: number } | null;
+      duplicates?: { key: string; nome: string; competencia: string }[];
+      done?: { ok: number; pendentes: number; substituidos: number; novos: number } | null;
+    } : null;
+  } catch {
+    return null;
+  }
+}
 
 export default function BhImportPage() {
   const { user } = useAuth();
   const { isAdmin } = useUserRole();
+  const persisted = loadPersistedState();
   const [files, setFiles] = useState<File[]>([]);
   const [parsing, setParsing] = useState(false);
-  const [rows, setRows] = useState<ExtractedRow[]>([]);
-  const [hash, setHash] = useState<string>('');
-  const [fileMeta, setFileMeta] = useState<{ name: string; size: number } | null>(null);
-  const [duplicates, setDuplicates] = useState<{ key: string; nome: string; competencia: string }[]>([]);
+  const [rows, setRows] = useState<ExtractedRow[]>(persisted?.rows ?? []);
+  const [hash, setHash] = useState<string>(persisted?.hash ?? '');
+  const [fileMeta, setFileMeta] = useState<{ name: string; size: number } | null>(persisted?.fileMeta ?? null);
+  const [duplicates, setDuplicates] = useState<{ key: string; nome: string; competencia: string }[]>(persisted?.duplicates ?? []);
   const [askDup, setAskDup] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [done, setDone] = useState<{ ok: number; pendentes: number; substituidos: number; novos: number } | null>(null);
+  const [done, setDone] = useState<{ ok: number; pendentes: number; substituidos: number; novos: number } | null>(persisted?.done ?? null);
   const [askClear, setAskClear] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [empresaLogo, setEmpresaLogo] = useState<string>('');
@@ -42,6 +59,10 @@ export default function BhImportPage() {
   const empresaCnpj = rows[0]?.empresa_cnpj || '';
   const empresaNome = rows[0]?.empresa_nome || '';
   const competenciaLbl = rows[0]?.competencia_label || '';
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ rows, hash, fileMeta, duplicates, done }));
+  }, [rows, hash, fileMeta, duplicates, done]);
 
   useEffect(() => {
     if (!empresaCnpj) { setEmpresaLogo(''); return; }
