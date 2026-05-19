@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Combine, Scissors, Minimize2, RotateCw, ArrowLeftRight,
   Trash2, ImageIcon, FileImage, ArrowLeft,
@@ -18,6 +18,8 @@ import PdfToImagesTool from '@/components/pdftools/tools/PdfToImagesTool';
 type ToolId =
   | 'merge' | 'split' | 'compress' | 'rotate'
   | 'reorder' | 'remove' | 'images-to-pdf' | 'pdf-to-images';
+
+const STORAGE_KEY = 'pdf_tools_active_v1';
 
 interface ToolDef {
   id: ToolId;
@@ -39,8 +41,16 @@ const TOOLS: ToolDef[] = [
 ];
 
 const PdfToolsPage = () => {
-  const [active, setActive] = useState<ToolId | null>(null);
+  const [active, setActive] = useState<ToolId | null>(() => {
+    const saved = localStorage.getItem(STORAGE_KEY) as ToolId | null;
+    return saved && TOOLS.some((tool) => tool.id === saved) ? saved : null;
+  });
   const tool = TOOLS.find(t => t.id === active);
+
+  useEffect(() => {
+    if (active) localStorage.setItem(STORAGE_KEY, active);
+    else localStorage.removeItem(STORAGE_KEY);
+  }, [active]);
 
   if (tool) {
     const Component = tool.Component;
