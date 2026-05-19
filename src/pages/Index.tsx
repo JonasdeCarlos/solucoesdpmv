@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import StepIndicator from '@/components/StepIndicator';
 import Step1InitialQuestions from '@/components/Step1InitialQuestions';
 import Step2ComplementaryData from '@/components/Step2ComplementaryData';
@@ -11,11 +11,31 @@ import { numberToWords } from '@/utils/numberToWords';
 
 const STEP_LABELS = ['Contrato', 'Complementar', 'Termo'];
 
-const Index = () => {
-  const [currentStep, setCurrentStep] = useState(1);
-  const [verbas, setVerbas] = useState<VerbaRescisoria[]>([]);
+const STORAGE_KEY = 'calc_rescisao_state_v1';
 
-  const [step1, setStep1] = useState<Step1Data>({
+const loadPersisted = () => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    // Revive Date objects
+    if (parsed.step1) {
+      if (parsed.step1.dataAdmissao) parsed.step1.dataAdmissao = new Date(parsed.step1.dataAdmissao);
+      if (parsed.step1.dataDesligamento) parsed.step1.dataDesligamento = new Date(parsed.step1.dataDesligamento);
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+};
+
+const Index = () => {
+  const persisted = loadPersisted();
+
+  const [currentStep, setCurrentStep] = useState<number>(persisted?.currentStep ?? 1);
+  const [verbas, setVerbas] = useState<VerbaRescisoria[]>(persisted?.verbas ?? []);
+
+  const [step1, setStep1] = useState<Step1Data>(persisted?.step1 ?? {
     dataAdmissao: null,
     dataDesligamento: null,
     salarioMensal: 0,
@@ -34,7 +54,7 @@ const Index = () => {
     anos13Selecionados: [],
   });
 
-  const [step2, setStep2] = useState<Step2Data>({
+  const [step2, setStep2] = useState<Step2Data>(persisted?.step2 ?? {
     diasTrabalhadosMes: 15,
     meses13Proporcional: 0,
     mesesFeriasProporcional: 0,
@@ -45,7 +65,7 @@ const Index = () => {
     fgtsManual: null,
   });
 
-  const [step3, setStep3] = useState<Step3Data>({
+  const [step3, setStep3] = useState<Step3Data>(persisted?.step3 ?? {
     empregadorNome: '',
     empregadorCPF: '',
     empregadorEndereco: '',
@@ -57,6 +77,15 @@ const Index = () => {
     localAssinatura: '',
     dataAssinatura: new Date().toISOString().split('T')[0],
   });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ currentStep, verbas, step1, step2, step3 })
+      );
+    } catch {}
+  }, [currentStep, verbas, step1, step2, step3]);
 
   const handleGoToStep2 = () => {
     if (step1.dataAdmissao && step1.dataDesligamento) {
