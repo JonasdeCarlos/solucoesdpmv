@@ -17,6 +17,16 @@ import { generateVacationReceiptPDF } from '@/utils/vacationReceiptPdf';
 import { ArrowLeft, ArrowRight, Download, FileDown, Save, Search } from 'lucide-react';
 
 const steps = ['Dados', 'Período', 'Remuneração', 'Resultado'];
+const STORAGE_KEY = 'vacation_receipt_state_v1';
+
+function loadPersistedState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) as { step?: number; data?: VacationReceiptData; filters?: { company: string; employee: string; date: string } } : null;
+  } catch {
+    return null;
+  }
+}
 
 function toDate(value: string) {
   return value ? new Date(`${value}T12:00:00`) : null;
@@ -107,10 +117,11 @@ function mapCalculationRow(row: any, receipt?: any): VacationHistoryItem {
 export function VacationReceiptModule() {
   const { clientes } = useClientes();
   const { toast } = useToast();
-  const [step, setStep] = useState(0);
-  const [data, setData] = useState<VacationReceiptData>(createEmptyVacationReceiptData());
+  const persisted = loadPersistedState();
+  const [step, setStep] = useState(persisted?.step ?? 0);
+  const [data, setData] = useState<VacationReceiptData>(persisted?.data ?? createEmptyVacationReceiptData());
   const [history, setHistory] = useState<VacationHistoryItem[]>([]);
-  const [filters, setFilters] = useState({ company: '', employee: '', date: '' });
+  const [filters, setFilters] = useState(persisted?.filters ?? { company: '', employee: '', date: '' });
   const [saving, setSaving] = useState(false);
 
   const result = useMemo(() => calculateVacationReceipt(data), [data]);
@@ -132,6 +143,10 @@ export function VacationReceiptModule() {
   };
 
   useEffect(() => { loadHistory(); }, []);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ step, data, filters }));
+  }, [step, data, filters]);
 
   useEffect(() => {
     const days = inclusiveDays(data.leaveStart, data.leaveEnd);
