@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -49,6 +49,7 @@ const CurrencyField = ({ label, value, onChange, tip }: { label: string; value: 
 };
 
 const ANEXOS = ['I', 'II', 'III', 'IV', 'V'];
+const STORAGE_KEY = 'das_simulation_state_v1';
 
 interface DasInputState {
   competenciaInicial: string;
@@ -87,10 +88,24 @@ const defaultInput = (): DasInputState => {
   };
 };
 
+function loadPersistedState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) as { input?: DasInputState; result?: DasConsolidatedResult | null; isCalculated?: boolean } : null;
+  } catch {
+    return null;
+  }
+}
+
 const DasSimulation = () => {
-  const [input, setInput] = useState<DasInputState>(defaultInput);
-  const [result, setResult] = useState<DasConsolidatedResult | null>(null);
-  const [isCalculated, setIsCalculated] = useState(false);
+  const persisted = loadPersistedState();
+  const [input, setInput] = useState<DasInputState>(persisted?.input ?? defaultInput);
+  const [result, setResult] = useState<DasConsolidatedResult | null>(persisted?.result ?? null);
+  const [isCalculated, setIsCalculated] = useState(persisted?.isCalculated ?? false);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ input, result, isCalculated }));
+  }, [input, result, isCalculated]);
 
   const { data: faixasDb, isLoading: loadingFaixas } = useDasAnexosFaixas();
   const { data: cnaeMap } = useDasCnaeAnexo();
