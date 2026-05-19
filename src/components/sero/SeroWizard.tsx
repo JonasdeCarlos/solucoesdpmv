@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import StepIndicator from '@/components/StepIndicator';
 import SeroStep1Obra from './SeroStep1Obra';
 import SeroStep2Folha from './SeroStep2Folha';
@@ -12,13 +12,34 @@ import type { SeroObra, SeroDeducao, SeroRetencao, SeroResultado, SeroVauVal } f
 import { createDefaultObra } from '@/types/sero';
 
 const STEPS = ['Obra (CNO)', 'Folha', 'Deduções', 'Apuração', 'Relatório'];
+const STORAGE_KEY = 'sero_wizard_state_v1';
+
+function loadPersistedState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) as {
+      step?: number;
+      obra?: SeroObra;
+      deducoes?: SeroDeducao[];
+      retencoes?: SeroRetencao[];
+      resultado?: SeroResultado | null;
+    } : null;
+  } catch {
+    return null;
+  }
+}
 
 const SeroWizard: React.FC = () => {
-  const [step, setStep] = useState(1);
-  const [obra, setObra] = useState<SeroObra>(createDefaultObra);
-  const [deducoes, setDeducoes] = useState<SeroDeducao[]>([]);
-  const [retencoes, setRetencoes] = useState<SeroRetencao[]>([]);
-  const [resultado, setResultado] = useState<SeroResultado | null>(null);
+  const persisted = loadPersistedState();
+  const [step, setStep] = useState(persisted?.step ?? 1);
+  const [obra, setObra] = useState<SeroObra>(persisted?.obra ?? createDefaultObra);
+  const [deducoes, setDeducoes] = useState<SeroDeducao[]>(persisted?.deducoes ?? []);
+  const [retencoes, setRetencoes] = useState<SeroRetencao[]>(persisted?.retencoes ?? []);
+  const [resultado, setResultado] = useState<SeroResultado | null>(persisted?.resultado ?? null);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ step, obra, deducoes, retencoes, resultado }));
+  }, [step, obra, deducoes, retencoes, resultado]);
 
   const { data: vauValList } = useSeroVauVal(obra.uf, obra.tipo_obra);
   const { data: params } = useSeroParametros();
