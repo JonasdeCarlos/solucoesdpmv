@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -28,12 +28,28 @@ const defaultInput: CustoMensalInput = {
   competencia: '',
 };
 
+const STORAGE_KEY = 'custo_mensal_state_v1';
+
+function loadPersistedState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) as { input?: CustoMensalInput; baseEditada?: boolean; calculado?: boolean } : null;
+  } catch {
+    return null;
+  }
+}
+
 const CustoMensalPage: React.FC = () => {
   const { toast } = useToast();
-  const [input, setInput] = useState<CustoMensalInput>(defaultInput);
-  const [baseEditada, setBaseEditada] = useState(false);
-  const [calculado, setCalculado] = useState(false);
+  const persisted = loadPersistedState();
+  const [input, setInput] = useState<CustoMensalInput>(persisted?.input ?? defaultInput);
+  const [baseEditada, setBaseEditada] = useState(persisted?.baseEditada ?? false);
+  const [calculado, setCalculado] = useState(persisted?.calculado ?? false);
   const printRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ input, baseEditada, calculado }));
+  }, [input, baseEditada, calculado]);
 
   const handleSalarioChange = (v: string) => {
     const num = parseFloat(v.replace(',', '.')) || 0;
