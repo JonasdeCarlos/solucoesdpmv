@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -32,12 +32,28 @@ const defaultInput: EncargosInput = {
   ano: 2026,
 };
 
+const STORAGE_KEY = 'encargos_state_v1';
+
+function loadPersistedState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) as { input?: EncargosInput; calculado?: boolean } : null;
+  } catch {
+    return null;
+  }
+}
+
 const EncargosPage: React.FC = () => {
   const { toast } = useToast();
-  const [input, setInput] = useState<EncargosInput>(defaultInput);
-  const [calculado, setCalculado] = useState(false);
+  const persisted = loadPersistedState();
+  const [input, setInput] = useState<EncargosInput>(persisted?.input ?? defaultInput);
+  const [calculado, setCalculado] = useState(persisted?.calculado ?? false);
   const [configOpen, setConfigOpen] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ input, calculado }));
+  }, [input, calculado]);
 
   // Custom tables stored in localStorage
   const [tabelasCustom, setTabelasCustom] = useLocalStorage<Record<number, TabelaEncargos>>('encargos-tabelas-custom', {});
