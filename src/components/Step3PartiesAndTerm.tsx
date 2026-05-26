@@ -4,8 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { ArrowLeft, FileText, Copy, Download, Calculator } from 'lucide-react';
-import { type Step1Data, type Step2Data, type Step3Data, type VerbaRescisoria, calcularTotal, MOTIVO_TERMO_TITULO, MOTIVO_TERMO_CORPO, MOTIVO_LABELS } from '@/utils/calculations';
+import { ArrowLeft, FileText, Copy, Download, Calculator, RefreshCw } from 'lucide-react';
+import { type Step1Data, type Step2Data, type Step3Data, type VerbaRescisoria, calcularTotal, calcularVerbas, MOTIVO_TERMO_TITULO, MOTIVO_TERMO_CORPO, MOTIVO_LABELS } from '@/utils/calculations';
 import { calcularFgtsDetalhado } from '@/utils/fgtsDetail';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { numberToWords } from '@/utils/numberToWords';
@@ -26,6 +26,12 @@ interface Step3Props {
 const Step3PartiesAndTerm = ({ step1, step2, verbas, data, onChange, onVerbaUpdate, onBack }: Step3Props) => {
   const update = (partial: Partial<Step3Data>) => {
     onChange({ ...data, ...partial });
+  };
+
+  const handleRecalcular = () => {
+    const novas = calcularVerbas(step1, step2);
+    onVerbaUpdate(novas);
+    toast.success('Rescisão recalculada com os dados originais.');
   };
 
   const total = calcularTotal(verbas);
@@ -325,10 +331,18 @@ ${data.empregadoNome || '[NOME DO EMPREGADO]'}`;
       {/* Editable results table */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-xl">Demonstrativo de Verbas (editável)</CardTitle>
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <CardTitle className="text-xl">Demonstrativo de Verbas (editável)</CardTitle>
+            <Button onClick={handleRecalcular} variant="outline" size="sm" className="gap-2">
+              <RefreshCw className="w-4 h-4" /> Recalcular rescisão
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <ResultsTable verbas={verbas} editable onUpdate={onVerbaUpdate} />
+          <p className="text-xs text-muted-foreground mt-2">
+            Edições manuais nas linhas não recalculam automaticamente verbas dependentes (ex.: FGTS sobre saldo de salário). Use "Recalcular rescisão" para refazer todos os valores a partir dos dados informados nas etapas 1 e 2.
+          </p>
           <p className="text-sm text-muted-foreground mt-2">
             Total por extenso: <strong>{numberToWords(total)}</strong>
           </p>
