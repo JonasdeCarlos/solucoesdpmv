@@ -8,6 +8,9 @@ import { type Step1Data, type Step2Data, type Step3Data, type VerbaRescisoria, c
 import { diffMonths } from '@/utils/formatters';
 import { formatCurrency } from '@/utils/formatters';
 import { numberToWords } from '@/utils/numberToWords';
+import SavedCalculations from '@/components/SavedCalculations';
+import { upsertCalculation, type SavedCalculation } from '@/utils/calcHistory';
+import { toast } from 'sonner';
 
 const STEP_LABELS = ['Contrato', 'Complementar', 'Termo'];
 
@@ -34,6 +37,7 @@ const Index = () => {
 
   const [currentStep, setCurrentStep] = useState<number>(persisted?.currentStep ?? 1);
   const [verbas, setVerbas] = useState<VerbaRescisoria[]>(persisted?.verbas ?? []);
+  const [currentCalcId, setCurrentCalcId] = useState<string | null>(persisted?.currentCalcId ?? null);
 
   const [step1, setStep1] = useState<Step1Data>(persisted?.step1 ?? {
     dataAdmissao: null,
@@ -82,10 +86,24 @@ const Index = () => {
     try {
       localStorage.setItem(
         STORAGE_KEY,
-        JSON.stringify({ currentStep, verbas, step1, step2, step3 })
+        JSON.stringify({ currentStep, verbas, step1, step2, step3, currentCalcId })
       );
     } catch {}
-  }, [currentStep, verbas, step1, step2, step3]);
+  }, [currentStep, verbas, step1, step2, step3, currentCalcId]);
+
+  // Auto-save / update history whenever we have computed verbas (i.e. user reached step 3)
+  useEffect(() => {
+    if (verbas.length === 0) return;
+    const saved = upsertCalculation({
+      id: currentCalcId,
+      step1,
+      step2,
+      step3,
+      verbas,
+    });
+    if (saved.id !== currentCalcId) setCurrentCalcId(saved.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [verbas, step3, step1, step2]);
 
   const handleGoToStep2 = () => {
     if (step1.dataAdmissao && step1.dataDesligamento) {
@@ -116,8 +134,66 @@ const Index = () => {
     setCurrentStep(3);
   };
 
+  const handleLoad = (item: SavedCalculation) => {
+    setStep1(item.step1);
+    setStep2(item.step2);
+    setStep3(item.step3);
+    setVerbas(item.verbas);
+    setCurrentCalcId(item.id);
+    setCurrentStep(3);
+    toast.success(`Cálculo carregado: ${item.label}`);
+  };
+
+  const handleNew = () => {
+    if (!confirm('Iniciar um novo cálculo? O cálculo atual permanece salvo no histórico.')) return;
+    setCurrentCalcId(null);
+    setVerbas([]);
+    setStep1({
+      dataAdmissao: null,
+      dataDesligamento: null,
+      salarioMensal: 0,
+      motivo: 'pedido_demissao',
+      motivoOutroTexto: '',
+      descontaAvisoPrevio: false,
+      diasAvisoDesconto: 30,
+      temFeriasVencidas: false,
+      periodosVencidos: 1,
+      calculaFGTS: false,
+      calculaMultaFGTS: false,
+      percentualMultaFGTS: 0,
+      calculaAvisoPrevioIndenizado: false,
+      diasAvisoPrevioIndenizado: 30,
+      calcula13AnosAnteriores: false,
+      anos13Selecionados: [],
+    });
+    setStep2({
+      diasTrabalhadosMes: 15,
+      meses13Proporcional: 0,
+      mesesFeriasProporcional: 0,
+      consideraTercoFerias: true,
+      outrosDescontos: [],
+      outrosCreditos: [],
+      incluir13AnosAnteriores: false,
+      fgtsManual: null,
+    });
+    setStep3({
+      empregadorNome: '',
+      empregadorCPF: '',
+      empregadorEndereco: '',
+      empregadorTipo: 'domestico',
+      empregadorCNPJ: '',
+      empregadoNome: '',
+      empregadoCPF: '',
+      empregadoEndereco: '',
+      localAssinatura: '',
+      dataAssinatura: new Date().toISOString().split('T')[0],
+    });
+    setCurrentStep(1);
+  };
+
   return (
     <div>
+      <SavedCalculations currentId={currentCalcId} onLoad={handleLoad} onNew={handleNew} />
       <StepIndicator currentStep={currentStep} totalSteps={3} labels={STEP_LABELS} />
 
       {currentStep === 1 && (
