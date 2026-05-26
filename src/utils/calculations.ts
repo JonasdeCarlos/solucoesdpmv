@@ -251,13 +251,14 @@ export function calcularVerbas(step1: Step1Data, step2: Step2Data): VerbaResciso
 
           let diasTrabalhados: number;
           if (isFirstMonth && isLastMonth) {
-            const diasReais = end.getDate() - start.getDate() + 1;
-            diasTrabalhados = (end.getDate() >= totalDiasNoMes && start.getDate() === 1) ? 30 : diasReais;
+            // Usa o mesmo nº de dias informado pelo usuário (saldo de salário)
+            diasTrabalhados = Math.min(step2.diasTrabalhadosMes, 30);
           } else if (isFirstMonth) {
             const diasReais = totalDiasNoMes - start.getDate() + 1;
             diasTrabalhados = start.getDate() === 1 ? 30 : diasReais;
           } else if (isLastMonth) {
-            diasTrabalhados = end.getDate() >= totalDiasNoMes ? 30 : end.getDate();
+            // Mês do desligamento: usa o mesmo valor informado no saldo de salário
+            diasTrabalhados = Math.min(step2.diasTrabalhadosMes, 30);
           } else {
             // Mês completo: sempre salário integral (padrão CLT)
             diasTrabalhados = 30;
