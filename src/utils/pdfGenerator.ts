@@ -552,7 +552,7 @@ function renderMemoriaPages(doc: jsPDF, step1: Step1Data, step2: Step2Data, verb
     } else {
       const fgtsDetail = calcularFgtsDetalhado(
         sal, step1.dataAdmissao, step1.dataDesligamento,
-        decimo, step2.incluir13AnosAnteriores
+        decimo, step2.incluir13AnosAnteriores, step2.diasTrabalhadosMes
       );
 
       const fgtsLines: string[] = [
