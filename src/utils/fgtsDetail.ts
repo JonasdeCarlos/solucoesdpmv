@@ -23,6 +23,7 @@ export function calcularFgtsDetalhado(
   dataDesligamento: Date | null,
   decimoProporcional: number,
   incluir13Anteriores: boolean,
+  diasTrabalhadosMesDesligamento?: number,
 ): FgtsDetalheResult {
   const meses: FgtsMesDetalhe[] = [];
   let baseSalarial = 0;
@@ -45,13 +46,16 @@ export function calcularFgtsDetalhado(
 
       let diasTrabalhados: number;
       if (isFirstMonth && isLastMonth) {
-        const diasReais = end.getDate() - start.getDate() + 1;
-        diasTrabalhados = (end.getDate() >= totalDiasNoMes && start.getDate() === 1) ? 30 : diasReais;
+        diasTrabalhados = typeof diasTrabalhadosMesDesligamento === 'number'
+          ? Math.min(diasTrabalhadosMesDesligamento, 30)
+          : ((end.getDate() >= totalDiasNoMes && start.getDate() === 1) ? 30 : (end.getDate() - start.getDate() + 1));
       } else if (isFirstMonth) {
         const diasReais = totalDiasNoMes - start.getDate() + 1;
         diasTrabalhados = start.getDate() === 1 ? 30 : diasReais;
       } else if (isLastMonth) {
-        diasTrabalhados = end.getDate() >= totalDiasNoMes ? 30 : end.getDate();
+        diasTrabalhados = typeof diasTrabalhadosMesDesligamento === 'number'
+          ? Math.min(diasTrabalhadosMesDesligamento, 30)
+          : (end.getDate() >= totalDiasNoMes ? 30 : end.getDate());
       } else {
         diasTrabalhados = 30;
       }
