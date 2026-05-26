@@ -20,7 +20,7 @@ export const MOTIVO_TERMO_TITULO: Record<MotivoRescisao, string> = {
   dispensa_sem_justa_causa: 'POR DISPENSA SEM JUSTA CAUSA',
   dispensa_justa_causa: 'POR DISPENSA POR JUSTA CAUSA',
   comum_acordo: 'POR RESCISÃO EM COMUM ACORDO (ART. 484-A CLT)',
-  termino_contrato: 'POR TÉRMINO DE CONTRATO POR PRAZO DETERMINADO',
+  termino_contrato: 'POR TÉRMINO DE CONTRATO POR PRAZO DETERMINADO/EXPERIÊNCIA',
   outros: '',
 };
 
