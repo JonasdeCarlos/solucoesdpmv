@@ -244,7 +244,7 @@ ${data.empregadoNome || '[NOME DO EMPREGADO]'}`;
         const decimo = sal * (step2.meses13Proporcional / 12);
         const fgtsDetail = calcularFgtsDetalhado(
           sal, step1.dataAdmissao, step1.dataDesligamento,
-          decimo, step2.incluir13AnosAnteriores
+          decimo, step2.incluir13AnosAnteriores, step2.diasTrabalhadosMes
         );
 
         lines.push('');
