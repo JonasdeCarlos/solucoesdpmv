@@ -669,6 +669,42 @@ export type Database = {
           },
         ]
       }
+      ccts: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          observacoes: string
+          sindicato: string
+          uf: string
+          updated_at: string
+          vigencia_fim: string | null
+          vigencia_inicio: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          observacoes?: string
+          sindicato?: string
+          uf?: string
+          updated_at?: string
+          vigencia_fim?: string | null
+          vigencia_inicio?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          observacoes?: string
+          sindicato?: string
+          uf?: string
+          updated_at?: string
+          vigencia_fim?: string | null
+          vigencia_inicio?: string | null
+        }
+        Relationships: []
+      }
       clientes: {
         Row: {
           cnpj: string | null
@@ -1191,6 +1227,291 @@ export type Database = {
         }
         Relationships: []
       }
+      holiday_audit_log: {
+        Row: {
+          action: string
+          after_json: Json | null
+          before_json: Json | null
+          created_at: string
+          entity: string
+          entity_id: string | null
+          id: string
+          user_email: string
+        }
+        Insert: {
+          action: string
+          after_json?: Json | null
+          before_json?: Json | null
+          created_at?: string
+          entity: string
+          entity_id?: string | null
+          id?: string
+          user_email?: string
+        }
+        Update: {
+          action?: string
+          after_json?: Json | null
+          before_json?: Json | null
+          created_at?: string
+          entity?: string
+          entity_id?: string | null
+          id?: string
+          user_email?: string
+        }
+        Relationships: []
+      }
+      holiday_extraction_items: {
+        Row: {
+          cct_id: string | null
+          confidence: number
+          created_at: string
+          data: string | null
+          evidence_text: string
+          holiday_id: string | null
+          id: string
+          is_holiday: boolean
+          is_optional: boolean
+          municipio: string | null
+          nome: string
+          scope_type: string
+          source_doc_id: string
+          status: string
+          tipo: string
+          uf: string | null
+        }
+        Insert: {
+          cct_id?: string | null
+          confidence?: number
+          created_at?: string
+          data?: string | null
+          evidence_text?: string
+          holiday_id?: string | null
+          id?: string
+          is_holiday?: boolean
+          is_optional?: boolean
+          municipio?: string | null
+          nome?: string
+          scope_type?: string
+          source_doc_id: string
+          status?: string
+          tipo?: string
+          uf?: string | null
+        }
+        Update: {
+          cct_id?: string | null
+          confidence?: number
+          created_at?: string
+          data?: string | null
+          evidence_text?: string
+          holiday_id?: string | null
+          id?: string
+          is_holiday?: boolean
+          is_optional?: boolean
+          municipio?: string | null
+          nome?: string
+          scope_type?: string
+          source_doc_id?: string
+          status?: string
+          tipo?: string
+          uf?: string | null
+        }
+        Relationships: []
+      }
+      holiday_notice_exports: {
+        Row: {
+          exported_at: string
+          exported_by: string
+          id: string
+          notice_id: string
+          pdf_path: string | null
+          whatsapp_text: string
+        }
+        Insert: {
+          exported_at?: string
+          exported_by?: string
+          id?: string
+          notice_id: string
+          pdf_path?: string | null
+          whatsapp_text?: string
+        }
+        Update: {
+          exported_at?: string
+          exported_by?: string
+          id?: string
+          notice_id?: string
+          pdf_path?: string | null
+          whatsapp_text?: string
+        }
+        Relationships: []
+      }
+      holiday_notices: {
+        Row: {
+          audience: Json
+          body_template: string
+          created_at: string
+          created_by: string
+          holiday_ids: string[]
+          id: string
+          periodo_fim: string | null
+          periodo_inicio: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          audience?: Json
+          body_template?: string
+          created_at?: string
+          created_by?: string
+          holiday_ids?: string[]
+          id?: string
+          periodo_fim?: string | null
+          periodo_inicio?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          audience?: Json
+          body_template?: string
+          created_at?: string
+          created_by?: string
+          holiday_ids?: string[]
+          id?: string
+          periodo_fim?: string | null
+          periodo_inicio?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      holiday_source_documents: {
+        Row: {
+          ano: number | null
+          cct_id: string | null
+          doc_type: string
+          extraction_json: Json
+          file_name: string
+          file_path: string | null
+          id: string
+          imported_at: string
+          imported_by: string
+          municipio: string | null
+          status: string
+          total_confirmed: number
+          total_duplicated: number
+          total_extracted: number
+          total_ignored: number
+          uf: string | null
+        }
+        Insert: {
+          ano?: number | null
+          cct_id?: string | null
+          doc_type?: string
+          extraction_json?: Json
+          file_name?: string
+          file_path?: string | null
+          id?: string
+          imported_at?: string
+          imported_by?: string
+          municipio?: string | null
+          status?: string
+          total_confirmed?: number
+          total_duplicated?: number
+          total_extracted?: number
+          total_ignored?: number
+          uf?: string | null
+        }
+        Update: {
+          ano?: number | null
+          cct_id?: string | null
+          doc_type?: string
+          extraction_json?: Json
+          file_name?: string
+          file_path?: string | null
+          id?: string
+          imported_at?: string
+          imported_by?: string
+          municipio?: string | null
+          status?: string
+          total_confirmed?: number
+          total_duplicated?: number
+          total_extracted?: number
+          total_ignored?: number
+          uf?: string | null
+        }
+        Relationships: []
+      }
+      holidays: {
+        Row: {
+          cct_id: string | null
+          company_id: string | null
+          created_at: string
+          data: string
+          dedupe_key: string
+          id: string
+          is_holiday: boolean
+          is_optional: boolean
+          municipio: string | null
+          nome: string
+          observacoes: string
+          scope_type: string
+          source_doc_id: string | null
+          source_type: string
+          status: string
+          tipo: string
+          uf: string | null
+          updated_at: string
+          vigencia_fim: string | null
+          vigencia_inicio: string | null
+        }
+        Insert: {
+          cct_id?: string | null
+          company_id?: string | null
+          created_at?: string
+          data: string
+          dedupe_key?: string
+          id?: string
+          is_holiday?: boolean
+          is_optional?: boolean
+          municipio?: string | null
+          nome: string
+          observacoes?: string
+          scope_type?: string
+          source_doc_id?: string | null
+          source_type?: string
+          status?: string
+          tipo?: string
+          uf?: string | null
+          updated_at?: string
+          vigencia_fim?: string | null
+          vigencia_inicio?: string | null
+        }
+        Update: {
+          cct_id?: string | null
+          company_id?: string | null
+          created_at?: string
+          data?: string
+          dedupe_key?: string
+          id?: string
+          is_holiday?: boolean
+          is_optional?: boolean
+          municipio?: string | null
+          nome?: string
+          observacoes?: string
+          scope_type?: string
+          source_doc_id?: string | null
+          source_type?: string
+          status?: string
+          tipo?: string
+          uf?: string | null
+          updated_at?: string
+          vigencia_fim?: string | null
+          vigencia_inicio?: string | null
+        }
+        Relationships: []
+      }
       invited_emails: {
         Row: {
           created_at: string
@@ -1212,6 +1533,42 @@ export type Database = {
           id?: string
           invited_by?: string
           role?: Database["public"]["Enums"]["app_role"]
+        }
+        Relationships: []
+      }
+      office_branding: {
+        Row: {
+          contacts: Json
+          created_at: string
+          id: string
+          logo_url: string | null
+          office_name: string
+          primary_color: string
+          secondary_color: string
+          text_color: string
+          updated_at: string
+        }
+        Insert: {
+          contacts?: Json
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          office_name?: string
+          primary_color?: string
+          secondary_color?: string
+          text_color?: string
+          updated_at?: string
+        }
+        Update: {
+          contacts?: Json
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          office_name?: string
+          primary_color?: string
+          secondary_color?: string
+          text_color?: string
+          updated_at?: string
         }
         Relationships: []
       }
