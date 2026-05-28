@@ -1,70 +1,84 @@
-## Módulo "Banco de Horas" — Plano de Implementação
+## Módulo de Feriados e Comunicados
 
-### Visão geral
-Novo módulo no menu principal para subir PDFs mensais de Cartão Ponto (Secullum), extrair o saldo BSALDO de cada colaborador, armazenar histórico por competência e exibir dashboard com filtros, faixas de cor, tendência e relatórios.
+Vou criar um módulo completo acessível em `/feriados-comunicados` no menu lateral.
 
-### Fluxo de extração (validado no PDF de exemplo)
-PDF tem 1 colaborador por página. Por página:
-- **Período** → cabeçalho `Período: dd/mm/aaaa até dd/mm/aaaa` → competência `YYYY-MM` (mês de início).
-- **Empresa** → linha após `EMPRESA:` + `CNPJ:`.
-- **Colaborador** → linha após `NOME:` + `Nº FOLHA:` (código).
-- **BSALDO** → linha `TOTAIS`, coluna `BSALDO` (8ª coluna numérica). Sinal +/- preservado (ex.: `-83:03`, `+12:30`, `00:00`).
-- Se não achar BSALDO → marca como **pendente**.
+### 1. Banco de Dados (migrations)
 
-A extração roda **server-side** numa edge function (`parse-ponto-pdf`) com `pdf-parse`/`pdfjs` para preservar o layout textual, depois regex linha-a-linha.
+Novas tabelas:
+- `office_branding` — logo, cores primária/secundária, nome do escritório, contatos (JSON). Linha única.
+- `ccts` — id, nome, sindicato, uf, vigência início/fim.
+- `holidays` — data, nome, tipo (enum: distrital/municipal/estadual/sindical/ponto_facultativo/interno), é_feriado, é_ponto_facultativo, escopo (todos/uf/municipio/empresa/cct), uf, municipio, company_id, cct_id, fonte (auto/manual/decreto/cct), source_doc_id, status (ativo/inativo), observações, vigência.
+- `holiday_source_documents` — tipo (decreto_municipal/estadual/cct/outro), uf, municipio, cct_id, file_path (Storage bucket `feriados-docs`), ano, extraction_json, status, importado_por/em.
+- `holiday_extraction_items` — source_doc_id, data, nome, tipo, é_feriado, é_ponto_facultativo, confiança, evidência (trecho), status (pendente/confirmado/ignorado).
+- `holiday_notices` — título, corpo (template com placeholders), audience_json (filtros), status (rascunho/publicado/arquivado), datas relacionadas.
+- `holiday_notice_exports` — notice_id, pdf_path, whatsapp_text, exportado_em/por.
+- `holiday_audit_log` — entidade, ação, antes/depois (JSON), usuário, timestamp.
 
-### Banco de dados (migration)
-Tabelas novas (RLS: `authenticated full access`):
-- `bh_imports` — id, empresa_nome, empresa_cnpj, competencia (date 1º dia), file_path, file_hash, imported_at, imported_by, total_paginas, total_ok, total_pendentes, errors_json.
-- `bh_employees` — id, empresa_cnpj, codigo, nome (UNIQUE empresa_cnpj+codigo).
-- `bh_balances` — id, import_id, employee_id, empresa_cnpj, competencia (date), balance_minutes (int, com sinal), balance_hhmm (text), version, created_at. UNIQUE(employee_id, competencia, version).
-- `bh_settings` — id, scope (`global`|`empresa`|`colaborador`), empresa_cnpj nullable, employee_id nullable, daily_minutes int. (Default global = 480.)
+Reaproveito `feriados_municipais` existente como fonte da “base automática” pré-cadastrada — uma seed function clona registros pertinentes em `holidays` quando a empresa é cadastrada (gatilho ou ação manual “Carregar base municipal”).
 
-Bucket `ponto-pdfs` (privado) para arquivar os PDFs originais.
+Bucket Storage: `feriados-docs` (privado), `office-assets` (público p/ logo).
 
-### Edge function
-`supabase/functions/parse-ponto-pdf/index.ts`
-- Recebe `{ file_path }` (PDF já no bucket) ou base64.
-- Roda `pdfjs-dist` em Deno → texto com layout.
-- Regex de extração por página → array `{ empresa_nome, empresa_cnpj, codigo, nome, competencia, bsaldo, status }`.
-- Retorna JSON; o front decide gravar (com escolha em caso de duplicidade).
+RLS: full access autenticado (mesmo padrão dos outros módulos do app).
 
-### Telas (rotas dentro de `/banco-horas`)
-1. **`/banco-horas`** — Dashboard (default).
-   - Filtros: empresa, período (competência inicial/final), colaborador, faixa, sinal.
-   - KPIs: total colaboradores, saldo consolidado, % por faixa, top 10 +, top 10 −.
-   - Gráficos (recharts): evolução total, evolução por colaborador, distribuição empilhada por faixa.
-   - Indicadores de tendência ↑→↓ (delta vs mês anterior, threshold configurável padrão 60 min).
-2. **`/banco-horas/importar`** — Upload de PDFs, prévia da extração, resolução de duplicatas (substituir / manter / nova versão), resumo final.
-3. **`/banco-horas/colaboradores`** — Lista por competência selecionada com saldo HH:MM, dias, faixa, tendência. Click → detalhe do colaborador (série temporal + tabela mês a mês).
-4. **`/banco-horas/parametros`** — Carga diária global, por empresa, por colaborador. Threshold de tendência.
-5. **`/banco-horas/auditoria`** — Lista de importações, quem importou, quando, totais, link para PDF.
+### 2. Edge Function de extração com IA
 
-### Lógica auxiliar (`src/utils/bancoHoras/`)
-- `parseHHMM(str) → minutos com sinal`
-- `formatHHMM(min) → string com sinal`
-- `classifyFaixa(min) → 'verde'|'amarelo'|'laranja'|'vermelho'` (baseado em |min|: <16h, <31h, <51h, ≥51h).
-- `toDays(min, dailyMin) → number`
-- `trend(curr, prev, threshold) → 'alta'|'queda'|'estavel'`
-- `exportCsv` / `exportPdf` (jspdf + autotable, padrão Monte Verde).
+`supabase/functions/extract-holidays-doc/index.ts`:
+- Recebe `source_doc_id`, baixa o PDF do Storage, extrai texto (pdf parse).
+- Chama Lovable AI (Gemini 2.5 Flash) com prompt estruturado pedindo JSON: lista de feriados detectados com data, nome, tipo, escopo, é_ponto_facultativo, confiança 0–1, trecho de evidência.
+- Salva itens em `holiday_extraction_items` com status `pendente`.
+- Confiança < 0.7 sempre fica pendente; nada é publicado direto.
 
-### Integrações
-- Adiciona item `Banco de Horas` (ícone `Hourglass`) na navegação (`AppLayout.tsx`).
-- Rotas em `App.tsx` sob `ProtectedRoute`.
-- Reaproveita design tokens Monte Verde (verde #628E3F, etc.).
+### 3. Frontend — páginas
 
-### Cores das faixas (semantic tokens já existentes)
-- Verde: `bg-green-100 text-green-800`
-- Amarelo: `bg-yellow-100 text-yellow-800`
-- Laranja: `bg-orange-100 text-orange-800`
-- Vermelho: `bg-red-100 text-red-800`
-Sinal negativo → ícone `AlertTriangle`.
+Rota base `/feriados-comunicados` com sub-abas:
 
-### Entrega
-- 1 migration (tabelas + bucket + policies).
-- 1 edge function (`parse-ponto-pdf`).
-- Hooks: `useBancoHorasImports`, `useBancoHorasBalances`, `useBancoHorasSettings`.
-- 5 páginas + componentes auxiliares (KPI cards, charts, faixa chip, trend arrow).
-- Utils de cálculo + export CSV/PDF.
+**a) Calendário** (`HolidaysCalendarTab.tsx`)
+- Visão mensal/anual em grid, cores por tipo (configuráveis), legenda e filtros (município, UF, CCT, empresa, tipo).
 
-Confirma para eu seguir com a migration e a implementação?
+**b) Lista de Feriados** (`HolidaysListTab.tsx`)
+- Tabela com data, nome, tipo, escopo, fonte, status. Ações: editar, desativar, gerar comunicado.
+- Dialog “Adicionar feriado” com todos os campos especificados.
+- Importação CSV/XLSX.
+
+**c) Importar Decreto/CCT** (`HolidaysImportTab.tsx`)
+- Upload PDF/DOC + metadados (tipo, UF, município, CCT, ano).
+- Botão “Processar” → chama edge function.
+- Tela de revisão: itens sugeridos com confiança %, evidência, ações “Confirmar/Editar/Ignorar”. Dedupe por chave `(data + tipo + escopo + município/UF/CCT + nome normalizado)`.
+
+**d) Comunicados** (`NoticesTab.tsx`)
+- Criar comunicado a partir de 1 feriado, vários feriados ou de uma importação.
+- Editor com placeholders (`{{data}}`, `{{dia_semana}}`, `{{municipio}}`, `{{uf}}`, `{{nome_evento}}`, `{{tipo_evento}}`, `{{observacao_curta}}`, `{{nome_escritorio}}`).
+- Segmentação de público (Todos/Município/UF/CCT/Empresa).
+- Filtros completos (público, tipo, datas, status, município, CCT).
+- Ações por comunicado:
+  - **Copiar para WhatsApp** (texto formatado pelos placeholders resolvidos)
+  - **Copiar como texto**
+  - **Gerar PDF** (jsPDF) com logo + faixa de cor primária, título, corpo, rodapé com contatos do escritório, A4.
+- Exportação em lote: lista de mensagens WhatsApp por feriado/empresa/município.
+
+**e) Configurações / Branding** (`OfficeBrandingTab.tsx`)
+- Upload de logo (bucket `office-assets`), cor primária/secundária (color picker), nome do escritório e contatos. Pré-visualização do cabeçalho do PDF.
+
+**f) Logs & Auditoria** (`HolidaysAuditTab.tsx`)
+- Tabela de importações (arquivo, totais, confirmados/ignorados/duplicados/pendentes).
+- Histórico de alterações (antes/depois).
+
+### 4. Utilitários
+- `src/utils/holidays/noticePdf.ts` — gera PDF com branding usando jsPDF (mesmo padrão dos outros geradores do app).
+- `src/utils/holidays/whatsappText.ts` — resolve placeholders.
+- `src/utils/holidays/dedupe.ts` — chave única normalizada.
+- `src/utils/holidays/csvImport.ts` — parser CSV/XLSX.
+- Hooks `useHolidays`, `useNotices`, `useOfficeBranding`, `useHolidaySources`.
+
+### 5. Integração no app
+- Novo item de menu “Feriados” em `src/components/AppLayout.tsx`.
+- Rota em `src/App.tsx` protegida por `ProtectedRoute`.
+- Auto-seed: ao carregar a página, oferece botão “Importar base municipal padrão” que copia `feriados_municipais` ativos para `holidays` do escopo informado.
+
+### Observações
+- Tudo em pt-BR, paleta Monte Verde já existente no app.
+- A IA usa o gateway nativo (sem API key adicional).
+- Comunicados nunca publicam item da IA sem confirmação manual.
+- Escopo grande: vou implementar tudo em uma única passada com hooks e telas básicas funcionais, sem deixar TODOs.
+
+Posso prosseguir?
