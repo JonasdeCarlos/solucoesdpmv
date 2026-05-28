@@ -31,16 +31,17 @@ export function renderNoticeText(template: string, holidays: Holiday[], branding
     ? ` em ${first.municipio}${first.uf ? '/' + first.uf : ''}`
     : (first.uf ? ` no estado de ${first.uf}` : '');
 
-  let body = template
-    .replaceAll('{{data}}', fmtBR(first.data))
-    .replaceAll('{{dia_semana}}', dow(first.data))
-    .replaceAll('{{municipio}}', first.municipio || '')
-    .replaceAll('{{uf}}', first.uf || '')
-    .replaceAll('{{local_str}}', local)
-    .replaceAll('{{nome_evento}}', first.nome)
-    .replaceAll('{{tipo_evento}}', first.is_optional ? 'ponto facultativo' : 'feriado')
-    .replaceAll('{{observacao_curta}}', customObs ?? first.observacoes ?? '')
-    .replaceAll('{{nome_escritorio}}', branding?.office_name || 'Monte Verde Contabilidade');
+  const repl = (s: string, k: string, v: string) => s.split(k).join(v);
+  let body = template;
+  body = repl(body, '{{data}}', fmtBR(first.data));
+  body = repl(body, '{{dia_semana}}', dow(first.data));
+  body = repl(body, '{{municipio}}', first.municipio || '');
+  body = repl(body, '{{uf}}', first.uf || '');
+  body = repl(body, '{{local_str}}', local);
+  body = repl(body, '{{nome_evento}}', first.nome);
+  body = repl(body, '{{tipo_evento}}', first.is_optional ? 'ponto facultativo' : 'feriado');
+  body = repl(body, '{{observacao_curta}}', customObs ?? first.observacoes ?? '');
+  body = repl(body, '{{nome_escritorio}}', branding?.office_name || 'Monte Verde Contabilidade');
 
   if (holidays.length > 1) {
     const list = holidays.map((h) => `• ${fmtBR(h.data)} — ${h.nome}${h.is_optional ? ' (ponto facultativo)' : ''}`).join('\n');
