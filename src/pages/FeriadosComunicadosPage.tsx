@@ -228,7 +228,7 @@ function ListTab() {
     let added = 0, dup = 0;
     for (const f of items) {
       const { error } = await create({
-        data: f.data, nome: f.nome, tipo: 'estadual', is_holiday: !f.is_optional, is_optional: f.is_optional,
+        data: f.data, nome: f.nome, tipo: f.is_optional ? 'ponto_facultativo' : 'nacional', is_holiday: !f.is_optional, is_optional: f.is_optional,
         scope_type: 'todos', municipio: null, uf: null, source_type: 'auto', status: 'ativo', observacoes: 'Feriado nacional',
       } as any);
       if (error) dup++; else added++;
