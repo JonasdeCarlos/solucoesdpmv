@@ -1,9 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.4';
-import { getDocument, GlobalWorkerOptions } from 'https://esm.sh/pdfjs-dist@4.8.69/legacy/build/pdf.mjs';
-
-// Disable PDF.js worker (run in main thread on Deno)
-// @ts-ignore
-GlobalWorkerOptions.workerSrc = '';
+import { extractText, getDocumentProxy } from 'npm:unpdf@0.12.1';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -54,15 +50,10 @@ Deno.serve(async (req) => {
     let text = '';
     if ((doc.file_name as string).toLowerCase().endsWith('.pdf')) {
       const buf = new Uint8Array(await file.arrayBuffer());
-      const pdf = await getDocument({ data: buf, useWorker: false, isEvalSupported: false }).promise;
-      const parts: string[] = [];
-      const maxPages = Math.min(pdf.numPages, 40);
-      for (let i = 1; i <= maxPages; i++) {
-        const page = await pdf.getPage(i);
-        const tc = await page.getTextContent();
-        parts.push((tc.items as any[]).map((it) => it.str).join(' '));
-      }
-      text = parts.join('\n');
+      const pdf = await getDocumentProxy(buf);
+      const { text: pages } = await extractText(pdf, { mergePages: false });
+      const arr = Array.isArray(pages) ? pages : [pages as string];
+      text = arr.slice(0, 40).join('\n');
     } else {
       text = await file.text();
     }
