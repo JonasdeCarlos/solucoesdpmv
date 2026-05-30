@@ -29,6 +29,51 @@ function fmtBR(iso: string): string {
   return m ? `${m[3]}/${m[2]}/${m[1]}` : iso;
 }
 
+// Algoritmo de Meeus/Jones/Butcher para Páscoa (domingo) gregoriana
+function easterSunday(year: number): Date {
+  const a = year % 19;
+  const b = Math.floor(year / 100);
+  const c = year % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const L = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * L) / 451);
+  const month = Math.floor((h + L - 7 * m + 114) / 31);
+  const day = ((h + L - 7 * m + 114) % 31) + 1;
+  return new Date(year, month - 1, day);
+}
+function isoFromDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function addDays(d: Date, n: number): Date {
+  const x = new Date(d); x.setDate(x.getDate() + n); return x;
+}
+function federalHolidaysFor(year: number): Array<{ data: string; nome: string; is_optional: boolean }> {
+  const easter = easterSunday(year);
+  return [
+    { data: `${year}-01-01`, nome: 'Confraternização Universal', is_optional: false },
+    { data: isoFromDate(addDays(easter, -48)), nome: 'Carnaval (segunda-feira)', is_optional: true },
+    { data: isoFromDate(addDays(easter, -47)), nome: 'Carnaval (terça-feira)', is_optional: true },
+    { data: isoFromDate(addDays(easter, -46)), nome: 'Quarta-feira de Cinzas', is_optional: true },
+    { data: isoFromDate(addDays(easter, -2)), nome: 'Sexta-feira Santa', is_optional: false },
+    { data: `${year}-04-21`, nome: 'Tiradentes', is_optional: false },
+    { data: `${year}-05-01`, nome: 'Dia do Trabalho', is_optional: false },
+    { data: isoFromDate(addDays(easter, 60)), nome: 'Corpus Christi', is_optional: true },
+    { data: `${year}-09-07`, nome: 'Independência do Brasil', is_optional: false },
+    { data: `${year}-10-12`, nome: 'Nossa Senhora Aparecida', is_optional: false },
+    { data: `${year}-10-28`, nome: 'Dia do Servidor Público', is_optional: true },
+    { data: `${year}-11-02`, nome: 'Finados', is_optional: false },
+    { data: `${year}-11-15`, nome: 'Proclamação da República', is_optional: false },
+    { data: `${year}-11-20`, nome: 'Dia da Consciência Negra', is_optional: false },
+    { data: `${year}-12-25`, nome: 'Natal', is_optional: false },
+  ];
+}
+
 export default function FeriadosComunicadosPage() {
   return (
     <div className="space-y-4">
@@ -177,12 +222,29 @@ function ListTab() {
     toast.success(`${added} feriados municipais carregados para ${year}.`);
   };
 
+  const handleSeedFederal = async () => {
+    const year = new Date().getFullYear();
+    const items = federalHolidaysFor(year);
+    let added = 0, dup = 0;
+    for (const f of items) {
+      const { error } = await create({
+        data: f.data, nome: f.nome, tipo: f.is_optional ? 'ponto_facultativo' : 'nacional', is_holiday: !f.is_optional, is_optional: f.is_optional,
+        scope_type: 'todos', municipio: null, uf: null, source_type: 'auto', status: 'ativo', observacoes: 'Feriado nacional',
+      } as any);
+      if (error) dup++; else added++;
+    }
+    toast.success(`${added} feriados federais carregados para ${year}${dup ? ` (${dup} já existiam)` : ''}.`);
+  };
+
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center justify-between flex-wrap gap-2">
           <span>Lista de Feriados</span>
           <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={handleSeedFederal}>
+              <RefreshCw className="w-4 h-4 mr-1" />Carregar base federal
+            </Button>
             <Button size="sm" variant="outline" onClick={handleSeed}>
               <RefreshCw className="w-4 h-4 mr-1" />Carregar base municipal
             </Button>

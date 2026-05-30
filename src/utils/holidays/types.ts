@@ -1,4 +1,4 @@
-export type HolidayTipo = 'distrital' | 'municipal' | 'estadual' | 'sindical' | 'ponto_facultativo' | 'interno';
+export type HolidayTipo = 'nacional' | 'distrital' | 'municipal' | 'estadual' | 'sindical' | 'ponto_facultativo' | 'interno';
 export type HolidayScope = 'todos' | 'uf' | 'municipio' | 'empresa' | 'cct';
 export type HolidaySource = 'auto' | 'manual' | 'decreto' | 'cct' | 'import_csv';
 export type HolidayStatus = 'ativo' | 'inativo';
@@ -59,6 +59,7 @@ export interface OfficeBranding {
 }
 
 export const TIPO_LABELS: Record<HolidayTipo, string> = {
+  nacional: 'Nacional',
   distrital: 'Distrital',
   municipal: 'Municipal',
   estadual: 'Estadual',
@@ -68,6 +69,7 @@ export const TIPO_LABELS: Record<HolidayTipo, string> = {
 };
 
 export const TIPO_COLORS: Record<HolidayTipo, string> = {
+  nacional: '#DC2626',
   municipal: '#628E3F',
   estadual: '#2563EB',
   distrital: '#0EA5E9',
