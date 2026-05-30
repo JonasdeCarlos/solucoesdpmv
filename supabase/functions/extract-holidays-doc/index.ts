@@ -48,30 +48,57 @@ Deno.serve(async (req) => {
     if (dlErr || !file) throw new Error('Falha ao baixar arquivo');
 
     let text = '';
+    let isPdf = false;
     if ((doc.file_name as string).toLowerCase().endsWith('.pdf')) {
+      isPdf = true;
       const buf = new Uint8Array(await file.arrayBuffer());
-      const pdf = await getDocumentProxy(buf);
-      const { text: pages } = await extractText(pdf, { mergePages: false });
-      const arr = Array.isArray(pages) ? pages : [pages as string];
-      text = arr.slice(0, 40).join('\n');
+      try {
+        const pdf = await getDocumentProxy(buf);
+        const { text: pages } = await extractText(pdf, { mergePages: false });
+        const arr = Array.isArray(pages) ? pages : [pages as string];
+        text = arr.slice(0, 40).join('\n');
+      } catch (e) {
+        console.warn('unpdf failed, will fallback to vision', e);
+        text = '';
+      }
     } else {
       text = await file.text();
     }
 
-    if (!text || text.length < 50) throw new Error('Não foi possível extrair texto do documento');
+    const letters = (text.match(/[a-zA-ZÀ-ÿ]/g) || []).length;
+    const goodText = text && text.length > 500 && letters > 100;
 
-    // Truncate to keep token usage reasonable
-    const truncated = text.slice(0, 30000);
-
-    const userPrompt = `Tipo do documento: ${doc.doc_type}
+    // Build messages: prefer text; if PDF text is poor, send PDF as inline file to Gemini vision
+    const baseUserPrompt = `Tipo do documento: ${doc.doc_type}
 UF: ${doc.uf || ''}
 Município: ${doc.municipio || ''}
 Ano referência: ${doc.ano || ''}
 
-TEXTO:
-${truncated}
+Extraia TODOS os feriados e pontos facultativos encontrados no documento. Responda apenas com o JSON no formato especificado.`;
 
-Extraia TODOS os feriados e pontos facultativos encontrados. Responda apenas com o JSON.`;
+    let userMessage: any;
+    if (goodText) {
+      userMessage = { role: 'user', content: `${baseUserPrompt}\n\nTEXTO:\n${text.slice(0, 30000)}` };
+    } else if (isPdf) {
+      // Send PDF directly to Gemini via OpenAI-compatible file part
+      const buf = new Uint8Array(await (await supabase.storage.from('feriados-docs').download(doc.file_path)).data!.arrayBuffer());
+      let b64 = '';
+      const chunk = 0x8000;
+      for (let i = 0; i < buf.length; i += chunk) {
+        b64 += String.fromCharCode.apply(null, Array.from(buf.subarray(i, i + chunk)) as any);
+      }
+      b64 = btoa(b64);
+      const dataUrl = `data:application/pdf;base64,${b64}`;
+      userMessage = {
+        role: 'user',
+        content: [
+          { type: 'text', text: baseUserPrompt },
+          { type: 'file', file: { filename: doc.file_name, file_data: dataUrl } },
+        ],
+      };
+    } else {
+      throw new Error('Não foi possível extrair conteúdo do documento');
+    }
 
     const aiResp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -80,10 +107,10 @@ Extraia TODOS os feriados e pontos facultativos encontrados. Responda apenas com
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'google/gemini-2.5-pro',
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: userPrompt },
+          userMessage,
         ],
         response_format: { type: 'json_object' },
       }),
