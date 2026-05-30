@@ -222,12 +222,29 @@ function ListTab() {
     toast.success(`${added} feriados municipais carregados para ${year}.`);
   };
 
+  const handleSeedFederal = async () => {
+    const year = new Date().getFullYear();
+    const items = federalHolidaysFor(year);
+    let added = 0, dup = 0;
+    for (const f of items) {
+      const { error } = await create({
+        data: f.data, nome: f.nome, tipo: 'estadual', is_holiday: !f.is_optional, is_optional: f.is_optional,
+        scope_type: 'todos', municipio: null, uf: null, source_type: 'auto', status: 'ativo', observacoes: 'Feriado nacional',
+      } as any);
+      if (error) dup++; else added++;
+    }
+    toast.success(`${added} feriados federais carregados para ${year}${dup ? ` (${dup} já existiam)` : ''}.`);
+  };
+
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center justify-between flex-wrap gap-2">
           <span>Lista de Feriados</span>
           <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={handleSeedFederal}>
+              <RefreshCw className="w-4 h-4 mr-1" />Carregar base federal
+            </Button>
             <Button size="sm" variant="outline" onClick={handleSeed}>
               <RefreshCw className="w-4 h-4 mr-1" />Carregar base municipal
             </Button>
