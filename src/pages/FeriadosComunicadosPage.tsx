@@ -363,7 +363,11 @@ function ImportTab() {
     if (!file) { toast.error('Selecione um arquivo.'); return; }
     setProcessing(true);
     try {
-      const path = `${Date.now()}-${file.name}`;
+      const safeName = file.name
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9._-]+/g, '_')
+        .replace(/_+/g, '_');
+      const path = `${Date.now()}-${safeName}`;
       const { error: upErr } = await supabase.storage.from('feriados-docs').upload(path, file);
       if (upErr) throw upErr;
       const { data: docRow, error: insErr } = await (supabase.from('holiday_source_documents' as any).insert({
