@@ -21,7 +21,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { TIPO_LABELS, TIPO_COLORS, type Holiday, type HolidayTipo, type HolidayScope, type NoticeAudienceType } from '@/utils/holidays/types';
 import { buildDedupeKey } from '@/utils/holidays/dedupe';
 import { defaultTemplate, renderNoticeText } from '@/utils/holidays/whatsappText';
-import { generateNoticePdf } from '@/utils/holidays/noticePdf';
+import { generateNoticePdf, generateHolidayTablePdf } from '@/utils/holidays/noticePdf';
 import { parseHolidaysCsv, normalizeDate } from '@/utils/holidays/csvImport';
 
 function fmtBR(iso: string): string {
