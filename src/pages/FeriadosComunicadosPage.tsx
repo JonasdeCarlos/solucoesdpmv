@@ -463,6 +463,7 @@ function ImportTab() {
   const [processing, setProcessing] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [items, setItems] = useState<HolidayExtractionItem[]>([]);
+  const [confirmItem_, setConfirmItem_] = useState<HolidayExtractionItem | null>(null);
 
   const handleUpload = async () => {
     if (!file) { toast.error('Selecione um arquivo.'); return; }
@@ -503,20 +504,40 @@ function ImportTab() {
     setItems(its);
   };
 
-  const confirmItem = async (it: HolidayExtractionItem) => {
+  const persistConfirm = async (
+    it: HolidayExtractionItem,
+    tipo: HolidayTipo,
+    municipios: string[],
+    uf: string,
+    cctId: string | null,
+  ) => {
     if (!it.data) { toast.error('Item sem data.'); return; }
-    const res = await createHoliday({
-      data: it.data, nome: it.nome, tipo: it.tipo as HolidayTipo,
-      scope_type: it.scope_type as HolidayScope, uf: it.uf, municipio: it.municipio,
-      cct_id: it.cct_id, is_holiday: it.is_holiday, is_optional: it.is_optional,
-      observacoes: it.evidence_text, status: 'ativo',
-      source_type: it.cct_id ? 'cct' : 'decreto', source_doc_id: it.source_doc_id,
-    } as any);
-    if (res.error && !res.duplicated) { toast.error('Erro.'); return; }
-    const newStatus = res.duplicated ? 'duplicado' : 'confirmado';
+    let ok = 0, dup = 0;
+    const scope_type: HolidayScope =
+      tipo === 'nacional' ? 'todos' :
+      tipo === 'sindical' ? 'cct' :
+      tipo === 'estadual' ? 'uf' :
+      'municipio';
+    const targets = scope_type === 'municipio' ? (municipios.length ? municipios : [it.municipio || '']) : [''];
+    for (const m of targets) {
+      const res = await createHoliday({
+        data: it.data, nome: it.nome, tipo,
+        scope_type,
+        uf: uf || it.uf || null,
+        municipio: scope_type === 'municipio' ? (m || null) : null,
+        cct_id: scope_type === 'cct' ? (cctId || it.cct_id || null) : null,
+        is_holiday: it.is_holiday, is_optional: it.is_optional,
+        observacoes: it.evidence_text, status: 'ativo',
+        source_type: scope_type === 'cct' ? 'cct' : 'decreto', source_doc_id: it.source_doc_id,
+      } as any);
+      if (res.error && !res.duplicated) continue;
+      if (res.duplicated) dup++; else ok++;
+    }
+    const newStatus = ok > 0 ? 'confirmado' : (dup > 0 ? 'duplicado' : 'ignorado');
     await supabase.from('holiday_extraction_items' as any).update({ status: newStatus } as any).eq('id', it.id);
     setItems((prev) => prev.map((x) => x.id === it.id ? { ...x, status: newStatus } : x));
-    toast.success(res.duplicated ? 'Marcado como duplicado.' : 'Confirmado e cadastrado.');
+    setConfirmItem_(null);
+    toast.success(`${ok} cadastrado(s), ${dup} duplicado(s).`);
   };
   const ignoreItem = async (it: HolidayExtractionItem) => {
     await supabase.from('holiday_extraction_items' as any).update({ status: 'ignorado' } as any).eq('id', it.id);
@@ -593,7 +614,7 @@ function ImportTab() {
                             <Badge variant={it.status === 'pendente' ? 'secondary' : 'outline'}>{it.status}</Badge>
                             {it.status === 'pendente' && (
                               <>
-                                <Button size="sm" onClick={() => confirmItem(it)}>Confirmar</Button>
+                                <Button size="sm" onClick={() => setConfirmItem_(it)}>Confirmar / aplicar</Button>
                                 <Button size="sm" variant="outline" onClick={() => ignoreItem(it)}>Ignorar</Button>
                               </>
                             )}
@@ -609,7 +630,73 @@ function ImportTab() {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={!!confirmItem_} onOpenChange={(o) => !o && setConfirmItem_(null)}>
+        {confirmItem_ && (
+          <ConfirmExtractionDialog
+            item={confirmItem_}
+            ccts={ccts}
+            onConfirm={(tipo, municipios, uf, cctId) => persistConfirm(confirmItem_, tipo, municipios, uf, cctId)}
+          />
+        )}
+      </Dialog>
     </div>
+  );
+}
+
+function ConfirmExtractionDialog({
+  item, ccts, onConfirm,
+}: { item: HolidayExtractionItem; ccts: any[]; onConfirm: (tipo: HolidayTipo, municipios: string[], uf: string, cctId: string | null) => void }) {
+  const [tipo, setTipo] = useState<HolidayTipo>((item.tipo as HolidayTipo) || 'municipal');
+  const [uf, setUf] = useState(item.uf || 'MG');
+  const [municipiosText, setMunicipiosText] = useState(item.municipio || '');
+  const [cctId, setCctId] = useState(item.cct_id || '');
+  const parsedMunicipios = municipiosText.split(/[;,\n]/).map((s) => s.trim()).filter(Boolean);
+
+  return (
+    <DialogContent className="max-w-lg">
+      <DialogHeader><DialogTitle>Confirmar e aplicar feriado</DialogTitle></DialogHeader>
+      <div className="space-y-3">
+        <div className="rounded border p-2 bg-muted/30 text-sm">
+          <div className="font-mono">{item.data ? fmtBR(item.data) : '—'} <span className="font-semibold ml-2">{item.nome}</span></div>
+          {item.evidence_text && <p className="text-xs text-muted-foreground italic mt-1">"{item.evidence_text}"</p>}
+        </div>
+        <div>
+          <Label>Tipo de feriado</Label>
+          <Select value={tipo} onValueChange={(v) => setTipo(v as HolidayTipo)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {(Object.keys(TIPO_LABELS) as HolidayTipo[]).map((t) => (<SelectItem key={t} value={t}>{TIPO_LABELS[t]}</SelectItem>))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label>UF</Label>
+          <Input value={uf} onChange={(e) => setUf(e.target.value.toUpperCase().slice(0, 2))} />
+        </div>
+        {tipo === 'municipal' || tipo === 'ponto_facultativo' || tipo === 'distrital' ? (
+          <div>
+            <Label>Municípios (separar por vírgula para aplicar em vários)</Label>
+            <Textarea rows={2} value={municipiosText} onChange={(e) => setMunicipiosText(e.target.value)} placeholder="Ex.: Camanducaia, Itapeva, Sapucaí-Mirim" />
+            <p className="text-xs text-muted-foreground mt-1">{parsedMunicipios.length} município(s) selecionado(s).</p>
+          </div>
+        ) : null}
+        {tipo === 'sindical' && (
+          <div>
+            <Label>CCT</Label>
+            <Select value={cctId} onValueChange={setCctId}>
+              <SelectTrigger><SelectValue placeholder="Selecione a CCT..." /></SelectTrigger>
+              <SelectContent>{ccts.map((c) => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}</SelectContent>
+            </Select>
+          </div>
+        )}
+      </div>
+      <DialogFooter>
+        <Button onClick={() => onConfirm(tipo, parsedMunicipios, uf, cctId || null)}>
+          Cadastrar feriado{parsedMunicipios.length > 1 && tipo === 'municipal' ? `s (${parsedMunicipios.length})` : ''}
+        </Button>
+      </DialogFooter>
+    </DialogContent>
   );
 }
 
