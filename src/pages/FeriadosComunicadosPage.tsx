@@ -355,6 +355,32 @@ function CsvImporter({ onImport }: { onImport: (rows: ReturnType<typeof parseHol
   );
 }
 
+function AiSeedDialog({ onConfirm }: { onConfirm: (uf: string, municipio: string, ano: number) => void | Promise<void> }) {
+  const [uf, setUf] = useState('MG');
+  const [municipio, setMunicipio] = useState('Camanducaia');
+  const [ano, setAno] = useState(new Date().getFullYear());
+  const [loading, setLoading] = useState(false);
+  return (
+    <DialogContent className="max-w-md">
+      <DialogHeader><DialogTitle>Mapear feriados via IA</DialogTitle></DialogHeader>
+      <p className="text-xs text-muted-foreground">
+        A IA listará feriados nacionais, estaduais, municipais e pontos facultativos oficiais do município no ano selecionado.
+        Itens já cadastrados (mesma data/escopo/nome) são ignorados.
+      </p>
+      <div className="grid grid-cols-3 gap-2">
+        <div><Label>UF</Label><Input value={uf} onChange={(e) => setUf(e.target.value.toUpperCase().slice(0, 2))} /></div>
+        <div className="col-span-2"><Label>Município</Label><Input value={municipio} onChange={(e) => setMunicipio(e.target.value)} /></div>
+        <div><Label>Ano</Label><Input type="number" value={ano} onChange={(e) => setAno(Number(e.target.value))} /></div>
+      </div>
+      <DialogFooter>
+        <Button disabled={loading} onClick={async () => { setLoading(true); try { await onConfirm(uf, municipio, ano); } finally { setLoading(false); } }}>
+          {loading ? 'Consultando IA...' : 'Mapear feriados'}
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  );
+}
+
 function HolidayDialogContent({ ccts, onSubmit, initial }: { ccts: any[]; onSubmit: (h: Partial<Holiday>) => void; initial?: Partial<Holiday> }) {
   const [data, setData] = useState(initial?.data || '');
   const [nome, setNome] = useState(initial?.nome || '');
