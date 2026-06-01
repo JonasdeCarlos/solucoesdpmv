@@ -194,6 +194,7 @@ function ListTab() {
   const { ccts } = useCcts();
   const { feriados: municipais } = useFeriadosMunicipais();
   const [openNew, setOpenNew] = useState(false);
+  const [openAiSeed, setOpenAiSeed] = useState(false);
   const [filter, setFilter] = useState('');
   const [tipoF, setTipoF] = useState('todos');
 
@@ -207,19 +208,30 @@ function ListTab() {
     return true;
   });
 
-  const handleSeed = async () => {
-    if (!municipais.length) { toast.info('Nenhum feriado municipal pré-cadastrado.'); return; }
-    const year = new Date().getFullYear();
-    let added = 0;
-    for (const f of municipais) {
-      const data = `${year}-${String(f.mes).padStart(2, '0')}-${String(f.dia).padStart(2, '0')}`;
-      const { error } = await create({
-        data, nome: f.nome, tipo: 'municipal', is_holiday: true, is_optional: false,
-        scope_type: 'municipio', municipio: 'Camanducaia', uf: 'MG', source_type: 'auto', status: 'ativo', observacoes: '',
+  const handleAiSeedMunicipio = async (uf: string, municipio: string, ano: number) => {
+    if (!uf || !municipio || !ano) { toast.error('Informe UF, município e ano.'); return; }
+    toast.info(`Consultando IA para feriados de ${municipio}/${uf} - ${ano}...`);
+    const { data, error } = await supabase.functions.invoke('ai-municipal-holidays', {
+      body: { uf, municipio, ano },
+    });
+    if (error) { toast.error('Falha: ' + error.message); return; }
+    const items: any[] = data?.items || [];
+    if (!items.length) { toast.warning('A IA não retornou itens.'); return; }
+    let ok = 0, dup = 0;
+    for (const it of items) {
+      if (!it?.data || !it?.nome) continue;
+      const tipo = (it.tipo as HolidayTipo) || 'municipal';
+      const scope_type: HolidayScope = tipo === 'nacional' ? 'todos' : (tipo === 'estadual' ? 'uf' : 'municipio');
+      const r = await create({
+        data: it.data, nome: it.nome, tipo,
+        is_holiday: it.is_holiday !== false, is_optional: !!it.is_optional,
+        scope_type, uf, municipio: scope_type === 'municipio' ? municipio : null,
+        source_type: 'auto', status: 'ativo', observacoes: it.observacao || '',
       } as any);
-      if (!error) added++;
+      if (r.error) dup++; else ok++;
     }
-    toast.success(`${added} feriados municipais carregados para ${year}.`);
+    toast.success(`${ok} cadastrados, ${dup} já existiam.`);
+    setOpenAiSeed(false);
   };
 
   const handleSeedFederal = async () => {
@@ -245,9 +257,14 @@ function ListTab() {
             <Button size="sm" variant="outline" onClick={handleSeedFederal}>
               <RefreshCw className="w-4 h-4 mr-1" />Carregar base federal
             </Button>
-            <Button size="sm" variant="outline" onClick={handleSeed}>
-              <RefreshCw className="w-4 h-4 mr-1" />Carregar base municipal
-            </Button>
+            <Dialog open={openAiSeed} onOpenChange={setOpenAiSeed}>
+              <DialogTrigger asChild>
+                <Button size="sm" variant="outline">
+                  <RefreshCw className="w-4 h-4 mr-1" />Carregar base municipal (IA)
+                </Button>
+              </DialogTrigger>
+              <AiSeedDialog onConfirm={handleAiSeedMunicipio} />
+            </Dialog>
             <Dialog open={openNew} onOpenChange={setOpenNew}>
               <DialogTrigger asChild>
                 <Button size="sm"><Plus className="w-4 h-4 mr-1" />Adicionar</Button>
