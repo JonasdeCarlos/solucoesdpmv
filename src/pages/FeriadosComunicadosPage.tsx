@@ -21,7 +21,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { TIPO_LABELS, TIPO_COLORS, type Holiday, type HolidayTipo, type HolidayScope, type NoticeAudienceType } from '@/utils/holidays/types';
 import { buildDedupeKey } from '@/utils/holidays/dedupe';
 import { defaultTemplate, renderNoticeText } from '@/utils/holidays/whatsappText';
-import { generateNoticePdf } from '@/utils/holidays/noticePdf';
+import { generateNoticePdf, generateHolidayTablePdf } from '@/utils/holidays/noticePdf';
 import { parseHolidaysCsv, normalizeDate } from '@/utils/holidays/csvImport';
 
 function fmtBR(iso: string): string {
@@ -194,6 +194,7 @@ function ListTab() {
   const { ccts } = useCcts();
   const { feriados: municipais } = useFeriadosMunicipais();
   const [openNew, setOpenNew] = useState(false);
+  const [openAiSeed, setOpenAiSeed] = useState(false);
   const [filter, setFilter] = useState('');
   const [tipoF, setTipoF] = useState('todos');
 
@@ -207,19 +208,30 @@ function ListTab() {
     return true;
   });
 
-  const handleSeed = async () => {
-    if (!municipais.length) { toast.info('Nenhum feriado municipal pré-cadastrado.'); return; }
-    const year = new Date().getFullYear();
-    let added = 0;
-    for (const f of municipais) {
-      const data = `${year}-${String(f.mes).padStart(2, '0')}-${String(f.dia).padStart(2, '0')}`;
-      const { error } = await create({
-        data, nome: f.nome, tipo: 'municipal', is_holiday: true, is_optional: false,
-        scope_type: 'municipio', municipio: 'Camanducaia', uf: 'MG', source_type: 'auto', status: 'ativo', observacoes: '',
+  const handleAiSeedMunicipio = async (uf: string, municipio: string, ano: number) => {
+    if (!uf || !municipio || !ano) { toast.error('Informe UF, município e ano.'); return; }
+    toast.info(`Consultando IA para feriados de ${municipio}/${uf} - ${ano}...`);
+    const { data, error } = await supabase.functions.invoke('ai-municipal-holidays', {
+      body: { uf, municipio, ano },
+    });
+    if (error) { toast.error('Falha: ' + error.message); return; }
+    const items: any[] = data?.items || [];
+    if (!items.length) { toast.warning('A IA não retornou itens.'); return; }
+    let ok = 0, dup = 0;
+    for (const it of items) {
+      if (!it?.data || !it?.nome) continue;
+      const tipo = (it.tipo as HolidayTipo) || 'municipal';
+      const scope_type: HolidayScope = tipo === 'nacional' ? 'todos' : (tipo === 'estadual' ? 'uf' : 'municipio');
+      const r = await create({
+        data: it.data, nome: it.nome, tipo,
+        is_holiday: it.is_holiday !== false, is_optional: !!it.is_optional,
+        scope_type, uf, municipio: scope_type === 'municipio' ? municipio : null,
+        source_type: 'auto', status: 'ativo', observacoes: it.observacao || '',
       } as any);
-      if (!error) added++;
+      if (r.error) dup++; else ok++;
     }
-    toast.success(`${added} feriados municipais carregados para ${year}.`);
+    toast.success(`${ok} cadastrados, ${dup} já existiam.`);
+    setOpenAiSeed(false);
   };
 
   const handleSeedFederal = async () => {
@@ -245,9 +257,14 @@ function ListTab() {
             <Button size="sm" variant="outline" onClick={handleSeedFederal}>
               <RefreshCw className="w-4 h-4 mr-1" />Carregar base federal
             </Button>
-            <Button size="sm" variant="outline" onClick={handleSeed}>
-              <RefreshCw className="w-4 h-4 mr-1" />Carregar base municipal
-            </Button>
+            <Dialog open={openAiSeed} onOpenChange={setOpenAiSeed}>
+              <DialogTrigger asChild>
+                <Button size="sm" variant="outline">
+                  <RefreshCw className="w-4 h-4 mr-1" />Carregar base municipal (IA)
+                </Button>
+              </DialogTrigger>
+              <AiSeedDialog onConfirm={handleAiSeedMunicipio} />
+            </Dialog>
             <Dialog open={openNew} onOpenChange={setOpenNew}>
               <DialogTrigger asChild>
                 <Button size="sm"><Plus className="w-4 h-4 mr-1" />Adicionar</Button>
@@ -338,6 +355,32 @@ function CsvImporter({ onImport }: { onImport: (rows: ReturnType<typeof parseHol
   );
 }
 
+function AiSeedDialog({ onConfirm }: { onConfirm: (uf: string, municipio: string, ano: number) => void | Promise<void> }) {
+  const [uf, setUf] = useState('MG');
+  const [municipio, setMunicipio] = useState('Camanducaia');
+  const [ano, setAno] = useState(new Date().getFullYear());
+  const [loading, setLoading] = useState(false);
+  return (
+    <DialogContent className="max-w-md">
+      <DialogHeader><DialogTitle>Mapear feriados via IA</DialogTitle></DialogHeader>
+      <p className="text-xs text-muted-foreground">
+        A IA listará feriados nacionais, estaduais, municipais e pontos facultativos oficiais do município no ano selecionado.
+        Itens já cadastrados (mesma data/escopo/nome) são ignorados.
+      </p>
+      <div className="grid grid-cols-3 gap-2">
+        <div><Label>UF</Label><Input value={uf} onChange={(e) => setUf(e.target.value.toUpperCase().slice(0, 2))} /></div>
+        <div className="col-span-2"><Label>Município</Label><Input value={municipio} onChange={(e) => setMunicipio(e.target.value)} /></div>
+        <div><Label>Ano</Label><Input type="number" value={ano} onChange={(e) => setAno(Number(e.target.value))} /></div>
+      </div>
+      <DialogFooter>
+        <Button disabled={loading} onClick={async () => { setLoading(true); try { await onConfirm(uf, municipio, ano); } finally { setLoading(false); } }}>
+          {loading ? 'Consultando IA...' : 'Mapear feriados'}
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  );
+}
+
 function HolidayDialogContent({ ccts, onSubmit, initial }: { ccts: any[]; onSubmit: (h: Partial<Holiday>) => void; initial?: Partial<Holiday> }) {
   const [data, setData] = useState(initial?.data || '');
   const [nome, setNome] = useState(initial?.nome || '');
@@ -420,6 +463,7 @@ function ImportTab() {
   const [processing, setProcessing] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [items, setItems] = useState<HolidayExtractionItem[]>([]);
+  const [confirmItem_, setConfirmItem_] = useState<HolidayExtractionItem | null>(null);
 
   const handleUpload = async () => {
     if (!file) { toast.error('Selecione um arquivo.'); return; }
@@ -460,20 +504,40 @@ function ImportTab() {
     setItems(its);
   };
 
-  const confirmItem = async (it: HolidayExtractionItem) => {
+  const persistConfirm = async (
+    it: HolidayExtractionItem,
+    tipo: HolidayTipo,
+    municipios: string[],
+    uf: string,
+    cctId: string | null,
+  ) => {
     if (!it.data) { toast.error('Item sem data.'); return; }
-    const res = await createHoliday({
-      data: it.data, nome: it.nome, tipo: it.tipo as HolidayTipo,
-      scope_type: it.scope_type as HolidayScope, uf: it.uf, municipio: it.municipio,
-      cct_id: it.cct_id, is_holiday: it.is_holiday, is_optional: it.is_optional,
-      observacoes: it.evidence_text, status: 'ativo',
-      source_type: it.cct_id ? 'cct' : 'decreto', source_doc_id: it.source_doc_id,
-    } as any);
-    if (res.error && !res.duplicated) { toast.error('Erro.'); return; }
-    const newStatus = res.duplicated ? 'duplicado' : 'confirmado';
+    let ok = 0, dup = 0;
+    const scope_type: HolidayScope =
+      tipo === 'nacional' ? 'todos' :
+      tipo === 'sindical' ? 'cct' :
+      tipo === 'estadual' ? 'uf' :
+      'municipio';
+    const targets = scope_type === 'municipio' ? (municipios.length ? municipios : [it.municipio || '']) : [''];
+    for (const m of targets) {
+      const res = await createHoliday({
+        data: it.data, nome: it.nome, tipo,
+        scope_type,
+        uf: uf || it.uf || null,
+        municipio: scope_type === 'municipio' ? (m || null) : null,
+        cct_id: scope_type === 'cct' ? (cctId || it.cct_id || null) : null,
+        is_holiday: it.is_holiday, is_optional: it.is_optional,
+        observacoes: it.evidence_text, status: 'ativo',
+        source_type: scope_type === 'cct' ? 'cct' : 'decreto', source_doc_id: it.source_doc_id,
+      } as any);
+      if (res.error && !res.duplicated) continue;
+      if (res.duplicated) dup++; else ok++;
+    }
+    const newStatus = ok > 0 ? 'confirmado' : (dup > 0 ? 'duplicado' : 'ignorado');
     await supabase.from('holiday_extraction_items' as any).update({ status: newStatus } as any).eq('id', it.id);
     setItems((prev) => prev.map((x) => x.id === it.id ? { ...x, status: newStatus } : x));
-    toast.success(res.duplicated ? 'Marcado como duplicado.' : 'Confirmado e cadastrado.');
+    setConfirmItem_(null);
+    toast.success(`${ok} cadastrado(s), ${dup} duplicado(s).`);
   };
   const ignoreItem = async (it: HolidayExtractionItem) => {
     await supabase.from('holiday_extraction_items' as any).update({ status: 'ignorado' } as any).eq('id', it.id);
@@ -550,7 +614,7 @@ function ImportTab() {
                             <Badge variant={it.status === 'pendente' ? 'secondary' : 'outline'}>{it.status}</Badge>
                             {it.status === 'pendente' && (
                               <>
-                                <Button size="sm" onClick={() => confirmItem(it)}>Confirmar</Button>
+                                <Button size="sm" onClick={() => setConfirmItem_(it)}>Confirmar / aplicar</Button>
                                 <Button size="sm" variant="outline" onClick={() => ignoreItem(it)}>Ignorar</Button>
                               </>
                             )}
@@ -566,7 +630,73 @@ function ImportTab() {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={!!confirmItem_} onOpenChange={(o) => !o && setConfirmItem_(null)}>
+        {confirmItem_ && (
+          <ConfirmExtractionDialog
+            item={confirmItem_}
+            ccts={ccts}
+            onConfirm={(tipo, municipios, uf, cctId) => persistConfirm(confirmItem_, tipo, municipios, uf, cctId)}
+          />
+        )}
+      </Dialog>
     </div>
+  );
+}
+
+function ConfirmExtractionDialog({
+  item, ccts, onConfirm,
+}: { item: HolidayExtractionItem; ccts: any[]; onConfirm: (tipo: HolidayTipo, municipios: string[], uf: string, cctId: string | null) => void }) {
+  const [tipo, setTipo] = useState<HolidayTipo>((item.tipo as HolidayTipo) || 'municipal');
+  const [uf, setUf] = useState(item.uf || 'MG');
+  const [municipiosText, setMunicipiosText] = useState(item.municipio || '');
+  const [cctId, setCctId] = useState(item.cct_id || '');
+  const parsedMunicipios = municipiosText.split(/[;,\n]/).map((s) => s.trim()).filter(Boolean);
+
+  return (
+    <DialogContent className="max-w-lg">
+      <DialogHeader><DialogTitle>Confirmar e aplicar feriado</DialogTitle></DialogHeader>
+      <div className="space-y-3">
+        <div className="rounded border p-2 bg-muted/30 text-sm">
+          <div className="font-mono">{item.data ? fmtBR(item.data) : '—'} <span className="font-semibold ml-2">{item.nome}</span></div>
+          {item.evidence_text && <p className="text-xs text-muted-foreground italic mt-1">"{item.evidence_text}"</p>}
+        </div>
+        <div>
+          <Label>Tipo de feriado</Label>
+          <Select value={tipo} onValueChange={(v) => setTipo(v as HolidayTipo)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {(Object.keys(TIPO_LABELS) as HolidayTipo[]).map((t) => (<SelectItem key={t} value={t}>{TIPO_LABELS[t]}</SelectItem>))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label>UF</Label>
+          <Input value={uf} onChange={(e) => setUf(e.target.value.toUpperCase().slice(0, 2))} />
+        </div>
+        {tipo === 'municipal' || tipo === 'ponto_facultativo' || tipo === 'distrital' ? (
+          <div>
+            <Label>Municípios (separar por vírgula para aplicar em vários)</Label>
+            <Textarea rows={2} value={municipiosText} onChange={(e) => setMunicipiosText(e.target.value)} placeholder="Ex.: Camanducaia, Itapeva, Sapucaí-Mirim" />
+            <p className="text-xs text-muted-foreground mt-1">{parsedMunicipios.length} município(s) selecionado(s).</p>
+          </div>
+        ) : null}
+        {tipo === 'sindical' && (
+          <div>
+            <Label>CCT</Label>
+            <Select value={cctId} onValueChange={setCctId}>
+              <SelectTrigger><SelectValue placeholder="Selecione a CCT..." /></SelectTrigger>
+              <SelectContent>{ccts.map((c) => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}</SelectContent>
+            </Select>
+          </div>
+        )}
+      </div>
+      <DialogFooter>
+        <Button onClick={() => onConfirm(tipo, parsedMunicipios, uf, cctId || null)}>
+          Cadastrar feriado{parsedMunicipios.length > 1 && tipo === 'municipal' ? `s (${parsedMunicipios.length})` : ''}
+        </Button>
+      </DialogFooter>
+    </DialogContent>
   );
 }
 
@@ -602,7 +732,9 @@ function NoticesTab() {
   };
 
   return (
-    <Card>
+    <div className="space-y-4">
+      <HolidayTableCard holidays={holidays} branding={branding} />
+      <Card>
       <CardHeader>
         <CardTitle className="flex items-center justify-between flex-wrap gap-2">
           <span>Comunicados</span>
@@ -664,6 +796,144 @@ function NoticesTab() {
             </div>
           ))}
           {!visible.length && <p className="text-sm text-muted-foreground">Nenhum comunicado.</p>}
+        </div>
+      </CardContent>
+    </Card>
+    </div>
+  );
+}
+
+function HolidayTableCard({ holidays, branding }: { holidays: Holiday[]; branding: any }) {
+  const [year, setYear] = useState(new Date().getFullYear());
+  const [selectedMun, setSelectedMun] = useState<string[]>([]);
+  const [includeNational, setIncludeNational] = useState(true);
+  const [generating, setGenerating] = useState(false);
+
+  const municipios = useMemo(() => {
+    const set = new Set<string>();
+    for (const h of holidays) {
+      if (h.municipio && String(h.data).startsWith(String(year))) set.add(h.municipio);
+    }
+    return Array.from(set).sort();
+  }, [holidays, year]);
+
+  const filtered = useMemo(() => holidays.filter((h) => {
+    if (h.status !== 'ativo') return false;
+    if (!h.data.startsWith(String(year))) return false;
+    if (h.scope_type === 'todos') return includeNational;
+    if (h.scope_type === 'municipio') {
+      if (!selectedMun.length) return true;
+      return !!h.municipio && selectedMun.includes(h.municipio);
+    }
+    return true;
+  }), [holidays, year, selectedMun, includeNational]);
+
+  const toggleMun = (m: string) =>
+    setSelectedMun((s) => s.includes(m) ? s.filter((x) => x !== m) : [...s, m]);
+
+  const handleGenerate = async () => {
+    setGenerating(true);
+    try {
+      const blob = await generateHolidayTablePdf({ year, municipios: selectedMun, holidays: filtered, branding });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `feriados-${year}.pdf`; a.click();
+      URL.revokeObjectURL(url);
+      toast.success('Tabela gerada.');
+    } catch (e: any) { toast.error('Erro: ' + e.message); }
+    finally { setGenerating(false); }
+  };
+
+  const primary = branding?.primary_color || '#628E3F';
+  const secondary = branding?.secondary_color || '#E1E8F2';
+
+  return (
+    <Card className="overflow-hidden">
+      <div className="flex items-center justify-between gap-3 px-4 py-3" style={{ background: primary, color: 'white' }}>
+        <div className="flex items-center gap-3">
+          {branding?.logo_url && <img src={branding.logo_url} alt="logo" className="h-10 bg-white/10 rounded px-2 py-1" />}
+          <div>
+            <div className="font-bold text-lg">Tabela de Feriados {year}</div>
+            <div className="text-xs opacity-90">{branding?.office_name || 'Monte Verde Contabilidade'}</div>
+          </div>
+        </div>
+        <Button size="sm" variant="secondary" onClick={handleGenerate} disabled={generating}>
+          <Download className="w-4 h-4 mr-1" />{generating ? 'Gerando...' : 'Gerar PDF'}
+        </Button>
+      </div>
+      <div className="h-1.5" style={{ background: secondary }} />
+      <CardContent className="pt-4 space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div>
+            <Label>Ano</Label>
+            <Input type="number" value={year} onChange={(e) => setYear(Number(e.target.value))} />
+          </div>
+          <div className="md:col-span-2">
+            <Label>Municípios</Label>
+            <div className="border rounded p-2 max-h-32 overflow-auto bg-background">
+              {municipios.length === 0 && <p className="text-xs text-muted-foreground">Nenhum município com feriados cadastrados para {year}.</p>}
+              <div className="flex flex-wrap gap-2">
+                {municipios.map((m) => {
+                  const active = selectedMun.includes(m);
+                  return (
+                    <button key={m} type="button" onClick={() => toggleMun(m)}
+                      className="text-xs px-2 py-1 rounded-full border transition"
+                      style={active ? { background: primary, color: 'white', borderColor: primary } : { borderColor: secondary }}>
+                      {m}
+                    </button>
+                  );
+                })}
+              </div>
+              {selectedMun.length > 0 && (
+                <div className="mt-2 flex items-center justify-between text-xs">
+                  <span>{selectedMun.length} selecionado(s) — vazio = todos</span>
+                  <button className="underline" onClick={() => setSelectedMun([])}>Limpar</button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+        <label className="flex items-center gap-2 text-sm">
+          <Checkbox checked={includeNational} onCheckedChange={(c) => setIncludeNational(!!c)} />
+          Incluir feriados nacionais/estaduais
+        </label>
+
+        {/* Preview */}
+        <div className="border rounded overflow-hidden">
+          <div className="px-3 py-2 text-sm font-semibold" style={{ background: secondary, color: branding?.text_color || '#393421' }}>
+            Pré-visualização ({filtered.length} {filtered.length === 1 ? 'feriado' : 'feriados'})
+          </div>
+          <div className="max-h-72 overflow-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left">
+                  <th className="p-2">Data</th>
+                  <th className="p-2">Dia</th>
+                  <th className="p-2">Evento</th>
+                  <th className="p-2">Tipo</th>
+                  <th className="p-2">Abrangência</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.sort((a,b) => a.data.localeCompare(b.data)).map((h) => {
+                  const [yy, mm, dd] = h.data.split('-').map(Number);
+                  const wd = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][new Date(Date.UTC(yy, mm - 1, dd)).getUTCDay()];
+                  return (
+                    <tr key={h.id} className="border-t">
+                      <td className="p-2 font-mono">{fmtBR(h.data)}</td>
+                      <td className="p-2">{wd}</td>
+                      <td className="p-2">{h.nome}{h.is_optional && <Badge variant="outline" className="ml-1 text-[10px]">PF</Badge>}</td>
+                      <td className="p-2">
+                        <Badge style={{ background: TIPO_COLORS[h.tipo], color: 'white' }}>{TIPO_LABELS[h.tipo]}</Badge>
+                      </td>
+                      <td className="p-2 text-xs">{h.municipio || h.uf || (h.scope_type === 'todos' ? 'Nacional' : h.scope_type)}</td>
+                    </tr>
+                  );
+                })}
+                {!filtered.length && <tr><td colSpan={5} className="p-4 text-center text-muted-foreground">Nenhum feriado para os filtros atuais.</td></tr>}
+              </tbody>
+            </table>
+          </div>
         </div>
       </CardContent>
     </Card>
