@@ -732,7 +732,9 @@ function NoticesTab() {
   };
 
   return (
-    <Card>
+    <div className="space-y-4">
+      <HolidayTableCard holidays={holidays} branding={branding} />
+      <Card>
       <CardHeader>
         <CardTitle className="flex items-center justify-between flex-wrap gap-2">
           <span>Comunicados</span>
@@ -794,6 +796,144 @@ function NoticesTab() {
             </div>
           ))}
           {!visible.length && <p className="text-sm text-muted-foreground">Nenhum comunicado.</p>}
+        </div>
+      </CardContent>
+    </Card>
+    </div>
+  );
+}
+
+function HolidayTableCard({ holidays, branding }: { holidays: Holiday[]; branding: any }) {
+  const [year, setYear] = useState(new Date().getFullYear());
+  const [selectedMun, setSelectedMun] = useState<string[]>([]);
+  const [includeNational, setIncludeNational] = useState(true);
+  const [generating, setGenerating] = useState(false);
+
+  const municipios = useMemo(() => {
+    const set = new Set<string>();
+    for (const h of holidays) {
+      if (h.municipio && String(h.data).startsWith(String(year))) set.add(h.municipio);
+    }
+    return Array.from(set).sort();
+  }, [holidays, year]);
+
+  const filtered = useMemo(() => holidays.filter((h) => {
+    if (h.status !== 'ativo') return false;
+    if (!h.data.startsWith(String(year))) return false;
+    if (h.scope_type === 'todos') return includeNational;
+    if (h.scope_type === 'municipio') {
+      if (!selectedMun.length) return true;
+      return !!h.municipio && selectedMun.includes(h.municipio);
+    }
+    return true;
+  }), [holidays, year, selectedMun, includeNational]);
+
+  const toggleMun = (m: string) =>
+    setSelectedMun((s) => s.includes(m) ? s.filter((x) => x !== m) : [...s, m]);
+
+  const handleGenerate = async () => {
+    setGenerating(true);
+    try {
+      const blob = await generateHolidayTablePdf({ year, municipios: selectedMun, holidays: filtered, branding });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `feriados-${year}.pdf`; a.click();
+      URL.revokeObjectURL(url);
+      toast.success('Tabela gerada.');
+    } catch (e: any) { toast.error('Erro: ' + e.message); }
+    finally { setGenerating(false); }
+  };
+
+  const primary = branding?.primary_color || '#628E3F';
+  const secondary = branding?.secondary_color || '#E1E8F2';
+
+  return (
+    <Card className="overflow-hidden">
+      <div className="flex items-center justify-between gap-3 px-4 py-3" style={{ background: primary, color: 'white' }}>
+        <div className="flex items-center gap-3">
+          {branding?.logo_url && <img src={branding.logo_url} alt="logo" className="h-10 bg-white/10 rounded px-2 py-1" />}
+          <div>
+            <div className="font-bold text-lg">Tabela de Feriados {year}</div>
+            <div className="text-xs opacity-90">{branding?.office_name || 'Monte Verde Contabilidade'}</div>
+          </div>
+        </div>
+        <Button size="sm" variant="secondary" onClick={handleGenerate} disabled={generating}>
+          <Download className="w-4 h-4 mr-1" />{generating ? 'Gerando...' : 'Gerar PDF'}
+        </Button>
+      </div>
+      <div className="h-1.5" style={{ background: secondary }} />
+      <CardContent className="pt-4 space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div>
+            <Label>Ano</Label>
+            <Input type="number" value={year} onChange={(e) => setYear(Number(e.target.value))} />
+          </div>
+          <div className="md:col-span-2">
+            <Label>Municípios</Label>
+            <div className="border rounded p-2 max-h-32 overflow-auto bg-background">
+              {municipios.length === 0 && <p className="text-xs text-muted-foreground">Nenhum município com feriados cadastrados para {year}.</p>}
+              <div className="flex flex-wrap gap-2">
+                {municipios.map((m) => {
+                  const active = selectedMun.includes(m);
+                  return (
+                    <button key={m} type="button" onClick={() => toggleMun(m)}
+                      className="text-xs px-2 py-1 rounded-full border transition"
+                      style={active ? { background: primary, color: 'white', borderColor: primary } : { borderColor: secondary }}>
+                      {m}
+                    </button>
+                  );
+                })}
+              </div>
+              {selectedMun.length > 0 && (
+                <div className="mt-2 flex items-center justify-between text-xs">
+                  <span>{selectedMun.length} selecionado(s) — vazio = todos</span>
+                  <button className="underline" onClick={() => setSelectedMun([])}>Limpar</button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+        <label className="flex items-center gap-2 text-sm">
+          <Checkbox checked={includeNational} onCheckedChange={(c) => setIncludeNational(!!c)} />
+          Incluir feriados nacionais/estaduais
+        </label>
+
+        {/* Preview */}
+        <div className="border rounded overflow-hidden">
+          <div className="px-3 py-2 text-sm font-semibold" style={{ background: secondary, color: branding?.text_color || '#393421' }}>
+            Pré-visualização ({filtered.length} {filtered.length === 1 ? 'feriado' : 'feriados'})
+          </div>
+          <div className="max-h-72 overflow-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left">
+                  <th className="p-2">Data</th>
+                  <th className="p-2">Dia</th>
+                  <th className="p-2">Evento</th>
+                  <th className="p-2">Tipo</th>
+                  <th className="p-2">Abrangência</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.sort((a,b) => a.data.localeCompare(b.data)).map((h) => {
+                  const [yy, mm, dd] = h.data.split('-').map(Number);
+                  const wd = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][new Date(Date.UTC(yy, mm - 1, dd)).getUTCDay()];
+                  return (
+                    <tr key={h.id} className="border-t">
+                      <td className="p-2 font-mono">{fmtBR(h.data)}</td>
+                      <td className="p-2">{wd}</td>
+                      <td className="p-2">{h.nome}{h.is_optional && <Badge variant="outline" className="ml-1 text-[10px]">PF</Badge>}</td>
+                      <td className="p-2">
+                        <Badge style={{ background: TIPO_COLORS[h.tipo], color: 'white' }}>{TIPO_LABELS[h.tipo]}</Badge>
+                      </td>
+                      <td className="p-2 text-xs">{h.municipio || h.uf || (h.scope_type === 'todos' ? 'Nacional' : h.scope_type)}</td>
+                    </tr>
+                  );
+                })}
+                {!filtered.length && <tr><td colSpan={5} className="p-4 text-center text-muted-foreground">Nenhum feriado para os filtros atuais.</td></tr>}
+              </tbody>
+            </table>
+          </div>
         </div>
       </CardContent>
     </Card>
