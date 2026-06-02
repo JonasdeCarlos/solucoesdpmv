@@ -55,6 +55,9 @@ export interface OfficeBranding {
   primary_color: string;
   secondary_color: string;
   text_color: string;
+  heading_font?: string;
+  body_font?: string;
+  brand_manual_url?: string | null;
   contacts: { phone?: string; email?: string; site?: string; address?: string };
 }
 
