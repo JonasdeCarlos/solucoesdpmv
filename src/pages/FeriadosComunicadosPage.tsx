@@ -1011,6 +1011,7 @@ function NoticeDialog({ holidays, ccts, onSubmit }: { holidays: Holiday[]; ccts:
 function BrandingTab() {
   const { branding, save, reload } = useOfficeBranding();
   const [logoUploading, setLogoUploading] = useState(false);
+  const [manualUploading, setManualUploading] = useState(false);
 
   if (!branding) return <Card><CardContent className="p-6">Carregando...</CardContent></Card>;
 
@@ -1027,6 +1028,43 @@ function BrandingTab() {
     finally { setLogoUploading(false); }
   };
 
+  const handleManual = async (f: File) => {
+    setManualUploading(true);
+    try {
+      const path = `manual-${Date.now()}-${f.name}`;
+      const up = await supabase.storage.from('office-assets').upload(path, f, { upsert: true });
+      if (up.error) throw up.error;
+      const { data: pub } = supabase.storage.from('office-assets').getPublicUrl(path);
+
+      const b64 = await new Promise<string>((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => {
+          const s = String(r.result);
+          res(s.split(',')[1] || '');
+        };
+        r.onerror = rej;
+        r.readAsDataURL(f);
+      });
+
+      toast.info('Extraindo identidade visual com IA...');
+      const { data, error } = await supabase.functions.invoke('extract-brand-identity', {
+        body: { file_base64: b64, mime_type: f.type || 'application/pdf' },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+
+      const patch: any = { brand_manual_url: pub.publicUrl };
+      if (data?.primary_color) patch.primary_color = data.primary_color;
+      if (data?.secondary_color) patch.secondary_color = data.secondary_color;
+      if (data?.text_color) patch.text_color = data.text_color;
+      if (data?.heading_font) patch.heading_font = data.heading_font;
+      if (data?.body_font) patch.body_font = data.body_font;
+      await save(patch);
+      toast.success('Identidade visual aplicada.');
+    } catch (e: any) { toast.error('Falha: ' + e.message); }
+    finally { setManualUploading(false); }
+  };
+
   return (
     <Card>
       <CardHeader><CardTitle>Branding do Escritório</CardTitle></CardHeader>
@@ -1039,9 +1077,31 @@ function BrandingTab() {
           <div><Label>Cor secundária</Label><Input type="color" defaultValue={branding.secondary_color} onBlur={(e) => save({ secondary_color: e.target.value } as any)} /></div>
           <div><Label>Cor do texto</Label><Input type="color" defaultValue={branding.text_color} onBlur={(e) => save({ text_color: e.target.value } as any)} /></div>
         </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div><Label>Fonte de títulos</Label>
+            <Input defaultValue={(branding as any).heading_font || 'Helvetica'} onBlur={(e) => save({ heading_font: e.target.value } as any)} />
+          </div>
+          <div><Label>Fonte do corpo</Label>
+            <Input defaultValue={(branding as any).body_font || 'Helvetica'} onBlur={(e) => save({ body_font: e.target.value } as any)} />
+          </div>
+        </div>
         <div><Label>Logo</Label>
-          {branding.logo_url && <img src={branding.logo_url} alt="logo" className="h-16 mb-2" />}
+          {branding.logo_url && (
+            <div className="mb-2 p-3 border rounded bg-muted/30 inline-block">
+              <img src={branding.logo_url} alt="logo" className="h-28 object-contain" />
+            </div>
+          )}
           <Input type="file" accept="image/*" disabled={logoUploading} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleLogo(f); }} />
+        </div>
+        <div className="rounded border p-3 bg-muted/20">
+          <Label>Manual de identidade visual</Label>
+          <p className="text-xs text-muted-foreground mb-2">Envie o PDF do manual de marca para que a IA extraia automaticamente cores e tipografia.</p>
+          {(branding as any).brand_manual_url && (
+            <a href={(branding as any).brand_manual_url} target="_blank" rel="noopener noreferrer" className="text-xs underline block mb-2">Ver manual atual</a>
+          )}
+          <Input type="file" accept="application/pdf,image/*" disabled={manualUploading}
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) handleManual(f); }} />
+          {manualUploading && <p className="text-xs mt-1 text-muted-foreground">Processando com IA...</p>}
         </div>
         <div className="grid grid-cols-2 gap-2">
           <div><Label>Telefone</Label><Input defaultValue={branding.contacts?.phone || ''} onBlur={(e) => save({ contacts: { ...branding.contacts, phone: e.target.value } } as any)} /></div>
@@ -1053,8 +1113,8 @@ function BrandingTab() {
         <div className="pt-2">
           <Label>Pré-visualização do cabeçalho</Label>
           <div className="rounded overflow-hidden border">
-            <div className="h-16 flex items-center justify-between px-4" style={{ background: branding.primary_color }}>
-              {branding.logo_url ? <img src={branding.logo_url} alt="" className="h-10" /> : <span />}
+            <div className="h-24 flex items-center justify-between px-4" style={{ background: branding.primary_color }}>
+              {branding.logo_url ? <img src={branding.logo_url} alt="" className="h-20 object-contain bg-white/10 rounded px-2" /> : <span />}
               <span className="text-white font-bold">{branding.office_name}</span>
             </div>
             <div className="h-2" style={{ background: branding.secondary_color }} />
