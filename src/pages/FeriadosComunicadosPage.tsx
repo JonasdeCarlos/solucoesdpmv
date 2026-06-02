@@ -851,7 +851,7 @@ function HolidayTableCard({ holidays, branding }: { holidays: Holiday[]; brandin
     <Card className="overflow-hidden">
       <div className="flex items-center justify-between gap-3 px-4 py-3" style={{ background: primary, color: 'white' }}>
         <div className="flex items-center gap-3">
-          {branding?.logo_url && <img src={branding.logo_url} alt="logo" className="h-10 bg-white/10 rounded px-2 py-1" />}
+          {branding?.logo_url && <img src={branding.logo_url} alt="logo" className="h-20 object-contain bg-white/10 rounded px-3 py-2" />}
           <div>
             <div className="font-bold text-lg">Tabela de Feriados {year}</div>
             <div className="text-xs opacity-90">{branding?.office_name || 'Monte Verde Contabilidade'}</div>
