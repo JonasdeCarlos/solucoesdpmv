@@ -214,19 +214,29 @@ export async function generateHolidayTablePdf(opts: {
     y += MONTH_H;
 
     // Column headers
-    const HEAD_H = 6.5;
-    doc.setFillColor(secondary[0], secondary[1], secondary[2]);
+    const HEAD_H = 7.5;
+    // Darker band derived from primary for strong contrast
+    const headBg: [number, number, number] = [
+      Math.max(0, primary[0] - 25),
+      Math.max(0, primary[1] - 25),
+      Math.max(0, primary[2] - 25),
+    ];
+    doc.setFillColor(headBg[0], headBg[1], headBg[2]);
     doc.rect(10, y, W - 20, HEAD_H, 'F');
-    doc.setTextColor(textCol[0], textCol[1], textCol[2]);
+    // Bottom accent line
+    doc.setDrawColor(secondary[0], secondary[1], secondary[2]);
+    doc.setLineWidth(0.4);
+    doc.line(10, y + HEAD_H, W - 10, y + HEAD_H);
+    doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.5);
-    const headBaseline = y + HEAD_H - 2;
-    doc.text('Data', COL.date, headBaseline);
-    doc.text('Dia', COL.day, headBaseline);
-    doc.text('Evento', COL.name, headBaseline);
-    doc.text('Tipo', COL.type, headBaseline);
-    doc.text('Abrangência', COL.scope, headBaseline);
-    y += HEAD_H;
+    doc.setFontSize(9);
+    const headBaseline = y + HEAD_H - 2.5;
+    doc.text('DATA', COL.date, headBaseline);
+    doc.text('DIA', COL.day, headBaseline);
+    doc.text('EVENTO', COL.name, headBaseline);
+    doc.text('TIPO', COL.type, headBaseline);
+    doc.text('ABRANGÊNCIA', COL.scope, headBaseline);
+    y += HEAD_H + 0.5;
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
