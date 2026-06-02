@@ -132,49 +132,56 @@ export async function generateHolidayTablePdf(opts: {
   const secondary = hexToRgb(branding?.secondary_color || '#E1E8F2');
   const textCol = hexToRgb(branding?.text_color || '#393421');
 
-  // Header band
+  // Header band (taller to accommodate larger logo)
+  const HEADER_H = 42;
   doc.setFillColor(primary[0], primary[1], primary[2]);
-  doc.rect(0, 0, W, 32, 'F');
+  doc.rect(0, 0, W, HEADER_H, 'F');
   doc.setFillColor(secondary[0], secondary[1], secondary[2]);
-  doc.rect(0, 32, W, 5, 'F');
+  doc.rect(0, HEADER_H, W, 5, 'F');
 
   if (branding?.logo_url) {
     const img = await loadImage(branding.logo_url);
     if (img) {
       const ratio = img.w / img.h;
-      const h = 22; const w = h * ratio;
-      try { doc.addImage(img.dataUrl, 'PNG', 10, 5, w, h); } catch { /* noop */ }
+      const h = 32; const w = Math.min(h * ratio, 70);
+      try { doc.addImage(img.dataUrl, 'PNG', 10, (HEADER_H - h) / 2, w, h); } catch { /* noop */ }
     }
   }
 
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(18);
-  doc.text(`Calendário de Feriados ${year}`, W - 10, 16, { align: 'right' });
+  doc.setFontSize(20);
+  doc.text(`Calendário de Feriados ${year}`, W - 10, 18, { align: 'right' });
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
   const mLabel = municipios.length ? municipios.join(' · ') : 'Todos os municípios';
-  doc.text(mLabel.length > 80 ? mLabel.slice(0, 78) + '…' : mLabel, W - 10, 24, { align: 'right' });
-  doc.text(branding?.office_name || 'Monte Verde Contabilidade', W - 10, 29, { align: 'right' });
+  doc.text(mLabel.length > 90 ? mLabel.slice(0, 88) + '…' : mLabel, W - 10, 27, { align: 'right' });
+  doc.text(branding?.office_name || 'Monte Verde Contabilidade', W - 10, 34, { align: 'right' });
 
   // Sort holidays by date
   const sorted = [...holidays].sort((a, b) => a.data.localeCompare(b.data));
 
-  let y = 46;
+  let y = HEADER_H + 12;
   doc.setTextColor(textCol[0], textCol[1], textCol[2]);
 
   // Legend
+  doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
   let lx = 10;
   for (const t of Object.keys(TIPO_LABELS) as HolidayTipo[]) {
+    const label = TIPO_LABELS[t];
     const c = hexToRgb(TIPO_COLORS[t]);
     doc.setFillColor(c[0], c[1], c[2]);
-    doc.circle(lx + 1.5, y - 1, 1.4, 'F');
+    doc.circle(lx + 1.5, y - 1.2, 1.4, 'F');
     doc.setTextColor(textCol[0], textCol[1], textCol[2]);
-    doc.text(TIPO_LABELS[t], lx + 4, y);
-    lx += doc.getTextWidth(TIPO_LABELS[t]) + 10;
+    doc.text(label, lx + 4.5, y);
+    lx += doc.getTextWidth(label) + 12;
   }
-  y += 4;
+  y += 6;
+
+  // Column layout
+  const COL = { date: 13, day: 34, name: 55, type: 128, scope: 158 };
+  const ROW_H = 7;
 
   // Group by month
   const byMonth: Record<number, Holiday[]> = {};
@@ -194,54 +201,66 @@ export async function generateHolidayTablePdf(opts: {
   for (let m = 1; m <= 12; m++) {
     const items = byMonth[m];
     if (!items.length) continue;
-    ensureSpace(14);
+    ensureSpace(20);
     // Month band
+    const MONTH_H = 8;
     doc.setFillColor(primary[0], primary[1], primary[2]);
-    doc.rect(10, y, W - 20, 7, 'F');
+    doc.rect(10, y, W - 20, MONTH_H, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
-    doc.text(`${MONTHS[m - 1]} / ${year}`, 13, y + 5);
-    doc.text(String(items.length), W - 13, y + 5, { align: 'right' });
-    y += 9;
+    doc.text(`${MONTHS[m - 1]} / ${year}`, 13, y + MONTH_H - 2.5);
+    doc.text(`${items.length} ${items.length === 1 ? 'evento' : 'eventos'}`, W - 13, y + MONTH_H - 2.5, { align: 'right' });
+    y += MONTH_H;
 
     // Column headers
+    const HEAD_H = 6.5;
     doc.setFillColor(secondary[0], secondary[1], secondary[2]);
-    doc.rect(10, y, W - 20, 6, 'F');
+    doc.rect(10, y, W - 20, HEAD_H, 'F');
     doc.setTextColor(textCol[0], textCol[1], textCol[2]);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8.5);
-    doc.text('Data', 13, y + 4);
-    doc.text('Dia', 32, y + 4);
-    doc.text('Evento', 52, y + 4);
-    doc.text('Tipo', 130, y + 4);
-    doc.text('Município/Abrangência', 158, y + 4);
-    y += 7;
+    const headBaseline = y + HEAD_H - 2;
+    doc.text('Data', COL.date, headBaseline);
+    doc.text('Dia', COL.day, headBaseline);
+    doc.text('Evento', COL.name, headBaseline);
+    doc.text('Tipo', COL.type, headBaseline);
+    doc.text('Abrangência', COL.scope, headBaseline);
+    y += HEAD_H;
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
     let zebra = false;
     for (const h of items) {
-      ensureSpace(7);
+      ensureSpace(ROW_H + 1);
+      // Zebra row spans the row height starting at y
       if (zebra) {
         doc.setFillColor(248, 248, 248);
-        doc.rect(10, y - 4, W - 20, 6, 'F');
+        doc.rect(10, y, W - 20, ROW_H, 'F');
       }
+      // text baseline centered in row
+      const baseline = y + ROW_H - 2.2;
+      // color dot before date
       const c = hexToRgb(TIPO_COLORS[h.tipo as HolidayTipo] || '#999999');
       doc.setFillColor(c[0], c[1], c[2]);
-      doc.circle(11.5, y - 1, 1.2, 'F');
+      doc.circle(COL.date - 2.5, y + ROW_H / 2, 1.2, 'F');
+
       doc.setTextColor(textCol[0], textCol[1], textCol[2]);
-      doc.text(fmtBR(h.data), 14, y);
-      doc.text(weekdayOf(h.data), 32, y);
-      const nome = h.nome + (h.is_optional ? '  (Ponto Facultativo)' : '');
-      doc.text(doc.splitTextToSize(nome, 75)[0] || nome, 52, y);
-      doc.text(TIPO_LABELS[h.tipo as HolidayTipo] || h.tipo, 130, y);
+      doc.text(fmtBR(h.data), COL.date, baseline);
+      doc.text(weekdayOf(h.data), COL.day, baseline);
+      const nome = h.nome + (h.is_optional ? '  (PF)' : '');
+      const nomeLine = doc.splitTextToSize(nome, COL.type - COL.name - 2)[0] || nome;
+      doc.text(nomeLine, COL.name, baseline);
+      const tipoLabel = TIPO_LABELS[h.tipo as HolidayTipo] || h.tipo;
+      const tipoLine = doc.splitTextToSize(tipoLabel, COL.scope - COL.type - 2)[0] || tipoLabel;
+      doc.text(tipoLine, COL.type, baseline);
       const scope = h.municipio || h.uf || (h.scope_type === 'todos' ? 'Nacional' : h.scope_type);
-      doc.text(doc.splitTextToSize(String(scope || '—'), 50)[0] || '—', 158, y);
-      y += 6;
+      const scopeLine = doc.splitTextToSize(String(scope || '—'), W - 10 - COL.scope)[0] || '—';
+      doc.text(scopeLine, COL.scope, baseline);
+      y += ROW_H;
       zebra = !zebra;
     }
-    y += 3;
+    y += 4;
   }
 
   // Footer on each page
