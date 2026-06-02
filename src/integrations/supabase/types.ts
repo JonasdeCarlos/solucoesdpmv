@@ -1538,8 +1538,11 @@ export type Database = {
       }
       office_branding: {
         Row: {
+          body_font: string
+          brand_manual_url: string | null
           contacts: Json
           created_at: string
+          heading_font: string
           id: string
           logo_url: string | null
           office_name: string
@@ -1549,8 +1552,11 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          body_font?: string
+          brand_manual_url?: string | null
           contacts?: Json
           created_at?: string
+          heading_font?: string
           id?: string
           logo_url?: string | null
           office_name?: string
@@ -1560,8 +1566,11 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          body_font?: string
+          brand_manual_url?: string | null
           contacts?: Json
           created_at?: string
+          heading_font?: string
           id?: string
           logo_url?: string | null
           office_name?: string
