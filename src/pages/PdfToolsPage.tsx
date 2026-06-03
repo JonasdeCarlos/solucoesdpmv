@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   Combine, Scissors, Minimize2, RotateCw, ArrowLeftRight,
-  Trash2, ImageIcon, FileImage, ArrowLeft,
+  Trash2, ImageIcon, FileImage, ArrowLeft, FileText,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,10 +14,11 @@ import ReorderTool from '@/components/pdftools/tools/ReorderTool';
 import RemovePagesTool from '@/components/pdftools/tools/RemovePagesTool';
 import ImagesToPdfTool from '@/components/pdftools/tools/ImagesToPdfTool';
 import PdfToImagesTool from '@/components/pdftools/tools/PdfToImagesTool';
+import PdfToWordTool from '@/components/pdftools/tools/PdfToWordTool';
 
 type ToolId =
   | 'merge' | 'split' | 'compress' | 'rotate'
-  | 'reorder' | 'remove' | 'images-to-pdf' | 'pdf-to-images';
+  | 'reorder' | 'remove' | 'images-to-pdf' | 'pdf-to-images' | 'pdf-to-word';
 
 const STORAGE_KEY = 'pdf_tools_active_v1';
 
@@ -38,6 +39,7 @@ const TOOLS: ToolDef[] = [
   { id: 'remove', title: 'Excluir páginas', description: 'Remova páginas específicas do PDF.', icon: Trash2, Component: RemovePagesTool },
   { id: 'images-to-pdf', title: 'Imagens → PDF', description: 'Combine JPG/PNG em um PDF.', icon: ImageIcon, Component: ImagesToPdfTool },
   { id: 'pdf-to-images', title: 'PDF → Imagens', description: 'Cada página vira uma imagem JPG.', icon: FileImage, Component: PdfToImagesTool },
+  { id: 'pdf-to-word', title: 'PDF → Word', description: 'Extraia o texto para um documento .docx editável.', icon: FileText, Component: PdfToWordTool },
 ];
 
 const PdfToolsPage = () => {
