@@ -22,6 +22,7 @@ export function getHolidayEventKey(data: string, nome: string): string {
   if (n.includes('FINADOS')) return 'FINADOS';
   if (n.includes('PROCLAMACAO')) return 'PROCLAMACAO';
   if (n.includes('SERVIDOR PUBLICO')) return 'SERVIDOR_PUBLICO';
+  if (n.includes('IMACULADA CONCEICAO') || n.includes('NOSSA SENHORA DA CONCEICAO') || n.includes('PADROEIRA DE CAMANDUCAIA')) return 'IMACULADA_CONCEICAO';
   return n;
 }
 
