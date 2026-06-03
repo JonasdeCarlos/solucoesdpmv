@@ -19,7 +19,7 @@ import { useCcts } from '@/hooks/useCcts';
 import { useFeriadosMunicipais } from '@/hooks/useFeriadosMunicipais';
 import { supabase } from '@/integrations/supabase/client';
 import { TIPO_LABELS, TIPO_COLORS, type Holiday, type HolidayTipo, type HolidayScope, type NoticeAudienceType } from '@/utils/holidays/types';
-import { buildDedupeKey } from '@/utils/holidays/dedupe';
+import { dedupeHolidayList } from '@/utils/holidays/dedupe';
 import { defaultTemplate, renderNoticeText } from '@/utils/holidays/whatsappText';
 import { generateNoticePdf, generateHolidayTablePdf } from '@/utils/holidays/noticePdf';
 import { parseHolidaysCsv, normalizeDate } from '@/utils/holidays/csvImport';
@@ -109,13 +109,13 @@ function CalendarTab() {
   const [tipoFilter, setTipoFilter] = useState<string>('todos');
   const [municipioFilter, setMunicipioFilter] = useState('');
 
-  const filtered = holidays.filter((h) => {
+  const filtered = dedupeHolidayList(holidays.filter((h) => {
     if (h.status !== 'ativo') return false;
     if (!h.data.startsWith(String(year))) return false;
     if (tipoFilter !== 'todos' && h.tipo !== tipoFilter) return false;
     if (municipioFilter && !(h.municipio || '').toLowerCase().includes(municipioFilter.toLowerCase())) return false;
     return true;
-  });
+  }));
 
   const byMonth = useMemo(() => {
     const map: Record<number, Holiday[]> = {};
@@ -198,7 +198,7 @@ function ListTab() {
   const [filter, setFilter] = useState('');
   const [tipoF, setTipoF] = useState('todos');
 
-  const visible = holidays.filter((h) => {
+  const visible = dedupeHolidayList(holidays.filter((h) => {
     if (tipoF !== 'todos' && h.tipo !== tipoF) return false;
     if (filter) {
       const q = filter.toLowerCase();
@@ -206,7 +206,7 @@ function ListTab() {
       if (!hay.includes(q)) return false;
     }
     return true;
-  });
+  }));
 
   const handleAiSeedMunicipio = async (uf: string, municipio: string, ano: number) => {
     if (!uf || !municipio || !ano) { toast.error('Informe UF, município e ano.'); return; }
@@ -817,7 +817,7 @@ function HolidayTableCard({ holidays, branding }: { holidays: Holiday[]; brandin
     return Array.from(set).sort();
   }, [holidays, year]);
 
-  const filtered = useMemo(() => holidays.filter((h) => {
+  const filtered = useMemo(() => dedupeHolidayList(holidays.filter((h) => {
     if (h.status !== 'ativo') return false;
     if (!h.data.startsWith(String(year))) return false;
     if (h.scope_type === 'todos') return includeNational;
@@ -826,7 +826,7 @@ function HolidayTableCard({ holidays, branding }: { holidays: Holiday[]; brandin
       return !!h.municipio && selectedMun.includes(h.municipio);
     }
     return true;
-  }), [holidays, year, selectedMun, includeNational]);
+  })), [holidays, year, selectedMun, includeNational]);
 
   const toggleMun = (m: string) =>
     setSelectedMun((s) => s.includes(m) ? s.filter((x) => x !== m) : [...s, m]);
