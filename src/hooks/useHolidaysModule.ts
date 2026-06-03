@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Holiday } from '@/utils/holidays/types';
-import { buildDedupeKey } from '@/utils/holidays/dedupe';
+import { buildDedupeKey, dedupeHolidayList, isDuplicateHoliday } from '@/utils/holidays/dedupe';
 
 export function useHolidaysModule() {
   const [holidays, setHolidays] = useState<Holiday[]>([]);
@@ -10,7 +10,7 @@ export function useHolidaysModule() {
   const load = useCallback(async () => {
     setLoading(true);
     const { data } = await supabase.from('holidays' as any).select('*').order('data', { ascending: true });
-    setHolidays((data || []) as any);
+    setHolidays(dedupeHolidayList((data || []) as any) as any);
     setLoading(false);
   }, []);
 
@@ -22,8 +22,10 @@ export function useHolidaysModule() {
       uf: h.uf, municipio: h.municipio, cct_id: h.cct_id, company_id: h.company_id,
       nome: h.nome!,
     });
-    const { data: existing } = await supabase.from('holidays' as any).select('id').eq('dedupe_key', dedupe_key).maybeSingle();
-    if (existing) return { error: new Error('duplicado'), duplicated: true };
+    const { data: sameDate } = await supabase.from('holidays' as any).select('*').eq('data', h.data!);
+    if (((sameDate || []) as any[]).some((existing) => isDuplicateHoliday(h as any, existing))) {
+      return { error: new Error('duplicado'), duplicated: true };
+    }
     const { error } = await supabase.from('holidays' as any).insert({ ...h, dedupe_key } as any);
     if (!error) await load();
     return { error };

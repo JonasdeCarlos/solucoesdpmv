@@ -1,5 +1,6 @@
 import { PDFDocument, degrees } from 'pdf-lib';
 import { saveAs } from 'file-saver';
+import { Document, HeadingLevel, Packer, PageBreak, Paragraph, TextRun } from 'docx';
 
 export const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
 
@@ -184,6 +185,95 @@ export async function pdfToImages(file: File): Promise<void> {
     saveAs(blob, `${baseName}_pag_${String(i).padStart(3, '0')}.jpg`);
     await new Promise(r => setTimeout(r, 200));
   }
+}
+
+export async function pdfToWord(file: File): Promise<void> {
+  const pdfjs: any = await import('pdfjs-dist');
+  pdfjs.GlobalWorkerOptions.workerSrc =
+    `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+
+  const bytes = await file.arrayBuffer();
+  const pdf = await pdfjs.getDocument({ data: bytes }).promise;
+  const children: Paragraph[] = [
+    new Paragraph({
+      heading: HeadingLevel.HEADING_1,
+      children: [new TextRun({ text: file.name.replace(/\.pdf$/i, ''), bold: true })],
+    }),
+  ];
+
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent({ includeMarkedContent: false });
+    const lines: string[] = [];
+    let current = '';
+
+    for (const item of content.items as Array<{ str?: string; hasEOL?: boolean }>) {
+      const raw = item.str || '';
+      if (!raw.trim()) {
+        if (current && !current.endsWith(' ')) current += ' ';
+      } else {
+        const piece = raw.replace(/\s+/g, ' ').trim();
+        current += current && !current.endsWith(' ') ? ` ${piece}` : piece;
+      }
+      if (item.hasEOL && current.trim()) {
+        lines.push(current.trim());
+        current = '';
+      }
+    }
+    if (current.trim()) lines.push(current.trim());
+
+    children.push(new Paragraph({
+      spacing: { before: i === 1 ? 240 : 360, after: 120 },
+      children: [new TextRun({ text: `Página ${i}`, bold: true, size: 24 })],
+    }));
+
+    if (lines.length) {
+      for (const line of lines) {
+        children.push(new Paragraph({
+          spacing: { after: 80 },
+          children: [new TextRun({ text: line, size: 22 })],
+        }));
+      }
+    } else {
+      children.push(new Paragraph({
+        spacing: { after: 80 },
+        children: [new TextRun({ text: 'Página sem texto extraível.', italics: true, size: 22 })],
+      }));
+    }
+
+    if (i < pdf.numPages) children.push(new Paragraph({ children: [new PageBreak()] }));
+  }
+
+  const doc = new Document({
+    creator: 'Monte Verde Contabilidade',
+    title: file.name.replace(/\.pdf$/i, ''),
+    styles: {
+      default: { document: { run: { font: 'Arial', size: 22 } } },
+      paragraphStyles: [
+        {
+          id: 'Heading1',
+          name: 'Heading 1',
+          basedOn: 'Normal',
+          next: 'Normal',
+          quickFormat: true,
+          run: { font: 'Arial', size: 32, bold: true },
+          paragraph: { spacing: { before: 0, after: 240 }, outlineLevel: 0 },
+        },
+      ],
+    },
+    sections: [{
+      properties: {
+        page: {
+          size: { width: 11906, height: 16838 },
+          margin: { top: 1134, right: 1134, bottom: 1134, left: 1134 },
+        },
+      },
+      children,
+    }],
+  });
+
+  const blob = await Packer.toBlob(doc);
+  saveAs(blob, file.name.replace(/\.pdf$/i, '_convertido.docx'));
 }
 
 // 8. PROTEGER / DESPROTEGER -----------------------------------------------
