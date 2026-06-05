@@ -165,10 +165,14 @@ export async function loadBranding() {
   const { data } = await supabase.from('office_branding' as any).select('*').limit(1).maybeSingle();
   if (!data) return undefined;
   const d = data as any;
-  let logo_url: string | undefined;
-  if (d.logo_path) {
-    const { data: u } = await supabase.storage.from('office-assets').createSignedUrl(d.logo_path, 600);
-    logo_url = u?.signedUrl;
-  }
-  return { logo_url, primary_color: d.primary_color, secondary_color: d.secondary_color, office_name: d.office_name, phone: d.phone, email: d.email, site: d.site };
+  const contacts = d.contacts || {};
+  return {
+    logo_url: d.logo_url || undefined,
+    primary_color: d.primary_color,
+    secondary_color: d.text_color || d.secondary_color,
+    office_name: d.office_name,
+    phone: contacts.phone || contacts.telefone || '',
+    email: contacts.email || '',
+    site: contacts.site || contacts.website || '',
+  };
 }
