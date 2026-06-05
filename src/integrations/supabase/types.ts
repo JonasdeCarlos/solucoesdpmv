@@ -705,33 +705,624 @@ export type Database = {
         }
         Relationships: []
       }
+      client_audit_log: {
+        Row: {
+          action: string
+          changes: Json
+          client_id: string | null
+          created_at: string
+          id: string
+          record_id: string | null
+          table_name: string
+          user_email: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          changes?: Json
+          client_id?: string | null
+          created_at?: string
+          id?: string
+          record_id?: string | null
+          table_name: string
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          changes?: Json
+          client_id?: string | null
+          created_at?: string
+          id?: string
+          record_id?: string | null
+          table_name?: string
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_audit_log_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_calendar_events: {
+        Row: {
+          client_id: string
+          created_at: string
+          event_date: string
+          event_type: string
+          id: string
+          notes: string | null
+          title: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          event_date: string
+          event_type: string
+          id?: string
+          notes?: string | null
+          title: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          event_date?: string
+          event_type?: string
+          id?: string
+          notes?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_calendar_events_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_ccts: {
+        Row: {
+          ai_clauses: Json
+          ai_summary: string | null
+          client_id: string
+          created_at: string
+          created_by: string | null
+          data_base: string | null
+          doc_name: string | null
+          doc_path: string | null
+          id: string
+          is_active: boolean
+          sindicato: string | null
+          uf: string | null
+          union_base: string | null
+          validity_end: string | null
+          validity_start: string | null
+          version: number
+        }
+        Insert: {
+          ai_clauses?: Json
+          ai_summary?: string | null
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          data_base?: string | null
+          doc_name?: string | null
+          doc_path?: string | null
+          id?: string
+          is_active?: boolean
+          sindicato?: string | null
+          uf?: string | null
+          union_base?: string | null
+          validity_end?: string | null
+          validity_start?: string | null
+          version?: number
+        }
+        Update: {
+          ai_clauses?: Json
+          ai_summary?: string | null
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          data_base?: string | null
+          doc_name?: string | null
+          doc_path?: string | null
+          id?: string
+          is_active?: boolean
+          sindicato?: string | null
+          uf?: string | null
+          union_base?: string | null
+          validity_end?: string | null
+          validity_start?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_ccts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_diary_entries: {
+        Row: {
+          archived: boolean
+          archived_at: string | null
+          archived_by: string | null
+          archived_reason: string | null
+          attachment_path: string | null
+          author_id: string | null
+          author_name: string | null
+          client_id: string
+          created_at: string
+          id: string
+          occurred_at: string
+          tags: Json
+          text: string
+          updated_at: string
+        }
+        Insert: {
+          archived?: boolean
+          archived_at?: string | null
+          archived_by?: string | null
+          archived_reason?: string | null
+          attachment_path?: string | null
+          author_id?: string | null
+          author_name?: string | null
+          client_id: string
+          created_at?: string
+          id?: string
+          occurred_at?: string
+          tags?: Json
+          text: string
+          updated_at?: string
+        }
+        Update: {
+          archived?: boolean
+          archived_at?: string | null
+          archived_by?: string | null
+          archived_reason?: string | null
+          attachment_path?: string | null
+          author_id?: string | null
+          author_name?: string | null
+          client_id?: string
+          created_at?: string
+          id?: string
+          occurred_at?: string
+          tags?: Json
+          text?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_diary_entries_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_dp_profile: {
+        Row: {
+          best_contact_time: string | null
+          channel_default: string | null
+          client_id: string
+          created_at: string
+          created_by: string | null
+          digisac_contact_id: string | null
+          digisac_contact_name: string | null
+          has_timeclock: boolean | null
+          has_variables: boolean | null
+          id: string
+          manual_send_frequency: string | null
+          manual_send_method: string | null
+          needs_preview: boolean | null
+          preview_channel: string | null
+          preview_deadline_day: number | null
+          preview_rules: string | null
+          sla_hours: number | null
+          timeclock_notes: string | null
+          timeclock_owner: string | null
+          timeclock_password_encrypted: string | null
+          timeclock_type: string | null
+          timeclock_url: string | null
+          timeclock_user: string | null
+          updated_at: string
+          variables_deadline_day: number | null
+          variables_how: string | null
+          variables_responsible: string | null
+          workload_hhmm: string | null
+          workload_rules: string | null
+          workload_type: string | null
+        }
+        Insert: {
+          best_contact_time?: string | null
+          channel_default?: string | null
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          digisac_contact_id?: string | null
+          digisac_contact_name?: string | null
+          has_timeclock?: boolean | null
+          has_variables?: boolean | null
+          id?: string
+          manual_send_frequency?: string | null
+          manual_send_method?: string | null
+          needs_preview?: boolean | null
+          preview_channel?: string | null
+          preview_deadline_day?: number | null
+          preview_rules?: string | null
+          sla_hours?: number | null
+          timeclock_notes?: string | null
+          timeclock_owner?: string | null
+          timeclock_password_encrypted?: string | null
+          timeclock_type?: string | null
+          timeclock_url?: string | null
+          timeclock_user?: string | null
+          updated_at?: string
+          variables_deadline_day?: number | null
+          variables_how?: string | null
+          variables_responsible?: string | null
+          workload_hhmm?: string | null
+          workload_rules?: string | null
+          workload_type?: string | null
+        }
+        Update: {
+          best_contact_time?: string | null
+          channel_default?: string | null
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          digisac_contact_id?: string | null
+          digisac_contact_name?: string | null
+          has_timeclock?: boolean | null
+          has_variables?: boolean | null
+          id?: string
+          manual_send_frequency?: string | null
+          manual_send_method?: string | null
+          needs_preview?: boolean | null
+          preview_channel?: string | null
+          preview_deadline_day?: number | null
+          preview_rules?: string | null
+          sla_hours?: number | null
+          timeclock_notes?: string | null
+          timeclock_owner?: string | null
+          timeclock_password_encrypted?: string | null
+          timeclock_type?: string | null
+          timeclock_url?: string | null
+          timeclock_user?: string | null
+          updated_at?: string
+          variables_deadline_day?: number | null
+          variables_how?: string | null
+          variables_responsible?: string | null
+          workload_hhmm?: string | null
+          workload_rules?: string | null
+          workload_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_dp_profile_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_message_templates: {
+        Row: {
+          body: string
+          category: string
+          channel: string
+          client_id: string | null
+          created_at: string
+          id: string
+          is_global: boolean
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          category: string
+          channel?: string
+          client_id?: string | null
+          created_at?: string
+          id?: string
+          is_global?: boolean
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          category?: string
+          channel?: string
+          client_id?: string | null
+          created_at?: string
+          id?: string
+          is_global?: boolean
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_message_templates_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_risk_flags: {
+        Row: {
+          client_id: string
+          created_at: string
+          flag_type: string
+          id: string
+          notes: string | null
+          severity: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          flag_type: string
+          id?: string
+          notes?: string | null
+          severity?: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          flag_type?: string
+          id?: string
+          notes?: string | null
+          severity?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_risk_flags_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_rubrics: {
+        Row: {
+          client_id: string
+          code: string
+          created_at: string
+          id: string
+          incidences: Json
+          is_critical: boolean
+          kind: string
+          name: string
+          notes: string | null
+          percents_text: string | null
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          code: string
+          created_at?: string
+          id?: string
+          incidences?: Json
+          is_critical?: boolean
+          kind?: string
+          name: string
+          notes?: string | null
+          percents_text?: string | null
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          code?: string
+          created_at?: string
+          id?: string
+          incidences?: Json
+          is_critical?: boolean
+          kind?: string
+          name?: string
+          notes?: string | null
+          percents_text?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_rubrics_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_uploads: {
+        Row: {
+          client_id: string
+          file_name: string
+          file_path: string
+          id: string
+          mime_type: string | null
+          notes: string | null
+          upload_type: string
+          uploaded_at: string
+          uploaded_by: string | null
+          version: number
+        }
+        Insert: {
+          client_id: string
+          file_name: string
+          file_path: string
+          id?: string
+          mime_type?: string | null
+          notes?: string | null
+          upload_type: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+          version?: number
+        }
+        Update: {
+          client_id?: string
+          file_name?: string
+          file_path?: string
+          id?: string
+          mime_type?: string | null
+          notes?: string | null
+          upload_type?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_uploads_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clientes: {
         Row: {
           cnpj: string | null
+          codigo_cliente: string | null
+          contato_email: string | null
+          contato_nome: string | null
+          contato_telefone: string | null
           cpf: string | null
           created_at: string
           endereco: string | null
           id: string
+          municipio: string | null
           nome: string
+          nome_fantasia: string | null
+          segmento: string | null
+          status: string
           tipo: string
+          uf: string | null
         }
         Insert: {
           cnpj?: string | null
+          codigo_cliente?: string | null
+          contato_email?: string | null
+          contato_nome?: string | null
+          contato_telefone?: string | null
           cpf?: string | null
           created_at?: string
           endereco?: string | null
           id?: string
+          municipio?: string | null
           nome: string
+          nome_fantasia?: string | null
+          segmento?: string | null
+          status?: string
           tipo?: string
+          uf?: string | null
         }
         Update: {
           cnpj?: string | null
+          codigo_cliente?: string | null
+          contato_email?: string | null
+          contato_nome?: string | null
+          contato_telefone?: string | null
           cpf?: string | null
           created_at?: string
           endereco?: string | null
           id?: string
+          municipio?: string | null
           nome?: string
+          nome_fantasia?: string | null
+          segmento?: string | null
+          status?: string
           tipo?: string
+          uf?: string | null
+        }
+        Relationships: []
+      }
+      closing_checklist_runs: {
+        Row: {
+          client_id: string
+          competence: string
+          created_at: string
+          id: string
+          steps_status: Json
+          template_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          competence: string
+          created_at?: string
+          id?: string
+          steps_status?: Json
+          template_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          competence?: string
+          created_at?: string
+          id?: string
+          steps_status?: Json
+          template_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "closing_checklist_runs_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "closing_checklist_runs_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "closing_checklist_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      closing_checklist_templates: {
+        Row: {
+          created_at: string
+          id: string
+          is_default: boolean
+          name: string
+          steps: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name: string
+          steps?: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name?: string
+          steps?: Json
+          updated_at?: string
         }
         Relationships: []
       }
@@ -2290,6 +2881,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_timeclock_password: { Args: { _client_id: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -2299,6 +2891,10 @@ export type Database = {
       }
       is_admin_or_master: { Args: { _user_id: string }; Returns: boolean }
       normalize_email: { Args: { _email: string }; Returns: string }
+      set_timeclock_password: {
+        Args: { _client_id: string; _password: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "master" | "admin" | "user"
