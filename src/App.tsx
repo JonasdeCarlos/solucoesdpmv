@@ -43,6 +43,8 @@ import BhEmployeesPage from "./pages/bancoHoras/BhEmployeesPage";
 import BhParametrosPage from "./pages/bancoHoras/BhParametrosPage";
 import BhAuditoriaPage from "./pages/bancoHoras/BhAuditoriaPage";
 import FeriadosComunicadosPage from "./pages/FeriadosComunicadosPage";
+import SucessoClienteListPage from "./pages/sucessoCliente/SucessoClienteListPage";
+import SucessoClienteProfilePage from "./pages/sucessoCliente/SucessoClienteProfilePage";
 
 const queryClient = new QueryClient();
 
@@ -95,6 +97,8 @@ const App = () => (
               <Route path="/avisos/:id" element={<AvisoDetailPage />} />
               <Route path="/provisoes-dsr" element={<ProvisoesDsrPage />} />
               <Route path="/feriados-comunicados" element={<FeriadosComunicadosPage />} />
+              <Route path="/sucesso-cliente" element={<SucessoClienteListPage />} />
+              <Route path="/sucesso-cliente/:id" element={<SucessoClienteProfilePage />} />
               <Route path="/usuarios" element={<UsuariosPage />} />
               <Route path="/banco-horas" element={<BhLayout />}>
                 <Route index element={<BhDashboardPage />} />
