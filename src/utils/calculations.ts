@@ -66,11 +66,18 @@ export interface Step2Data {
 export type TipoCalculoLinha = 'manual' | 'dias' | 'horas' | 'hora_extra' | 'adicional_noturno';
 
 export interface LinhaExtra {
+  id?: string;
   descricao: string;
   valor: number;
   tipoCalculo?: TipoCalculoLinha;
   quantidade?: number;
   adicionalPercent?: number;
+  _horaInput?: string;
+  calculaDSR?: boolean;
+  diasUteis?: number;
+  diasNaoUteis?: number;
+  isDSR?: boolean;
+  dsrParentId?: string;
 }
 
 export interface VerbaRescisoria {
