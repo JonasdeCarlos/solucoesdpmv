@@ -59,6 +59,8 @@ export interface Step2Data {
   consideraTercoFerias: boolean;
   outrosDescontos: LinhaExtra[];
   outrosCreditos: LinhaExtra[];
+  incluir13AnosAnteriores: boolean;
+  fgtsManual: number | null;
 }
 
 export type TipoCalculoLinha = 'manual' | 'dias' | 'horas' | 'hora_extra' | 'adicional_noturno';
@@ -69,8 +71,6 @@ export interface LinhaExtra {
   tipoCalculo?: TipoCalculoLinha;
   quantidade?: number;
   adicionalPercent?: number;
-  incluir13AnosAnteriores: boolean;
-  fgtsManual: number | null;
 }
 
 export interface VerbaRescisoria {
