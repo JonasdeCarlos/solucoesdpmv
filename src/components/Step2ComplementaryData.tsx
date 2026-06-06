@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { ArrowLeft, Calculator, Plus, Trash2 } from 'lucide-react';
-import { type Step1Data, type Step2Data } from '@/utils/calculations';
+import { type Step1Data, type Step2Data, type LinhaExtra, type TipoCalculoLinha } from '@/utils/calculations';
 import { diffMonths } from '@/utils/formatters';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useVerbas } from '@/hooks/useVerbas';
@@ -25,36 +25,144 @@ const Step2ComplementaryData = ({ step1, data, onChange, onBack, onCalculate }: 
 
   const { verbas: verbasDB } = useVerbas();
 
+  const calcLinhaValor = (linha: LinhaExtra): number => {
+    const sal = step1.salarioMensal || 0;
+    const qtd = linha.quantidade || 0;
+    if (sal <= 0 || !linha.tipoCalculo || linha.tipoCalculo === 'manual') return linha.valor || 0;
+    switch (linha.tipoCalculo) {
+      case 'dias':
+        return Math.round((sal / 30) * qtd * 100) / 100;
+      case 'horas':
+        return Math.round((sal / 220) * qtd * 100) / 100;
+      case 'hora_extra': {
+        const ad = (linha.adicionalPercent ?? 50) / 100;
+        return Math.round((sal / 220) * qtd * (1 + ad) * 100) / 100;
+      }
+      case 'adicional_noturno': {
+        const ad = (linha.adicionalPercent ?? 20) / 100;
+        return Math.round((sal / 220) * qtd * ad * 100) / 100;
+      }
+      default:
+        return linha.valor || 0;
+    }
+  };
+
   const handleAddVerbaFromDB = (verbaId: string) => {
     const v = verbasDB.find((vb) => vb.id === verbaId);
     if (!v) return;
-    const sal = step1.salarioMensal || 0;
     const ref = Number(v.referenciaPadrao) || 0;
-    let valor = 0;
-    if (sal > 0 && ref > 0) {
-      switch (v.tipoCalculo) {
-        case 'dias':
-          valor = Math.round((sal / 30) * ref * 100) / 100;
-          break;
-        case 'horas':
-          valor = Math.round((sal / 220) * ref * 100) / 100;
-          break;
-        case 'hora_extra':
-          valor = Math.round((sal / 220) * ref * 1.5 * 100) / 100;
-          break;
-        case 'adicional_noturno':
-          valor = Math.round((sal / 220) * ref * 0.2 * 100) / 100;
-          break;
-        default:
-          valor = 0;
-      }
-    }
-    const linha = { descricao: v.nome, valor };
+    const adPct = v.tipoCalculo === 'hora_extra' ? 50 : v.tipoCalculo === 'adicional_noturno' ? 20 : 0;
+    const base: LinhaExtra = {
+      descricao: v.nome,
+      valor: 0,
+      tipoCalculo: v.tipoCalculo,
+      quantidade: ref,
+      adicionalPercent: adPct,
+    };
+    const linha: LinhaExtra = { ...base, valor: calcLinhaValor(base) };
     if (v.padraoPD === 'P') {
       update({ outrosCreditos: [...data.outrosCreditos, linha] });
     } else {
       update({ outrosDescontos: [...data.outrosDescontos, linha] });
     }
+  };
+
+  const renderLinha = (
+    arrKey: 'outrosCreditos' | 'outrosDescontos',
+    l: LinhaExtra,
+    idx: number,
+    placeholder: string,
+  ) => {
+    const arr = data[arrKey];
+    const setArr = (next: LinhaExtra[]) => update({ [arrKey]: next } as Partial<Step2Data>);
+    const patchLinha = (patch: Partial<LinhaExtra>) => {
+      const merged: LinhaExtra = { ...arr[idx], ...patch };
+      // Recalcula valor automaticamente quando muda tipo/qtd/adicional
+      if ('tipoCalculo' in patch || 'quantidade' in patch || 'adicionalPercent' in patch) {
+        merged.valor = calcLinhaValor(merged);
+      }
+      const next = [...arr];
+      next[idx] = merged;
+      setArr(next);
+    };
+    const tipo: TipoCalculoLinha = l.tipoCalculo ?? 'manual';
+    const isAuto = tipo !== 'manual';
+    const showAdicional = tipo === 'hora_extra' || tipo === 'adicional_noturno';
+    return (
+      <div key={idx} className="space-y-2 rounded-md border p-2">
+        <div className="flex items-center gap-2">
+          <Input
+            placeholder={placeholder}
+            value={l.descricao}
+            onChange={(e) => patchLinha({ descricao: e.target.value })}
+            className="flex-1"
+          />
+          <Input
+            type="number"
+            step="0.01"
+            min={0}
+            placeholder="0,00"
+            value={l.valor || ''}
+            onChange={(e) => patchLinha({ valor: parseFloat(e.target.value) || 0 })}
+            className="w-32"
+            readOnly={isAuto}
+            title={isAuto ? 'Valor calculado automaticamente' : ''}
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-destructive"
+            onClick={() => setArr(arr.filter((_, i) => i !== idx))}
+          >
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Select
+            value={tipo}
+            onValueChange={(v) => patchLinha({ tipoCalculo: v as TipoCalculoLinha })}
+          >
+            <SelectTrigger className="h-8 w-44 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="manual">Manual</SelectItem>
+              <SelectItem value="dias">Por dias (sal/30 × qtd)</SelectItem>
+              <SelectItem value="horas">Por horas (sal/220 × qtd)</SelectItem>
+              <SelectItem value="hora_extra">Hora extra</SelectItem>
+              <SelectItem value="adicional_noturno">Adicional noturno</SelectItem>
+            </SelectContent>
+          </Select>
+          {isAuto && (
+            <div className="flex items-center gap-1">
+              <Label className="text-xs text-muted-foreground">Qtd:</Label>
+              <Input
+                type="number"
+                step="0.01"
+                min={0}
+                value={l.quantidade || ''}
+                onChange={(e) => patchLinha({ quantidade: parseFloat(e.target.value) || 0 })}
+                className="h-8 w-24"
+              />
+            </div>
+          )}
+          {showAdicional && (
+            <div className="flex items-center gap-1">
+              <Label className="text-xs text-muted-foreground">%:</Label>
+              <Input
+                type="number"
+                step="1"
+                min={0}
+                value={l.adicionalPercent ?? ''}
+                onChange={(e) => patchLinha({ adicionalPercent: parseFloat(e.target.value) || 0 })}
+                className="h-8 w-20"
+              />
+            </div>
+          )}
+        </div>
+      </div>
+    );
   };
 
   // Auto-calculate proportional months
@@ -182,43 +290,7 @@ const Step2ComplementaryData = ({ step1, data, onChange, onBack, onCalculate }: 
             </Button>
           </div>
           {data.outrosDescontos.map((d, idx) => (
-            <div key={idx} className="flex items-center gap-2">
-              <Input
-                placeholder="Natureza do desconto"
-                value={d.descricao}
-                onChange={(e) => {
-                  const arr = [...data.outrosDescontos];
-                  arr[idx] = { ...arr[idx], descricao: e.target.value };
-                  update({ outrosDescontos: arr });
-                }}
-                className="flex-1"
-              />
-              <Input
-                type="number"
-                step="0.01"
-                min={0}
-                placeholder="0,00"
-                value={d.valor || ''}
-                onChange={(e) => {
-                  const arr = [...data.outrosDescontos];
-                  arr[idx] = { ...arr[idx], valor: parseFloat(e.target.value) || 0 };
-                  update({ outrosDescontos: arr });
-                }}
-                className="w-32"
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-destructive"
-                onClick={() => {
-                  const arr = data.outrosDescontos.filter((_, i) => i !== idx);
-                  update({ outrosDescontos: arr });
-                }}
-              >
-                <Trash2 className="w-4 h-4" />
-              </Button>
-            </div>
+            renderLinha('outrosDescontos', d, idx, 'Natureza do desconto')
           ))}
         </div>
 
@@ -237,43 +309,7 @@ const Step2ComplementaryData = ({ step1, data, onChange, onBack, onCalculate }: 
             </Button>
           </div>
           {data.outrosCreditos.map((c, idx) => (
-            <div key={idx} className="flex items-center gap-2">
-              <Input
-                placeholder="Natureza do crédito"
-                value={c.descricao}
-                onChange={(e) => {
-                  const arr = [...data.outrosCreditos];
-                  arr[idx] = { ...arr[idx], descricao: e.target.value };
-                  update({ outrosCreditos: arr });
-                }}
-                className="flex-1"
-              />
-              <Input
-                type="number"
-                step="0.01"
-                min={0}
-                placeholder="0,00"
-                value={c.valor || ''}
-                onChange={(e) => {
-                  const arr = [...data.outrosCreditos];
-                  arr[idx] = { ...arr[idx], valor: parseFloat(e.target.value) || 0 };
-                  update({ outrosCreditos: arr });
-                }}
-                className="w-32"
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-destructive"
-                onClick={() => {
-                  const arr = data.outrosCreditos.filter((_, i) => i !== idx);
-                  update({ outrosCreditos: arr });
-                }}
-              >
-                <Trash2 className="w-4 h-4" />
-              </Button>
-            </div>
+            renderLinha('outrosCreditos', c, idx, 'Natureza do crédito')
           ))}
         </div>
 

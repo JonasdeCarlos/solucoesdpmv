@@ -57,10 +57,20 @@ export interface Step2Data {
   meses13Proporcional: number;
   mesesFeriasProporcional: number;
   consideraTercoFerias: boolean;
-  outrosDescontos: { descricao: string; valor: number }[];
-  outrosCreditos: { descricao: string; valor: number }[];
+  outrosDescontos: LinhaExtra[];
+  outrosCreditos: LinhaExtra[];
   incluir13AnosAnteriores: boolean;
   fgtsManual: number | null;
+}
+
+export type TipoCalculoLinha = 'manual' | 'dias' | 'horas' | 'hora_extra' | 'adicional_noturno';
+
+export interface LinhaExtra {
+  descricao: string;
+  valor: number;
+  tipoCalculo?: TipoCalculoLinha;
+  quantidade?: number;
+  adicionalPercent?: number;
 }
 
 export interface VerbaRescisoria {
