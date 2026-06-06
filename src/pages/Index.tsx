@@ -219,6 +219,11 @@ const Index = () => {
           onChange={setStep3}
           onVerbaUpdate={setVerbas}
           onBack={() => setCurrentStep(2)}
+          onSave={() => {
+            const saved = upsertCalculation({ id: currentCalcId, step1, step2, step3, verbas });
+            if (saved.id !== currentCalcId) setCurrentCalcId(saved.id);
+            toast.success(`Cálculo salvo: ${saved.label}`);
+          }}
         />
       )}
     </div>
