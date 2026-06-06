@@ -4,7 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { ArrowLeft, FileText, Copy, Download, Calculator, RefreshCw } from 'lucide-react';
+import { Check, ChevronsUpDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { useClientes } from '@/hooks/useClientes';
 import { type Step1Data, type Step2Data, type Step3Data, type VerbaRescisoria, calcularTotal, calcularVerbas, MOTIVO_TERMO_TITULO, MOTIVO_TERMO_CORPO, MOTIVO_LABELS } from '@/utils/calculations';
 import { calcularFgtsDetalhado } from '@/utils/fgtsDetail';
 import { formatCurrency, formatDate } from '@/utils/formatters';
@@ -24,6 +29,27 @@ interface Step3Props {
 }
 
 const Step3PartiesAndTerm = ({ step1, step2, verbas, data, onChange, onVerbaUpdate, onBack }: Step3Props) => {
+  const { clientes } = useClientes();
+  const [clienteOpen, setClienteOpen] = useState(false);
+  const clientesOrdenados = [...clientes].sort((a, b) =>
+    a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' })
+  );
+
+  const handleSelectCliente = (clienteId: string) => {
+    const c = clientes.find((cl) => cl.id === clienteId);
+    if (!c) return;
+    setClienteOpen(false);
+    const isEmpresa = c.tipo === 'PJ';
+    onChange({
+      ...data,
+      empregadorNome: c.nome,
+      empregadorTipo: isEmpresa ? 'empresa' : 'domestico',
+      empregadorCNPJ: isEmpresa ? (c.cnpj || '') : '',
+      empregadorCPF: !isEmpresa ? (c.cpf || '') : '',
+      empregadorEndereco: c.endereco || '',
+    });
+  };
+
   const update = (partial: Partial<Step3Data>) => {
     onChange({ ...data, ...partial });
   };
@@ -355,6 +381,42 @@ ${data.empregadoNome || '[NOME DO EMPREGADO]'}`;
           <CardTitle className="text-xl">Dados do Empregador</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {clientes.length > 0 && (
+            <div className="space-y-2">
+              <Label>Selecionar cliente cadastrado</Label>
+              <Popover open={clienteOpen} onOpenChange={setClienteOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" role="combobox" aria-expanded={clienteOpen} className="w-full justify-between font-normal">
+                    <span className="truncate">{data.empregadorNome || 'Pesquisar e selecionar cliente...'}</span>
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Pesquisar cliente..." />
+                    <CommandList>
+                      <CommandEmpty>Nenhum cliente encontrado.</CommandEmpty>
+                      <CommandGroup>
+                        {clientesOrdenados.map((c) => {
+                          const doc = c.tipo === 'PJ' ? c.cnpj : c.cpf;
+                          return (
+                            <CommandItem
+                              key={c.id}
+                              value={`${c.nome} ${doc}`}
+                              onSelect={() => handleSelectCliente(c.id)}
+                            >
+                              <Check className={cn('mr-2 h-4 w-4', data.empregadorNome === c.nome ? 'opacity-100' : 'opacity-0')} />
+                              <span className="truncate">{c.nome} {doc ? `(${doc})` : ''}</span>
+                            </CommandItem>
+                          );
+                        })}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+          )}
           <div className="space-y-2">
             <Label>Tipo</Label>
             <RadioGroup
