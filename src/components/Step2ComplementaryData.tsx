@@ -7,6 +7,8 @@ import { Switch } from '@/components/ui/switch';
 import { ArrowLeft, Calculator, Plus, Trash2 } from 'lucide-react';
 import { type Step1Data, type Step2Data } from '@/utils/calculations';
 import { diffMonths } from '@/utils/formatters';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useVerbas } from '@/hooks/useVerbas';
 
 interface Step2Props {
   step1: Step1Data;
@@ -19,6 +21,40 @@ interface Step2Props {
 const Step2ComplementaryData = ({ step1, data, onChange, onBack, onCalculate }: Step2Props) => {
   const update = (partial: Partial<Step2Data>) => {
     onChange({ ...data, ...partial });
+  };
+
+  const { verbas: verbasDB } = useVerbas();
+
+  const handleAddVerbaFromDB = (verbaId: string) => {
+    const v = verbasDB.find((vb) => vb.id === verbaId);
+    if (!v) return;
+    const sal = step1.salarioMensal || 0;
+    const ref = Number(v.referenciaPadrao) || 0;
+    let valor = 0;
+    if (sal > 0 && ref > 0) {
+      switch (v.tipoCalculo) {
+        case 'dias':
+          valor = Math.round((sal / 30) * ref * 100) / 100;
+          break;
+        case 'horas':
+          valor = Math.round((sal / 220) * ref * 100) / 100;
+          break;
+        case 'hora_extra':
+          valor = Math.round((sal / 220) * ref * 1.5 * 100) / 100;
+          break;
+        case 'adicional_noturno':
+          valor = Math.round((sal / 220) * ref * 0.2 * 100) / 100;
+          break;
+        default:
+          valor = 0;
+      }
+    }
+    const linha = { descricao: v.nome, valor };
+    if (v.padraoPD === 'P') {
+      update({ outrosCreditos: [...data.outrosCreditos, linha] });
+    } else {
+      update({ outrosDescontos: [...data.outrosDescontos, linha] });
+    }
   };
 
   // Auto-calculate proportional months
@@ -107,6 +143,30 @@ const Step2ComplementaryData = ({ step1, data, onChange, onBack, onCalculate }: 
         )}
 
         {/* Outros */}
+        {/* Adicionar verba cadastrada */}
+        <div className="space-y-2 p-4 rounded-lg border border-dashed">
+          <Label>Adicionar verba cadastrada</Label>
+          <Select value="" onValueChange={handleAddVerbaFromDB}>
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione uma verba do cadastro" />
+            </SelectTrigger>
+            <SelectContent>
+              {verbasDB.length === 0 ? (
+                <SelectItem value="__none" disabled>Nenhuma verba cadastrada</SelectItem>
+              ) : (
+                verbasDB.map((v) => (
+                  <SelectItem key={v.id} value={v.id}>
+                    {v.nome} ({v.padraoPD === 'P' ? 'Provento' : 'Desconto'})
+                  </SelectItem>
+                ))
+              )}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            A verba será adicionada à lista de créditos ou descontos conforme o padrão cadastrado. O valor pode ser editado abaixo.
+          </p>
+        </div>
+
         {/* Outros descontos - múltiplas linhas */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
