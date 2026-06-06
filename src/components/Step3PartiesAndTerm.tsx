@@ -166,8 +166,9 @@ ${data.empregadoNome || '[NOME DO EMPREGADO]'}`;
       const saldoSal = (sal / 30) * step2.diasTrabalhadosMes;
       lines.push('');
       lines.push(`${itemNum}) SALDO DE SALÁRIO`);
-      lines.push(`   Fórmula: Salário / 30 × dias trabalhados no mês`);
-      lines.push(`   ${formatCurrency(sal)} / 30 × ${step2.diasTrabalhadosMes} = ${formatCurrency(saldoSal)}`);
+      lines.push(`   Verba calculada sobre os dias informados.`);
+      lines.push(`   Fórmula: Salário / 30 × dias informados`);
+      lines.push(`   ${formatCurrency(sal)} / 30 × ${step2.diasTrabalhadosMes} dias = ${formatCurrency(saldoSal)}`);
       itemNum++;
     }
 

@@ -462,8 +462,9 @@ function renderMemoriaPages(doc: jsPDF, step1: Step1Data, step2: Step2Data, verb
   if (verbaAtiva('saldo_salario')) {
     const saldoSal = (sal / 30) * step2.diasTrabalhadosMes;
     items.push({ title: 'SALDO DE SALÁRIO', lines: [
-      `Fórmula: Salário / 30 × dias trabalhados no mês`,
-      `${formatCurrency(sal)} / 30 × ${step2.diasTrabalhadosMes} = ${formatCurrency(saldoSal)}`,
+      `Verba calculada sobre os dias informados.`,
+      `Fórmula: Salário / 30 × dias informados`,
+      `${formatCurrency(sal)} / 30 × ${step2.diasTrabalhadosMes} dias = ${formatCurrency(saldoSal)}`,
     ]});
   }
 
