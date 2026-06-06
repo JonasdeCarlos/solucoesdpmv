@@ -78,6 +78,7 @@ export interface LinhaExtra {
   diasNaoUteis?: number;
   isDSR?: boolean;
   dsrParentId?: string;
+  incideFGTS?: boolean;
 }
 
 export interface VerbaRescisoria {
