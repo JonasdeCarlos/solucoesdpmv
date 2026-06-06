@@ -52,18 +52,36 @@ const Step2ComplementaryData = ({ step1, data, onChange, onBack, onCalculate }: 
     if (!v) return;
     const ref = Number(v.referenciaPadrao) || 0;
     const adPct = v.tipoCalculo === 'hora_extra' ? 50 : v.tipoCalculo === 'adicional_noturno' ? 20 : 0;
+    const parentId = crypto.randomUUID();
     const base: LinhaExtra = {
+      id: parentId,
       descricao: v.nome,
       valor: 0,
       tipoCalculo: v.tipoCalculo,
       quantidade: ref,
       adicionalPercent: adPct,
+      calculaDSR: v.calculaDSR,
+      diasUteis: 22,
+      diasNaoUteis: 8,
     };
     const linha: LinhaExtra = { ...base, valor: calcLinhaValor(base) };
+    const novas: LinhaExtra[] = [linha];
+    if (v.calculaDSR) {
+      const du = 22, dnu = 8;
+      const dsrVal = du > 0 ? Math.round((linha.valor / du) * dnu * 100) / 100 : 0;
+      novas.push({
+        id: crypto.randomUUID(),
+        descricao: `DSR ${v.nome}`,
+        valor: dsrVal,
+        tipoCalculo: 'manual',
+        isDSR: true,
+        dsrParentId: parentId,
+      });
+    }
     if (v.padraoPD === 'P') {
-      update({ outrosCreditos: [...data.outrosCreditos, linha] });
+      update({ outrosCreditos: [...data.outrosCreditos, ...novas] });
     } else {
-      update({ outrosDescontos: [...data.outrosDescontos, linha] });
+      update({ outrosDescontos: [...data.outrosDescontos, ...novas] });
     }
   };
 
@@ -75,21 +93,71 @@ const Step2ComplementaryData = ({ step1, data, onChange, onBack, onCalculate }: 
   ) => {
     const arr = data[arrKey];
     const setArr = (next: LinhaExtra[]) => update({ [arrKey]: next } as Partial<Step2Data>);
+    // Garante id estável
+    if (!l.id) {
+      const next = [...arr];
+      next[idx] = { ...l, id: crypto.randomUUID() };
+      setArr(next);
+      return null;
+    }
     const patchLinha = (patch: Partial<LinhaExtra>) => {
       const merged: LinhaExtra = { ...arr[idx], ...patch };
       // Recalcula valor automaticamente quando muda tipo/qtd/adicional
       if ('tipoCalculo' in patch || 'quantidade' in patch || 'adicionalPercent' in patch) {
         merged.valor = calcLinhaValor(merged);
       }
-      const next = [...arr];
+      let next = [...arr];
       next[idx] = merged;
+      // Sincroniza DSR filho desta linha (se houver)
+      const du = merged.diasUteis || 0;
+      const dnu = merged.diasNaoUteis || 0;
+      next = next.map((row) => {
+        if (row.isDSR && row.dsrParentId === merged.id) {
+          const v = du > 0 ? Math.round((merged.valor / du) * dnu * 100) / 100 : 0;
+          return { ...row, valor: v, descricao: row.descricao || `DSR ${merged.descricao}` };
+        }
+        return row;
+      });
+      // Toggle DSR: cria ou remove linha filha
+      if ('calculaDSR' in patch) {
+        const hasChild = next.some((r) => r.isDSR && r.dsrParentId === merged.id);
+        if (patch.calculaDSR && !hasChild) {
+          const v = du > 0 ? Math.round((merged.valor / du) * dnu * 100) / 100 : 0;
+          next.splice(idx + 1, 0, {
+            id: crypto.randomUUID(),
+            descricao: `DSR ${merged.descricao}`,
+            valor: v,
+            tipoCalculo: 'manual',
+            isDSR: true,
+            dsrParentId: merged.id,
+          });
+        } else if (!patch.calculaDSR && hasChild) {
+          next = next.filter((r) => !(r.isDSR && r.dsrParentId === merged.id));
+        }
+      }
+      setArr(next);
+    };
+    const removeLinha = () => {
+      // Remove a linha e também seu DSR filho
+      const next = arr.filter((r, i) => i !== idx && !(r.isDSR && r.dsrParentId === l.id));
       setArr(next);
     };
     const tipo: TipoCalculoLinha = l.tipoCalculo ?? 'manual';
     const isAuto = tipo !== 'manual';
     const showAdicional = tipo === 'hora_extra' || tipo === 'adicional_noturno';
+    const isHora = tipo === 'horas' || tipo === 'hora_extra' || tipo === 'adicional_noturno';
+    if (l.isDSR) {
+      return (
+        <div key={l.id} className="flex items-center gap-2 rounded-md border border-dashed bg-muted/30 p-2 ml-6">
+          <span className="text-xs text-muted-foreground">↳</span>
+          <Input value={l.descricao} readOnly className="flex-1 h-8 text-sm" />
+          <Input value={l.valor ? l.valor.toFixed(2) : '0,00'} readOnly className="w-32 h-8 text-sm" />
+          <span className="text-xs text-muted-foreground">DSR (auto)</span>
+        </div>
+      );
+    }
     return (
-      <div key={idx} className="space-y-2 rounded-md border p-2">
+      <div key={l.id} className="space-y-2 rounded-md border p-2">
         <div className="flex items-center gap-2">
           <Input
             placeholder={placeholder}
@@ -113,7 +181,7 @@ const Step2ComplementaryData = ({ step1, data, onChange, onBack, onCalculate }: 
             variant="ghost"
             size="icon"
             className="h-8 w-8 text-destructive"
-            onClick={() => setArr(arr.filter((_, i) => i !== idx))}
+            onClick={removeLinha}
           >
             <Trash2 className="w-4 h-4" />
           </Button>
@@ -136,15 +204,40 @@ const Step2ComplementaryData = ({ step1, data, onChange, onBack, onCalculate }: 
           </Select>
           {isAuto && (
             <div className="flex items-center gap-1">
-              <Label className="text-xs text-muted-foreground">Qtd:</Label>
-              <Input
-                type="number"
-                step="0.01"
-                min={0}
-                value={l.quantidade || ''}
-                onChange={(e) => patchLinha({ quantidade: parseFloat(e.target.value) || 0 })}
-                className="h-8 w-24"
-              />
+              <Label className="text-xs text-muted-foreground">{isHora ? 'Horas (HH:MM):' : 'Qtd:'}</Label>
+              {isHora ? (
+                <Input
+                  type="text"
+                  value={l._horaInput ?? (l.quantidade ? String(l.quantidade).replace('.', ',') : '')}
+                  placeholder="1:30"
+                  title="Ex: 1:30 = 1,50 (centesimal)"
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    if (!/^\d{0,4}(:\d{0,2})?$|^\d*[,.]?\d*$/.test(raw)) return;
+                    let qtd = l.quantidade || 0;
+                    if (raw.includes(':')) {
+                      const [h, m] = raw.split(':');
+                      qtd = Math.round(((Number(h) || 0) + (Number(m) || 0) / 60) * 100) / 100;
+                    } else if (raw) {
+                      qtd = Number(raw.replace(',', '.')) || 0;
+                    } else {
+                      qtd = 0;
+                    }
+                    patchLinha({ _horaInput: raw, quantidade: qtd });
+                  }}
+                  onBlur={() => patchLinha({ _horaInput: undefined })}
+                  className="h-8 w-24"
+                />
+              ) : (
+                <Input
+                  type="number"
+                  step="0.01"
+                  min={0}
+                  value={l.quantidade || ''}
+                  onChange={(e) => patchLinha({ quantidade: parseFloat(e.target.value) || 0 })}
+                  className="h-8 w-24"
+                />
+              )}
             </div>
           )}
           {showAdicional && (
@@ -158,6 +251,37 @@ const Step2ComplementaryData = ({ step1, data, onChange, onBack, onCalculate }: 
                 onChange={(e) => patchLinha({ adicionalPercent: parseFloat(e.target.value) || 0 })}
                 className="h-8 w-20"
               />
+            </div>
+          )}
+          {isAuto && (
+            <div className="flex items-center gap-2 ml-2 pl-2 border-l">
+              <Label className="text-xs text-muted-foreground">DSR</Label>
+              <Switch
+                checked={!!l.calculaDSR}
+                onCheckedChange={(v) => patchLinha({ calculaDSR: v })}
+              />
+              {l.calculaDSR && (
+                <>
+                  <Label className="text-xs text-muted-foreground">Úteis:</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={31}
+                    value={l.diasUteis ?? 22}
+                    onChange={(e) => patchLinha({ diasUteis: parseInt(e.target.value) || 0 })}
+                    className="h-8 w-16"
+                  />
+                  <Label className="text-xs text-muted-foreground">N/Úteis:</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={31}
+                    value={l.diasNaoUteis ?? 8}
+                    onChange={(e) => patchLinha({ diasNaoUteis: parseInt(e.target.value) || 0 })}
+                    className="h-8 w-16"
+                  />
+                </>
+              )}
             </div>
           )}
         </div>
