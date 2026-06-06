@@ -63,6 +63,7 @@ const Step2ComplementaryData = ({ step1, data, onChange, onBack, onCalculate }: 
       calculaDSR: v.calculaDSR,
       diasUteis: 22,
       diasNaoUteis: 8,
+      incideFGTS: v.padraoPD === 'P' ? v.incideFGTS : false,
     };
     const linha: LinhaExtra = { ...base, valor: calcLinhaValor(base) };
     const novas: LinhaExtra[] = [linha];
@@ -76,6 +77,7 @@ const Step2ComplementaryData = ({ step1, data, onChange, onBack, onCalculate }: 
         tipoCalculo: 'manual',
         isDSR: true,
         dsrParentId: parentId,
+        incideFGTS: v.padraoPD === 'P' ? v.incideFGTS : false,
       });
     }
     if (v.padraoPD === 'P') {
