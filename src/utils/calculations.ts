@@ -78,6 +78,7 @@ export interface LinhaExtra {
   diasNaoUteis?: number;
   isDSR?: boolean;
   dsrParentId?: string;
+  incideFGTS?: boolean;
 }
 
 export interface VerbaRescisoria {
@@ -335,9 +336,25 @@ export function calcularVerbas(step1: Step1Data, step2: Step2Data): VerbaResciso
       });
     }
 
-    // Multa FGTS (sobre FGTS total + FGTS aviso)
+    // FGTS sobre outros créditos marcados com incidência
+    let fgtsSobreCreditos = 0;
+    const baseCreditosFGTS = (step2.outrosCreditos || [])
+      .filter((c) => c.incideFGTS && c.valor > 0)
+      .reduce((acc, c) => acc + c.valor, 0);
+    if (baseCreditosFGTS > 0) {
+      fgtsSobreCreditos = baseCreditosFGTS * 0.08;
+      verbas.push({
+        id: 'fgts_outros_creditos',
+        verba: 'FGTS sobre verbas adicionais',
+        referencia: '8%',
+        valor: round2(fgtsSobreCreditos),
+        tipo: 'credito',
+      });
+    }
+
+    // Multa FGTS (sobre FGTS total + FGTS aviso + FGTS verbas adicionais)
     if (step1.calculaMultaFGTS && step1.percentualMultaFGTS > 0) {
-      const fgtsTotalComAviso = fgtsTotal + fgtsSobreAviso;
+      const fgtsTotalComAviso = fgtsTotal + fgtsSobreAviso + fgtsSobreCreditos;
       const multa = fgtsTotalComAviso * (step1.percentualMultaFGTS / 100);
       verbas.push({
         id: 'multa_fgts',

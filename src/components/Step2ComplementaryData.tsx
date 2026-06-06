@@ -63,6 +63,7 @@ const Step2ComplementaryData = ({ step1, data, onChange, onBack, onCalculate }: 
       calculaDSR: v.calculaDSR,
       diasUteis: 22,
       diasNaoUteis: 8,
+      incideFGTS: v.padraoPD === 'P' ? v.incideFGTS : false,
     };
     const linha: LinhaExtra = { ...base, valor: calcLinhaValor(base) };
     const novas: LinhaExtra[] = [linha];
@@ -76,6 +77,7 @@ const Step2ComplementaryData = ({ step1, data, onChange, onBack, onCalculate }: 
         tipoCalculo: 'manual',
         isDSR: true,
         dsrParentId: parentId,
+        incideFGTS: v.padraoPD === 'P' ? v.incideFGTS : false,
       });
     }
     if (v.padraoPD === 'P') {
@@ -153,6 +155,15 @@ const Step2ComplementaryData = ({ step1, data, onChange, onBack, onCalculate }: 
           <Input value={l.descricao} readOnly className="flex-1 h-8 text-sm" />
           <Input value={l.valor ? l.valor.toFixed(2) : '0,00'} readOnly className="w-32 h-8 text-sm" />
           <span className="text-xs text-muted-foreground">DSR (auto)</span>
+          {arrKey === 'outrosCreditos' && (
+            <div className="flex items-center gap-1 ml-2 pl-2 border-l">
+              <Label className="text-xs text-muted-foreground">FGTS</Label>
+              <Switch
+                checked={!!l.incideFGTS}
+                onCheckedChange={(v) => patchLinha({ incideFGTS: v })}
+              />
+            </div>
+          )}
         </div>
       );
     }
@@ -282,6 +293,15 @@ const Step2ComplementaryData = ({ step1, data, onChange, onBack, onCalculate }: 
                   />
                 </>
               )}
+            </div>
+          )}
+          {arrKey === 'outrosCreditos' && (
+            <div className="flex items-center gap-1 ml-2 pl-2 border-l">
+              <Label className="text-xs text-muted-foreground">Incide FGTS</Label>
+              <Switch
+                checked={!!l.incideFGTS}
+                onCheckedChange={(v) => patchLinha({ incideFGTS: v })}
+              />
             </div>
           )}
         </div>
