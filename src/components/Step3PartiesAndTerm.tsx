@@ -7,7 +7,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { ArrowLeft, FileText, Copy, Download, Calculator, RefreshCw } from 'lucide-react';
-import { Check, ChevronsUpDown } from 'lucide-react';
+import { Check, ChevronsUpDown, Save } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useClientes } from '@/hooks/useClientes';
 import { type Step1Data, type Step2Data, type Step3Data, type VerbaRescisoria, calcularTotal, calcularVerbas, MOTIVO_TERMO_TITULO, MOTIVO_TERMO_CORPO, MOTIVO_LABELS } from '@/utils/calculations';
@@ -26,9 +26,10 @@ interface Step3Props {
   onChange: (data: Step3Data) => void;
   onVerbaUpdate: (verbas: VerbaRescisoria[]) => void;
   onBack: () => void;
+  onSave?: () => void;
 }
 
-const Step3PartiesAndTerm = ({ step1, step2, verbas, data, onChange, onVerbaUpdate, onBack }: Step3Props) => {
+const Step3PartiesAndTerm = ({ step1, step2, verbas, data, onChange, onVerbaUpdate, onBack, onSave }: Step3Props) => {
   const { clientes } = useClientes();
   const [clienteOpen, setClienteOpen] = useState(false);
   const clientesOrdenados = [...clientes].sort((a, b) =>
@@ -502,6 +503,11 @@ ${data.empregadoNome || '[NOME DO EMPREGADO]'}`;
           <ArrowLeft className="w-4 h-4" /> Voltar
         </Button>
         <div className="flex flex-wrap gap-3">
+          {onSave && (
+            <Button onClick={onSave} variant="default" className="gap-2">
+              <Save className="w-4 h-4" /> Salvar cálculo
+            </Button>
+          )}
           <Button onClick={handleCopy} variant="outline" className="gap-2">
             <Copy className="w-4 h-4" /> Copiar Termo
           </Button>
