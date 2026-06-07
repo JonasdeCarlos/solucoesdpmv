@@ -1,0 +1,2 @@
+ALTER TABLE public.clientes ADD COLUMN IF NOT EXISTS gestor_carteira text NOT NULL DEFAULT '';
+ALTER TABLE public.client_ccts ADD COLUMN IF NOT EXISTS codigo_sindicato_dominio text NOT NULL DEFAULT '';
