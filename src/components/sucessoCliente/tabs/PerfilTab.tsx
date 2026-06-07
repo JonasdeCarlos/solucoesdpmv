@@ -41,6 +41,7 @@ export default function PerfilTab({ cliente, onClienteSaved }: { cliente: Client
       nome: cli.nome, codigo_cliente: cli.codigo_cliente || null, nome_fantasia: cli.nome_fantasia,
       cnpj: cli.cnpj, cpf: cli.cpf, tipo: cli.tipo, municipio: cli.municipio, uf: cli.uf, segmento: cli.segmento,
       contato_nome: cli.contato_nome, contato_telefone: cli.contato_telefone, contato_email: cli.contato_email, status: cli.status, endereco: cli.endereco,
+      gestor_carteira: cli.gestor_carteira || '',
     } as any).eq('id', cliente.id);
     if (e1) { toast.error('Erro ao salvar cliente: ' + e1.message); return; }
     const { error: e2 } = await upsert(form);
@@ -81,6 +82,7 @@ export default function PerfilTab({ cliente, onClienteSaved }: { cliente: Client
           <div><Label>Contato — Nome</Label><Input value={cli.contato_nome} onChange={(e)=>setCli({...cli, contato_nome: e.target.value})}/></div>
           <div><Label>Contato — Telefone</Label><Input value={cli.contato_telefone} onChange={(e)=>setCli({...cli, contato_telefone: e.target.value})}/></div>
           <div><Label>Contato — E-mail</Label><Input value={cli.contato_email} onChange={(e)=>setCli({...cli, contato_email: e.target.value})}/></div>
+          <div><Label>Gestor da Carteira</Label><Input value={cli.gestor_carteira || ''} onChange={(e)=>setCli({...cli, gestor_carteira: e.target.value})} placeholder="Nome do gestor responsável"/></div>
           <div className="md:col-span-3"><Label>Endereço</Label><Input value={cli.endereco} onChange={(e)=>setCli({...cli, endereco: e.target.value})}/></div>
         </CardContent>
       </Card>
