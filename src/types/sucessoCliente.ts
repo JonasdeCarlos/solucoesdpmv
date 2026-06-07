@@ -15,6 +15,7 @@ export interface ClienteDP {
   contato_email: string;
   status: string;
   gestor_carteira: string;
+  tipo_folha: string;
 }
 
 export interface DPProfile {
