@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -6,17 +6,23 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Upload, FileText, Copy, AlertTriangle } from 'lucide-react';
+import { Upload, FileText, Copy, AlertTriangle, Loader2 } from 'lucide-react';
 import { useCCTs } from '@/hooks/useSucessoCliente';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import * as pdfjs from 'pdfjs-dist';
+import pdfWorkerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
-(pdfjs as any).GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${(pdfjs as any).version}/build/pdf.worker.min.mjs`;
+(pdfjs as any).GlobalWorkerOptions.workerSrc = pdfWorkerSrc;
 
 async function extractPdfText(file: File): Promise<string> {
   const buf = await file.arrayBuffer();
-  const pdf = await (pdfjs as any).getDocument({ data: buf }).promise;
+  let pdf;
+  try {
+    pdf = await (pdfjs as any).getDocument({ data: buf.slice(0) }).promise;
+  } catch {
+    pdf = await (pdfjs as any).getDocument({ data: buf.slice(0), disableWorker: true }).promise;
+  }
   let text = '';
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
@@ -28,13 +34,19 @@ async function extractPdfText(file: File): Promise<string> {
 
 export default function CCTTab({ client_id }: { client_id: string }) {
   const { items, reload } = useCCTs(client_id);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const [stage, setStage] = useState('');
   const [replicaOpen, setReplicaOpen] = useState(false);
   const [origemList, setOrigemList] = useState<any[]>([]);
   const [view, setView] = useState<any>(null);
 
+  const errorMessage = (e: any) => e?.message || e?.error_description || e?.details || String(e || 'erro desconhecido');
+
   const handleUpload = async (file: File) => {
+    if (busy) return;
     setBusy(true);
+    setStage('Lendo arquivo…');
     try {
       let text = '';
       if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
@@ -42,22 +54,32 @@ export default function CCTTab({ client_id }: { client_id: string }) {
       } else {
         text = await file.text();
       }
+      if (!text.trim()) throw new Error('Não foi possível extrair texto deste arquivo. Envie um PDF com texto selecionável ou um TXT.');
       const path = `${client_id}/cct/${Date.now()}_${file.name}`;
-      await supabase.storage.from('cliente-dp-uploads').upload(path, file);
+      setStage('Enviando arquivo…');
+      const { error: uploadError } = await supabase.storage.from('cliente-dp-uploads').upload(path, file);
+      if (uploadError) throw uploadError;
+      setStage('Gerando resumo IA…');
       const { data, error } = await supabase.functions.invoke('ai-resumo-cct', { body: { text } });
       if (error) throw error;
       const r = data as any;
-      await supabase.from('client_ccts' as any).insert({
+      setStage('Salvando CCT…');
+      const { error: insertError } = await supabase.from('client_ccts' as any).insert({
         client_id, union_base: r.union_base || '', sindicato: r.sindicato || '', uf: r.uf || '',
         data_base: r.data_base || '', validity_start: r.validity_start || null, validity_end: r.validity_end || null,
         doc_path: path, doc_name: file.name, ai_summary: r.summary || '', ai_clauses: r.clauses || [],
         version: items.length + 1, is_active: true, codigo_sindicato_dominio: '',
       } as any);
+      if (insertError) throw insertError;
       toast.success('CCT processada pela IA.');
       reload();
     } catch (e: any) {
-      toast.error('Erro: ' + e.message);
-    } finally { setBusy(false); }
+      toast.error('Erro ao enviar CCT: ' + errorMessage(e));
+    } finally {
+      setBusy(false);
+      setStage('');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   const openReplica = async (sindicato: string) => {
@@ -88,11 +110,19 @@ export default function CCTTab({ client_id }: { client_id: string }) {
 
   return (
     <div className="space-y-4">
-      <Card><CardContent className="p-4 flex items-end gap-2">
-        <label className="inline-flex">
-          <input type="file" accept=".pdf,.doc,.docx,.txt" className="hidden" onChange={(e)=>e.target.files?.[0] && handleUpload(e.target.files[0])}/>
-          <span className="inline-flex items-center px-3 py-2 text-sm rounded-md bg-primary text-primary-foreground cursor-pointer hover:opacity-90"><Upload className="w-4 h-4 mr-1"/>{busy ? 'Processando…' : 'Enviar CCT (IA resume)'}</span>
-        </label>
+      <Card><CardContent className="p-4 flex items-end gap-2 flex-wrap">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".pdf,.txt"
+          className="hidden"
+          onChange={(e)=>e.target.files?.[0] && handleUpload(e.target.files[0])}
+        />
+        <Button type="button" onClick={() => fileInputRef.current?.click()} disabled={busy}>
+          {busy ? <Loader2 className="w-4 h-4 mr-1 animate-spin"/> : <Upload className="w-4 h-4 mr-1"/>}
+          {busy ? 'Processando…' : 'Enviar CCT (IA resume)'}
+        </Button>
+        {stage && <span className="text-sm text-muted-foreground">{stage}</span>}
         {items[0]?.sindicato && <Button variant="outline" onClick={()=>openReplica(items[0].sindicato)}><Copy className="w-4 h-4 mr-1"/>Replicar de outro cliente</Button>}
       </CardContent></Card>
 
