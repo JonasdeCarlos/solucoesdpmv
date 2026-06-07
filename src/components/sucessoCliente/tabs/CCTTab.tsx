@@ -41,7 +41,10 @@ export default function CCTTab({ client_id }: { client_id: string }) {
   const [origemList, setOrigemList] = useState<any[]>([]);
   const [view, setView] = useState<any>(null);
 
-  const errorMessage = (e: any) => e?.message || e?.error_description || e?.details || String(e || 'erro desconhecido');
+  const errorMessage = (e: any) => {
+    const contextError = e?.context?.error;
+    return contextError || e?.message || e?.error_description || e?.details || String(e || 'erro desconhecido');
+  };
 
   const handleUpload = async (file: File) => {
     if (busy) return;
@@ -63,6 +66,10 @@ export default function CCTTab({ client_id }: { client_id: string }) {
       const { data, error } = await supabase.functions.invoke('ai-resumo-cct', { body: { text } });
       if (error) throw error;
       const r = data as any;
+      if (r?.error) throw new Error(r.error);
+      if (!r?.summary || !Array.isArray(r?.clauses) || r.clauses.length === 0) {
+        throw new Error('A IA não encontrou informações comprovadas da CCT neste arquivo.');
+      }
       setStage('Salvando CCT…');
       const { error: insertError } = await supabase.from('client_ccts' as any).insert({
         client_id, union_base: r.union_base || '', sindicato: r.sindicato || '', uf: r.uf || '',
