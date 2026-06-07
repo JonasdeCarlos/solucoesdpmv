@@ -12,6 +12,7 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { supabase } from '@/integrations/supabase/client';
 import { emptyProfile, type DPProfile, type ClienteDP } from '@/types/sucessoCliente';
 import { toast } from 'sonner';
+import ComboAdd from '@/components/sucessoCliente/ComboAdd';
 
 export default function PerfilTab({ cliente, onClienteSaved }: { cliente: ClienteDP; onClienteSaved: () => void }) {
   const { profile, upsert } = useDPProfile(cliente.id);
@@ -22,12 +23,32 @@ export default function PerfilTab({ cliente, onClienteSaved }: { cliente: Client
   const [pwdLoaded, setPwdLoaded] = useState(false);
   const [showPwd, setShowPwd] = useState(false);
   const [segmentos, setSegmentos] = useState<string[]>([]);
+  const [municipios, setMunicipios] = useState<string[]>([]);
+  const [ufs, setUfs] = useState<string[]>([]);
+  const [gestores, setGestores] = useState<string[]>([]);
+  const [horarios, setHorarios] = useState<string[]>([]);
 
   const loadSegmentos = async () => {
     const { data } = await supabase.from('dp_segmentos' as any).select('nome').order('nome');
     setSegmentos(((data as any[]) || []).map((d) => d.nome));
   };
-  useEffect(() => { loadSegmentos(); }, []);
+  const loadDistincts = async () => {
+    const { data } = await supabase.from('clientes' as any).select('municipio, uf, gestor_carteira');
+    const m = new Set<string>(), u = new Set<string>(), g = new Set<string>();
+    ((data as any[]) || []).forEach((r) => {
+      if (r.municipio) m.add(r.municipio);
+      if (r.uf) u.add(r.uf);
+      if (r.gestor_carteira) g.add(r.gestor_carteira);
+    });
+    setMunicipios(Array.from(m));
+    setUfs(Array.from(u));
+    setGestores(Array.from(g));
+    const { data: p } = await supabase.from('client_dp_profile' as any).select('best_contact_time');
+    const h = new Set<string>();
+    ((p as any[]) || []).forEach((r) => { if (r.best_contact_time) h.add(r.best_contact_time); });
+    setHorarios(Array.from(h));
+  };
+  useEffect(() => { loadSegmentos(); loadDistincts(); }, []);
 
   const addSegmento = async () => {
     const n = prompt('Novo segmento:');
@@ -89,8 +110,12 @@ export default function PerfilTab({ cliente, onClienteSaved }: { cliente: Client
           <div><Label>{cli.tipo === 'PJ' ? 'CNPJ' : 'CPF'}</Label>
             <Input value={cli.tipo === 'PJ' ? cli.cnpj : cli.cpf} onChange={(e)=>cli.tipo === 'PJ' ? setCli({...cli, cnpj: e.target.value}) : setCli({...cli, cpf: e.target.value})}/>
           </div>
-          <div><Label>Município</Label><Input value={cli.municipio} onChange={(e)=>setCli({...cli, municipio: e.target.value})}/></div>
-          <div><Label>UF</Label><Input maxLength={2} value={cli.uf} onChange={(e)=>setCli({...cli, uf: e.target.value.toUpperCase()})}/></div>
+          <div><Label>Município</Label>
+            <ComboAdd value={cli.municipio} onChange={(v)=>setCli({...cli, municipio: v})} options={municipios} promptLabel="Novo município:"/>
+          </div>
+          <div><Label>UF</Label>
+            <ComboAdd value={cli.uf} onChange={(v)=>setCli({...cli, uf: v.toUpperCase()})} options={ufs} promptLabel="Nova UF (sigla):" transform={(v)=>v.toUpperCase().slice(0,2)}/>
+          </div>
           <div><Label>Segmento</Label>
             <div className="flex gap-1">
               <Select value={cli.segmento || ''} onValueChange={(v)=>setCli({...cli, segmento: v})}>
@@ -121,7 +146,9 @@ export default function PerfilTab({ cliente, onClienteSaved }: { cliente: Client
           <div><Label>Contato — Nome</Label><Input value={cli.contato_nome} onChange={(e)=>setCli({...cli, contato_nome: e.target.value})}/></div>
           <div><Label>Contato — Telefone</Label><Input value={cli.contato_telefone} onChange={(e)=>setCli({...cli, contato_telefone: e.target.value})}/></div>
           <div><Label>Contato — E-mail</Label><Input value={cli.contato_email} onChange={(e)=>setCli({...cli, contato_email: e.target.value})}/></div>
-          <div><Label>Gestor da Carteira</Label><Input value={cli.gestor_carteira || ''} onChange={(e)=>setCli({...cli, gestor_carteira: e.target.value})} placeholder="Nome do gestor responsável"/></div>
+          <div><Label>Gestor da Carteira</Label>
+            <ComboAdd value={cli.gestor_carteira || ''} onChange={(v)=>setCli({...cli, gestor_carteira: v})} options={gestores} promptLabel="Novo gestor:"/>
+          </div>
           <div className="md:col-span-3"><Label>Endereço</Label><Input value={cli.endereco} onChange={(e)=>setCli({...cli, endereco: e.target.value})}/></div>
         </CardContent>
       </Card>
@@ -142,7 +169,9 @@ export default function PerfilTab({ cliente, onClienteSaved }: { cliente: Client
               </SelectContent>
             </Select>
           </div>
-          <div><Label>Melhor horário</Label><Input value={form.best_contact_time} onChange={(e)=>set('best_contact_time', e.target.value)} placeholder="ex.: 09h-12h"/></div>
+          <div><Label>Melhor horário</Label>
+            <ComboAdd value={form.best_contact_time} onChange={(v)=>set('best_contact_time', v)} options={horarios} promptLabel="Novo horário (ex.: 09h-12h):"/>
+          </div>
           <div><Label>SLA (horas)</Label><Input type="number" value={form.sla_hours} onChange={(e)=>set('sla_hours', Number(e.target.value))}/></div>
         </CardContent>
       </Card>
