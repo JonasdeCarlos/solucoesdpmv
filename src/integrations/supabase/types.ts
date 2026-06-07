@@ -1218,6 +1218,7 @@ export type Database = {
           segmento: string | null
           status: string
           tipo: string
+          tipo_folha: string | null
           uf: string | null
         }
         Insert: {
@@ -1237,6 +1238,7 @@ export type Database = {
           segmento?: string | null
           status?: string
           tipo?: string
+          tipo_folha?: string | null
           uf?: string | null
         }
         Update: {
@@ -1256,6 +1258,7 @@ export type Database = {
           segmento?: string | null
           status?: string
           tipo?: string
+          tipo_folha?: string | null
           uf?: string | null
         }
         Relationships: []
@@ -1689,6 +1692,24 @@ export type Database = {
           fator_r_limite?: number | null
           id?: string
           observacoes?: string | null
+        }
+        Relationships: []
+      }
+      dp_segmentos: {
+        Row: {
+          created_at: string
+          id: string
+          nome: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome?: string
         }
         Relationships: []
       }
