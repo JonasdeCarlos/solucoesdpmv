@@ -14,6 +14,7 @@ export interface ClienteDP {
   contato_telefone: string;
   contato_email: string;
   status: string;
+  gestor_carteira: string;
 }
 
 export interface DPProfile {
@@ -113,6 +114,7 @@ export interface ClientCCT {
   doc_name: string;
   ai_summary: string;
   ai_clauses: Array<{ titulo: string; descricao: string }>;
+  codigo_sindicato_dominio: string;
   version: number;
   is_active: boolean;
   created_at: string;

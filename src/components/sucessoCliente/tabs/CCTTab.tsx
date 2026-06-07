@@ -51,7 +51,7 @@ export default function CCTTab({ client_id }: { client_id: string }) {
         client_id, union_base: r.union_base || '', sindicato: r.sindicato || '', uf: r.uf || '',
         data_base: r.data_base || '', validity_start: r.validity_start || null, validity_end: r.validity_end || null,
         doc_path: path, doc_name: file.name, ai_summary: r.summary || '', ai_clauses: r.clauses || [],
-        version: items.length + 1, is_active: true,
+        version: items.length + 1, is_active: true, codigo_sindicato_dominio: '',
       } as any);
       toast.success('CCT processada pela IA.');
       reload();
@@ -72,9 +72,16 @@ export default function CCTTab({ client_id }: { client_id: string }) {
       data_base: origem.data_base, validity_start: origem.validity_start, validity_end: origem.validity_end,
       doc_path: origem.doc_path, doc_name: origem.doc_name + ' (replicada)', ai_summary: origem.ai_summary,
       ai_clauses: origem.ai_clauses, version: items.length + 1, is_active: true,
+      codigo_sindicato_dominio: origem.codigo_sindicato_dominio || '',
     } as any);
     toast.success('CCT replicada.');
     setReplicaOpen(false); reload();
+  };
+
+  const updateCodigo = async (id: string, codigo: string) => {
+    const { error } = await supabase.from('client_ccts' as any).update({ codigo_sindicato_dominio: codigo } as any).eq('id', id);
+    if (error) { toast.error('Erro: ' + error.message); return; }
+    reload();
   };
 
   const daysToEnd = (d: string | null) => d ? Math.ceil((new Date(d).getTime() - Date.now()) / 86400000) : null;
@@ -104,6 +111,19 @@ export default function CCTTab({ client_id }: { client_id: string }) {
                   {c.validity_end && <Badge variant={alert ? 'destructive' : 'outline'}>Vence: {new Date(c.validity_end).toLocaleDateString('pt-BR')}{d!==null && ` (${d}d)`}</Badge>}
                   {alert && <AlertTriangle className="w-4 h-4 text-amber-500"/>}
                   <Button size="sm" variant="outline" onClick={()=>setView(c)}>Ver resumo</Button>
+                </div>
+              </div>
+              <div className="flex items-end gap-2 pt-2 border-t">
+                <div className="flex-1 max-w-xs">
+                  <Label className="text-xs">Código do Sindicato na Domínio</Label>
+                  <Input
+                    defaultValue={(c as any).codigo_sindicato_dominio || ''}
+                    placeholder="ex.: 12345"
+                    onBlur={(e) => {
+                      const v = e.target.value.trim();
+                      if (v !== ((c as any).codigo_sindicato_dominio || '')) updateCodigo(c.id, v);
+                    }}
+                  />
                 </div>
               </div>
             </CardContent></Card>

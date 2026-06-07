@@ -792,6 +792,7 @@ export type Database = {
           ai_clauses: Json
           ai_summary: string | null
           client_id: string
+          codigo_sindicato_dominio: string
           created_at: string
           created_by: string | null
           data_base: string | null
@@ -810,6 +811,7 @@ export type Database = {
           ai_clauses?: Json
           ai_summary?: string | null
           client_id: string
+          codigo_sindicato_dominio?: string
           created_at?: string
           created_by?: string | null
           data_base?: string | null
@@ -828,6 +830,7 @@ export type Database = {
           ai_clauses?: Json
           ai_summary?: string | null
           client_id?: string
+          codigo_sindicato_dominio?: string
           created_at?: string
           created_by?: string | null
           data_base?: string | null
@@ -1207,6 +1210,7 @@ export type Database = {
           cpf: string | null
           created_at: string
           endereco: string | null
+          gestor_carteira: string
           id: string
           municipio: string | null
           nome: string
@@ -1225,6 +1229,7 @@ export type Database = {
           cpf?: string | null
           created_at?: string
           endereco?: string | null
+          gestor_carteira?: string
           id?: string
           municipio?: string | null
           nome: string
@@ -1243,6 +1248,7 @@ export type Database = {
           cpf?: string | null
           created_at?: string
           endereco?: string | null
+          gestor_carteira?: string
           id?: string
           municipio?: string | null
           nome?: string

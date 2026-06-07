@@ -17,16 +17,24 @@ export default function SucessoClienteListPage() {
   const { list, loading, reload } = useClientesDP();
   const [q, setQ] = useState('');
   const [statusF, setStatusF] = useState('todos');
+  const [gestorF, setGestorF] = useState('todos');
   const [importOpen, setImportOpen] = useState(false);
+
+  const gestores = useMemo(() => {
+    const s = new Set<string>();
+    list.forEach((c: any) => { if (c.gestor_carteira) s.add(c.gestor_carteira); });
+    return Array.from(s).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  }, [list]);
 
   const filtered = useMemo(() => {
     const s = q.toLowerCase().trim();
-    return list.filter(c => {
+    return list.filter((c: any) => {
       if (statusF !== 'todos' && c.status !== statusF) return false;
+      if (gestorF !== 'todos' && (c.gestor_carteira || '') !== gestorF) return false;
       if (!s) return true;
-      return (c.nome + ' ' + c.cnpj + ' ' + c.codigo_cliente + ' ' + c.nome_fantasia + ' ' + c.municipio).toLowerCase().includes(s);
+      return (c.nome + ' ' + c.cnpj + ' ' + c.codigo_cliente + ' ' + c.nome_fantasia + ' ' + c.municipio + ' ' + (c.gestor_carteira || '')).toLowerCase().includes(s);
     });
-  }, [list, q, statusF]);
+  }, [list, q, statusF, gestorF]);
 
   const createNew = async () => {
     const nome = prompt('Razão social / Nome do cliente:');
@@ -70,6 +78,16 @@ export default function SucessoClienteListPage() {
             </SelectContent>
           </Select>
         </div>
+        <div>
+          <label className="text-xs text-muted-foreground">Gestor da Carteira</label>
+          <Select value={gestorF} onValueChange={setGestorF}>
+            <SelectTrigger className="w-56"><SelectValue/></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos</SelectItem>
+              {gestores.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
       </CardContent></Card>
 
       <Card><CardContent className="p-0">
@@ -80,20 +98,22 @@ export default function SucessoClienteListPage() {
               <TableHead>Razão Social</TableHead>
               <TableHead>CNPJ / CPF</TableHead>
               <TableHead>Município/UF</TableHead>
+              <TableHead>Gestor</TableHead>
               <TableHead>Status</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Carregando…</TableCell></TableRow>
+              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Carregando…</TableCell></TableRow>
             ) : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Nenhum cliente.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Nenhum cliente.</TableCell></TableRow>
             ) : filtered.map(c => (
               <TableRow key={c.id} className="cursor-pointer hover:bg-muted/50" onClick={()=>navigate(`/sucesso-cliente/${c.id}`)}>
                 <TableCell className="font-mono text-xs">{c.codigo_cliente || '—'}</TableCell>
                 <TableCell className="font-medium">{c.nome}{c.nome_fantasia ? <span className="text-xs text-muted-foreground ml-2">({c.nome_fantasia})</span> : null}</TableCell>
                 <TableCell>{c.tipo === 'PJ' ? c.cnpj : c.cpf}</TableCell>
                 <TableCell>{c.municipio}{c.uf ? '/' + c.uf : ''}</TableCell>
+                <TableCell>{(c as any).gestor_carteira || '—'}</TableCell>
                 <TableCell><Badge variant={c.status === 'ativo' ? 'default' : 'secondary'}>{c.status}</Badge></TableCell>
               </TableRow>
             ))}
