@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Eye, EyeOff, Save } from 'lucide-react';
+import { Eye, EyeOff, Save, Plus } from 'lucide-react';
 import { useDPProfile } from '@/hooks/useSucessoCliente';
 import { useUserRole } from '@/hooks/useUserRole';
 import { supabase } from '@/integrations/supabase/client';
@@ -21,6 +21,24 @@ export default function PerfilTab({ cliente, onClienteSaved }: { cliente: Client
   const [pwd, setPwd] = useState('');
   const [pwdLoaded, setPwdLoaded] = useState(false);
   const [showPwd, setShowPwd] = useState(false);
+  const [segmentos, setSegmentos] = useState<string[]>([]);
+
+  const loadSegmentos = async () => {
+    const { data } = await supabase.from('dp_segmentos' as any).select('nome').order('nome');
+    setSegmentos(((data as any[]) || []).map((d) => d.nome));
+  };
+  useEffect(() => { loadSegmentos(); }, []);
+
+  const addSegmento = async () => {
+    const n = prompt('Novo segmento:');
+    if (!n) return;
+    const nome = n.trim();
+    if (!nome) return;
+    const { error } = await supabase.from('dp_segmentos' as any).insert({ nome } as any);
+    if (error && !String(error.message).includes('duplicate')) { toast.error(error.message); return; }
+    await loadSegmentos();
+    setCli((c) => ({ ...c, segmento: nome }));
+  };
 
   useEffect(() => {
     if (profile) setForm({ ...emptyProfile(cliente.id), ...profile });
@@ -42,6 +60,7 @@ export default function PerfilTab({ cliente, onClienteSaved }: { cliente: Client
       cnpj: cli.cnpj, cpf: cli.cpf, tipo: cli.tipo, municipio: cli.municipio, uf: cli.uf, segmento: cli.segmento,
       contato_nome: cli.contato_nome, contato_telefone: cli.contato_telefone, contato_email: cli.contato_email, status: cli.status, endereco: cli.endereco,
       gestor_carteira: cli.gestor_carteira || '',
+      tipo_folha: cli.tipo_folha || null,
     } as any).eq('id', cliente.id);
     if (e1) { toast.error('Erro ao salvar cliente: ' + e1.message); return; }
     const { error: e2 } = await upsert(form);
@@ -72,7 +91,27 @@ export default function PerfilTab({ cliente, onClienteSaved }: { cliente: Client
           </div>
           <div><Label>Município</Label><Input value={cli.municipio} onChange={(e)=>setCli({...cli, municipio: e.target.value})}/></div>
           <div><Label>UF</Label><Input maxLength={2} value={cli.uf} onChange={(e)=>setCli({...cli, uf: e.target.value.toUpperCase()})}/></div>
-          <div><Label>Segmento</Label><Input value={cli.segmento} onChange={(e)=>setCli({...cli, segmento: e.target.value})}/></div>
+          <div><Label>Segmento</Label>
+            <div className="flex gap-1">
+              <Select value={cli.segmento || ''} onValueChange={(v)=>setCli({...cli, segmento: v})}>
+                <SelectTrigger><SelectValue placeholder="Selecione"/></SelectTrigger>
+                <SelectContent>
+                  {segmentos.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Button type="button" variant="outline" size="icon" onClick={addSegmento} title="Adicionar segmento"><Plus className="w-4 h-4"/></Button>
+            </div>
+          </div>
+          <div><Label>Tipo da Folha</Label>
+            <Select value={cli.tipo_folha || ''} onValueChange={(v)=>setCli({...cli, tipo_folha: v})}>
+              <SelectTrigger><SelectValue placeholder="Selecione"/></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="pro_labore">Somente Pró-labore</SelectItem>
+                <SelectItem value="folha_sem_variaveis">Folha sem variáveis</SelectItem>
+                <SelectItem value="folha_com_variaveis">Folha com variáveis</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <div><Label>Status</Label>
             <Select value={cli.status} onValueChange={(v)=>setCli({...cli, status: v})}>
               <SelectTrigger><SelectValue/></SelectTrigger>
