@@ -796,6 +796,9 @@ export type Database = {
           created_at: string
           created_by: string | null
           data_base: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          deletion_reason: string | null
           doc_name: string | null
           doc_path: string | null
           id: string
@@ -815,6 +818,9 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           data_base?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deletion_reason?: string | null
           doc_name?: string | null
           doc_path?: string | null
           id?: string
@@ -834,6 +840,9 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           data_base?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deletion_reason?: string | null
           doc_name?: string | null
           doc_path?: string | null
           id?: string

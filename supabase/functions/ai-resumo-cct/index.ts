@@ -3,7 +3,10 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { z } from "npm:zod@3.25.76";
 
 const BodySchema = z.object({
-  text: z.string().trim().min(120, "Texto extraído insuficiente para análise de CCT."),
+  text: z.string().optional(),
+  pdf_base64: z.string().optional(),
+}).refine((b) => (b.text && b.text.trim().length >= 120) || (b.pdf_base64 && b.pdf_base64.length > 1000), {
+  message: "Envie texto extraído (>=120 chars) ou pdf_base64 do arquivo.",
 });
 
 const looksLikeCct = (text: string) => {
@@ -34,21 +37,23 @@ Deno.serve(async (req) => {
   try {
     const body = BodySchema.safeParse(await req.json());
     if (!body.success) return jsonResponse({ error: body.error.flatten().fieldErrors }, 400);
-    const { text } = body.data;
-    if (!looksLikeCct(text)) {
-      return jsonResponse({
-        error: "O texto extraído não parece ser uma CCT/ACT válida. Verifique se o PDF tem texto selecionável ou envie a CCT correta em PDF/TXT.",
-      }, 422);
-    }
+    const { text, pdf_base64 } = body.data;
+    const useVision = !text || text.trim().length < 120 || !looksLikeCct(text);
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY missing");
 
-    const compactText = text.replace(/\s+/g, " ").trim();
+    if (useVision && !pdf_base64) {
+      return jsonResponse({
+        error: "O texto extraído não parece ser uma CCT/ACT válida. Reenvie informando o PDF para OCR.",
+      }, 422);
+    }
+
+    const compactText = (text || "").replace(/\s+/g, " ").trim();
     const truncated = compactText.slice(0, 90000);
-    const prompt = `Você é especialista em direito do trabalho brasileiro e está auditando uma CCT/ACT.
+    const promptCore = `Você é especialista em direito do trabalho brasileiro e está auditando uma CCT/ACT.
 
 REGRAS OBRIGATÓRIAS:
-1. Use EXCLUSIVAMENTE o conteúdo delimitado em <documento>. Não use conhecimento externo, exemplos ou dados prováveis.
+1. Use EXCLUSIVAMENTE o conteúdo do documento fornecido (texto ou PDF anexo). Não use conhecimento externo, exemplos ou dados prováveis.
 2. Se uma informação não estiver literalmente no documento, retorne string vazia para o campo.
 3. Não invente sindicato, datas, pisos, benefícios, percentuais ou locais.
 4. Cada cláusula extraída deve conter um trecho_base curto copiado do documento que justifique a descrição.
@@ -65,11 +70,15 @@ Retorne JSON estruturado com:
 - validity_start: AAAA-MM-DD, somente se explícita
 - validity_end: AAAA-MM-DD, somente se explícita
 - summary: resumo objetivo em pt-BR baseado apenas no documento
-- clauses: array de {titulo, descricao, trecho_base} com pisos salariais, adicionais, HE, intervalos, benefícios, contribuições e multas encontrados.
+- clauses: array de {titulo, descricao, trecho_base} com pisos salariais, adicionais, HE, intervalos, benefícios, contribuições e multas encontrados.`;
 
-<documento>
-${truncated}
-</documento>`;
+    const userContent: any[] = [{ type: "text", text: promptCore }];
+    if (useVision && pdf_base64) {
+      userContent.push({ type: "text", text: "Extraia via OCR o conteúdo do PDF anexo." });
+      userContent.push({ type: "image_url", image_url: { url: `data:application/pdf;base64,${pdf_base64}` } });
+    } else {
+      userContent.push({ type: "text", text: `<documento>\n${truncated}\n</documento>` });
+    }
 
     const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -77,7 +86,7 @@ ${truncated}
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         temperature: 0,
-        messages: [{ role: "user", content: prompt }],
+        messages: [{ role: "user", content: userContent }],
         tools: [{
           type: "function",
           function: {

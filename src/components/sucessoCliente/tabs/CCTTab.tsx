@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Upload, FileText, Copy, AlertTriangle, Loader2 } from 'lucide-react';
+import { Upload, FileText, Copy, AlertTriangle, Loader2, Trash2 } from 'lucide-react';
 import { useCCTs } from '@/hooks/useSucessoCliente';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -32,6 +32,16 @@ async function extractPdfText(file: File): Promise<string> {
   return text;
 }
 
+async function fileToBase64(file: File): Promise<string> {
+  const buf = new Uint8Array(await file.arrayBuffer());
+  let bin = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < buf.length; i += chunk) {
+    bin += String.fromCharCode.apply(null, Array.from(buf.subarray(i, i + chunk)) as any);
+  }
+  return btoa(bin);
+}
+
 export default function CCTTab({ client_id }: { client_id: string }) {
   const { items, reload } = useCCTs(client_id);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -40,6 +50,10 @@ export default function CCTTab({ client_id }: { client_id: string }) {
   const [replicaOpen, setReplicaOpen] = useState(false);
   const [origemList, setOrigemList] = useState<any[]>([]);
   const [view, setView] = useState<any>(null);
+  const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const [deleteReason, setDeleteReason] = useState('');
+  const [deleteResponsible, setDeleteResponsible] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   const errorMessage = (e: any) => {
     const contextError = e?.context?.error;
@@ -52,18 +66,24 @@ export default function CCTTab({ client_id }: { client_id: string }) {
     setStage('Lendo arquivo…');
     try {
       let text = '';
+      let pdf_base64: string | undefined;
       if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
-        text = await extractPdfText(file);
+        try { text = await extractPdfText(file); } catch { text = ''; }
+        const letters = (text.match(/[a-zA-ZÀ-ú]/g) || []).length;
+        if (text.trim().length < 500 || letters < 100) {
+          setStage('PDF sem texto — preparando OCR…');
+          pdf_base64 = await fileToBase64(file);
+        }
       } else {
         text = await file.text();
       }
-      if (!text.trim()) throw new Error('Não foi possível extrair texto deste arquivo. Envie um PDF com texto selecionável ou um TXT.');
+      if (!text.trim() && !pdf_base64) throw new Error('Não foi possível ler o arquivo. Envie um PDF ou TXT válido.');
       const path = `${client_id}/cct/${Date.now()}_${file.name}`;
       setStage('Enviando arquivo…');
       const { error: uploadError } = await supabase.storage.from('cliente-dp-uploads').upload(path, file);
       if (uploadError) throw uploadError;
-      setStage('Gerando resumo IA…');
-      const { data, error } = await supabase.functions.invoke('ai-resumo-cct', { body: { text } });
+      setStage(pdf_base64 ? 'OCR + resumo IA…' : 'Gerando resumo IA…');
+      const { data, error } = await supabase.functions.invoke('ai-resumo-cct', { body: { text, pdf_base64 } });
       if (error) throw error;
       const r = data as any;
       if (r?.error) throw new Error(r.error);
@@ -87,6 +107,24 @@ export default function CCTTab({ client_id }: { client_id: string }) {
       setStage('');
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    if (deleteReason.trim().length < 5) { toast.error('Justificativa obrigatória (mín. 5 caracteres).'); return; }
+    if (deleteResponsible.trim().length < 3) { toast.error('Informe o responsável pela exclusão.'); return; }
+    setDeleting(true);
+    const { error } = await supabase.from('client_ccts' as any).update({
+      deleted_at: new Date().toISOString(),
+      deleted_by: deleteResponsible.trim(),
+      deletion_reason: deleteReason.trim(),
+      is_active: false,
+    } as any).eq('id', deleteTarget.id);
+    setDeleting(false);
+    if (error) { toast.error('Erro ao excluir: ' + error.message); return; }
+    toast.success('CCT excluída com registro de justificativa.');
+    setDeleteTarget(null); setDeleteReason(''); setDeleteResponsible('');
+    reload();
   };
 
   const openReplica = async (sindicato: string) => {
@@ -134,7 +172,7 @@ export default function CCTTab({ client_id }: { client_id: string }) {
       </CardContent></Card>
 
       <div className="space-y-2">
-        {items.map(c => {
+        {items.filter((c: any) => !c.deleted_at).map(c => {
           const d = daysToEnd(c.validity_end);
           const alert = d !== null && d <= 90;
           return (
@@ -148,6 +186,7 @@ export default function CCTTab({ client_id }: { client_id: string }) {
                   {c.validity_end && <Badge variant={alert ? 'destructive' : 'outline'}>Vence: {new Date(c.validity_end).toLocaleDateString('pt-BR')}{d!==null && ` (${d}d)`}</Badge>}
                   {alert && <AlertTriangle className="w-4 h-4 text-amber-500"/>}
                   <Button size="sm" variant="outline" onClick={()=>setView(c)}>Ver resumo</Button>
+                  <Button size="sm" variant="destructive" onClick={()=>setDeleteTarget(c)}><Trash2 className="w-4 h-4"/></Button>
                 </div>
               </div>
               <div className="flex items-end gap-2 pt-2 border-t">
@@ -197,6 +236,29 @@ export default function CCTTab({ client_id }: { client_id: string }) {
               </CardContent></Card>
             ))}
             {origemList.length === 0 && <p className="text-sm text-muted-foreground">Sem CCTs disponíveis da mesma base sindical.</p>}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!deleteTarget} onOpenChange={(o)=>{ if(!o){ setDeleteTarget(null); setDeleteReason(''); setDeleteResponsible(''); } }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Excluir CCT — {deleteTarget?.sindicato}</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">Esta ação fica registrada com justificativa e responsável. Os dois campos são obrigatórios.</p>
+            <div>
+              <Label>Responsável pela exclusão *</Label>
+              <Input value={deleteResponsible} onChange={(e)=>setDeleteResponsible(e.target.value)} placeholder="Nome completo"/>
+            </div>
+            <div>
+              <Label>Justificativa *</Label>
+              <Textarea value={deleteReason} onChange={(e)=>setDeleteReason(e.target.value)} placeholder="Motivo da exclusão" rows={4}/>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={()=>setDeleteTarget(null)} disabled={deleting}>Cancelar</Button>
+              <Button variant="destructive" onClick={confirmDelete} disabled={deleting}>
+                {deleting && <Loader2 className="w-4 h-4 mr-1 animate-spin"/>}Confirmar exclusão
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
