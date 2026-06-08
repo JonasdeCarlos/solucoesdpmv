@@ -1,0 +1,1 @@
+ALTER TABLE public.aviso_empresas ADD COLUMN IF NOT EXISTS whatsapp text NOT NULL DEFAULT '';
