@@ -13,16 +13,14 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
-import { Copy, Phone, X, ExternalLink, CheckSquare, ChevronDown } from 'lucide-react';
+import { Send, Phone, X, ExternalLink, CheckSquare, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAvisos } from '@/hooks/useAvisos';
 import { useAvisoEmpresas } from '@/hooks/useAvisoEmpresas';
 import { useOperatorName } from '@/hooks/useOperatorName';
 import { MOTIVO_CATEGORIES, STATUS_OPTIONS, formatBR, formatCnpj, statusLabel } from '@/utils/avisos/normalize';
-import { buildWhatsappMessage } from '@/utils/avisos/whatsappMessage';
-import { copyToClipboard } from '@/utils/clipboard';
+import { sendAvisoDigisac } from '@/utils/avisos/digisac';
 import CallDialog from '@/components/avisos/CallDialog';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
 const STATUS_COLOR: Record<string, string> = {
   sem_retorno: 'bg-destructive/15 text-destructive border-destructive/30',
@@ -59,8 +57,7 @@ const AvisosListPage = () => {
 
   const [callDialog, setCallDialog] = useState<{ id: string } | null>(null);
   const [respEdit, setRespEdit] = useState<Record<string, string>>({});
-  const [msgDialog, setMsgDialog] = useState<{ text: string } | null>(null);
-  const msgTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const [sendingId, setSendingId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     return items.filter((a) => {
@@ -121,26 +118,28 @@ const AvisosListPage = () => {
     setParams({});
   };
 
-  const copyMsg = async (a: any) => {
-    const msg = buildWhatsappMessage(a);
-    setMsgDialog({ text: msg });
-    const ok = await copyToClipboard(msg);
-    if (ok) {
-      toast.success('Mensagem copiada para a área de transferência.');
-    } else {
-      toast.error('Não foi possível copiar automaticamente. O texto foi gerado abaixo para copiar manualmente.');
-    }
-  };
-
   const markAviso = async (a: any, n: 1 | 2 | 3) => {
     const op = ensure() || 'desconhecido';
+    const empresa = empresas.find((e) => e.code === a.empresa_code || e.id === a.empresa_id);
+    const whatsapp = empresa?.whatsapp || '';
+    setSendingId(`${a.id}:${n}`);
+    const send = await sendAvisoDigisac({
+      aviso: a, whatsapp,
+      prefix: { kind: 'aviso', n },
+    });
+    if (!send.ok) {
+      setSendingId(null);
+      toast.error(`Aviso ${n} não enviado: ${send.error}`);
+      return;
+    }
     const now = new Date().toISOString();
     const patch: any = {};
     patch[`aviso${n}_at`] = now;
     patch[`aviso${n}_by`] = op;
     await updateAviso(a.id, patch);
-    await addAttempt(a.id, { attempt_type: `aviso${n}`, marked_by: op });
-    toast.success(`Aviso ${n} registrado.`);
+    await addAttempt(a.id, { attempt_type: `aviso${n}`, marked_by: op, notes: 'Enviado via Digisac' });
+    setSendingId(null);
+    toast.success(`Aviso ${n} enviado via Digisac e registrado.`);
   };
 
   const markNoResponse = async (a: any) => {
@@ -358,11 +357,16 @@ const AvisosListPage = () => {
                   </div>
                 </div>
                 <div className="flex flex-col gap-1.5 items-stretch min-w-[200px]">
-                  <Button size="sm" variant="outline" onClick={() => copyMsg(a)}><Copy className="w-3 h-3 mr-1" />Copiar mensagem</Button>
                   <div className="flex gap-1">
-                    <Button size="sm" variant="outline" className="flex-1" onClick={() => markAviso(a, 1)}><CheckSquare className="w-3 h-3 mr-1" />A1</Button>
-                    <Button size="sm" variant="outline" className="flex-1" onClick={() => markAviso(a, 2)}>A2</Button>
-                    <Button size="sm" variant="outline" className="flex-1" onClick={() => markAviso(a, 3)}>A3</Button>
+                    <Button size="sm" variant="outline" className="flex-1" disabled={sendingId?.startsWith(a.id+':')} onClick={() => markAviso(a, 1)}>
+                      <Send className="w-3 h-3 mr-1" />A1
+                    </Button>
+                    <Button size="sm" variant="outline" className="flex-1" disabled={sendingId?.startsWith(a.id+':')} onClick={() => markAviso(a, 2)}>
+                      <Send className="w-3 h-3 mr-1" />A2
+                    </Button>
+                    <Button size="sm" variant="outline" className="flex-1" disabled={sendingId?.startsWith(a.id+':')} onClick={() => markAviso(a, 3)}>
+                      <Send className="w-3 h-3 mr-1" />A3
+                    </Button>
                   </div>
                   <div className="flex gap-1">
                     <Button size="sm" variant="outline" className="flex-1" onClick={() => markNoResponse(a)}><X className="w-3 h-3 mr-1" />Sem retorno</Button>
@@ -390,31 +394,6 @@ const AvisosListPage = () => {
         avisoId={callDialog?.id || ''}
         onDone={() => { setCallDialog(null); refresh(); }}
       />
-
-      <Dialog open={!!msgDialog} onOpenChange={(o) => !o && setMsgDialog(null)}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Copiar mensagem</DialogTitle>
-            <DialogDescription>
-              Texto gerado para WhatsApp. Se não colar automaticamente, selecione abaixo e pressione Ctrl+C (ou Cmd+C).
-            </DialogDescription>
-          </DialogHeader>
-          <textarea
-            readOnly
-            value={msgDialog?.text || ''}
-            className="w-full h-56 p-2 text-sm border rounded-md font-mono bg-muted/30"
-            ref={(el) => { msgTextareaRef.current = el; if (el) { el.focus(); el.select(); } }}
-          />
-          <DialogFooter>
-            <Button variant="outline" onClick={async () => {
-              const ok = await copyToClipboard(msgDialog?.text || '', msgTextareaRef.current);
-              if (ok) { toast.success('Mensagem copiada para a área de transferência.'); setMsgDialog(null); }
-              else toast.error('Use Ctrl+C para copiar.');
-            }}>Tentar copiar novamente</Button>
-            <Button onClick={() => setMsgDialog(null)}>Fechar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
