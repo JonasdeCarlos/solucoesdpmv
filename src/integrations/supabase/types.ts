@@ -283,6 +283,7 @@ export type Database = {
           responsavel: string
           updated_at: string
           whatsapp: string
+          whatsapp_numeros: string[]
         }
         Insert: {
           ativo?: boolean
@@ -295,6 +296,7 @@ export type Database = {
           responsavel?: string
           updated_at?: string
           whatsapp?: string
+          whatsapp_numeros?: string[]
         }
         Update: {
           ativo?: boolean
@@ -307,6 +309,7 @@ export type Database = {
           responsavel?: string
           updated_at?: string
           whatsapp?: string
+          whatsapp_numeros?: string[]
         }
         Relationships: []
       }

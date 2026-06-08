@@ -7,17 +7,18 @@ import { toast } from 'sonner';
 import { useAvisoEmpresas } from '@/hooks/useAvisoEmpresas';
 import { formatCnpj } from '@/utils/avisos/normalize';
 import { pingDigisac } from '@/utils/avisos/digisac';
-import { Save, Loader2, X, Wrench } from 'lucide-react';
+import { Save, Loader2, X, Wrench, Plus, Trash2 } from 'lucide-react';
 
 const AvisoEmpresasPage = () => {
   const { empresas, loading, setResponsavelAndPropagate, updateEmpresa } = useAvisoEmpresas();
   const [q, setQ] = useState('');
   const [editing, setEditing] = useState<Record<string, string>>({});
-  const [editingWa, setEditingWa] = useState<Record<string, string>>({});
+  const [editingWa, setEditingWa] = useState<Record<string, string[]>>({});
+  const [newNumByEmp, setNewNumByEmp] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [pinging, setPinging] = useState(false);
   const filt = useMemo(() => empresas.filter((e) =>
-    !q || `${e.code} ${e.name} ${e.cnpj} ${e.responsavel} ${e.whatsapp || ''}`.toLowerCase().includes(q.toLowerCase())
+    !q || `${e.code} ${e.name} ${e.cnpj} ${e.responsavel} ${(e.whatsapp_numeros || []).join(' ')}`.toLowerCase().includes(q.toLowerCase())
   ), [empresas, q]);
 
   const responsaveisUnicos = useMemo(() => {
@@ -39,10 +40,12 @@ const AvisoEmpresasPage = () => {
 
   const dirtyWaIds = useMemo(() => {
     return Object.entries(editingWa)
-      .filter(([id, v]) => {
+      .filter(([id, arr]) => {
         const emp = empresas.find((e) => e.id === id);
         if (!emp) return false;
-        return (v ?? '').replace(/\D/g, '') !== (emp.whatsapp || '').replace(/\D/g, '');
+        const cur = (emp.whatsapp_numeros || []).map((n) => String(n).replace(/\D/g, '')).filter(Boolean);
+        const next = (arr || []).map((n) => String(n).replace(/\D/g, '')).filter(Boolean);
+        return cur.join(',') !== next.join(',');
       })
       .map(([id]) => id);
   }, [editingWa, empresas]);
@@ -71,12 +74,13 @@ const AvisoEmpresasPage = () => {
       for (const id of dirtyWaIds) {
         const emp = empresas.find((e) => e.id === id);
         if (!emp) continue;
-        const wa = (editingWa[id] ?? '').replace(/\D/g, '');
-        const { error } = await updateEmpresa(id, { whatsapp: wa } as any);
+        const nums = (editingWa[id] ?? []).map((n) => String(n).replace(/\D/g, '')).filter(Boolean);
+        const { error } = await updateEmpresa(id, { whatsapp_numeros: nums, whatsapp: nums[0] || '' } as any);
         if (!error) ok++;
       }
       setEditing({});
       setEditingWa({});
+      setNewNumByEmp({});
       toast.success(`${ok} empresa(s) atualizadas.`);
     } catch (e: any) {
       toast.error('Falha ao salvar: ' + (e?.message || 'erro'));
@@ -85,7 +89,23 @@ const AvisoEmpresasPage = () => {
     }
   };
 
-  const descartar = () => { setEditing({}); setEditingWa({}); };
+  const descartar = () => { setEditing({}); setEditingWa({}); setNewNumByEmp({}); };
+
+  const numsOf = (e: any): string[] =>
+    editingWa[e.id] !== undefined ? editingWa[e.id] : (e.whatsapp_numeros || []);
+
+  const addNumber = (empId: string, currentList: string[]) => {
+    const raw = (newNumByEmp[empId] || '').replace(/\D/g, '');
+    if (!raw) return;
+    if (currentList.includes(raw)) { toast.info('Número já cadastrado.'); return; }
+    setEditingWa((s) => ({ ...s, [empId]: [...currentList, raw] }));
+    setNewNumByEmp((s) => ({ ...s, [empId]: '' }));
+  };
+
+  const removeNumber = (empId: string, currentList: string[], idx: number) => {
+    const next = currentList.filter((_, i) => i !== idx);
+    setEditingWa((s) => ({ ...s, [empId]: next }));
+  };
 
   const testarConexao = async () => {
     setPinging(true);
@@ -152,21 +172,42 @@ const AvisoEmpresasPage = () => {
               {filt.map((e) => {
                 const editVal = editing[e.id];
                 const isDirty = editVal !== undefined && (editVal ?? '').trim() !== (e.responsavel || '');
-                const waVal = editingWa[e.id];
-                const isWaDirty = waVal !== undefined && (waVal ?? '').replace(/\D/g, '') !== (e.whatsapp || '').replace(/\D/g, '');
+                const nums = numsOf(e);
+                const baseline = (e.whatsapp_numeros || []).map((n: string) => String(n).replace(/\D/g, '')).filter(Boolean).join(',');
+                const editedJoin = nums.map((n) => String(n).replace(/\D/g, '')).filter(Boolean).join(',');
+                const isWaDirty = editingWa[e.id] !== undefined && baseline !== editedJoin;
                 return (
                 <tr key={e.id} className={`border-t hover:bg-muted/30 ${(isDirty || isWaDirty) ? 'bg-amber-500/5' : ''}`}>
                   <td className="p-2 font-mono">{e.code}</td>
                   <td className="p-2">{e.name}</td>
                   <td className="p-2 font-mono text-xs">{formatCnpj(e.cnpj)}</td>
-                  <td className="p-2">
-                    <Input
-                      className="h-8 text-xs font-mono"
-                      placeholder="5535999998888"
-                      inputMode="numeric"
-                      value={waVal ?? e.whatsapp ?? ''}
-                      onChange={(ev) => setEditingWa((s) => ({ ...s, [e.id]: ev.target.value.replace(/\D/g, '') }))}
-                    />
+                  <td className="p-2 min-w-[260px]">
+                    <div className="flex flex-col gap-1">
+                      {nums.length === 0 && (
+                        <span className="text-[11px] text-muted-foreground italic">Nenhum número cadastrado</span>
+                      )}
+                      {nums.map((n, i) => (
+                        <div key={`${n}-${i}`} className="flex items-center gap-1">
+                          <span className="inline-flex items-center px-2 py-1 rounded bg-muted text-xs font-mono">{n}</span>
+                          <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => removeNumber(e.id, nums, i)} title="Remover">
+                            <Trash2 className="w-3 h-3 text-destructive" />
+                          </Button>
+                        </div>
+                      ))}
+                      <div className="flex items-center gap-1">
+                        <Input
+                          className="h-7 text-xs font-mono"
+                          placeholder="55DDDNUMERO"
+                          inputMode="numeric"
+                          value={newNumByEmp[e.id] ?? ''}
+                          onChange={(ev) => setNewNumByEmp((s) => ({ ...s, [e.id]: ev.target.value.replace(/\D/g, '') }))}
+                          onKeyDown={(ev) => { if (ev.key === 'Enter') { ev.preventDefault(); addNumber(e.id, nums); } }}
+                        />
+                        <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => addNumber(e.id, nums)} title="Adicionar número">
+                          <Plus className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </div>
                   </td>
                   <td className="p-2">
                     <Input
