@@ -8,13 +8,31 @@ export interface AvisoMsgInput {
   limit_date: string | null;
 }
 
-export function buildWhatsappMessage(a: AvisoMsgInput): string {
+export type AvisoMsgPrefix =
+  | { kind: 'none' }
+  | { kind: 'aviso'; n: 1 | 2 | 3 }
+  | { kind: 'call'; whenISO: string };
+
+function fmtDateTimeBR(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+export function buildWhatsappMessage(a: AvisoMsgInput, prefix: AvisoMsgPrefix = { kind: 'none' }): string {
   const nome = a.employee_name.trim();
   const motivo = a.motivo;
   const due = formatBR(a.due_date);
   const limite = formatBR(a.limit_date);
 
   const linhas: string[] = [];
+  if (prefix.kind === 'aviso') {
+    linhas.push(`*Aviso ${prefix.n}*`);
+    linhas.push('');
+  } else if (prefix.kind === 'call') {
+    linhas.push(`*Como tratado em ligação no dia ${fmtDateTimeBR(prefix.whenISO)}, segue último aviso.*`);
+    linhas.push('');
+  }
   linhas.push('⚠️ *AVISO DE VENCIMENTO — MUITO IMPORTANTE* ⚠️');
   linhas.push('');
   linhas.push('Olá! 👋');
