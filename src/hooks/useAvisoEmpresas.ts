@@ -15,8 +15,16 @@ export function useAvisoEmpresas() {
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    const { data } = await supabase.from('aviso_empresas' as any).select('*').order('code');
-    if (data) setEmpresas(data as any);
+    const { data } = await supabase.from('aviso_empresas' as any).select('*');
+    if (data) {
+      const sorted = [...(data as any[])].sort((a, b) => {
+        const na = parseInt(String(a.code).replace(/\D/g, ''), 10);
+        const nb = parseInt(String(b.code).replace(/\D/g, ''), 10);
+        if (Number.isFinite(na) && Number.isFinite(nb) && na !== nb) return na - nb;
+        return String(a.code).localeCompare(String(b.code), 'pt-BR', { numeric: true });
+      });
+      setEmpresas(sorted as any);
+    }
     setLoading(false);
   }, []);
 
