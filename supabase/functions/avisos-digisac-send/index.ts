@@ -40,115 +40,89 @@ Deno.serve(async (req) => {
 
     const { data: empresa, error: errEmpresa } = await supabase
       .from('aviso_empresas')
-      .select('id, name, whatsapp, digisac_contact_id')
+      .select('id, name, whatsapp, whatsapp_numeros, digisac_contact_id')
       .eq('id', empresa_id)
       .maybeSingle();
 
     if (errEmpresa || !empresa) return json(404, { erro: 'Empresa não encontrada.' });
 
-    if (!empresa.digisac_contact_id && !empresa.whatsapp) {
+    // Lista de destinos: contactId (se houver) + todos os números cadastrados.
+    type Dest = { kind: 'contact'; contactId: string } | { kind: 'number'; number: string };
+    const destinos: Dest[] = [];
+    if (empresa.digisac_contact_id) destinos.push({ kind: 'contact', contactId: empresa.digisac_contact_id });
+    const numeros: string[] = Array.isArray((empresa as any).whatsapp_numeros) && (empresa as any).whatsapp_numeros.length
+      ? (empresa as any).whatsapp_numeros
+      : (empresa.whatsapp ? [String(empresa.whatsapp)] : []);
+    for (const raw of numeros) {
+      const num = String(raw).replace(/\D/g, '');
+      if (num) destinos.push({ kind: 'number', number: num });
+    }
+    if (destinos.length === 0) {
       return json(400, { erro: 'Empresa sem WhatsApp cadastrado nem contato Digisac vinculado.' });
     }
 
-    // Payload mínimo. dontOpenTicket evita o fluxo pesado que causa 524.
-    const payload: Record<string, unknown> = {
-      text: mensagem,
-      serviceId: SERVICE_ID,
-      origin: 'bot',
-      dontOpenTicket: true,
-    };
-    if (empresa.digisac_contact_id) {
-      payload.contactId = empresa.digisac_contact_id;
-    } else {
-      payload.number = String(empresa.whatsapp).replace(/\D/g, '');
-    }
+    async function sendOne(dest: Dest) {
+      const payload: Record<string, unknown> = {
+        text: mensagem, serviceId: SERVICE_ID, origin: 'bot', dontOpenTicket: true,
+      };
+      if (dest.kind === 'contact') payload.contactId = dest.contactId;
+      else payload.number = dest.number;
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), DIGISAC_FETCH_TIMEOUT_MS);
-
-    console.log('[avisos-digisac-send] →', {
-      empresa_id, tipo_aviso, via: empresa.digisac_contact_id ? 'contactId' : 'number',
-    });
-
-    let digisacResponse: Response;
-    try {
-      digisacResponse = await fetch(`${BASE_URL}/api/v1/messages`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${TOKEN}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-        signal: controller.signal,
-      });
-    } catch (e) {
-      clearTimeout(timeoutId);
-      const tookMs = Date.now() - t0;
-      if (e instanceof Error && e.name === 'AbortError') {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), DIGISAC_FETCH_TIMEOUT_MS);
+      const tStart = Date.now();
+      try {
+        const resp = await fetch(`${BASE_URL}/api/v1/messages`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          signal: controller.signal,
+        });
+        const text = await resp.text();
+        let data: any = text;
+        try { data = JSON.parse(text); } catch { /* keep raw */ }
+        const took = Date.now() - tStart;
+        const trimmed = typeof data === 'string' && data.length > 2000
+          ? { truncated: true, preview: data.slice(0, 500) } : data;
+        await supabase.from('avisos_envios_log').insert({
+          empresa_id, aviso_id: aviso_id ?? null, tipo_aviso,
+          payload_enviado: payload, response_status: resp.status,
+          response_body: trimmed, sucesso: resp.ok,
+        });
+        // Aprende contactId se ainda não tinha
+        if (!empresa.digisac_contact_id && resp.ok && data && typeof data === 'object') {
+          const r: any = data;
+          const cid = r.contactId || r?.message?.contactId || r?.data?.contactId || r?.contact?.id;
+          if (cid) {
+            await supabase.from('aviso_empresas').update({ digisac_contact_id: String(cid) }).eq('id', empresa_id);
+          }
+        }
+        return { dest, ok: resp.ok, status: resp.status, took };
+      } catch (e) {
+        const took = Date.now() - tStart;
+        const aborted = e instanceof Error && e.name === 'AbortError';
         await supabase.from('avisos_envios_log').insert({
           empresa_id, aviso_id: aviso_id ?? null, tipo_aviso,
           payload_enviado: payload, response_status: 0,
-          response_body: { error: 'timeout_local', tookMs },
+          response_body: { error: aborted ? 'timeout_local' : (e as Error)?.message, took },
           sucesso: false,
         });
-        return json(504, { erro: 'Digisac não respondeu em 30s. Servidor pode estar instável.', detalhe: 'timeout_local', tookMs });
+        return { dest, ok: false, status: 0, took, error: aborted ? 'timeout_local_30s' : (e as Error)?.message };
+      } finally {
+        clearTimeout(timeoutId);
       }
-      throw e;
-    } finally {
-      clearTimeout(timeoutId);
     }
 
+    const resultados = [];
+    for (const d of destinos) resultados.push(await sendOne(d));
+    const algumOk = resultados.some((r) => r.ok);
     const tookMs = Date.now() - t0;
-    const responseText = await digisacResponse.text();
-    let responseData: unknown = responseText;
-    try { responseData = JSON.parse(responseText); } catch { /* keep raw */ }
+    console.log('[avisos-digisac-send]', { empresa_id, tipo_aviso, destinos: destinos.length, ok: algumOk, tookMs });
 
-    console.log('[avisos-digisac-send] ←', { status: digisacResponse.status, tookMs });
-
-    // Log enxuto (limita response_body se for HTML gigante do Cloudflare)
-    const responseForLog =
-      typeof responseData === 'string' && responseData.length > 2000
-        ? { truncated: true, preview: responseData.slice(0, 500) }
-        : responseData;
-
-    await supabase.from('avisos_envios_log').insert({
-      empresa_id,
-      aviso_id: aviso_id ?? null,
-      tipo_aviso,
-      payload_enviado: payload,
-      response_status: digisacResponse.status,
-      response_body: responseForLog as any,
-      sucesso: digisacResponse.ok,
-    });
-
-    if (!digisacResponse.ok) {
-      return json(502, {
-        erro: `Digisac retornou ${digisacResponse.status}.`,
-        status: digisacResponse.status,
-        tookMs,
-      });
+    if (!algumOk) {
+      return json(502, { erro: 'Nenhum destino aceito pelo Digisac.', resultados, tookMs });
     }
-
-    // Aprendizado: se Digisac devolveu contactId, persiste para próximos envios.
-    if (
-      !empresa.digisac_contact_id &&
-      responseData && typeof responseData === 'object'
-    ) {
-      const r = responseData as Record<string, any>;
-      const contactId =
-        r.contactId ||
-        r?.message?.contactId ||
-        r?.data?.contactId ||
-        r?.contact?.id;
-      if (contactId) {
-        await supabase
-          .from('aviso_empresas')
-          .update({ digisac_contact_id: String(contactId) })
-          .eq('id', empresa_id);
-      }
-    }
-
-    return json(200, { sucesso: true, tookMs });
+    return json(200, { sucesso: true, resultados, tookMs });
   } catch (err) {
     console.error('[avisos-digisac-send] erro', err);
     return json(500, { erro: err instanceof Error ? err.message : 'erro desconhecido' });
