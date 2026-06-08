@@ -45,8 +45,9 @@ const CallDialog = ({ open, onClose, avisoId, onDone }: Props) => {
       const emp = empresas.find((e) => e.code === (aviso as any).empresa_code || e.id === (aviso as any).empresa_id);
       const send = await sendAvisoDigisac({
         aviso: aviso as any,
-        whatsapp: emp?.whatsapp || '',
+        empresa: emp,
         prefix: { kind: 'call', whenISO: nowIso },
+        tipo_aviso: 'ligacao',
       });
       if (!send.ok) toast.error(`Ligação registrada, mas Digisac falhou: ${send.error}`);
       else toast.success('Ligação registrada e mensagem enviada via Digisac.');

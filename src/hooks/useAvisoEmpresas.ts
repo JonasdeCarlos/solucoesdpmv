@@ -5,6 +5,7 @@ export interface AvisoEmpresa {
   id: string; code: string; name: string; cnpj: string; ativo: boolean;
   responsavel: string;
   whatsapp: string;
+  digisac_contact_id?: string | null;
   created_at: string; updated_at: string;
 }
 
