@@ -9,12 +9,13 @@ import { formatCnpj } from '@/utils/avisos/normalize';
 import { Save, Loader2, X } from 'lucide-react';
 
 const AvisoEmpresasPage = () => {
-  const { empresas, loading, setResponsavelAndPropagate } = useAvisoEmpresas();
+  const { empresas, loading, setResponsavelAndPropagate, updateEmpresa } = useAvisoEmpresas();
   const [q, setQ] = useState('');
   const [editing, setEditing] = useState<Record<string, string>>({});
+  const [editingWa, setEditingWa] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const filt = useMemo(() => empresas.filter((e) =>
-    !q || `${e.code} ${e.name} ${e.cnpj} ${e.responsavel}`.toLowerCase().includes(q.toLowerCase())
+    !q || `${e.code} ${e.name} ${e.cnpj} ${e.responsavel} ${e.whatsapp || ''}`.toLowerCase().includes(q.toLowerCase())
   ), [empresas, q]);
 
   const responsaveisUnicos = useMemo(() => {
@@ -34,6 +35,16 @@ const AvisoEmpresasPage = () => {
       .map(([id]) => id);
   }, [editing, empresas]);
 
+  const dirtyWaIds = useMemo(() => {
+    return Object.entries(editingWa)
+      .filter(([id, v]) => {
+        const emp = empresas.find((e) => e.id === id);
+        if (!emp) return false;
+        return (v ?? '').replace(/\D/g, '') !== (emp.whatsapp || '').replace(/\D/g, '');
+      })
+      .map(([id]) => id);
+  }, [editingWa, empresas]);
+
   const aplicarEmTodosFiltrados = (valor: string) => {
     const next: Record<string, string> = { ...editing };
     filt.forEach((e) => { next[e.id] = valor; });
@@ -41,7 +52,7 @@ const AvisoEmpresasPage = () => {
   };
 
   const saveAll = async () => {
-    if (dirtyIds.length === 0) {
+    if (dirtyIds.length === 0 && dirtyWaIds.length === 0) {
       toast.info('Nenhuma alteração pendente.');
       return;
     }
@@ -55,7 +66,15 @@ const AvisoEmpresasPage = () => {
         const { error } = await setResponsavelAndPropagate(emp, novo);
         if (!error) ok++;
       }
+      for (const id of dirtyWaIds) {
+        const emp = empresas.find((e) => e.id === id);
+        if (!emp) continue;
+        const wa = (editingWa[id] ?? '').replace(/\D/g, '');
+        const { error } = await updateEmpresa(id, { whatsapp: wa } as any);
+        if (!error) ok++;
+      }
       setEditing({});
+      setEditingWa({});
       toast.success(`${ok} empresa(s) atualizadas.`);
     } catch (e: any) {
       toast.error('Falha ao salvar: ' + (e?.message || 'erro'));
@@ -64,16 +83,16 @@ const AvisoEmpresasPage = () => {
     }
   };
 
-  const descartar = () => setEditing({});
+  const descartar = () => { setEditing({}); setEditingWa({}); };
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Empresas</h1>
         <div className="flex items-center gap-2">
-          {dirtyIds.length > 0 && (
+          {(dirtyIds.length + dirtyWaIds.length) > 0 && (
             <>
-              <span className="text-xs text-amber-700 font-medium">{dirtyIds.length} alteração(ões) não salvas</span>
+              <span className="text-xs text-amber-700 font-medium">{dirtyIds.length + dirtyWaIds.length} alteração(ões) não salvas</span>
               <Button variant="ghost" size="sm" onClick={descartar} disabled={saving}>
                 <X className="w-3 h-3 mr-1" /> Descartar
               </Button>
@@ -109,16 +128,27 @@ const AvisoEmpresasPage = () => {
         {loading ? <p className="p-4 text-sm text-muted-foreground">Carregando...</p> :
           filt.length === 0 ? <p className="p-4 text-sm text-muted-foreground">Nenhuma empresa.</p> :
           <table className="w-full text-sm">
-            <thead className="bg-muted/50"><tr><th className="text-left p-2">Código</th><th className="text-left p-2">Nome</th><th className="text-left p-2">CNPJ</th><th className="text-left p-2">Responsável</th><th></th></tr></thead>
+            <thead className="bg-muted/50"><tr><th className="text-left p-2">Código</th><th className="text-left p-2">Nome</th><th className="text-left p-2">CNPJ</th><th className="text-left p-2">WhatsApp</th><th className="text-left p-2">Responsável</th><th></th></tr></thead>
             <tbody>
               {filt.map((e) => {
                 const editVal = editing[e.id];
                 const isDirty = editVal !== undefined && (editVal ?? '').trim() !== (e.responsavel || '');
+                const waVal = editingWa[e.id];
+                const isWaDirty = waVal !== undefined && (waVal ?? '').replace(/\D/g, '') !== (e.whatsapp || '').replace(/\D/g, '');
                 return (
-                <tr key={e.id} className={`border-t hover:bg-muted/30 ${isDirty ? 'bg-amber-500/5' : ''}`}>
+                <tr key={e.id} className={`border-t hover:bg-muted/30 ${(isDirty || isWaDirty) ? 'bg-amber-500/5' : ''}`}>
                   <td className="p-2 font-mono">{e.code}</td>
                   <td className="p-2">{e.name}</td>
                   <td className="p-2 font-mono text-xs">{formatCnpj(e.cnpj)}</td>
+                  <td className="p-2">
+                    <Input
+                      className="h-8 text-xs font-mono"
+                      placeholder="5535999998888"
+                      inputMode="numeric"
+                      value={waVal ?? e.whatsapp ?? ''}
+                      onChange={(ev) => setEditingWa((s) => ({ ...s, [e.id]: ev.target.value.replace(/\D/g, '') }))}
+                    />
+                  </td>
                   <td className="p-2">
                     <Input
                       className="h-8 text-xs"

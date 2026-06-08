@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 export interface AvisoEmpresa {
   id: string; code: string; name: string; cnpj: string; ativo: boolean;
   responsavel: string;
+  whatsapp: string;
   created_at: string; updated_at: string;
 }
 

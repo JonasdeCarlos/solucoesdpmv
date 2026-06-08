@@ -8,6 +8,8 @@ import { Label } from '@/components/ui/label';
 import { CALL_CHANNELS } from '@/utils/avisos/normalize';
 import { supabase } from '@/integrations/supabase/client';
 import { useOperatorName } from '@/hooks/useOperatorName';
+import { useAvisoEmpresas } from '@/hooks/useAvisoEmpresas';
+import { sendAvisoDigisac } from '@/utils/avisos/digisac';
 import { toast } from 'sonner';
 
 interface Props {
@@ -19,6 +21,7 @@ interface Props {
 
 const CallDialog = ({ open, onClose, avisoId, onDone }: Props) => {
   const { ensure } = useOperatorName();
+  const { empresas } = useAvisoEmpresas();
   const [callDate, setCallDate] = useState(new Date().toISOString().slice(0, 10));
   const [channel, setChannel] = useState<string>(CALL_CHANNELS[0]);
   const [notes, setNotes] = useState('');
@@ -28,13 +31,29 @@ const CallDialog = ({ open, onClose, avisoId, onDone }: Props) => {
     if (!avisoId) return;
     const op = ensure() || 'desconhecido';
     setBusy(true);
+    const nowIso = new Date().toISOString();
     const { error } = await supabase.from('aviso_contact_attempts' as any).insert({
       aviso_id: avisoId, attempt_type: 'call', marked_by: op,
       call_date: callDate, call_channel: channel, notes,
+      marked_at: nowIso,
     } as any);
-    setBusy(false);
     if (error) { toast.error('Erro: ' + error.message); return; }
-    toast.success('Ligação registrada.');
+
+    // Buscar aviso + empresa para enviar Digisac
+    const { data: aviso } = await supabase.from('avisos' as any).select('*').eq('id', avisoId).maybeSingle();
+    if (aviso) {
+      const emp = empresas.find((e) => e.code === (aviso as any).empresa_code || e.id === (aviso as any).empresa_id);
+      const send = await sendAvisoDigisac({
+        aviso: aviso as any,
+        whatsapp: emp?.whatsapp || '',
+        prefix: { kind: 'call', whenISO: nowIso },
+      });
+      if (!send.ok) toast.error(`Ligação registrada, mas Digisac falhou: ${send.error}`);
+      else toast.success('Ligação registrada e mensagem enviada via Digisac.');
+    } else {
+      toast.success('Ligação registrada.');
+    }
+    setBusy(false);
     setNotes('');
     onDone();
   };
