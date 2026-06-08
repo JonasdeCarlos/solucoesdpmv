@@ -121,11 +121,11 @@ const AvisosListPage = () => {
   const markAviso = async (a: any, n: 1 | 2 | 3) => {
     const op = ensure() || 'desconhecido';
     const empresa = empresas.find((e) => e.code === a.empresa_code || e.id === a.empresa_id);
-    const whatsapp = empresa?.whatsapp || '';
     setSendingId(`${a.id}:${n}`);
     const send = await sendAvisoDigisac({
-      aviso: a, whatsapp,
+      aviso: a, empresa,
       prefix: { kind: 'aviso', n },
+      tipo_aviso: (`aviso${n}` as 'aviso1' | 'aviso2' | 'aviso3'),
     });
     if (!send.ok) {
       setSendingId(null);

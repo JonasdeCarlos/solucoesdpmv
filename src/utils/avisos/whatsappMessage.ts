@@ -16,7 +16,9 @@ export type AvisoMsgPrefix =
 function fmtDateTimeBR(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const dia = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const hora = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  return `${dia} às ${hora}`;
 }
 
 export function buildWhatsappMessage(a: AvisoMsgInput, prefix: AvisoMsgPrefix = { kind: 'none' }): string {
@@ -27,10 +29,10 @@ export function buildWhatsappMessage(a: AvisoMsgInput, prefix: AvisoMsgPrefix = 
 
   const linhas: string[] = [];
   if (prefix.kind === 'aviso') {
-    linhas.push(`*Aviso ${prefix.n}*`);
+    linhas.push(`Aviso ${prefix.n}`);
     linhas.push('');
   } else if (prefix.kind === 'call') {
-    linhas.push(`*Como tratado em ligação no dia ${fmtDateTimeBR(prefix.whenISO)}, segue último aviso.*`);
+    linhas.push(`Como tratado em ligação no dia ${fmtDateTimeBR(prefix.whenISO)}, segue último aviso.`);
     linhas.push('');
   }
   linhas.push('⚠️ *AVISO DE VENCIMENTO — MUITO IMPORTANTE* ⚠️');

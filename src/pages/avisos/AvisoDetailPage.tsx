@@ -35,8 +35,9 @@ const AvisoDetailPage = () => {
     const o = op();
     setSending(n);
     const send = await sendAvisoDigisac({
-      aviso, whatsapp: empresa?.whatsapp || '',
+      aviso, empresa,
       prefix: { kind: 'aviso', n },
+      tipo_aviso: (`aviso${n}` as 'aviso1' | 'aviso2' | 'aviso3'),
     });
     if (!send.ok) {
       setSending(0);

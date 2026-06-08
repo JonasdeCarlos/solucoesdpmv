@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { useAvisoEmpresas } from '@/hooks/useAvisoEmpresas';
 import { formatCnpj } from '@/utils/avisos/normalize';
-import { Save, Loader2, X } from 'lucide-react';
+import { pingDigisac } from '@/utils/avisos/digisac';
+import { Save, Loader2, X, Wrench } from 'lucide-react';
 
 const AvisoEmpresasPage = () => {
   const { empresas, loading, setResponsavelAndPropagate, updateEmpresa } = useAvisoEmpresas();
@@ -14,6 +15,7 @@ const AvisoEmpresasPage = () => {
   const [editing, setEditing] = useState<Record<string, string>>({});
   const [editingWa, setEditingWa] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [pinging, setPinging] = useState(false);
   const filt = useMemo(() => empresas.filter((e) =>
     !q || `${e.code} ${e.name} ${e.cnpj} ${e.responsavel} ${e.whatsapp || ''}`.toLowerCase().includes(q.toLowerCase())
   ), [empresas, q]);
@@ -85,11 +87,28 @@ const AvisoEmpresasPage = () => {
 
   const descartar = () => { setEditing({}); setEditingWa({}); };
 
+  const testarConexao = async () => {
+    setPinging(true);
+    const r = await pingDigisac();
+    setPinging(false);
+    if (!r.ok) { toast.error('Falha no ping: ' + (r as any).error); return; }
+    const d: any = r.data || {};
+    if (d.ok && d.status === 200) {
+      toast.success(`Digisac OK (${d.tookMs}ms).`);
+    } else {
+      toast.error(`Digisac respondeu ${d.status ?? 'erro'} em ${d.tookMs ?? '?'}ms. ${d.erro || ''}`);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Empresas</h1>
         <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={testarConexao} disabled={pinging}>
+            {pinging ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Wrench className="w-3 h-3 mr-1" />}
+            Testar conexão Digisac
+          </Button>
           {(dirtyIds.length + dirtyWaIds.length) > 0 && (
             <>
               <span className="text-xs text-amber-700 font-medium">{dirtyIds.length + dirtyWaIds.length} alteração(ões) não salvas</span>

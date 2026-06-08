@@ -277,6 +277,7 @@ export type Database = {
           cnpj: string
           code: string
           created_at: string
+          digisac_contact_id: string | null
           id: string
           name: string
           responsavel: string
@@ -288,6 +289,7 @@ export type Database = {
           cnpj?: string
           code: string
           created_at?: string
+          digisac_contact_id?: string | null
           id?: string
           name?: string
           responsavel?: string
@@ -299,6 +301,7 @@ export type Database = {
           cnpj?: string
           code?: string
           created_at?: string
+          digisac_contact_id?: string | null
           id?: string
           name?: string
           responsavel?: string
@@ -459,6 +462,57 @@ export type Database = {
             columns: ["import_id"]
             isOneToOne: false
             referencedRelation: "aviso_imports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      avisos_envios_log: {
+        Row: {
+          aviso_id: string | null
+          created_at: string
+          empresa_id: string | null
+          id: string
+          payload_enviado: Json | null
+          response_body: Json | null
+          response_status: number | null
+          sucesso: boolean | null
+          tipo_aviso: string | null
+        }
+        Insert: {
+          aviso_id?: string | null
+          created_at?: string
+          empresa_id?: string | null
+          id?: string
+          payload_enviado?: Json | null
+          response_body?: Json | null
+          response_status?: number | null
+          sucesso?: boolean | null
+          tipo_aviso?: string | null
+        }
+        Update: {
+          aviso_id?: string | null
+          created_at?: string
+          empresa_id?: string | null
+          id?: string
+          payload_enviado?: Json | null
+          response_body?: Json | null
+          response_status?: number | null
+          sucesso?: boolean | null
+          tipo_aviso?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avisos_envios_log_aviso_id_fkey"
+            columns: ["aviso_id"]
+            isOneToOne: false
+            referencedRelation: "avisos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "avisos_envios_log_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "aviso_empresas"
             referencedColumns: ["id"]
           },
         ]
