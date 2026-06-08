@@ -231,6 +231,42 @@ function extractFromLines(lines: string[], structured: PLine[], pageNum: number)
   let status: 'ok' | 'pendente' = 'pendente';
   let motivo: string | undefined;
 
+  // Estratégia 1 (preferencial): localizar a coluna BSALDO pelo cabeçalho do PDF
+  // e casar com o item HH:MM da linha TOTAIS mais próximo dessa coordenada X.
+  // Funciona para qualquer layout Secullum, com qualquer número de colunas
+  // e variações de nomenclatura (BSALDO, SALDO, B.SALDO, B SALDO, SDO etc.).
+  const SALDO_ALIASES = /^(B[\s.]*SALDO|SALDO|SDO|B[\s.]*SDO)\.?$/i;
+  let saldoX: number | null = null;
+  for (const line of structured) {
+    const hit = line.items.find((it) => SALDO_ALIASES.test(it.str.trim()));
+    if (hit) {
+      // Centro da palavra do cabeçalho
+      saldoX = hit.x + (hit.w || 0) / 2;
+      break;
+    }
+  }
+  if (saldoX != null) {
+    const totaisLine = structured.find((l) => /^TOTAIS\b/i.test(l.text));
+    if (totaisLine) {
+      const candidates = totaisLine.items
+        .filter((it) => /^[+\-]?\d{1,4}:\d{2}$/.test(it.str.trim()))
+        .map((it) => ({ it, cx: it.x + (it.w || 0) / 2 }));
+      if (candidates.length > 0) {
+        candidates.sort((a, b) => Math.abs(a.cx - saldoX!) - Math.abs(b.cx - saldoX!));
+        const bs = candidates[0].it.str.trim();
+        const minutes = parseHHMMsigned(bs);
+        if (minutes != null) {
+          bsaldoStr = bs.startsWith('+') || bs.startsWith('-') ? bs : `+${bs}`;
+          if (minutes === 0) bsaldoStr = '00:00';
+          bsaldoMin = minutes;
+          status = 'ok';
+        }
+      }
+    }
+  }
+
+  // Estratégia 2 (fallback legado): heurística por número de colunas na linha TOTAIS.
+  if (status === 'pendente') {
   for (const line of lines) {
     const m = line.match(/^TOTAIS\b\s*(.*)$/i);
     if (!m) continue;
@@ -259,6 +295,7 @@ function extractFromLines(lines: string[], structured: PLine[], pageNum: number)
       status = 'ok';
     }
     break;
+  }
   }
 
   if (status === 'pendente') motivo = 'BSALDO não localizado na linha TOTAIS';
