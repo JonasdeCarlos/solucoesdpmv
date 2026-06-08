@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useBhAll, BhSettings } from '@/hooks/useBancoHorasModulo';
 import { parseHHMM, formatHHMM } from '@/utils/bancoHoras/calc';
 import { toast } from 'sonner';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 function minutesToHHMM(min: number) {
   return formatHHMM(min, false);
@@ -18,6 +19,8 @@ export default function BhParametrosPage() {
   const global = useMemo(() => settings.find((s) => s.scope === 'global'), [settings]);
   const [globalDaily, setGlobalDaily] = useState<string>('08:00');
   const [threshold, setThreshold] = useState<string>('60');
+  const [empresaFiltro, setEmpresaFiltro] = useState<string>('all');
+  const [busca, setBusca] = useState<string>('');
 
   useEffect(() => {
     if (global) {
@@ -47,6 +50,18 @@ export default function BhParametrosPage() {
 
   const empresaSettings = useMemo(() => settings.filter((s) => s.scope === 'empresa'), [settings]);
   const empSettings = useMemo(() => settings.filter((s) => s.scope === 'colaborador'), [settings]);
+
+  const employeesFiltrados = useMemo(() => {
+    const q = busca.trim().toLowerCase();
+    return employees.filter((e) => {
+      if (empresaFiltro !== 'all' && e.empresa_cnpj !== empresaFiltro) return false;
+      if (!q) return true;
+      return (
+        (e.nome || '').toLowerCase().includes(q) ||
+        (e.codigo || '').toLowerCase().includes(q)
+      );
+    });
+  }, [employees, empresaFiltro, busca]);
 
   const setEmpresaCarga = async (cnpj: string, hhmm: string) => {
     const min = parseHHMM(hhmm);
@@ -116,14 +131,37 @@ export default function BhParametrosPage() {
 
       <Card>
         <CardHeader><CardTitle className="text-base">Carga diária por colaborador (sobrepõe empresa/global)</CardTitle></CardHeader>
-        <CardContent className="space-y-2 max-h-96 overflow-y-auto">
-          {employees.map((emp) => {
+        <CardContent className="space-y-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <div className="md:col-span-1">
+              <Label className="text-xs">Filtrar por empresa</Label>
+              <Select value={empresaFiltro} onValueChange={setEmpresaFiltro}>
+                <SelectTrigger><SelectValue placeholder="Todas as empresas" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas as empresas</SelectItem>
+                  {empresas.map((e) => (
+                    <SelectItem key={e.cnpj} value={e.cnpj}>{e.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="md:col-span-2">
+              <Label className="text-xs">Buscar colaborador</Label>
+              <Input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Nome ou código" />
+            </div>
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {employeesFiltrados.length} de {employees.length} colaboradores
+          </div>
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+          {employeesFiltrados.map((emp) => {
             const cur = empSettings.find((s) => s.employee_id === emp.id);
             return (
               <EmpRow key={emp.id} nome={`${emp.nome} (${emp.codigo})`} current={cur?.daily_minutes} onSave={(hhmm) => setEmpregadoCarga(emp.id, hhmm)} onRemove={cur ? () => removerSetting(cur) : undefined} />
             );
           })}
-          {employees.length === 0 && <p className="text-xs text-muted-foreground">Sem colaboradores.</p>}
+          {employeesFiltrados.length === 0 && <p className="text-xs text-muted-foreground">Nenhum colaborador encontrado.</p>}
+          </div>
         </CardContent>
       </Card>
     </div>
