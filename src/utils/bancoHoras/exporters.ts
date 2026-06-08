@@ -177,37 +177,62 @@ export function exportCsv(rows: ReportRow[], filename: string) {
   URL.revokeObjectURL(url);
 }
 
+function detectFormat(dataUrl: string): 'PNG' | 'JPEG' | 'WEBP' {
+  const m = /^data:image\/(png|jpe?g|webp)/i.exec(dataUrl);
+  if (!m) return 'PNG';
+  const t = m[1].toLowerCase();
+  if (t === 'jpg' || t === 'jpeg') return 'JPEG';
+  if (t === 'webp') return 'WEBP';
+  return 'PNG';
+}
+
 export async function exportPdf(rows: ReportRow[], meta: ReportMeta, _filename?: string): Promise<ArrayBuffer> {
   const doc = new jsPDF({ orientation: 'landscape' });
   const pw = doc.internal.pageSize.getWidth();
   const ph = doc.internal.pageSize.getHeight();
 
   // Cabeçalho: Monte Verde à esquerda, empresa à direita, título no centro
-  const headerY = 10;
-  const logoH = 18;
-  const logoW = 36;
+  const headerY = 8;
+  // Monte Verde — logo maior e proporcional (~1.76:1)
+  const mvW = 52;
+  const mvH = 28;
+  // Logo da empresa — mesma altura para simetria visual
+  const empH = 24;
+  const empMaxW = 52;
   const logoMV = meta.logoMonteVerdeDataUrl || (await loadMonteVerdeLogo());
   if (logoMV) {
-    try { doc.addImage(logoMV, 'PNG', 14, headerY, logoW, logoH); } catch {}
+    try { doc.addImage(logoMV, detectFormat(logoMV), 14, headerY, mvW, mvH); } catch {}
   }
   if (meta.logoEmpresaDataUrl) {
-    try { doc.addImage(meta.logoEmpresaDataUrl, 'PNG', pw - 14 - logoW, headerY, logoW, logoH); } catch {}
+    try {
+      // mantém aspecto do logo do cliente; cabe dentro de empMaxW x empH
+      const props = (doc as any).getImageProperties?.(meta.logoEmpresaDataUrl);
+      let w = empMaxW, h = empH;
+      if (props && props.width && props.height) {
+        const ratio = props.width / props.height;
+        if (ratio >= empMaxW / empH) { w = empMaxW; h = empMaxW / ratio; }
+        else { h = empH; w = empH * ratio; }
+      }
+      const x = pw - 14 - w;
+      const y0 = headerY + (empH - h) / 2;
+      doc.addImage(meta.logoEmpresaDataUrl, detectFormat(meta.logoEmpresaDataUrl), x, y0, w, h);
+    } catch {}
   }
 
   doc.setTextColor(57, 52, 33);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(13);
-  doc.text(meta.titulo, pw / 2, headerY + 8, { align: 'center' });
+  doc.text(meta.titulo, pw / 2, headerY + 12, { align: 'center' });
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.setTextColor(100);
   const sub = [meta.empresaLabel, meta.competenciaLabel].filter(Boolean).join(' • ');
-  if (sub) doc.text(sub, pw / 2, headerY + 14, { align: 'center' });
+  if (sub) doc.text(sub, pw / 2, headerY + 18, { align: 'center' });
   doc.setFontSize(7);
-  doc.text(`Gerado em ${new Date().toLocaleString('pt-BR')}`, pw / 2, headerY + 19, { align: 'center' });
+  doc.text(`Gerado em ${new Date().toLocaleString('pt-BR')}`, pw / 2, headerY + 23, { align: 'center' });
   doc.setTextColor(0);
 
-  let y = headerY + 26;
+  let y = headerY + mvH + 4;
 
   // KPIs
   if (meta.kpis) {
