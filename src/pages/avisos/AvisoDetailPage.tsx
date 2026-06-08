@@ -1,16 +1,17 @@
 import { useParams, Link } from 'react-router-dom';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Copy } from 'lucide-react';
+import { ArrowLeft, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAviso, useAvisos } from '@/hooks/useAvisos';
+import { useAvisoEmpresas } from '@/hooks/useAvisoEmpresas';
 import { STATUS_OPTIONS, formatBR, formatCnpj, statusLabel } from '@/utils/avisos/normalize';
 import { buildWhatsappMessage } from '@/utils/avisos/whatsappMessage';
-import { copyToClipboard } from '@/utils/clipboard';
+import { sendAvisoDigisac } from '@/utils/avisos/digisac';
 import { useOperatorName } from '@/hooks/useOperatorName';
 import CallDialog from '@/components/avisos/CallDialog';
 
@@ -18,21 +19,35 @@ const AvisoDetailPage = () => {
   const { id } = useParams();
   const { aviso, attempts, loading, refresh } = useAviso(id);
   const { updateAviso, addAttempt } = useAvisos();
+  const { empresas } = useAvisoEmpresas();
   const { ensure } = useOperatorName();
   const [obs, setObs] = useState('');
   const [callOpen, setCallOpen] = useState(false);
-  const msgRef = useRef<HTMLTextAreaElement | null>(null);
+  const [sending, setSending] = useState<0 | 1 | 2 | 3>(0);
 
   if (loading || !aviso) return <p className="text-sm text-muted-foreground">Carregando...</p>;
 
-  const msg = buildWhatsappMessage(aviso);
+  const empresa = empresas.find((e) => e.code === aviso.empresa_code || e.id === aviso.empresa_id);
+  const previewMsg = buildWhatsappMessage(aviso);
   const op = () => ensure() || 'desconhecido';
 
   const mark = async (n: 1 | 2 | 3) => {
-    const o = op(); const now = new Date().toISOString();
+    const o = op();
+    setSending(n);
+    const send = await sendAvisoDigisac({
+      aviso, whatsapp: empresa?.whatsapp || '',
+      prefix: { kind: 'aviso', n },
+    });
+    if (!send.ok) {
+      setSending(0);
+      toast.error(`Aviso ${n} não enviado: ${send.error}`);
+      return;
+    }
+    const now = new Date().toISOString();
     await updateAviso(aviso.id, { [`aviso${n}_at`]: now, [`aviso${n}_by`]: o } as any);
-    await addAttempt(aviso.id, { attempt_type: `aviso${n}`, marked_by: o });
-    toast.success(`Aviso ${n} registrado.`); refresh();
+    await addAttempt(aviso.id, { attempt_type: `aviso${n}`, marked_by: o, notes: 'Enviado via Digisac' });
+    setSending(0);
+    toast.success(`Aviso ${n} enviado via Digisac e registrado.`); refresh();
   };
   const noResp = async () => {
     const o = op();
@@ -72,23 +87,20 @@ const AvisoDetailPage = () => {
       </Card>
 
       <Card className="p-4 space-y-2">
-        <h3 className="font-semibold">Mensagem WhatsApp</h3>
-        <Textarea readOnly ref={msgRef} value={msg} className="min-h-48 font-mono text-sm" />
-        <Button size="sm" onClick={async () => {
-          const ok = await copyToClipboard(msg, msgRef.current);
-          if (ok) toast.success('Mensagem copiada para a área de transferência.');
-          else toast.error('Selecione o texto acima e use Ctrl+C para copiar.');
-        }}>
-          <Copy className="w-3 h-3 mr-1" /> Copiar
-        </Button>
+        <h3 className="font-semibold">Pré-visualização da mensagem (envio via Digisac)</h3>
+        <p className="text-xs text-muted-foreground">
+          Destino WhatsApp: <b>{empresa?.whatsapp || '— não cadastrado —'}</b>
+          {!empresa?.whatsapp && <> · Cadastre em <Link className="underline" to="/avisos/empresas">Empresas</Link>.</>}
+        </p>
+        <Textarea readOnly value={previewMsg} className="min-h-48 font-mono text-sm" />
       </Card>
 
       <Card className="p-4 space-y-3">
         <h3 className="font-semibold">Ações</h3>
         <div className="flex flex-wrap gap-2">
           {[1, 2, 3].map((n) => (
-            <Button key={n} variant="outline" size="sm" onClick={() => mark(n as 1|2|3)}>
-              Aviso {n}{(aviso as any)[`aviso${n}_at`] ? ` ✓` : ''}
+            <Button key={n} variant="outline" size="sm" disabled={sending !== 0} onClick={() => mark(n as 1|2|3)}>
+              <Send className="w-3 h-3 mr-1" />A{n}{(aviso as any)[`aviso${n}_at`] ? ` ✓` : ''}
             </Button>
           ))}
           <Button variant="outline" size="sm" onClick={noResp}>Cliente sem retorno</Button>
