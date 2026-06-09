@@ -37,6 +37,9 @@ const EscritorioDashboardPage = () => {
   const filtered = useMemo(() => {
     return requests.filter((r) => {
       if (status !== 'all' && r.status !== status) return false;
+      // Por padrão, oculta rascunhos (criados ao abrir o link) para não poluir a lista.
+      // Eles só aparecem ao filtrar explicitamente por "Rascunho".
+      if (status === 'all' && r.status === 'rascunho') return false;
       if (!q) return true;
       const s = q.toLowerCase();
       return (
