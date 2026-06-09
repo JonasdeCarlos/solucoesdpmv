@@ -1021,6 +1021,9 @@ export type Database = {
       }
       client_dp_profile: {
         Row: {
+          admissao_caminho_dominio: string | null
+          admissao_clausulas_especificas: string | null
+          admissao_modelo_contrato: string | null
           best_contact_time: string | null
           channel_default: string | null
           client_id: string
@@ -1057,6 +1060,9 @@ export type Database = {
           workload_type: string | null
         }
         Insert: {
+          admissao_caminho_dominio?: string | null
+          admissao_clausulas_especificas?: string | null
+          admissao_modelo_contrato?: string | null
           best_contact_time?: string | null
           channel_default?: string | null
           client_id: string
@@ -1093,6 +1099,9 @@ export type Database = {
           workload_type?: string | null
         }
         Update: {
+          admissao_caminho_dominio?: string | null
+          admissao_clausulas_especificas?: string | null
+          admissao_modelo_contrato?: string | null
           best_contact_time?: string | null
           channel_default?: string | null
           client_id?: string
