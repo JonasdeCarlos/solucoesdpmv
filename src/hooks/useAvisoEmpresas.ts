@@ -7,6 +7,7 @@ export interface AvisoEmpresa {
   whatsapp: string;
   whatsapp_numeros: string[];
   digisac_contact_id?: string | null;
+  gestor_digisac_user_id?: string | null;
   created_at: string; updated_at: string;
 }
 
