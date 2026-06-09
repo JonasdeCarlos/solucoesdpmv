@@ -113,11 +113,17 @@ const AvisoEmpresasPage = () => {
     setPinging(false);
     if (!r.ok) { toast.error('Falha no ping: ' + (r as any).error); return; }
     const d: any = r.data || {};
-    if (d.ok && d.status === 200) {
-      toast.success(`Digisac OK (${d.tookMs}ms).`);
-    } else {
-      toast.error(`Digisac respondeu ${d.status ?? 'erro'} em ${d.tookMs ?? '?'}ms. ${d.erro || ''}`);
-    }
+    const dig = d.digisac || {};
+    const dep = d.departamento || {};
+    const linhaDig = dig.ok
+      ? `✅ Conexão Digisac: OK (serviço ativo)`
+      : `❌ Conexão Digisac: status ${dig.status ?? 'erro'}`;
+    const linhaDep = dep.ok
+      ? `✅ Departamento Pessoal: OK${dep.nome ? ` (${dep.nome})` : ''}`
+      : `❌ Departamento Pessoal: ${dep.status === 404 ? 'ID não encontrado (verifique o Secret DIGISAC_DEPARTMENT_ID_PESSOAL)' : `status ${dep.status ?? 'erro'}`}`;
+    const msg = `${linhaDig}\n${linhaDep}`;
+    if (dig.ok && dep.ok) toast.success(msg, { duration: 6000 });
+    else toast.error(msg, { duration: 8000 });
   };
 
   return (
