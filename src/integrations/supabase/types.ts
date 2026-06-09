@@ -849,8 +849,10 @@ export type Database = {
       }
       client_ccts: {
         Row: {
+          abrangencia_territorial: string | null
           ai_clauses: Json
           ai_summary: string | null
+          categoria_abrangida: string | null
           client_id: string
           codigo_sindicato_dominio: string
           created_at: string
@@ -862,8 +864,18 @@ export type Database = {
           doc_name: string | null
           doc_path: string | null
           id: string
+          instrumento_tipo: string | null
           is_active: boolean
+          numero_registro_mte: string | null
           sindicato: string | null
+          sindicato_laboral_cnpj: string | null
+          sindicato_laboral_endereco: string | null
+          sindicato_laboral_nome: string | null
+          sindicato_laboral_representante: string | null
+          sindicato_patronal_cnpj: string | null
+          sindicato_patronal_endereco: string | null
+          sindicato_patronal_nome: string | null
+          sindicato_patronal_representante: string | null
           uf: string | null
           union_base: string | null
           validity_end: string | null
@@ -871,8 +883,10 @@ export type Database = {
           version: number
         }
         Insert: {
+          abrangencia_territorial?: string | null
           ai_clauses?: Json
           ai_summary?: string | null
+          categoria_abrangida?: string | null
           client_id: string
           codigo_sindicato_dominio?: string
           created_at?: string
@@ -884,8 +898,18 @@ export type Database = {
           doc_name?: string | null
           doc_path?: string | null
           id?: string
+          instrumento_tipo?: string | null
           is_active?: boolean
+          numero_registro_mte?: string | null
           sindicato?: string | null
+          sindicato_laboral_cnpj?: string | null
+          sindicato_laboral_endereco?: string | null
+          sindicato_laboral_nome?: string | null
+          sindicato_laboral_representante?: string | null
+          sindicato_patronal_cnpj?: string | null
+          sindicato_patronal_endereco?: string | null
+          sindicato_patronal_nome?: string | null
+          sindicato_patronal_representante?: string | null
           uf?: string | null
           union_base?: string | null
           validity_end?: string | null
@@ -893,8 +917,10 @@ export type Database = {
           version?: number
         }
         Update: {
+          abrangencia_territorial?: string | null
           ai_clauses?: Json
           ai_summary?: string | null
+          categoria_abrangida?: string | null
           client_id?: string
           codigo_sindicato_dominio?: string
           created_at?: string
@@ -906,8 +932,18 @@ export type Database = {
           doc_name?: string | null
           doc_path?: string | null
           id?: string
+          instrumento_tipo?: string | null
           is_active?: boolean
+          numero_registro_mte?: string | null
           sindicato?: string | null
+          sindicato_laboral_cnpj?: string | null
+          sindicato_laboral_endereco?: string | null
+          sindicato_laboral_nome?: string | null
+          sindicato_laboral_representante?: string | null
+          sindicato_patronal_cnpj?: string | null
+          sindicato_patronal_endereco?: string | null
+          sindicato_patronal_nome?: string | null
+          sindicato_patronal_representante?: string | null
           uf?: string | null
           union_base?: string | null
           validity_end?: string | null
