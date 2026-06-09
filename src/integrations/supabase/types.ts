@@ -278,6 +278,7 @@ export type Database = {
           code: string
           created_at: string
           digisac_contact_id: string | null
+          gestor_digisac_user_id: string | null
           id: string
           name: string
           responsavel: string
@@ -291,6 +292,7 @@ export type Database = {
           code: string
           created_at?: string
           digisac_contact_id?: string | null
+          gestor_digisac_user_id?: string | null
           id?: string
           name?: string
           responsavel?: string
@@ -304,6 +306,7 @@ export type Database = {
           code?: string
           created_at?: string
           digisac_contact_id?: string | null
+          gestor_digisac_user_id?: string | null
           id?: string
           name?: string
           responsavel?: string
@@ -475,6 +478,7 @@ export type Database = {
           created_at: string
           department_id: string | null
           empresa_id: string | null
+          gestor_user_id: string | null
           id: string
           payload_enviado: Json | null
           response_body: Json | null
@@ -487,6 +491,7 @@ export type Database = {
           created_at?: string
           department_id?: string | null
           empresa_id?: string | null
+          gestor_user_id?: string | null
           id?: string
           payload_enviado?: Json | null
           response_body?: Json | null
@@ -499,6 +504,7 @@ export type Database = {
           created_at?: string
           department_id?: string | null
           empresa_id?: string | null
+          gestor_user_id?: string | null
           id?: string
           payload_enviado?: Json | null
           response_body?: Json | null
