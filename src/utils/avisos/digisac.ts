@@ -31,6 +31,14 @@ export async function sendAvisoDigisac({ aviso, empresa, prefix, tipo_aviso }: S
   });
   if (error) return { ok: false, error: error.message || 'Falha ao enviar via Digisac.' };
   if ((data as any)?.erro) return { ok: false, error: String((data as any).erro) };
+  // Sucesso parcial: mensagem entregue mas atribuição automática ao gestor falhou.
+  const d: any = data;
+  if (d && d.sucesso && empresa.gestor_digisac_user_id && d.transferOk === false && !d.duplicado) {
+    toast.warning(
+      'Aviso enviado, mas atribuição automática ao gestor falhou. Verifique no Digisac e atribua manualmente se necessário.',
+      { duration: 8000 },
+    );
+  }
   return { ok: true, data };
 }
 

@@ -485,7 +485,11 @@ export type Database = {
           response_body: Json | null
           response_status: number | null
           sucesso: boolean | null
+          ticket_id: string | null
           tipo_aviso: string | null
+          transfer_endpoint: string | null
+          transfer_ok: boolean | null
+          transfer_response: Json | null
         }
         Insert: {
           aviso_id?: string | null
@@ -499,7 +503,11 @@ export type Database = {
           response_body?: Json | null
           response_status?: number | null
           sucesso?: boolean | null
+          ticket_id?: string | null
           tipo_aviso?: string | null
+          transfer_endpoint?: string | null
+          transfer_ok?: boolean | null
+          transfer_response?: Json | null
         }
         Update: {
           aviso_id?: string | null
@@ -513,7 +521,11 @@ export type Database = {
           response_body?: Json | null
           response_status?: number | null
           sucesso?: boolean | null
+          ticket_id?: string | null
           tipo_aviso?: string | null
+          transfer_endpoint?: string | null
+          transfer_ok?: boolean | null
+          transfer_response?: Json | null
         }
         Relationships: [
           {
