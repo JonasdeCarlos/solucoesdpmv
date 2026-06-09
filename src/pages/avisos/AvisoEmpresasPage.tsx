@@ -5,15 +5,18 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { useAvisoEmpresas } from '@/hooks/useAvisoEmpresas';
+import { useDigisacUsers } from '@/hooks/useDigisacUsers';
 import { formatCnpj } from '@/utils/avisos/normalize';
 import { pingDigisac } from '@/utils/avisos/digisac';
 import { Save, Loader2, X, Wrench, Plus, Trash2 } from 'lucide-react';
 
 const AvisoEmpresasPage = () => {
   const { empresas, loading, setResponsavelAndPropagate, updateEmpresa } = useAvisoEmpresas();
+  const { users: digisacUsers, loading: loadingUsers, error: usersError } = useDigisacUsers();
   const [q, setQ] = useState('');
   const [editing, setEditing] = useState<Record<string, string>>({});
   const [editingWa, setEditingWa] = useState<Record<string, string[]>>({});
+  const [editingGestor, setEditingGestor] = useState<Record<string, string>>({});
   const [newNumByEmp, setNewNumByEmp] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [pinging, setPinging] = useState(false);
@@ -50,6 +53,16 @@ const AvisoEmpresasPage = () => {
       .map(([id]) => id);
   }, [editingWa, empresas]);
 
+  const dirtyGestorIds = useMemo(() => {
+    return Object.entries(editingGestor)
+      .filter(([id, v]) => {
+        const emp = empresas.find((e) => e.id === id);
+        if (!emp) return false;
+        return (v ?? '') !== (emp.gestor_digisac_user_id || '');
+      })
+      .map(([id]) => id);
+  }, [editingGestor, empresas]);
+
   const aplicarEmTodosFiltrados = (valor: string) => {
     const next: Record<string, string> = { ...editing };
     filt.forEach((e) => { next[e.id] = valor; });
@@ -57,7 +70,7 @@ const AvisoEmpresasPage = () => {
   };
 
   const saveAll = async () => {
-    if (dirtyIds.length === 0 && dirtyWaIds.length === 0) {
+    if (dirtyIds.length === 0 && dirtyWaIds.length === 0 && dirtyGestorIds.length === 0) {
       toast.info('Nenhuma alteração pendente.');
       return;
     }
@@ -78,8 +91,14 @@ const AvisoEmpresasPage = () => {
         const { error } = await updateEmpresa(id, { whatsapp_numeros: nums, whatsapp: nums[0] || '' } as any);
         if (!error) ok++;
       }
+      for (const id of dirtyGestorIds) {
+        const val = (editingGestor[id] ?? '').trim();
+        const { error } = await updateEmpresa(id, { gestor_digisac_user_id: val || null } as any);
+        if (!error) ok++;
+      }
       setEditing({});
       setEditingWa({});
+      setEditingGestor({});
       setNewNumByEmp({});
       toast.success(`${ok} empresa(s) atualizadas.`);
     } catch (e: any) {
@@ -89,7 +108,7 @@ const AvisoEmpresasPage = () => {
     }
   };
 
-  const descartar = () => { setEditing({}); setEditingWa({}); setNewNumByEmp({}); };
+  const descartar = () => { setEditing({}); setEditingWa({}); setEditingGestor({}); setNewNumByEmp({}); };
 
   const numsOf = (e: any): string[] =>
     editingWa[e.id] !== undefined ? editingWa[e.id] : (e.whatsapp_numeros || []);
@@ -135,9 +154,9 @@ const AvisoEmpresasPage = () => {
             {pinging ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Wrench className="w-3 h-3 mr-1" />}
             Testar conexão Digisac
           </Button>
-          {(dirtyIds.length + dirtyWaIds.length) > 0 && (
+          {(dirtyIds.length + dirtyWaIds.length + dirtyGestorIds.length) > 0 && (
             <>
-              <span className="text-xs text-amber-700 font-medium">{dirtyIds.length + dirtyWaIds.length} alteração(ões) não salvas</span>
+              <span className="text-xs text-amber-700 font-medium">{dirtyIds.length + dirtyWaIds.length + dirtyGestorIds.length} alteração(ões) não salvas</span>
               <Button variant="ghost" size="sm" onClick={descartar} disabled={saving}>
                 <X className="w-3 h-3 mr-1" /> Descartar
               </Button>
@@ -173,7 +192,7 @@ const AvisoEmpresasPage = () => {
         {loading ? <p className="p-4 text-sm text-muted-foreground">Carregando...</p> :
           filt.length === 0 ? <p className="p-4 text-sm text-muted-foreground">Nenhuma empresa.</p> :
           <table className="w-full text-sm">
-            <thead className="bg-muted/50"><tr><th className="text-left p-2">Código</th><th className="text-left p-2">Nome</th><th className="text-left p-2">CNPJ</th><th className="text-left p-2">WhatsApp</th><th className="text-left p-2">Responsável</th><th></th></tr></thead>
+            <thead className="bg-muted/50"><tr><th className="text-left p-2">Código</th><th className="text-left p-2">Nome</th><th className="text-left p-2">CNPJ</th><th className="text-left p-2">WhatsApp</th><th className="text-left p-2">Responsável</th><th className="text-left p-2" title="Atendente do Digisac que receberá os tickets desta empresa">Gestor (Digisac)</th><th></th></tr></thead>
             <tbody>
               {filt.map((e) => {
                 const editVal = editing[e.id];
@@ -182,8 +201,10 @@ const AvisoEmpresasPage = () => {
                 const baseline = (e.whatsapp_numeros || []).map((n: string) => String(n).replace(/\D/g, '')).filter(Boolean).join(',');
                 const editedJoin = nums.map((n) => String(n).replace(/\D/g, '')).filter(Boolean).join(',');
                 const isWaDirty = editingWa[e.id] !== undefined && baseline !== editedJoin;
+                const curGestor = editingGestor[e.id] !== undefined ? editingGestor[e.id] : (e.gestor_digisac_user_id || '');
+                const isGestorDirty = editingGestor[e.id] !== undefined && (editingGestor[e.id] ?? '') !== (e.gestor_digisac_user_id || '');
                 return (
-                <tr key={e.id} className={`border-t hover:bg-muted/30 ${(isDirty || isWaDirty) ? 'bg-amber-500/5' : ''}`}>
+                <tr key={e.id} className={`border-t hover:bg-muted/30 ${(isDirty || isWaDirty || isGestorDirty) ? 'bg-amber-500/5' : ''}`}>
                   <td className="p-2 font-mono">{e.code}</td>
                   <td className="p-2">{e.name}</td>
                   <td className="p-2 font-mono text-xs">{formatCnpj(e.cnpj)}</td>
@@ -223,6 +244,27 @@ const AvisoEmpresasPage = () => {
                       value={editVal ?? e.responsavel ?? ''}
                       onChange={(ev) => setEditing((s) => ({ ...s, [e.id]: ev.target.value }))}
                     />
+                  </td>
+                  <td className="p-2 min-w-[200px]">
+                    {usersError ? (
+                      <span className="text-[11px] text-destructive">Erro ao carregar gestores</span>
+                    ) : (
+                      <select
+                        className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs"
+                        value={curGestor}
+                        disabled={loadingUsers}
+                        onChange={(ev) => setEditingGestor((s) => ({ ...s, [e.id]: ev.target.value }))}
+                        title="Os avisos serão abertos já atribuídos a este atendente do Digisac. A resposta do cliente cai direto na conversa do gestor."
+                      >
+                        <option value="">{loadingUsers ? 'Carregando...' : '— Nenhum —'}</option>
+                        {digisacUsers.map((u) => (
+                          <option key={u.id} value={u.id}>{u.nome}</option>
+                        ))}
+                        {curGestor && !digisacUsers.find((u) => u.id === curGestor) && (
+                          <option value={curGestor}>(ID {curGestor.slice(0, 8)}…)</option>
+                        )}
+                      </select>
+                    )}
                   </td>
                   <td className="p-2 text-right">
                     <Link to={`/avisos?empresa=${encodeURIComponent(e.code)}`}>
