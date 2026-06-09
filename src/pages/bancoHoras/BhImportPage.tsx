@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, Upload, AlertTriangle, CheckCircle2, Trash2, ImagePlus, X, Building2 } from 'lucide-react';
+import { Loader2, Upload, AlertTriangle, CheckCircle2, Trash2, ImagePlus, X, Building2, Paperclip } from 'lucide-react';
 import FileDropZone from '@/components/pdftools/FileDropZone';
 import { extractPontoPdf, hashFile, ExtractedRow } from '@/utils/bancoHoras/pdfExtractor';
 import { supabase } from '@/integrations/supabase/client';
@@ -22,6 +22,15 @@ import {
 
 type DupChoice = 'substituir' | 'manter' | 'nova_versao';
 const STORAGE_KEY = 'bh_import_state_v1';
+
+function sanitizeStoragePath(name: string): string {
+  return (name || 'arquivo.pdf')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9._-]+/g, '_')
+    .replace(/_+/g, '_')
+    .slice(0, 120);
+}
 
 function loadPersistedState() {
   try {
