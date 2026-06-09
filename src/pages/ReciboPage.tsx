@@ -22,8 +22,15 @@ import {
 import { generateReciboPDF, generateReciboTexto } from '@/utils/reciboGenerator';
 import { formatCurrency, formatCurrencyInput, parseCurrencyToNumber } from '@/utils/formatters';
 import { quintoDiaUtilSubsequente, contarDiasUteisMes } from '@/utils/feriados';
-import { Plus, Trash2, FileDown, Copy, Calculator, CalendarDays } from 'lucide-react';
+import { Plus, Trash2, FileDown, Copy, Calculator, CalendarDays, Save, FolderOpen } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import {
+  RECIBO_HISTORY_KEY,
+  type SavedRecibo,
+  loadReciboHistory,
+  upsertRecibo,
+  deleteRecibo,
+} from '@/utils/reciboHistory';
 
 const STORAGE_KEY = 'recibo_avulso_state_v1';
 
@@ -43,11 +50,52 @@ const ReciboPage = () => {
   const [recibo, setRecibo] = useState<ReciboData>(loadPersistedRecibo);
   const [feriadoDialogOpen, setFeriadoDialogOpen] = useState(false);
   const [novoFeriado, setNovoFeriado] = useState({ nome: '', dia: '', mes: '' });
+  const [currentReciboId, setCurrentReciboId] = useState<string | null>(null);
+  const [savedRecibos, setSavedRecibos] = useState<SavedRecibo[]>(() => loadReciboHistory());
+  const [historyOpen, setHistoryOpen] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(recibo));
   }, [recibo]);
+
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === RECIBO_HISTORY_KEY) setSavedRecibos(loadReciboHistory());
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
+  const handleSalvarRecibo = () => {
+    if (!recibo.recebedorNome.trim() && !recibo.clienteNome.trim()) {
+      toast({ title: 'Preencha ao menos o recebedor ou cliente antes de salvar', variant: 'destructive' });
+      return;
+    }
+    const saved = upsertRecibo(currentReciboId, recibo);
+    setCurrentReciboId(saved.id);
+    setSavedRecibos(loadReciboHistory());
+    toast({ title: 'Recibo salvo!' });
+  };
+
+  const handleNovoRecibo = () => {
+    setCurrentReciboId(null);
+    setRecibo(createEmptyReciboData());
+    toast({ title: 'Novo recibo iniciado' });
+  };
+
+  const handleCarregarRecibo = (item: SavedRecibo) => {
+    setRecibo(item.data);
+    setCurrentReciboId(item.id);
+    toast({ title: `Recibo "${item.label}" carregado` });
+  };
+
+  const handleExcluirRecibo = (id: string) => {
+    deleteRecibo(id);
+    setSavedRecibos(loadReciboHistory());
+    if (currentReciboId === id) setCurrentReciboId(null);
+    toast({ title: 'Recibo removido' });
+  };
 
   // Ao alterar competência, preencher data de emissão e dias úteis/não úteis
   const handleCompetenciaChange = useCallback((comp: string) => {
@@ -231,6 +279,82 @@ const ReciboPage = () => {
         </TabsList>
 
         <TabsContent value="recibo-avulso" className="space-y-6">
+
+      {/* Recibos salvos */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Save className="h-4 w-4" />
+            Recibos salvos ({savedRecibos.length})
+          </CardTitle>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={handleNovoRecibo}>
+              <Plus className="h-4 w-4 mr-1" /> Novo recibo
+            </Button>
+            <Button size="sm" onClick={handleSalvarRecibo}>
+              <Save className="h-4 w-4 mr-1" /> {currentReciboId ? 'Atualizar' : 'Salvar'}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setHistoryOpen((o) => !o)}>
+              {historyOpen ? 'Ocultar' : 'Mostrar'}
+            </Button>
+          </div>
+        </CardHeader>
+        {historyOpen && (
+          <CardContent className="pt-0">
+            {savedRecibos.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Nenhum recibo salvo. Clique em "Salvar" para guardar o recibo atual.
+              </p>
+            ) : (
+              <div className="space-y-2 max-h-80 overflow-y-auto">
+                {savedRecibos
+                  .slice()
+                  .sort((a, b) => b.updatedAt - a.updatedAt)
+                  .map((item) => {
+                    const isCurrent = item.id === currentReciboId;
+                    return (
+                      <div
+                        key={item.id}
+                        className={`flex items-center justify-between gap-2 p-2 rounded-md border ${
+                          isCurrent ? 'border-primary bg-primary/5' : 'border-border'
+                        }`}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">
+                            {item.label}
+                            {isCurrent && (
+                              <span className="ml-2 text-xs text-primary">(em edição)</span>
+                            )}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Total {formatCurrency(item.total)} •{' '}
+                            {new Date(item.updatedAt).toLocaleString('pt-BR')}
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleCarregarRecibo(item)}
+                          title="Carregar para edição"
+                        >
+                          <FolderOpen className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleExcluirRecibo(item.id)}
+                          title="Excluir"
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
+          </CardContent>
+        )}
+      </Card>
 
       {/* Bloco 1 — Identificação */}
       <Card>
