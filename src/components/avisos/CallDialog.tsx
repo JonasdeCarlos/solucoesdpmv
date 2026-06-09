@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,37 +26,47 @@ const CallDialog = ({ open, onClose, avisoId, onDone }: Props) => {
   const [channel, setChannel] = useState<string>(CALL_CHANNELS[0]);
   const [notes, setNotes] = useState('');
   const [busy, setBusy] = useState(false);
+  const sendingLockRef = useRef(false);
 
   const save = async () => {
     if (!avisoId) return;
+    if (sendingLockRef.current) {
+      console.warn('[CallDialog] Bloqueado: salvamento em andamento');
+      return;
+    }
+    sendingLockRef.current = true;
     const op = ensure() || 'desconhecido';
     setBusy(true);
-    const nowIso = new Date().toISOString();
-    const { error } = await supabase.from('aviso_contact_attempts' as any).insert({
-      aviso_id: avisoId, attempt_type: 'call', marked_by: op,
-      call_date: callDate, call_channel: channel, notes,
-      marked_at: nowIso,
-    } as any);
-    if (error) { toast.error('Erro: ' + error.message); return; }
+    try {
+      const nowIso = new Date().toISOString();
+      const { error } = await supabase.from('aviso_contact_attempts' as any).insert({
+        aviso_id: avisoId, attempt_type: 'call', marked_by: op,
+        call_date: callDate, call_channel: channel, notes,
+        marked_at: nowIso,
+      } as any);
+      if (error) { toast.error('Erro: ' + error.message); return; }
 
-    // Buscar aviso + empresa para enviar Digisac
-    const { data: aviso } = await supabase.from('avisos' as any).select('*').eq('id', avisoId).maybeSingle();
-    if (aviso) {
-      const emp = empresas.find((e) => e.code === (aviso as any).empresa_code || e.id === (aviso as any).empresa_id);
-      const send = await sendAvisoDigisac({
-        aviso: aviso as any,
-        empresa: emp,
-        prefix: { kind: 'call', whenISO: nowIso },
-        tipo_aviso: 'ligacao',
-      });
-      if (!send.ok) toast.error(`Ligação registrada, mas Digisac falhou: ${send.error}`);
-      else toast.success('Ligação registrada e mensagem enviada via Digisac.');
-    } else {
-      toast.success('Ligação registrada.');
+      const { data: aviso } = await supabase.from('avisos' as any).select('*').eq('id', avisoId).maybeSingle();
+      if (aviso) {
+        const emp = empresas.find((e) => e.code === (aviso as any).empresa_code || e.id === (aviso as any).empresa_id);
+        const send = await sendAvisoDigisac({
+          aviso: aviso as any,
+          empresa: emp,
+          prefix: { kind: 'call', whenISO: nowIso },
+          tipo_aviso: 'ligacao',
+        });
+        if (!send.ok) toast.error(`Ligação registrada, mas Digisac falhou: ${send.error}`);
+        else if ((send.data as any)?.duplicado) toast.info('Ligação registrada (envio Digisac duplicado ignorado).');
+        else toast.success('Ligação registrada e mensagem enviada via Digisac.');
+      } else {
+        toast.success('Ligação registrada.');
+      }
+      setNotes('');
+      onDone();
+    } finally {
+      setBusy(false);
+      sendingLockRef.current = false;
     }
-    setBusy(false);
-    setNotes('');
-    onDone();
   };
 
   return (

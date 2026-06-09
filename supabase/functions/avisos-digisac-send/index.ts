@@ -16,7 +16,7 @@ Deno.serve(async (req) => {
 
   const t0 = Date.now();
   try {
-    const { empresa_id, aviso_id, mensagem, tipo_aviso } = await req.json();
+    const { empresa_id, aviso_id, mensagem, tipo_aviso, idempotency_key } = await req.json();
 
     if (!empresa_id || !mensagem || !tipo_aviso) {
       return json(400, { erro: 'Campos obrigatórios: empresa_id, mensagem, tipo_aviso.' });
@@ -50,92 +50,115 @@ Deno.serve(async (req) => {
 
     if (errEmpresa || !empresa) return json(404, { erro: 'Empresa não encontrada.' });
 
-    // Lista de destinos: contactId (se houver) + todos os números cadastrados.
+    // XOR: contactId tem preferência (mais estável); número só como fallback. NUNCA envia para os dois.
     type Dest = { kind: 'contact'; contactId: string } | { kind: 'number'; number: string };
-    const destinos: Dest[] = [];
-    if (empresa.digisac_contact_id) destinos.push({ kind: 'contact', contactId: empresa.digisac_contact_id });
-    const numeros: string[] = Array.isArray((empresa as any).whatsapp_numeros) && (empresa as any).whatsapp_numeros.length
-      ? (empresa as any).whatsapp_numeros
-      : (empresa.whatsapp ? [String(empresa.whatsapp)] : []);
-    for (const raw of numeros) {
-      const num = String(raw).replace(/\D/g, '');
-      if (num) destinos.push({ kind: 'number', number: num });
-    }
-    if (destinos.length === 0) {
-      return json(400, { erro: 'Empresa sem WhatsApp cadastrado nem contato Digisac vinculado.' });
-    }
-
-    async function sendOne(dest: Dest) {
-      const payload: Record<string, unknown> = {
-        // Abre ticket no Departamento Pessoal para que respostas do cliente caiam direto na fila correta.
-        text: mensagem, serviceId: SERVICE_ID, departmentId: DEPARTMENT_ID, origin: 'bot',
-      };
-      // Quando há gestor cadastrado, abre o ticket já atribuído ao atendente — evita o BOT MV interceptar.
-      if ((empresa as any).gestor_digisac_user_id) {
-        payload.userId = (empresa as any).gestor_digisac_user_id;
+    let dest: Dest | null = null;
+    if (empresa.digisac_contact_id) {
+      dest = { kind: 'contact', contactId: empresa.digisac_contact_id };
+    } else {
+      const numeros: string[] = Array.isArray((empresa as any).whatsapp_numeros) && (empresa as any).whatsapp_numeros.length
+        ? (empresa as any).whatsapp_numeros
+        : (empresa.whatsapp ? [String(empresa.whatsapp)] : []);
+      for (const raw of numeros) {
+        const num = String(raw).replace(/\D/g, '');
+        if (num) { dest = { kind: 'number', number: num }; break; }
       }
-      if (dest.kind === 'contact') payload.contactId = dest.contactId;
-      else payload.number = dest.number;
+    }
+    if (!dest) {
+      return json(400, { erro: 'Empresa sem contato Digisac nem WhatsApp cadastrado.' });
+    }
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), DIGISAC_FETCH_TIMEOUT_MS);
-      const tStart = Date.now();
-      try {
-        const resp = await fetch(`${BASE_URL}/api/v1/messages`, {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-          signal: controller.signal,
-        });
-        const text = await resp.text();
-        let data: any = text;
-        try { data = JSON.parse(text); } catch { /* keep raw */ }
-        const took = Date.now() - tStart;
-        const trimmed = typeof data === 'string' && data.length > 2000
-          ? { truncated: true, preview: data.slice(0, 500) } : data;
-        await supabase.from('avisos_envios_log').insert({
-          empresa_id, aviso_id: aviso_id ?? null, tipo_aviso,
-          department_id: DEPARTMENT_ID,
-          gestor_user_id: (empresa as any).gestor_digisac_user_id ?? null,
-          payload_enviado: payload, response_status: resp.status,
-          response_body: trimmed, sucesso: resp.ok,
-        });
-        // Aprende contactId se ainda não tinha
-        if (!empresa.digisac_contact_id && resp.ok && data && typeof data === 'object') {
-          const r: any = data;
-          const cid = r.contactId || r?.message?.contactId || r?.data?.contactId || r?.contact?.id;
-          if (cid) {
-            await supabase.from('aviso_empresas').update({ digisac_contact_id: String(cid) }).eq('id', empresa_id);
-          }
+    // Gate de idempotência server-side: reserva a linha pela idempotency_key ANTES de chamar o Digisac.
+    // Se a mesma chave já existir (clique duplo / StrictMode), abortamos sem reenviar.
+    if (idempotency_key) {
+      const { error: errReserva } = await supabase.from('avisos_envios_log').insert({
+        empresa_id, aviso_id: aviso_id ?? null, tipo_aviso,
+        idempotency_key,
+        sucesso: false, payload_enviado: null,
+      });
+      if (errReserva) {
+        const code = (errReserva as any).code;
+        if (code === '23505') {
+          console.log('[avisos-digisac-send] duplicado bloqueado', { idempotency_key });
+          return json(200, { sucesso: true, duplicado: true });
         }
-        return { dest, ok: resp.ok, status: resp.status, took };
-      } catch (e) {
-        const took = Date.now() - tStart;
-        const aborted = e instanceof Error && e.name === 'AbortError';
-        await supabase.from('avisos_envios_log').insert({
-          empresa_id, aviso_id: aviso_id ?? null, tipo_aviso,
-          department_id: DEPARTMENT_ID,
-          gestor_user_id: (empresa as any).gestor_digisac_user_id ?? null,
-          payload_enviado: payload, response_status: 0,
-          response_body: { error: aborted ? 'timeout_local' : (e as Error)?.message, took },
-          sucesso: false,
-        });
-        return { dest, ok: false, status: 0, took, error: aborted ? 'timeout_local_30s' : (e as Error)?.message };
-      } finally {
-        clearTimeout(timeoutId);
+        return json(500, { erro: 'Falha ao reservar log: ' + errReserva.message });
       }
     }
 
-    const resultados = [];
-    for (const d of destinos) resultados.push(await sendOne(d));
-    const algumOk = resultados.some((r) => r.ok);
-    const tookMs = Date.now() - t0;
-    console.log('[avisos-digisac-send]', { empresa_id, tipo_aviso, destinos: destinos.length, ok: algumOk, tookMs });
-
-    if (!algumOk) {
-      return json(502, { erro: 'Nenhum destino aceito pelo Digisac.', resultados, tookMs });
+    const payload: Record<string, unknown> = {
+      text: mensagem, serviceId: SERVICE_ID, departmentId: DEPARTMENT_ID,
+      // ⚠️ Sem "origin": com userId + departmentId, a ausência de origin faz o Digisac criar ticket atribuído.
+    };
+    if ((empresa as any).gestor_digisac_user_id) {
+      payload.userId = (empresa as any).gestor_digisac_user_id;
     }
-    return json(200, { sucesso: true, resultados, tookMs });
+    if (dest.kind === 'contact') payload.contactId = dest.contactId;
+    else payload.number = dest.number;
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), DIGISAC_FETCH_TIMEOUT_MS);
+    const tStart = Date.now();
+    let resp: Response | null = null;
+    let data: any = null;
+    let took = 0;
+    let abortedFlag = false;
+    let errMsg: string | null = null;
+    try {
+      resp = await fetch(`${BASE_URL}/api/v1/messages`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+      const text = await resp.text();
+      data = text;
+      try { data = JSON.parse(text); } catch { /* keep raw */ }
+      took = Date.now() - tStart;
+    } catch (e) {
+      took = Date.now() - tStart;
+      abortedFlag = e instanceof Error && e.name === 'AbortError';
+      errMsg = abortedFlag ? 'timeout_local_30s' : (e as Error)?.message;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+
+    const trimmed = typeof data === 'string' && data.length > 2000
+      ? { truncated: true, preview: data.slice(0, 500) } : data;
+    const logBody = {
+      department_id: DEPARTMENT_ID,
+      gestor_user_id: (empresa as any).gestor_digisac_user_id ?? null,
+      payload_enviado: payload,
+      response_status: resp?.status ?? 0,
+      response_body: resp ? trimmed : { error: errMsg, took },
+      sucesso: !!resp?.ok,
+    };
+    if (idempotency_key) {
+      await supabase.from('avisos_envios_log').update(logBody).eq('idempotency_key', idempotency_key);
+    } else {
+      await supabase.from('avisos_envios_log').insert({
+        empresa_id, aviso_id: aviso_id ?? null, tipo_aviso, ...logBody,
+      });
+    }
+
+    // Aprende contactId se ainda não tinha
+    if (resp?.ok && !empresa.digisac_contact_id && data && typeof data === 'object') {
+      const r: any = data;
+      const cid = r.contactId || r?.message?.contactId || r?.data?.contactId || r?.contact?.id;
+      if (cid) {
+        await supabase.from('aviso_empresas').update({ digisac_contact_id: String(cid) }).eq('id', empresa_id);
+      }
+    }
+
+    const tookMs = Date.now() - t0;
+    console.log('[avisos-digisac-send]', {
+      empresa_id, tipo_aviso, dest: dest.kind, ok: !!resp?.ok, status: resp?.status ?? 0, tookMs,
+    });
+
+    if (!resp?.ok) {
+      return json(502, { erro: errMsg || 'Digisac recusou a mensagem.', status: resp?.status ?? 0, body: trimmed, tookMs });
+    }
+    return json(200, { sucesso: true, status: resp.status, tookMs });
   } catch (err) {
     console.error('[avisos-digisac-send] erro', err);
     return json(500, { erro: err instanceof Error ? err.message : 'erro desconhecido' });

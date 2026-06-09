@@ -25,8 +25,9 @@ export async function sendAvisoDigisac({ aviso, empresa, prefix, tipo_aviso }: S
     );
   }
   const mensagem = buildWhatsappMessage(aviso, prefix);
+  const idempotency_key = `${aviso.id ?? 'noid'}-${tipo_aviso}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const { data, error } = await supabase.functions.invoke('avisos-digisac-send', {
-    body: { empresa_id: empresa.id, aviso_id: aviso.id, mensagem, tipo_aviso },
+    body: { empresa_id: empresa.id, aviso_id: aviso.id, mensagem, tipo_aviso, idempotency_key },
   });
   if (error) return { ok: false, error: error.message || 'Falha ao enviar via Digisac.' };
   if ((data as any)?.erro) return { ok: false, error: String((data as any).erro) };

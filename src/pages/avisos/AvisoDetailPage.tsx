@@ -1,5 +1,5 @@
 import { useParams, Link } from 'react-router-dom';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -24,6 +24,7 @@ const AvisoDetailPage = () => {
   const [obs, setObs] = useState('');
   const [callOpen, setCallOpen] = useState(false);
   const [sending, setSending] = useState<0 | 1 | 2 | 3>(0);
+  const sendingLockRef = useRef<Set<string>>(new Set());
 
   if (loading || !aviso) return <p className="text-sm text-muted-foreground">Carregando...</p>;
 
@@ -32,23 +33,37 @@ const AvisoDetailPage = () => {
   const op = () => ensure() || 'desconhecido';
 
   const mark = async (n: 1 | 2 | 3) => {
-    const o = op();
-    setSending(n);
-    const send = await sendAvisoDigisac({
-      aviso, empresa,
-      prefix: { kind: 'aviso', n },
-      tipo_aviso: (`aviso${n}` as 'aviso1' | 'aviso2' | 'aviso3'),
-    });
-    if (!send.ok) {
-      setSending(0);
-      toast.error(`Aviso ${n} não enviado: ${send.error}`);
+    const lockKey = `${aviso.id}:${n}`;
+    if (sendingLockRef.current.has(lockKey)) {
+      console.warn('[mark] Bloqueado: envio em andamento para', lockKey);
       return;
     }
-    const now = new Date().toISOString();
-    await updateAviso(aviso.id, { [`aviso${n}_at`]: now, [`aviso${n}_by`]: o } as any);
-    await addAttempt(aviso.id, { attempt_type: `aviso${n}`, marked_by: o, notes: 'Enviado via Digisac' });
-    setSending(0);
-    toast.success(`Aviso ${n} enviado via Digisac e registrado.`); refresh();
+    sendingLockRef.current.add(lockKey);
+    setSending(n);
+    try {
+      const o = op();
+      const send = await sendAvisoDigisac({
+        aviso, empresa,
+        prefix: { kind: 'aviso', n },
+        tipo_aviso: (`aviso${n}` as 'aviso1' | 'aviso2' | 'aviso3'),
+      });
+      if (!send.ok) {
+        toast.error(`Aviso ${n} não enviado: ${send.error}`);
+        return;
+      }
+      if ((send.data as any)?.duplicado) {
+        toast.info(`Aviso ${n}: envio duplicado ignorado.`);
+        return;
+      }
+      const now = new Date().toISOString();
+      await updateAviso(aviso.id, { [`aviso${n}_at`]: now, [`aviso${n}_by`]: o } as any);
+      await addAttempt(aviso.id, { attempt_type: `aviso${n}`, marked_by: o, notes: 'Enviado via Digisac' });
+      toast.success(`Aviso ${n} enviado via Digisac e registrado.`);
+      refresh();
+    } finally {
+      sendingLockRef.current.delete(lockKey);
+      setSending(0);
+    }
   };
   const noResp = async () => {
     const o = op();
