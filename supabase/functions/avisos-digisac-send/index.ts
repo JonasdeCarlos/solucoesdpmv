@@ -11,6 +11,48 @@ function json(status: number, body: unknown) {
   });
 }
 
+function tryJson(text: string): unknown {
+  try { return JSON.parse(text); } catch { return text; }
+}
+
+async function transferirTicket(
+  baseUrl: string,
+  token: string,
+  ticketId: string,
+  userId: string,
+  departmentId: string,
+): Promise<{ ok: boolean; endpointUsado?: string; detalhe?: unknown }> {
+  // Tentativa 1: POST /api/v1/tickets/{id}/transfer
+  try {
+    const r1 = await fetch(`${baseUrl}/api/v1/tickets/${ticketId}/transfer`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, departmentId, comments: 'Atribuição automática via app (aviso)' }),
+      signal: AbortSignal.timeout(15000),
+    });
+    const text = await r1.text();
+    if (r1.ok) return { ok: true, endpointUsado: 'tickets/{id}/transfer', detalhe: tryJson(text) };
+    console.warn('[transferirTicket] Tentativa 1 falhou:', r1.status, text);
+  } catch (e) {
+    console.warn('[transferirTicket] Tentativa 1 erro:', e);
+  }
+  // Tentativa 2: PATCH /api/v1/tickets/{id}
+  try {
+    const r2 = await fetch(`${baseUrl}/api/v1/tickets/${ticketId}`, {
+      method: 'PATCH',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, departmentId }),
+      signal: AbortSignal.timeout(15000),
+    });
+    const text = await r2.text();
+    if (r2.ok) return { ok: true, endpointUsado: 'PATCH tickets/{id}', detalhe: tryJson(text) };
+    console.warn('[transferirTicket] Tentativa 2 falhou:', r2.status, text);
+    return { ok: false, detalhe: { status: r2.status, body: tryJson(text) } };
+  } catch (e) {
+    return { ok: false, detalhe: { erro: String(e) } };
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
@@ -88,11 +130,9 @@ Deno.serve(async (req) => {
 
     const payload: Record<string, unknown> = {
       text: mensagem, serviceId: SERVICE_ID, departmentId: DEPARTMENT_ID,
-      // ⚠️ Sem "origin": com userId + departmentId, a ausência de origin faz o Digisac criar ticket atribuído.
+      // ⚠️ userId NÃO entra aqui: o endpoint /messages ignora esse campo. A atribuição
+      // ao gestor é feita depois via transferirTicket() abaixo.
     };
-    if ((empresa as any).gestor_digisac_user_id) {
-      payload.userId = (empresa as any).gestor_digisac_user_id;
-    }
     if (dest.kind === 'contact') payload.contactId = dest.contactId;
     else payload.number = dest.number;
 
@@ -125,13 +165,35 @@ Deno.serve(async (req) => {
 
     const trimmed = typeof data === 'string' && data.length > 2000
       ? { truncated: true, preview: data.slice(0, 500) } : data;
+
+    // Extrai ticketId da resposta para a transferência pós-criação.
+    let ticketId: string | null = null;
+    if (resp?.ok && data && typeof data === 'object') {
+      const r: any = data;
+      ticketId = r?.ticket?.id ?? r?.ticketId ?? r?.data?.ticket?.id ?? null;
+      if (ticketId) ticketId = String(ticketId);
+    }
+
+    // TRANSFERÊNCIA PÓS-CRIAÇÃO — só roda se mensagem foi entregue e gestor cadastrado.
+    let transferOk = false;
+    let transferDetalhe: { ok: boolean; endpointUsado?: string; detalhe?: unknown } | null = null;
+    const gestorId = (empresa as any).gestor_digisac_user_id as string | null | undefined;
+    if (resp?.ok && ticketId && gestorId) {
+      transferDetalhe = await transferirTicket(BASE_URL, TOKEN, ticketId, gestorId, DEPARTMENT_ID);
+      transferOk = transferDetalhe.ok;
+    }
+
     const logBody = {
       department_id: DEPARTMENT_ID,
-      gestor_user_id: (empresa as any).gestor_digisac_user_id ?? null,
+      gestor_user_id: gestorId ?? null,
       payload_enviado: payload,
       response_status: resp?.status ?? 0,
       response_body: resp ? trimmed : { error: errMsg, took },
       sucesso: !!resp?.ok,
+      ticket_id: ticketId,
+      transfer_ok: transferOk,
+      transfer_endpoint: transferDetalhe?.endpointUsado ?? null,
+      transfer_response: transferDetalhe as unknown as Record<string, unknown> | null,
     };
     if (idempotency_key) {
       await supabase.from('avisos_envios_log').update(logBody).eq('idempotency_key', idempotency_key);
@@ -152,13 +214,21 @@ Deno.serve(async (req) => {
 
     const tookMs = Date.now() - t0;
     console.log('[avisos-digisac-send]', {
-      empresa_id, tipo_aviso, dest: dest.kind, ok: !!resp?.ok, status: resp?.status ?? 0, tookMs,
+      empresa_id, tipo_aviso, dest: dest.kind, ok: !!resp?.ok, status: resp?.status ?? 0,
+      ticketId, transferOk, transferEndpoint: transferDetalhe?.endpointUsado ?? null, tookMs,
     });
 
     if (!resp?.ok) {
       return json(502, { erro: errMsg || 'Digisac recusou a mensagem.', status: resp?.status ?? 0, body: trimmed, tookMs });
     }
-    return json(200, { sucesso: true, status: resp.status, tookMs });
+    return json(200, {
+      sucesso: true,
+      status: resp.status,
+      ticketId,
+      transferOk,
+      transferDetalhe: transferOk ? null : transferDetalhe,
+      tookMs,
+    });
   } catch (err) {
     console.error('[avisos-digisac-send] erro', err);
     return json(500, { erro: err instanceof Error ? err.message : 'erro desconhecido' });
