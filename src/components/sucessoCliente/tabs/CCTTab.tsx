@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Upload, FileText, Copy, AlertTriangle, Loader2, Trash2 } from 'lucide-react';
+import { Upload, FileText, Copy, AlertTriangle, Loader2, Trash2, Eye } from 'lucide-react';
 import { useCCTs } from '@/hooks/useSucessoCliente';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -91,11 +91,25 @@ export default function CCTTab({ client_id }: { client_id: string }) {
         throw new Error('A IA não encontrou informações comprovadas da CCT neste arquivo.');
       }
       setStage('Salvando CCT…');
+      const lab = r.sindicato_laboral || {};
+      const pat = r.sindicato_patronal || {};
       const { error: insertError } = await supabase.from('client_ccts' as any).insert({
         client_id, union_base: r.union_base || '', sindicato: r.sindicato || '', uf: r.uf || '',
         data_base: r.data_base || '', validity_start: r.validity_start || null, validity_end: r.validity_end || null,
         doc_path: path, doc_name: file.name, ai_summary: r.summary || '', ai_clauses: r.clauses || [],
         version: items.length + 1, is_active: true, codigo_sindicato_dominio: '',
+        instrumento_tipo: r.instrumento_tipo || '',
+        numero_registro_mte: r.numero_registro_mte || '',
+        abrangencia_territorial: r.abrangencia_territorial || '',
+        categoria_abrangida: r.categoria_abrangida || '',
+        sindicato_laboral_nome: lab.nome || '',
+        sindicato_laboral_cnpj: lab.cnpj || '',
+        sindicato_laboral_endereco: lab.endereco || '',
+        sindicato_laboral_representante: lab.representante || '',
+        sindicato_patronal_nome: pat.nome || '',
+        sindicato_patronal_cnpj: pat.cnpj || '',
+        sindicato_patronal_endereco: pat.endereco || '',
+        sindicato_patronal_representante: pat.representante || '',
       } as any);
       if (insertError) throw insertError;
       toast.success('CCT processada pela IA.');
@@ -153,6 +167,13 @@ export default function CCTTab({ client_id }: { client_id: string }) {
 
   const daysToEnd = (d: string | null) => d ? Math.ceil((new Date(d).getTime() - Date.now()) / 86400000) : null;
 
+  const openPdf = async (c: any) => {
+    if (!c.doc_path) { toast.error('Arquivo original não disponível.'); return; }
+    const { data, error } = await supabase.storage.from('cliente-dp-uploads').createSignedUrl(c.doc_path, 60 * 10);
+    if (error || !data?.signedUrl) { toast.error('Erro ao abrir PDF: ' + (error?.message || 'desconhecido')); return; }
+    window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+  };
+
   return (
     <div className="space-y-4">
       <Card><CardContent className="p-4 flex items-end gap-2 flex-wrap">
@@ -186,6 +207,7 @@ export default function CCTTab({ client_id }: { client_id: string }) {
                   {c.validity_end && <Badge variant={alert ? 'destructive' : 'outline'}>Vence: {new Date(c.validity_end).toLocaleDateString('pt-BR')}{d!==null && ` (${d}d)`}</Badge>}
                   {alert && <AlertTriangle className="w-4 h-4 text-amber-500"/>}
                   <Button size="sm" variant="outline" onClick={()=>setView(c)}>Ver resumo</Button>
+                  <Button size="sm" variant="outline" onClick={()=>openPdf(c)}><Eye className="w-4 h-4 mr-1"/>Ver PDF</Button>
                   <Button size="sm" variant="destructive" onClick={()=>setDeleteTarget(c)}><Trash2 className="w-4 h-4"/></Button>
                 </div>
               </div>
@@ -212,6 +234,44 @@ export default function CCTTab({ client_id }: { client_id: string }) {
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-auto">
           <DialogHeader><DialogTitle>{view?.sindicato} — Resumo IA</DialogTitle></DialogHeader>
           {view && <div className="space-y-3">
+            <div className="border rounded p-3 bg-muted/30 space-y-3 text-sm">
+              <div>
+                <h4 className="font-bold mb-1">Preâmbulo — Cadastro</h4>
+                <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                  <div><span className="text-muted-foreground">Instrumento:</span> {view.instrumento_tipo || '—'}</div>
+                  <div><span className="text-muted-foreground">Nº registro MTE:</span> {view.numero_registro_mte || '—'}</div>
+                  <div><span className="text-muted-foreground">Data-base:</span> {view.data_base || '—'}</div>
+                  <div><span className="text-muted-foreground">UF:</span> {view.uf || '—'}</div>
+                  <div><span className="text-muted-foreground">Vigência:</span> {view.validity_start ? new Date(view.validity_start).toLocaleDateString('pt-BR') : '—'} a {view.validity_end ? new Date(view.validity_end).toLocaleDateString('pt-BR') : '—'}</div>
+                  <div><span className="text-muted-foreground">Abrangência:</span> {view.abrangencia_territorial || view.union_base || '—'}</div>
+                  <div className="col-span-2"><span className="text-muted-foreground">Categoria abrangida:</span> {view.categoria_abrangida || '—'}</div>
+                </div>
+              </div>
+              <div className="grid md:grid-cols-2 gap-3">
+                <div className="border rounded p-2 bg-background">
+                  <h4 className="font-bold mb-1">Sindicato Laboral (Trabalhadores)</h4>
+                  <div className="space-y-0.5">
+                    <div><span className="text-muted-foreground">Nome:</span> {view.sindicato_laboral_nome || view.sindicato || '—'}</div>
+                    <div><span className="text-muted-foreground">CNPJ:</span> {view.sindicato_laboral_cnpj || '—'}</div>
+                    <div><span className="text-muted-foreground">Endereço:</span> {view.sindicato_laboral_endereco || '—'}</div>
+                    <div><span className="text-muted-foreground">Representante:</span> {view.sindicato_laboral_representante || '—'}</div>
+                  </div>
+                </div>
+                <div className="border rounded p-2 bg-background">
+                  <h4 className="font-bold mb-1">Sindicato Patronal (Empregador)</h4>
+                  <div className="space-y-0.5">
+                    <div><span className="text-muted-foreground">Nome:</span> {view.sindicato_patronal_nome || '—'}</div>
+                    <div><span className="text-muted-foreground">CNPJ:</span> {view.sindicato_patronal_cnpj || '—'}</div>
+                    <div><span className="text-muted-foreground">Endereço:</span> {view.sindicato_patronal_endereco || '—'}</div>
+                    <div><span className="text-muted-foreground">Representante:</span> {view.sindicato_patronal_representante || '—'}</div>
+                  </div>
+                </div>
+              </div>
+              <div className="pt-1">
+                <Button size="sm" variant="outline" onClick={()=>openPdf(view)}><Eye className="w-4 h-4 mr-1"/>Abrir CCT na íntegra (PDF)</Button>
+              </div>
+            </div>
+            <h4 className="font-bold text-sm">Resumo</h4>
             <p className="text-sm whitespace-pre-wrap">{view.ai_summary}</p>
             <h4 className="font-bold text-sm">Cláusulas-chave</h4>
             <ul className="space-y-2">
