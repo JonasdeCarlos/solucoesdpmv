@@ -69,8 +69,15 @@ Retorne JSON estruturado com:
 - data_base: mês/data-base, somente se explícita
 - validity_start: AAAA-MM-DD, somente se explícita
 - validity_end: AAAA-MM-DD, somente se explícita
+- instrumento_tipo: "CCT" | "ACT" | "" se não explícito
+- numero_registro_mte: número de registro no MTE/MTP, somente se explícito
+- abrangencia_territorial: abrangência territorial textual, somente se explícita
+- categoria_abrangida: categoria profissional abrangida, somente se explícita
+- sindicato_laboral: { nome, cnpj, endereco, representante } — dados do sindicato dos trabalhadores
+- sindicato_patronal: { nome, cnpj, endereco, representante } — dados do sindicato patronal / empresa
 - summary: resumo objetivo em pt-BR baseado apenas no documento
-- clauses: array de {titulo, descricao, trecho_base} com pisos salariais, adicionais, HE, intervalos, benefícios, contribuições e multas encontrados.`;
+- clauses: array de {titulo, descricao, trecho_base} com pisos salariais, adicionais, HE, intervalos, benefícios, contribuições e multas encontrados.
+Para campos não encontrados, retorne string vazia. Nunca invente CNPJ ou endereço.`;
 
     const userContent: any[] = [{ type: "text", text: promptCore }];
     if (useVision && pdf_base64) {
@@ -101,6 +108,12 @@ Retorne JSON estruturado com:
                 data_base: { type: "string" },
                 validity_start: { type: "string" },
                 validity_end: { type: "string" },
+                instrumento_tipo: { type: "string" },
+                numero_registro_mte: { type: "string" },
+                abrangencia_territorial: { type: "string" },
+                categoria_abrangida: { type: "string" },
+                sindicato_laboral: { type: "object", properties: { nome: { type: "string" }, cnpj: { type: "string" }, endereco: { type: "string" }, representante: { type: "string" } } },
+                sindicato_patronal: { type: "object", properties: { nome: { type: "string" }, cnpj: { type: "string" }, endereco: { type: "string" }, representante: { type: "string" } } },
                 extraction_ok: { type: "boolean" },
                 extraction_notes: { type: "string" },
                 summary: { type: "string" },
