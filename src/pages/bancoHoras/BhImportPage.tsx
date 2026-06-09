@@ -178,9 +178,14 @@ export default function BhImportPage() {
       let filePath: string | null = null;
       const f = files[0];
       if (f) {
-        const path = `${new Date().toISOString().slice(0, 10)}/${hash}_${f.name}`;
-        const { error: upErr } = await supabase.storage.from('ponto-pdfs').upload(path, f, { upsert: true });
-        if (!upErr) filePath = path;
+        const safeName = sanitizeStoragePath(f.name);
+        const path = `${new Date().toISOString().slice(0, 10)}/${hash}_${safeName}`;
+        const { error: upErr } = await supabase.storage.from('ponto-pdfs').upload(path, f, { upsert: true, contentType: 'application/pdf' });
+        if (upErr) {
+          toast.error(`Falha ao anexar PDF no storage: ${upErr.message}. O relatório poderá ser gerado sem o cartão ponto anexado.`);
+        } else {
+          filePath = path;
+        }
       }
 
       // import row
