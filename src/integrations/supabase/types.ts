@@ -480,6 +480,7 @@ export type Database = {
           empresa_id: string | null
           gestor_user_id: string | null
           id: string
+          idempotency_key: string | null
           payload_enviado: Json | null
           response_body: Json | null
           response_status: number | null
@@ -493,6 +494,7 @@ export type Database = {
           empresa_id?: string | null
           gestor_user_id?: string | null
           id?: string
+          idempotency_key?: string | null
           payload_enviado?: Json | null
           response_body?: Json | null
           response_status?: number | null
@@ -506,6 +508,7 @@ export type Database = {
           empresa_id?: string | null
           gestor_user_id?: string | null
           id?: string
+          idempotency_key?: string | null
           payload_enviado?: Json | null
           response_body?: Json | null
           response_status?: number | null

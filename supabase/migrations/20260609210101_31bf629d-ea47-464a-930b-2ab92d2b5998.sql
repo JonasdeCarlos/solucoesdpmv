@@ -1,0 +1,2 @@
+ALTER TABLE public.avisos_envios_log ADD COLUMN IF NOT EXISTS idempotency_key text NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_avisos_envios_idempotency ON public.avisos_envios_log(idempotency_key) WHERE idempotency_key IS NOT NULL;

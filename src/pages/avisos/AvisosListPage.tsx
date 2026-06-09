@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -58,6 +58,8 @@ const AvisosListPage = () => {
   const [callDialog, setCallDialog] = useState<{ id: string } | null>(null);
   const [respEdit, setRespEdit] = useState<Record<string, string>>({});
   const [sendingId, setSendingId] = useState<string | null>(null);
+  // Lock síncrono — evita 2 invocações no mesmo clique (StrictMode / re-render).
+  const sendingLockRef = useRef<Set<string>>(new Set());
 
   const filtered = useMemo(() => {
     return items.filter((a) => {
@@ -119,27 +121,40 @@ const AvisosListPage = () => {
   };
 
   const markAviso = async (a: any, n: 1 | 2 | 3) => {
-    const op = ensure() || 'desconhecido';
-    const empresa = empresas.find((e) => e.code === a.empresa_code || e.id === a.empresa_id);
-    setSendingId(`${a.id}:${n}`);
-    const send = await sendAvisoDigisac({
-      aviso: a, empresa,
-      prefix: { kind: 'aviso', n },
-      tipo_aviso: (`aviso${n}` as 'aviso1' | 'aviso2' | 'aviso3'),
-    });
-    if (!send.ok) {
-      setSendingId(null);
-      toast.error(`Aviso ${n} não enviado: ${send.error}`);
+    const lockKey = `${a.id}:${n}`;
+    if (sendingLockRef.current.has(lockKey)) {
+      console.warn('[markAviso] Bloqueado: envio em andamento para', lockKey);
       return;
     }
-    const now = new Date().toISOString();
-    const patch: any = {};
-    patch[`aviso${n}_at`] = now;
-    patch[`aviso${n}_by`] = op;
-    await updateAviso(a.id, patch);
-    await addAttempt(a.id, { attempt_type: `aviso${n}`, marked_by: op, notes: 'Enviado via Digisac' });
-    setSendingId(null);
-    toast.success(`Aviso ${n} enviado via Digisac e registrado.`);
+    sendingLockRef.current.add(lockKey);
+    setSendingId(lockKey);
+    try {
+      const op = ensure() || 'desconhecido';
+      const empresa = empresas.find((e) => e.code === a.empresa_code || e.id === a.empresa_id);
+      const send = await sendAvisoDigisac({
+        aviso: a, empresa,
+        prefix: { kind: 'aviso', n },
+        tipo_aviso: (`aviso${n}` as 'aviso1' | 'aviso2' | 'aviso3'),
+      });
+      if (!send.ok) {
+        toast.error(`Aviso ${n} não enviado: ${send.error}`);
+        return;
+      }
+      if ((send.data as any)?.duplicado) {
+        toast.info(`Aviso ${n}: envio duplicado ignorado.`);
+        return;
+      }
+      const now = new Date().toISOString();
+      const patch: any = {};
+      patch[`aviso${n}_at`] = now;
+      patch[`aviso${n}_by`] = op;
+      await updateAviso(a.id, patch);
+      await addAttempt(a.id, { attempt_type: `aviso${n}`, marked_by: op, notes: 'Enviado via Digisac' });
+      toast.success(`Aviso ${n} enviado via Digisac e registrado.`);
+    } finally {
+      sendingLockRef.current.delete(lockKey);
+      setSendingId(null);
+    }
   };
 
   const markNoResponse = async (a: any) => {
