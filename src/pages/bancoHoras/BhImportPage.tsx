@@ -487,6 +487,54 @@ export default function BhImportPage() {
         </Card>
       )}
 
+      {missingImports.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Paperclip className="w-4 h-4" /> Importações sem PDF anexado ({missingImports.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-muted-foreground mb-3">
+              Estas importações foram salvas sem o cartão ponto no storage (upload falhou — provavelmente por caracteres especiais no nome do arquivo). Anexe o PDF original para que ele apareça no relatório exportado.
+            </p>
+            <input
+              ref={reattachInputRef}
+              type="file"
+              accept="application/pdf"
+              className="hidden"
+              onChange={(e) => e.target.files?.[0] && handleReattach(e.target.files[0])}
+            />
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead className="bg-muted">
+                  <tr>
+                    <th className="p-2 text-left">Empresa</th>
+                    <th className="p-2 text-left">Competência</th>
+                    <th className="p-2 text-left">Arquivo original</th>
+                    <th className="p-2"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {missingImports.map((m) => (
+                    <tr key={m.id} className="border-b">
+                      <td className="p-2">{m.empresa_nome}</td>
+                      <td className="p-2">{m.competencia ? m.competencia.slice(0, 7) : '—'}</td>
+                      <td className="p-2 text-muted-foreground">{m.file_name}</td>
+                      <td className="p-2 text-right">
+                        <Button size="sm" variant="outline" onClick={() => { setReattachId(m.id); setTimeout(() => reattachInputRef.current?.click(), 0); }}>
+                          <Paperclip className="w-3 h-3 mr-1" /> Anexar PDF
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <AlertDialog open={askDup} onOpenChange={setAskDup}>
         <AlertDialogContent>
           <AlertDialogHeader>
