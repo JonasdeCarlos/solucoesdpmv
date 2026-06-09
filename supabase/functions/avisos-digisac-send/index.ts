@@ -28,9 +28,13 @@ Deno.serve(async (req) => {
     const BASE_URL = Deno.env.get('DIGISAC_BASE_URL') || 'https://contabilmv.digisac.co';
     const TOKEN = Deno.env.get('DIGISAC_API_TOKEN') || Deno.env.get('DIGISAC_TOKEN');
     const SERVICE_ID = Deno.env.get('DIGISAC_SERVICE_ID');
+    const DEPARTMENT_ID = Deno.env.get('DIGISAC_DEPARTMENT_ID_PESSOAL');
 
     if (!TOKEN || !SERVICE_ID) {
       return json(500, { erro: 'Digisac não configurado (DIGISAC_API_TOKEN/DIGISAC_SERVICE_ID).' });
+    }
+    if (!DEPARTMENT_ID) {
+      return json(500, { erro: 'Digisac não configurado (DIGISAC_DEPARTMENT_ID_PESSOAL).' });
     }
 
     const supabase = createClient(
@@ -63,7 +67,8 @@ Deno.serve(async (req) => {
 
     async function sendOne(dest: Dest) {
       const payload: Record<string, unknown> = {
-        text: mensagem, serviceId: SERVICE_ID, origin: 'bot', dontOpenTicket: true,
+        // Abre ticket no Departamento Pessoal para que respostas do cliente caiam direto na fila correta.
+        text: mensagem, serviceId: SERVICE_ID, departmentId: DEPARTMENT_ID, origin: 'bot',
       };
       if (dest.kind === 'contact') payload.contactId = dest.contactId;
       else payload.number = dest.number;
@@ -86,6 +91,7 @@ Deno.serve(async (req) => {
           ? { truncated: true, preview: data.slice(0, 500) } : data;
         await supabase.from('avisos_envios_log').insert({
           empresa_id, aviso_id: aviso_id ?? null, tipo_aviso,
+          department_id: DEPARTMENT_ID,
           payload_enviado: payload, response_status: resp.status,
           response_body: trimmed, sucesso: resp.ok,
         });
@@ -103,6 +109,7 @@ Deno.serve(async (req) => {
         const aborted = e instanceof Error && e.name === 'AbortError';
         await supabase.from('avisos_envios_log').insert({
           empresa_id, aviso_id: aviso_id ?? null, tipo_aviso,
+          department_id: DEPARTMENT_ID,
           payload_enviado: payload, response_status: 0,
           response_body: { error: aborted ? 'timeout_local' : (e as Error)?.message, took },
           sucesso: false,
