@@ -45,6 +45,10 @@ export interface DPProfile {
   workload_type: string;
   workload_hhmm: string;
   workload_rules: string;
+  sst_empresa: string;
+  sst_contato_nome: string;
+  sst_contato_telefone: string;
+  sst_contato_email: string;
 }
 
 export function emptyProfile(client_id: string): DPProfile {
@@ -74,6 +78,10 @@ export function emptyProfile(client_id: string): DPProfile {
     workload_type: 'fixa',
     workload_hhmm: '',
     workload_rules: '',
+    sst_empresa: '',
+    sst_contato_nome: '',
+    sst_contato_telefone: '',
+    sst_contato_email: '',
   };
 }
 

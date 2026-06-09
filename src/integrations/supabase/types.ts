@@ -1002,6 +1002,10 @@ export type Database = {
           preview_deadline_day: number | null
           preview_rules: string | null
           sla_hours: number | null
+          sst_contato_email: string
+          sst_contato_nome: string
+          sst_contato_telefone: string
+          sst_empresa: string
           timeclock_notes: string | null
           timeclock_owner: string | null
           timeclock_password_encrypted: string | null
@@ -1034,6 +1038,10 @@ export type Database = {
           preview_deadline_day?: number | null
           preview_rules?: string | null
           sla_hours?: number | null
+          sst_contato_email?: string
+          sst_contato_nome?: string
+          sst_contato_telefone?: string
+          sst_empresa?: string
           timeclock_notes?: string | null
           timeclock_owner?: string | null
           timeclock_password_encrypted?: string | null
@@ -1066,6 +1074,10 @@ export type Database = {
           preview_deadline_day?: number | null
           preview_rules?: string | null
           sla_hours?: number | null
+          sst_contato_email?: string
+          sst_contato_nome?: string
+          sst_contato_telefone?: string
+          sst_empresa?: string
           timeclock_notes?: string | null
           timeclock_owner?: string | null
           timeclock_password_encrypted?: string | null

@@ -303,6 +303,16 @@ export default function PerfilTab({ cliente, onClienteSaved }: { cliente: Client
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader><CardTitle className="text-base">SST — Saúde e Segurança do Trabalho</CardTitle></CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="md:col-span-2"><Label>Empresa responsável pela SST</Label><Input value={form.sst_empresa} onChange={(e)=>set('sst_empresa', e.target.value)} placeholder="Razão social da empresa de SST"/></div>
+          <div><Label>Pessoa de contato</Label><Input value={form.sst_contato_nome} onChange={(e)=>set('sst_contato_nome', e.target.value)}/></div>
+          <div><Label>Telefone / WhatsApp</Label><Input value={form.sst_contato_telefone} onChange={(e)=>set('sst_contato_telefone', e.target.value)} placeholder="(35) 99999-9999"/></div>
+          <div className="md:col-span-2"><Label>E-mail</Label><Input type="email" value={form.sst_contato_email} onChange={(e)=>set('sst_contato_email', e.target.value)} placeholder="contato@sst.com.br"/></div>
+        </CardContent>
+      </Card>
+
       <div className="flex justify-end sticky bottom-2">
         <Button onClick={saveAll} size="lg" className="shadow-lg"><Save className="w-4 h-4 mr-1"/>Salvar perfil</Button>
       </div>
