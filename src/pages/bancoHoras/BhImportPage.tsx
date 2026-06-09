@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, Upload, AlertTriangle, CheckCircle2, Trash2, ImagePlus, X, Building2 } from 'lucide-react';
+import { Loader2, Upload, AlertTriangle, CheckCircle2, Trash2, ImagePlus, X, Building2, Paperclip } from 'lucide-react';
 import FileDropZone from '@/components/pdftools/FileDropZone';
 import { extractPontoPdf, hashFile, ExtractedRow } from '@/utils/bancoHoras/pdfExtractor';
 import { supabase } from '@/integrations/supabase/client';
@@ -22,6 +22,15 @@ import {
 
 type DupChoice = 'substituir' | 'manter' | 'nova_versao';
 const STORAGE_KEY = 'bh_import_state_v1';
+
+function sanitizeStoragePath(name: string): string {
+  return (name || 'arquivo.pdf')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9._-]+/g, '_')
+    .replace(/_+/g, '_')
+    .slice(0, 120);
+}
 
 function loadPersistedState() {
   try {
@@ -55,6 +64,38 @@ export default function BhImportPage() {
   const [clearing, setClearing] = useState(false);
   const [empresaLogo, setEmpresaLogo] = useState<string>('');
   const logoInputRef = useRef<HTMLInputElement>(null);
+  const [missingImports, setMissingImports] = useState<Array<{ id: string; empresa_nome: string; empresa_cnpj: string; competencia: string | null; file_name: string }>>([]);
+  const [reattachId, setReattachId] = useState<string | null>(null);
+  const reattachInputRef = useRef<HTMLInputElement>(null);
+
+  const loadMissing = async () => {
+    const { data } = await supabase
+      .from('bh_imports' as any)
+      .select('id, empresa_nome, empresa_cnpj, competencia, file_name')
+      .is('file_path', null)
+      .order('competencia', { ascending: false })
+      .limit(200);
+    setMissingImports((data as any) || []);
+  };
+  useEffect(() => { loadMissing(); }, []);
+
+  const handleReattach = async (file: File) => {
+    if (!reattachId) return;
+    try {
+      const safeName = sanitizeStoragePath(file.name);
+      const h = await hashFile(file);
+      const path = `${new Date().toISOString().slice(0, 10)}/${h}_${safeName}`;
+      const { error: upErr } = await supabase.storage.from('ponto-pdfs').upload(path, file, { upsert: true, contentType: 'application/pdf' });
+      if (upErr) { toast.error(`Falha no upload: ${upErr.message}`); return; }
+      const { error: updErr } = await supabase.from('bh_imports' as any).update({ file_path: path, file_hash: h } as any).eq('id', reattachId);
+      if (updErr) { toast.error(`Falha ao vincular: ${updErr.message}`); return; }
+      toast.success('PDF anexado à importação.');
+      setReattachId(null);
+      await loadMissing();
+    } catch (e: any) {
+      toast.error(`Erro: ${e?.message || e}`);
+    }
+  };
 
   const empresaCnpj = rows[0]?.empresa_cnpj || '';
   const empresaNome = rows[0]?.empresa_nome || '';
@@ -169,9 +210,14 @@ export default function BhImportPage() {
       let filePath: string | null = null;
       const f = files[0];
       if (f) {
-        const path = `${new Date().toISOString().slice(0, 10)}/${hash}_${f.name}`;
-        const { error: upErr } = await supabase.storage.from('ponto-pdfs').upload(path, f, { upsert: true });
-        if (!upErr) filePath = path;
+        const safeName = sanitizeStoragePath(f.name);
+        const path = `${new Date().toISOString().slice(0, 10)}/${hash}_${safeName}`;
+        const { error: upErr } = await supabase.storage.from('ponto-pdfs').upload(path, f, { upsert: true, contentType: 'application/pdf' });
+        if (upErr) {
+          toast.error(`Falha ao anexar PDF no storage: ${upErr.message}. O relatório poderá ser gerado sem o cartão ponto anexado.`);
+        } else {
+          filePath = path;
+        }
       }
 
       // import row
@@ -437,6 +483,54 @@ export default function BhImportPage() {
               <li>Novos: {done.novos} • Substituídos/atualizados: {done.substituidos}</li>
               <li>Pendentes (não importados): {done.pendentes}</li>
             </ul>
+          </CardContent>
+        </Card>
+      )}
+
+      {missingImports.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Paperclip className="w-4 h-4" /> Importações sem PDF anexado ({missingImports.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-muted-foreground mb-3">
+              Estas importações foram salvas sem o cartão ponto no storage (upload falhou — provavelmente por caracteres especiais no nome do arquivo). Anexe o PDF original para que ele apareça no relatório exportado.
+            </p>
+            <input
+              ref={reattachInputRef}
+              type="file"
+              accept="application/pdf"
+              className="hidden"
+              onChange={(e) => e.target.files?.[0] && handleReattach(e.target.files[0])}
+            />
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead className="bg-muted">
+                  <tr>
+                    <th className="p-2 text-left">Empresa</th>
+                    <th className="p-2 text-left">Competência</th>
+                    <th className="p-2 text-left">Arquivo original</th>
+                    <th className="p-2"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {missingImports.map((m) => (
+                    <tr key={m.id} className="border-b">
+                      <td className="p-2">{m.empresa_nome}</td>
+                      <td className="p-2">{m.competencia ? m.competencia.slice(0, 7) : '—'}</td>
+                      <td className="p-2 text-muted-foreground">{m.file_name}</td>
+                      <td className="p-2 text-right">
+                        <Button size="sm" variant="outline" onClick={() => { setReattachId(m.id); setTimeout(() => reattachInputRef.current?.click(), 0); }}>
+                          <Paperclip className="w-3 h-3 mr-1" /> Anexar PDF
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </CardContent>
         </Card>
       )}
