@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { emptyProfile, type DPProfile, type ClienteDP } from '@/types/sucessoCliente';
 import { toast } from 'sonner';
 import ComboAdd from '@/components/sucessoCliente/ComboAdd';
+import SnapshotBar from '@/components/sucessoCliente/SnapshotBar';
 
 export default function PerfilTab({ cliente, onClienteSaved }: { cliente: ClienteDP; onClienteSaved: () => void }) {
   const { profile, upsert } = useDPProfile(cliente.id);
@@ -95,6 +96,7 @@ export default function PerfilTab({ cliente, onClienteSaved }: { cliente: Client
 
   return (
     <div className="space-y-4">
+      <SnapshotBar cliente={cli} profile={profile ?? form} onRestored={onClienteSaved}/>
       <Card>
         <CardHeader><CardTitle className="text-base">Identificação</CardTitle></CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-3">
