@@ -64,6 +64,38 @@ export default function BhImportPage() {
   const [clearing, setClearing] = useState(false);
   const [empresaLogo, setEmpresaLogo] = useState<string>('');
   const logoInputRef = useRef<HTMLInputElement>(null);
+  const [missingImports, setMissingImports] = useState<Array<{ id: string; empresa_nome: string; empresa_cnpj: string; competencia: string | null; file_name: string }>>([]);
+  const [reattachId, setReattachId] = useState<string | null>(null);
+  const reattachInputRef = useRef<HTMLInputElement>(null);
+
+  const loadMissing = async () => {
+    const { data } = await supabase
+      .from('bh_imports' as any)
+      .select('id, empresa_nome, empresa_cnpj, competencia, file_name')
+      .is('file_path', null)
+      .order('competencia', { ascending: false })
+      .limit(200);
+    setMissingImports((data as any) || []);
+  };
+  useEffect(() => { loadMissing(); }, []);
+
+  const handleReattach = async (file: File) => {
+    if (!reattachId) return;
+    try {
+      const safeName = sanitizeStoragePath(file.name);
+      const h = await hashFile(file);
+      const path = `${new Date().toISOString().slice(0, 10)}/${h}_${safeName}`;
+      const { error: upErr } = await supabase.storage.from('ponto-pdfs').upload(path, file, { upsert: true, contentType: 'application/pdf' });
+      if (upErr) { toast.error(`Falha no upload: ${upErr.message}`); return; }
+      const { error: updErr } = await supabase.from('bh_imports' as any).update({ file_path: path, file_hash: h } as any).eq('id', reattachId);
+      if (updErr) { toast.error(`Falha ao vincular: ${updErr.message}`); return; }
+      toast.success('PDF anexado à importação.');
+      setReattachId(null);
+      await loadMissing();
+    } catch (e: any) {
+      toast.error(`Erro: ${e?.message || e}`);
+    }
+  };
 
   const empresaCnpj = rows[0]?.empresa_cnpj || '';
   const empresaNome = rows[0]?.empresa_nome || '';
