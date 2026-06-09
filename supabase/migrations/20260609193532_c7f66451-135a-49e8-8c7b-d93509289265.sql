@@ -1,0 +1,1 @@
+ALTER TABLE public.avisos_envios_log ADD COLUMN IF NOT EXISTS department_id text NULL;

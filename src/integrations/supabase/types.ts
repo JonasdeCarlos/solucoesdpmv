@@ -473,6 +473,7 @@ export type Database = {
         Row: {
           aviso_id: string | null
           created_at: string
+          department_id: string | null
           empresa_id: string | null
           id: string
           payload_enviado: Json | null
@@ -484,6 +485,7 @@ export type Database = {
         Insert: {
           aviso_id?: string | null
           created_at?: string
+          department_id?: string | null
           empresa_id?: string | null
           id?: string
           payload_enviado?: Json | null
@@ -495,6 +497,7 @@ export type Database = {
         Update: {
           aviso_id?: string | null
           created_at?: string
+          department_id?: string | null
           empresa_id?: string | null
           id?: string
           payload_enviado?: Json | null
