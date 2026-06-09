@@ -49,6 +49,9 @@ export interface DPProfile {
   sst_contato_nome: string;
   sst_contato_telefone: string;
   sst_contato_email: string;
+  admissao_modelo_contrato: string;
+  admissao_caminho_dominio: string;
+  admissao_clausulas_especificas: string;
 }
 
 export function emptyProfile(client_id: string): DPProfile {
@@ -82,6 +85,9 @@ export function emptyProfile(client_id: string): DPProfile {
     sst_contato_nome: '',
     sst_contato_telefone: '',
     sst_contato_email: '',
+    admissao_modelo_contrato: '',
+    admissao_caminho_dominio: '',
+    admissao_clausulas_especificas: '',
   };
 }
 
