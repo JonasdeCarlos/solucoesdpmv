@@ -16,6 +16,7 @@ import ChecklistTab from '@/components/sucessoCliente/tabs/ChecklistTab';
 import MensagensTab from '@/components/sucessoCliente/tabs/MensagensTab';
 import CalendarioTab from '@/components/sucessoCliente/tabs/CalendarioTab';
 import RiscosTab from '@/components/sucessoCliente/tabs/RiscosTab';
+import AdmissoesTab from '@/components/sucessoCliente/tabs/AdmissoesTab';
 import { generatePerfilPdf, loadBranding } from '@/utils/sucessoCliente/perfilPdf';
 import { toast } from 'sonner';
 
@@ -93,6 +94,7 @@ export default function SucessoClienteProfilePage() {
           <TabsTrigger value="diario">Diário</TabsTrigger>
           <TabsTrigger value="cct">CCT</TabsTrigger>
           <TabsTrigger value="rubricas">Rubricas</TabsTrigger>
+          <TabsTrigger value="admissoes">Admissões</TabsTrigger>
           <TabsTrigger value="checklist">Checklist</TabsTrigger>
           <TabsTrigger value="mensagens">Mensagens</TabsTrigger>
           <TabsTrigger value="calendario">Calendário</TabsTrigger>
@@ -103,6 +105,7 @@ export default function SucessoClienteProfilePage() {
         <TabsContent value="diario"><DiarioTab client_id={cliente.id}/></TabsContent>
         <TabsContent value="cct"><CCTTab client_id={cliente.id}/></TabsContent>
         <TabsContent value="rubricas"><RubricasTab client_id={cliente.id}/></TabsContent>
+        <TabsContent value="admissoes"><AdmissoesTab client_id={cliente.id}/></TabsContent>
         <TabsContent value="checklist"><ChecklistTab client_id={cliente.id}/></TabsContent>
         <TabsContent value="mensagens"><MensagensTab client_id={cliente.id} clienteNome={cliente.nome}/></TabsContent>
         <TabsContent value="calendario"><CalendarioTab client_id={cliente.id}/></TabsContent>
