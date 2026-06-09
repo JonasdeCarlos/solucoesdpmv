@@ -21,36 +21,52 @@ async function transferirTicket(
   ticketId: string,
   userId: string,
   departmentId: string,
+  contactId: string | null,
 ): Promise<{ ok: boolean; endpointUsado?: string; detalhe?: unknown }> {
-  // Tentativa 1: POST /api/v1/tickets/{id}/transfer
-  try {
-    const r1 = await fetch(`${baseUrl}/api/v1/tickets/${ticketId}/transfer`, {
+  // A API pública do Digisac expõe as ações de ticket via /contacts/{contactId}/ticket/...
+  // (mesmo padrão de /contacts/{contactId}/ticket/close documentado no Postman público).
+  // As rotas /tickets/{id}/... retornam 404 NotFoundHttpError.
+  const tentativas: { label: string; method: string; url: string; body: unknown }[] = [];
+  if (contactId) {
+    tentativas.push({
+      label: 'contacts/{contactId}/ticket/transfer',
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, departmentId, comments: 'Atribuição automática via app (aviso)' }),
-      signal: AbortSignal.timeout(15000),
+      url: `${baseUrl}/api/v1/contacts/${contactId}/ticket/transfer`,
+      body: { userId, departmentId, comments: 'Atribuição automática via app (aviso)' },
     });
-    const text = await r1.text();
-    if (r1.ok) return { ok: true, endpointUsado: 'tickets/{id}/transfer', detalhe: tryJson(text) };
-    console.warn('[transferirTicket] Tentativa 1 falhou:', r1.status, text);
-  } catch (e) {
-    console.warn('[transferirTicket] Tentativa 1 erro:', e);
-  }
-  // Tentativa 2: PATCH /api/v1/tickets/{id}
-  try {
-    const r2 = await fetch(`${baseUrl}/api/v1/tickets/${ticketId}`, {
-      method: 'PATCH',
-      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, departmentId }),
-      signal: AbortSignal.timeout(15000),
+    tentativas.push({
+      label: 'contacts/{contactId}/ticket (PUT)',
+      method: 'PUT',
+      url: `${baseUrl}/api/v1/contacts/${contactId}/ticket`,
+      body: { userId, departmentId },
     });
-    const text = await r2.text();
-    if (r2.ok) return { ok: true, endpointUsado: 'PATCH tickets/{id}', detalhe: tryJson(text) };
-    console.warn('[transferirTicket] Tentativa 2 falhou:', r2.status, text);
-    return { ok: false, detalhe: { status: r2.status, body: tryJson(text) } };
-  } catch (e) {
-    return { ok: false, detalhe: { erro: String(e) } };
   }
+  // Último recurso: rotas /tickets/{id}/... (caso o tenant exponha esse formato).
+  tentativas.push({
+    label: 'tickets/{id}/transfer',
+    method: 'POST',
+    url: `${baseUrl}/api/v1/tickets/${ticketId}/transfer`,
+    body: { userId, departmentId, comments: 'Atribuição automática via app (aviso)' },
+  });
+  let ultimoDetalhe: unknown = null;
+  for (const t of tentativas) {
+    try {
+      const r = await fetch(t.url, {
+        method: t.method,
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(t.body),
+        signal: AbortSignal.timeout(15000),
+      });
+      const text = await r.text();
+      if (r.ok) return { ok: true, endpointUsado: t.label, detalhe: tryJson(text) };
+      console.warn('[transferirTicket] tentativa falhou', t.label, r.status, text);
+      ultimoDetalhe = { tentativa: t.label, status: r.status, body: tryJson(text) };
+    } catch (e) {
+      console.warn('[transferirTicket] tentativa erro', t.label, e);
+      ultimoDetalhe = { tentativa: t.label, erro: String(e) };
+    }
+  }
+  return { ok: false, detalhe: ultimoDetalhe };
 }
 
 Deno.serve(async (req) => {
@@ -179,7 +195,12 @@ Deno.serve(async (req) => {
     let transferDetalhe: { ok: boolean; endpointUsado?: string; detalhe?: unknown } | null = null;
     const gestorId = (empresa as any).gestor_digisac_user_id as string | null | undefined;
     if (resp?.ok && ticketId && gestorId) {
-      transferDetalhe = await transferirTicket(BASE_URL, TOKEN, ticketId, gestorId, DEPARTMENT_ID);
+      const contactIdParaTransfer = (empresa as any).digisac_contact_id
+        ?? (data && typeof data === 'object' ? ((data as any).contactId ?? (data as any)?.message?.contactId ?? (data as any)?.contact?.id) : null);
+      transferDetalhe = await transferirTicket(
+        BASE_URL, TOKEN, ticketId, gestorId, DEPARTMENT_ID,
+        contactIdParaTransfer ? String(contactIdParaTransfer) : null,
+      );
       transferOk = transferDetalhe.ok;
     }
 
