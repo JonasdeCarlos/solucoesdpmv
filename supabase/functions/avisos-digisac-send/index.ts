@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
 
     const { data: empresa, error: errEmpresa } = await supabase
       .from('aviso_empresas')
-      .select('id, name, whatsapp, whatsapp_numeros, digisac_contact_id')
+      .select('id, name, whatsapp, whatsapp_numeros, digisac_contact_id, gestor_digisac_user_id')
       .eq('id', empresa_id)
       .maybeSingle();
 
@@ -70,6 +70,10 @@ Deno.serve(async (req) => {
         // Abre ticket no Departamento Pessoal para que respostas do cliente caiam direto na fila correta.
         text: mensagem, serviceId: SERVICE_ID, departmentId: DEPARTMENT_ID, origin: 'bot',
       };
+      // Quando há gestor cadastrado, abre o ticket já atribuído ao atendente — evita o BOT MV interceptar.
+      if ((empresa as any).gestor_digisac_user_id) {
+        payload.userId = (empresa as any).gestor_digisac_user_id;
+      }
       if (dest.kind === 'contact') payload.contactId = dest.contactId;
       else payload.number = dest.number;
 
@@ -92,6 +96,7 @@ Deno.serve(async (req) => {
         await supabase.from('avisos_envios_log').insert({
           empresa_id, aviso_id: aviso_id ?? null, tipo_aviso,
           department_id: DEPARTMENT_ID,
+          gestor_user_id: (empresa as any).gestor_digisac_user_id ?? null,
           payload_enviado: payload, response_status: resp.status,
           response_body: trimmed, sucesso: resp.ok,
         });
@@ -110,6 +115,7 @@ Deno.serve(async (req) => {
         await supabase.from('avisos_envios_log').insert({
           empresa_id, aviso_id: aviso_id ?? null, tipo_aviso,
           department_id: DEPARTMENT_ID,
+          gestor_user_id: (empresa as any).gestor_digisac_user_id ?? null,
           payload_enviado: payload, response_status: 0,
           response_body: { error: aborted ? 'timeout_local' : (e as Error)?.message, took },
           sucesso: false,
