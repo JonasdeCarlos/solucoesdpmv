@@ -204,7 +204,20 @@ export default function PerfilTab({ cliente, onClienteSaved }: { cliente: Client
                     </SelectContent>
                   </Select>
                 </div>
-                <div><Label>URL de acesso</Label><Input value={form.timeclock_url} onChange={(e)=>set('timeclock_url', e.target.value)}/></div>
+                <div>
+                  <Label>URL de acesso</Label>
+                  <Input value={form.timeclock_url} onChange={(e)=>set('timeclock_url', e.target.value)}/>
+                  {form.timeclock_url && (
+                    <a
+                      href={/^https?:\/\//i.test(form.timeclock_url) ? form.timeclock_url : `https://${form.timeclock_url}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-primary underline mt-1 inline-block break-all"
+                    >
+                      Abrir: {form.timeclock_url}
+                    </a>
+                  )}
+                </div>
                 <div><Label>Usuário</Label><Input value={form.timeclock_user} onChange={(e)=>set('timeclock_user', e.target.value)}/></div>
                 <div>
                   <Label>Senha {!isAdmin && <span className="text-xs text-muted-foreground">(somente admin)</span>}</Label>
