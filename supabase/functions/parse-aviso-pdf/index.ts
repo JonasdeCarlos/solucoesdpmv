@@ -176,10 +176,16 @@ function parseAvisosFromText(text: string): ParsedPdf {
     addRowsFromChunk(company, block[4] || '');
   }
 
-  const cnpjFirstBlockRegex = /([\d./-]{14,18})\s*CNPJ:\s*Empresa:\s*(\d+)\s*-\s*(.+?)(.*?)(?=\s+[\d./-]{14,18}\s*CNPJ:\s*Empresa:|$)/giu;
+  const cnpjFirstBlockRegex = /([\d./-]{14,18})\s*CNPJ:\s*Empresa:\s*(\d+)\s*-\s*(.*?)(?=\s+[\d./-]{14,18}\s*CNPJ:\s*Empresa:|$)/giu;
+  const firstRowRegex = new RegExp(String.raw`\s\d{1,8}\s+.{3,120}?\s+${MOTIVO_ROW_PATTERN}\s+\d{2}\/\d{2}\/\d{4}`, 'iu');
   for (const block of blockText.matchAll(cnpjFirstBlockRegex)) {
-    const company = getCompany(block[2], block[3], block[1]);
-    addRowsFromChunk(company, block[4] || '');
+    const body = (block[3] || '').replace(/\s+/g, ' ').trim();
+    const rowStart = body.search(firstRowRegex);
+    if (rowStart < 0) continue;
+    const companyName = body.slice(0, rowStart).trim();
+    const rowsText = body.slice(rowStart).trim();
+    const company = getCompany(block[2], companyName, block[1]);
+    addRowsFromChunk(company, rowsText);
   }
 
   if (countRows(parsed) > 0) {
