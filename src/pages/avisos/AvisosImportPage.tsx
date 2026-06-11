@@ -92,7 +92,17 @@ const AvisosImportPage = () => {
 
       setStage('Extraindo dados com IA...');
       const { data, error } = await supabase.functions.invoke('parse-aviso-pdf', { body: { file_path: path } });
-      if (error) throw new Error(error.message);
+      if (error) {
+        let msg = error.message;
+        const ctx = (error as any).context;
+        if (ctx?.clone && ctx?.json) {
+          try {
+            const body = await ctx.clone().json();
+            msg = body?.error || body?.message || msg;
+          } catch { /* mantém mensagem original */ }
+        }
+        throw new Error(msg);
+      }
       if ((data as any)?.error) throw new Error((data as any).error);
       const parsed = data as ParsedPdf;
 

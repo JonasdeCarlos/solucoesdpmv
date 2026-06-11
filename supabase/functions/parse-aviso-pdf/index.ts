@@ -1,3 +1,5 @@
+import { extractText, getDocumentProxy } from 'npm:unpdf@0.12.1';
+
 // Extrai dados estruturados de PDFs de "Relação de Vencimentos" usando Lovable AI.
 // Recebe { file_path } no bucket 'aviso-pdfs', retorna { emission_date, emission_time, empresas:[...] }.
 
@@ -75,6 +77,163 @@ const TOOL = {
   },
 };
 
+type ParsedPdf = {
+  emission_date?: string;
+  emission_time?: string;
+  empresas: Array<{
+    code: string;
+    name: string;
+    cnpj: string;
+    linhas: Array<{ employee_code: string; employee_name: string; motivo: string; vencimento_raw: string }>;
+  }>;
+};
+
+const normalize = (s: string) => (s || '')
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .replace(/\s+/g, ' ')
+  .trim()
+  .toUpperCase();
+
+const toBase64 = (buf: Uint8Array) => {
+  let bin = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < buf.length; i += chunk) {
+    bin += String.fromCharCode(...buf.subarray(i, i + chunk));
+  }
+  return btoa(bin);
+};
+
+const MOTIVO_ROW_PATTERN = String.raw`(?:CONTRATO\s+(?:DE\s+)?EXPERI[ÊE]NCIA(?:\s+PRORROG[A-ZÀ-ÿ\s.]*)?|EXPERI[ÊE]NCIA(?:\s+PRORROG[A-ZÀ-ÿ\s.]*)?|AVISO\s+PR[ÉE]VIO(?:\s+DE\s+RESCIS[AÃ]O)?|MONITORAMENTO\s+DE\s+SA[ÚU]DE\s*-?\s*(?:ADMISSIONAL|PERI[ÓO]DICO)|VENCIMENTO\s+DE\s+2[ºO]?\s*F[ÉE]RIAS|RETORNO\s+DE\s+AFASTAMENTO\s+DE\s+DOEN[ÇC]A|PROGRAMA[CÇ][AÃ]O\s+DE\s+F[ÉE]RIAS|ENVIO\s+RESCIS[AÃ]O\s+ESOCIAL)`;
+
+function addRowsFromChunk(company: ParsedPdf['empresas'][number], chunkText: string) {
+  const clean = chunkText
+    .replace(/\s+/g, ' ')
+    .replace(/\b(?:Código|Codigo)\s+Funcion[áa]rio\s+Motivo\s+Vencimento\s+Limite\b/gi, ' ')
+    .trim();
+  const rowRegex = new RegExp(
+    String.raw`(?:^|\s)(\d{1,8})\s+(.{3,120}?)\s+(${MOTIVO_ROW_PATTERN})\s+(\d{2}\/\d{2}\/\d{4}(?:\s*-\s*Limite\s*\d{2}\/\d{2}\/\d{4})?)`,
+    'giu',
+  );
+  for (const match of clean.matchAll(rowRegex)) {
+    const employeeName = match[2].replace(/\s+/g, ' ').trim();
+    const motivo = match[3].replace(/\s+/g, ' ').trim();
+    if (!employeeName || normalize(employeeName).includes('RELACAO DE VENCIMENTOS')) continue;
+    company.linhas.push({
+      employee_code: match[1].trim(),
+      employee_name: employeeName,
+      motivo,
+      vencimento_raw: match[4].replace(/\s+/g, ' ').trim(),
+    });
+  }
+}
+
+function splitNameAndMotivo(rest: string): { employee_name: string; motivo: string } | null {
+  const patterns = [
+    /^(.*?)\s+((?:CONTRATO\s+(?:DE\s+)?)?EXPERI[ÊE]NCIA(?:\s+.*)?)$/i,
+    /^(.*?)\s+(AVISO\s+PR[ÉE]VIO(?:\s+.*)?)$/i,
+    /^(.*?)\s+(MONITORAMENTO(?:\s+.*)?)$/i,
+    /^(.*?)\s+(VENCIMENTO(?:\s+.*?F[ÉE]RIAS.*)?)$/i,
+    /^(.*?)\s+(RETORNO(?:\s+.*?AFAST.*)?)$/i,
+    /^(.*?)\s+(PROGRAMA[CÇ][AÃ]O(?:\s+.*?F[ÉE]RIAS.*)?)$/i,
+    /^(.*?)\s+(ENVIO(?:\s+.*?ESOCIAL.*)?)$/i,
+  ];
+  for (const pattern of patterns) {
+    const m = rest.match(pattern);
+    if (m?.[1]?.trim() && m?.[2]?.trim()) {
+      return { employee_name: m[1].trim(), motivo: m[2].trim() };
+    }
+  }
+  return null;
+}
+
+function parseAvisosFromText(text: string): ParsedPdf {
+  const parsed: ParsedPdf = { empresas: [] };
+  const byKey = new Map<string, ParsedPdf['empresas'][number]>();
+  const emission = text.match(/(?:Emiss[aã]o|Emitido\s+em|Data\s+(?:de\s+)?emiss[aã]o)\D*(\d{2}\/\d{2}\/\d{4})(?:\D+(\d{2}:\d{2}(?::\d{2})?))?/i);
+  if (emission?.[1]) parsed.emission_date = emission[1];
+  if (emission?.[2]) parsed.emission_time = emission[2];
+
+  let pendingCompany: { code: string; name: string } | null = null;
+  let current: ParsedPdf['empresas'][number] | null = null;
+
+  const getCompany = (code: string, name: string, cnpj: string) => {
+    const cnpjDigits = cnpj.replace(/\D/g, '');
+    const key = `${code}|${cnpjDigits || normalize(name)}`;
+    let company = byKey.get(key);
+    if (!company) {
+      company = { code: code.trim(), name: name.trim(), cnpj: cnpj.trim(), linhas: [] };
+      byKey.set(key, company);
+      parsed.empresas.push(company);
+    }
+    return company;
+  };
+
+  const blockText = text.replace(/\r/g, '\n').replace(/\s+/g, ' ');
+  const blockRegex = /Empresa:\s*(\d+)\s*-\s*(.+?)\s+CNPJ:\s*([\d./-]{14,18})(.*?)(?=\s+Empresa:\s*\d+\s*-|$)/giu;
+  for (const block of blockText.matchAll(blockRegex)) {
+    const company = getCompany(block[1], block[2], block[3]);
+    addRowsFromChunk(company, block[4] || '');
+  }
+
+  const cnpjFirstBlockRegex = /([\d./-]{14,18})\s*CNPJ:\s*Empresa:\s*(\d+)\s*-\s*(.+?)(.*?)(?=\s+[\d./-]{14,18}\s*CNPJ:\s*Empresa:|$)/giu;
+  for (const block of blockText.matchAll(cnpjFirstBlockRegex)) {
+    const company = getCompany(block[2], block[3], block[1]);
+    addRowsFromChunk(company, block[4] || '');
+  }
+
+  if (countRows(parsed) > 0) {
+    parsed.empresas = parsed.empresas.filter((empresa) => empresa.linhas.length > 0);
+    return parsed;
+  }
+
+  const normalizedText = text
+    .replace(/\r/g, '\n')
+    .replace(/\s+(Empresa:\s*\d+\s*-)/gi, '\n$1')
+    .replace(/\s+(CNPJ:\s*\d{2}[.\d/-]+)/gi, '\n$1');
+  const lines = normalizedText.split('\n').map((line) => line.replace(/\s+/g, ' ').trim()).filter(Boolean);
+
+  for (const line of lines) {
+    const n = normalize(line);
+    if (/^(RELACAO DE VENCIMENTOS|PAGINA\s+\d+|CODIGO\s+FUNCIONARIO|FUNCIONARIO\s+MOTIVO|[-_]{4,})/.test(n)) continue;
+
+    const emp = line.match(/Empresa:\s*(\d+)\s*-\s*(.+?)(?:\s+CNPJ:|$)/i);
+    if (emp) {
+      pendingCompany = { code: emp[1], name: emp[2].trim() };
+      const cnpjInline = line.match(/CNPJ:\s*([\d./-]{14,18})/i);
+      if (cnpjInline) current = getCompany(pendingCompany.code, pendingCompany.name, cnpjInline[1]);
+      continue;
+    }
+
+    const cnpj = line.match(/CNPJ:\s*([\d./-]{14,18})/i);
+    if (cnpj && pendingCompany) {
+      current = getCompany(pendingCompany.code, pendingCompany.name, cnpj[1]);
+      continue;
+    }
+
+    if (!current || !/\d{2}\/\d{2}\/\d{4}/.test(line)) continue;
+    const vencMatch = line.match(/\d{2}\/\d{2}\/\d{4}(?:\s*-\s*Limite\s*\d{2}\/\d{2}\/\d{4})?/i);
+    if (!vencMatch || vencMatch.index == null) continue;
+
+    const beforeDate = line.slice(0, vencMatch.index).trim();
+    const rowMatch = beforeDate.match(/^(\d{1,8})\s+(.+)$/);
+    if (!rowMatch) continue;
+    const split = splitNameAndMotivo(rowMatch[2].trim());
+    if (!split) continue;
+    current.linhas.push({
+      employee_code: rowMatch[1].trim(),
+      employee_name: split.employee_name,
+      motivo: split.motivo,
+      vencimento_raw: vencMatch[0].replace(/\s+/g, ' ').trim(),
+    });
+  }
+
+  parsed.empresas = parsed.empresas.filter((empresa) => empresa.linhas.length > 0);
+  return parsed;
+}
+
+const countRows = (parsed: ParsedPdf) => parsed.empresas.reduce((total, empresa) => total + empresa.linhas.length, 0);
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   try {
@@ -91,9 +250,24 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: `Falha ao baixar PDF: ${dl.status}` }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
     const buf = new Uint8Array(await dl.arrayBuffer());
-    let bin = '';
-    for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
-    const b64 = btoa(bin);
+    let extractedText = '';
+    try {
+      const pdf = await getDocumentProxy(buf);
+      const { text: pages } = await extractText(pdf, { mergePages: false });
+      const arr = Array.isArray(pages) ? pages : [pages as string];
+      extractedText = arr.join('\n');
+    } catch (e) {
+      console.warn('unpdf failed, will use PDF vision fallback', e);
+    }
+
+    const localParsed = extractedText ? parseAvisosFromText(extractedText) : { empresas: [] } as ParsedPdf;
+    const localRows = countRows(localParsed);
+    if (localRows > 0) {
+      console.log(`parse-aviso-pdf parsed locally: ${localParsed.empresas.length} empresas, ${localRows} linhas`);
+      return new Response(JSON.stringify({ ...localParsed, extraction_method: 'text_local' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    const b64 = toBase64(buf);
 
     const buildBody = (model: string) => JSON.stringify({
       model,
@@ -101,22 +275,30 @@ Deno.serve(async (req) => {
         { role: 'system', content: SYSTEM_PROMPT },
         {
           role: 'user',
-          content: [
-            { type: 'text', text: 'Extraia todas as empresas e avisos deste PDF e chame a função submit_avisos.' },
-            { type: 'file', file: { filename: 'relacao.pdf', file_data: `data:application/pdf;base64,${b64}` } },
-          ],
+          content: extractedText && extractedText.length > 500
+            ? `Extraia todas as empresas e avisos do texto abaixo e chame a função submit_avisos.\n\nTEXTO DO PDF:\n${extractedText.slice(0, 120000)}`
+            : [
+              { type: 'text', text: 'Extraia todas as empresas e avisos deste PDF e chame a função submit_avisos.' },
+              { type: 'file', file: { filename: 'relacao.pdf', file_data: `data:application/pdf;base64,${b64}` } },
+            ],
         },
       ],
       tools: [TOOL],
       tool_choice: { type: 'function', function: { name: 'submit_avisos' } },
     });
-    // Tenta gemini-2.5-flash; em 502/503/504/429 cai para gemini-2.5-pro como fallback.
-    // Cada tentativa tem timeout de 60s para evitar load eterno.
-    const attempts: Array<{ model: string; delayMs: number }> = [
-      { model: 'google/gemini-2.5-flash', delayMs: 0 },
-      { model: 'google/gemini-2.5-flash', delayMs: 2000 },
-      { model: 'google/gemini-2.5-pro', delayMs: 0 },
-    ];
+    // Preferimos modelos mais novos e texto extraído para reduzir falhas do upstream multimodal.
+    // Cada tentativa tem timeout de 35s para evitar load eterno.
+    const attempts: Array<{ model: string; delayMs: number }> = extractedText && extractedText.length > 500
+      ? [
+        { model: 'google/gemini-3-flash-preview', delayMs: 0 },
+        { model: 'google/gemini-3.1-flash-lite-preview', delayMs: 1200 },
+        { model: 'openai/gpt-5-mini', delayMs: 1200 },
+      ]
+      : [
+        { model: 'google/gemini-3-flash-preview', delayMs: 0 },
+        { model: 'google/gemini-2.5-flash', delayMs: 1200 },
+        { model: 'google/gemini-2.5-pro', delayMs: 1200 },
+      ];
     let aiResp: Response | null = null;
     let lastErrText = '';
     let lastStatus = 0;
@@ -124,11 +306,11 @@ Deno.serve(async (req) => {
       const { model, delayMs } = attempts[i];
       if (delayMs > 0) await new Promise((r) => setTimeout(r, delayMs));
       const ctrl = new AbortController();
-      const to = setTimeout(() => ctrl.abort(), 60_000);
+      const to = setTimeout(() => ctrl.abort(), 35_000);
       try {
         aiResp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
           method: 'POST',
-          headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
+          headers: { 'Lovable-API-Key': LOVABLE_API_KEY, 'Content-Type': 'application/json' },
           body: buildBody(model),
           signal: ctrl.signal,
         });
