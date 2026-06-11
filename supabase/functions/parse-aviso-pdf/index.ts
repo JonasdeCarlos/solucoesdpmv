@@ -95,8 +95,8 @@ Deno.serve(async (req) => {
     for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
     const b64 = btoa(bin);
 
-    const body = JSON.stringify({
-      model: 'google/gemini-2.5-flash',
+    const buildBody = (model: string) => JSON.stringify({
+      model,
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         {
@@ -110,27 +110,49 @@ Deno.serve(async (req) => {
       tools: [TOOL],
       tool_choice: { type: 'function', function: { name: 'submit_avisos' } },
     });
-    // Retry com backoff exponencial em 503/429/502/504 (upstream transitório)
+    // Tenta gemini-2.5-flash; em 502/503/504/429 cai para gemini-2.5-pro como fallback.
+    // Cada tentativa tem timeout de 60s para evitar load eterno.
+    const attempts: Array<{ model: string; delayMs: number }> = [
+      { model: 'google/gemini-2.5-flash', delayMs: 0 },
+      { model: 'google/gemini-2.5-flash', delayMs: 2000 },
+      { model: 'google/gemini-2.5-pro', delayMs: 0 },
+    ];
     let aiResp: Response | null = null;
     let lastErrText = '';
-    const delays = [0, 1500, 4000, 8000];
-    for (let i = 0; i < delays.length; i++) {
-      if (delays[i] > 0) await new Promise((r) => setTimeout(r, delays[i]));
-      aiResp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
-        body,
-      });
+    let lastStatus = 0;
+    for (let i = 0; i < attempts.length; i++) {
+      const { model, delayMs } = attempts[i];
+      if (delayMs > 0) await new Promise((r) => setTimeout(r, delayMs));
+      const ctrl = new AbortController();
+      const to = setTimeout(() => ctrl.abort(), 60_000);
+      try {
+        aiResp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
+          body: buildBody(model),
+          signal: ctrl.signal,
+        });
+      } catch (err) {
+        lastErrText = err instanceof Error ? err.message : String(err);
+        lastStatus = 504;
+        console.warn(`AI gateway tentativa ${i + 1} (${model}) falhou: ${lastErrText}`);
+        aiResp = null;
+        continue;
+      } finally {
+        clearTimeout(to);
+      }
       if (aiResp.ok) break;
+      lastStatus = aiResp.status;
       if (![502, 503, 504, 429].includes(aiResp.status)) break;
       lastErrText = await aiResp.text().catch(() => '');
-      console.warn(`AI gateway ${aiResp.status} tentativa ${i + 1}: ${lastErrText.slice(0, 200)}`);
+      console.warn(`AI gateway ${aiResp.status} tentativa ${i + 1} (${model}): ${lastErrText.slice(0, 200)}`);
+      aiResp = null;
     }
 
     if (!aiResp || !aiResp.ok) {
       const txt = aiResp ? await aiResp.text().catch(() => lastErrText) : lastErrText;
-      const status = aiResp?.status ?? 503;
-      console.error('AI error', aiResp.status, txt);
+      const status = aiResp?.status ?? lastStatus ?? 503;
+      console.error('AI error', status, txt);
       const userMsg = status === 503 || status === 502 || status === 504
         ? 'O serviço de IA está temporariamente indisponível. Aguarde alguns minutos e tente novamente.'
         : status === 429
