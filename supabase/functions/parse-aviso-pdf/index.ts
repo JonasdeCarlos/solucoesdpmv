@@ -95,31 +95,51 @@ Deno.serve(async (req) => {
     for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
     const b64 = btoa(bin);
 
-    const aiResp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: 'Extraia todas as empresas e avisos deste PDF e chame a função submit_avisos.' },
-              { type: 'file', file: { filename: 'relacao.pdf', file_data: `data:application/pdf;base64,${b64}` } },
-            ],
-          },
-        ],
-        tools: [TOOL],
-        tool_choice: { type: 'function', function: { name: 'submit_avisos' } },
-      }),
+    const body = JSON.stringify({
+      model: 'google/gemini-2.5-flash',
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: 'Extraia todas as empresas e avisos deste PDF e chame a função submit_avisos.' },
+            { type: 'file', file: { filename: 'relacao.pdf', file_data: `data:application/pdf;base64,${b64}` } },
+          ],
+        },
+      ],
+      tools: [TOOL],
+      tool_choice: { type: 'function', function: { name: 'submit_avisos' } },
     });
+    // Retry com backoff exponencial em 503/429/502/504 (upstream transitório)
+    let aiResp: Response | null = null;
+    let lastErrText = '';
+    const delays = [0, 1500, 4000, 8000];
+    for (let i = 0; i < delays.length; i++) {
+      if (delays[i] > 0) await new Promise((r) => setTimeout(r, delays[i]));
+      aiResp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
+        body,
+      });
+      if (aiResp.ok) break;
+      if (![502, 503, 504, 429].includes(aiResp.status)) break;
+      lastErrText = await aiResp.text().catch(() => '');
+      console.warn(`AI gateway ${aiResp.status} tentativa ${i + 1}: ${lastErrText.slice(0, 200)}`);
+    }
 
-    if (!aiResp.ok) {
-      const txt = await aiResp.text();
+    if (!aiResp || !aiResp.ok) {
+      const txt = aiResp ? await aiResp.text().catch(() => lastErrText) : lastErrText;
+      const status = aiResp?.status ?? 503;
       console.error('AI error', aiResp.status, txt);
-      const status = aiResp.status === 429 || aiResp.status === 402 ? aiResp.status : 500;
-      return new Response(JSON.stringify({ error: `AI gateway: ${aiResp.status}`, detail: txt }), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      const userMsg = status === 503 || status === 502 || status === 504
+        ? 'O serviço de IA está temporariamente indisponível. Aguarde alguns minutos e tente novamente.'
+        : status === 429
+          ? 'Limite de requisições da IA atingido. Aguarde alguns segundos e tente novamente.'
+          : status === 402
+            ? 'Créditos de IA esgotados. Adicione créditos para continuar.'
+            : `Falha no serviço de IA (${status}).`;
+      const respStatus = status === 402 || status === 429 ? status : 503;
+      return new Response(JSON.stringify({ error: userMsg, detail: txt, upstream_status: status }), { status: respStatus, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
     const aiJson = await aiResp.json();
     const tc = aiJson.choices?.[0]?.message?.tool_calls?.[0];
