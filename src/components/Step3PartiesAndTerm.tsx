@@ -290,11 +290,23 @@ ${data.empregadoNome || '[NOME DO EMPREGADO]'}`;
         lines.push(`${itemNum}) FGTS DO PERÍODO (informado manualmente)`);
         lines.push(`   Valor informado: ${formatCurrency(step2.fgtsManual)}`);
       } else {
-        const decimo = sal * (step2.meses13Proporcional / 12);
+        const decimoFormula = sal * (step2.meses13Proporcional / 12);
+        const decimoEdit = valorVerba('13_proporcional') || decimoFormula;
+        const saldoEdit = valorVerba('saldo_salario');
         const fgtsDetail = calcularFgtsDetalhado(
           sal, step1.dataAdmissao, step1.dataDesligamento,
-          decimo, step2.incluir13AnosAnteriores, step2.diasTrabalhadosMes
+          decimoEdit, step2.incluir13AnosAnteriores, step2.diasTrabalhadosMes
         );
+
+        // Aplica o saldo de salário editado no último mês (mês do desligamento)
+        let baseSalarialAjustada = fgtsDetail.baseSalarial;
+        if (fgtsDetail.meses.length > 0 && saldoEdit > 0) {
+          const ultimo = fgtsDetail.meses[fgtsDetail.meses.length - 1];
+          baseSalarialAjustada = baseSalarialAjustada - ultimo.valorBase + saldoEdit;
+          ultimo.valorBase = Math.round(saldoEdit * 100) / 100;
+        }
+        const baseTotalAjustada = baseSalarialAjustada + decimoEdit + fgtsDetail.base13Anterior;
+        const fgtsTotalAjustado = Math.round(baseTotalAjustada * 0.08 * 100) / 100;
 
         lines.push('');
         lines.push(`${itemNum}) FGTS DO PERÍODO — DETALHAMENTO MÊS A MÊS`);
@@ -306,21 +318,25 @@ ${data.empregadoNome || '[NOME DO EMPREGADO]'}`;
           lines.push(`   ${m.mes.padEnd(12)} | ${String(m.diasTrabalhados).padStart(4)} | ${formatCurrency(m.valorBase)}`);
         });
         lines.push('   ' + '-'.repeat(42));
-        lines.push(`   Subtotal salarial: ${formatCurrency(fgtsDetail.baseSalarial)}`);
-        lines.push(`   + 13º proporcional: ${formatCurrency(fgtsDetail.baseDecimo)}`);
+        lines.push(`   Subtotal salarial: ${formatCurrency(baseSalarialAjustada)}`);
+        lines.push(`   + 13º proporcional: ${formatCurrency(decimoEdit)}`);
         if (fgtsDetail.base13Anterior > 0) {
           lines.push(`   + 13º anos anteriores: ${formatCurrency(fgtsDetail.base13Anterior)}`);
         }
-        lines.push(`   Base total FGTS: ${formatCurrency(fgtsDetail.baseTotal)}`);
-        lines.push(`   FGTS = 8% × ${formatCurrency(fgtsDetail.baseTotal)} = ${formatCurrency(fgtsDetail.fgtsTotal)}`);
+        lines.push(`   Base total FGTS: ${formatCurrency(baseTotalAjustada)}`);
+        lines.push(`   FGTS = 8% × ${formatCurrency(baseTotalAjustada)} = ${formatCurrency(fgtsTotalAjustado)}`);
+        const fgtsAtual = valorVerba('fgts');
+        if (Math.abs(fgtsAtual - fgtsTotalAjustado) > 0.01) {
+          lines.push(`   ⚠ Valor ajustado manualmente: ${formatCurrency(fgtsAtual)}`);
+        }
 
         if (step1.calculaMultaFGTS && step1.percentualMultaFGTS > 0 && verbaAtiva('multa_fgts')) {
-          const multa = fgtsDetail.fgtsTotal * (step1.percentualMultaFGTS / 100);
+          const multa = valorVerba('multa_fgts');
           itemNum++;
           lines.push('');
           lines.push(`${itemNum}) MULTA FGTS`);
-          lines.push(`   Fórmula: ${step1.percentualMultaFGTS}% × FGTS total`);
-          lines.push(`   ${step1.percentualMultaFGTS}% × ${formatCurrency(fgtsDetail.fgtsTotal)} = ${formatCurrency(multa)}`);
+          lines.push(`   Fórmula: ${step1.percentualMultaFGTS}% × (FGTS + FGTS aviso + FGTS verbas adicionais)`);
+          lines.push(`   = ${formatCurrency(multa)}`);
         }
       }
       itemNum++;
