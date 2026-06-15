@@ -1055,6 +1055,7 @@ export type Database = {
           created_by: string | null
           digisac_contact_id: string | null
           digisac_contact_name: string | null
+          govbr_duas_etapas: boolean
           has_timeclock: boolean | null
           has_variables: boolean | null
           id: string
@@ -1064,6 +1065,8 @@ export type Database = {
           preview_channel: string | null
           preview_deadline_day: number | null
           preview_rules: string | null
+          procuracao_conectividade: boolean
+          procuracao_govbr: boolean
           sla_hours: number | null
           sst_contato_email: string
           sst_contato_nome: string
@@ -1094,6 +1097,7 @@ export type Database = {
           created_by?: string | null
           digisac_contact_id?: string | null
           digisac_contact_name?: string | null
+          govbr_duas_etapas?: boolean
           has_timeclock?: boolean | null
           has_variables?: boolean | null
           id?: string
@@ -1103,6 +1107,8 @@ export type Database = {
           preview_channel?: string | null
           preview_deadline_day?: number | null
           preview_rules?: string | null
+          procuracao_conectividade?: boolean
+          procuracao_govbr?: boolean
           sla_hours?: number | null
           sst_contato_email?: string
           sst_contato_nome?: string
@@ -1133,6 +1139,7 @@ export type Database = {
           created_by?: string | null
           digisac_contact_id?: string | null
           digisac_contact_name?: string | null
+          govbr_duas_etapas?: boolean
           has_timeclock?: boolean | null
           has_variables?: boolean | null
           id?: string
@@ -1142,6 +1149,8 @@ export type Database = {
           preview_channel?: string | null
           preview_deadline_day?: number | null
           preview_rules?: string | null
+          procuracao_conectividade?: boolean
+          procuracao_govbr?: boolean
           sla_hours?: number | null
           sst_contato_email?: string
           sst_contato_nome?: string
