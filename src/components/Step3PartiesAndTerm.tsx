@@ -150,6 +150,7 @@ ${data.empregadoNome || '[NOME DO EMPREGADO]'}`;
 
     // Helper: verba exists and has non-zero value
     const verbaAtiva = (id: string) => verbas.some(v => v.id === id && v.valor !== 0);
+    const valorVerba = (id: string) => verbas.find(v => v.id === id)?.valor ?? 0;
 
     let lines: string[] = [];
     lines.push('═══════════════════════════════════════════════════');
@@ -167,51 +168,67 @@ ${data.empregadoNome || '[NOME DO EMPREGADO]'}`;
 
     // Saldo de salário
     if (verbaAtiva('saldo_salario')) {
-      const saldoSal = (sal / 30) * step2.diasTrabalhadosMes;
+      const saldoSalCalc = (sal / 30) * step2.diasTrabalhadosMes;
+      const saldoSal = valorVerba('saldo_salario');
       lines.push('');
       lines.push(`${itemNum}) SALDO DE SALÁRIO`);
       lines.push(`   Verba calculada sobre os dias informados.`);
       lines.push(`   Fórmula: Salário / 30 × dias informados`);
-      lines.push(`   ${formatCurrency(sal)} / 30 × ${step2.diasTrabalhadosMes} dias = ${formatCurrency(saldoSal)}`);
+      lines.push(`   ${formatCurrency(sal)} / 30 × ${step2.diasTrabalhadosMes} dias = ${formatCurrency(saldoSalCalc)}`);
+      if (Math.abs(saldoSal - saldoSalCalc) > 0.01) {
+        lines.push(`   ⚠ Valor ajustado manualmente: ${formatCurrency(saldoSal)}`);
+      }
       itemNum++;
     }
 
     // 13º proporcional
     if (verbaAtiva('13_proporcional')) {
-      const decimo = sal * (step2.meses13Proporcional / 12);
+      const decimoCalc = sal * (step2.meses13Proporcional / 12);
+      const decimo = valorVerba('13_proporcional');
       lines.push('');
       lines.push(`${itemNum}) 13º SALÁRIO PROPORCIONAL`);
       lines.push(`   Fórmula: Salário × (meses / 12)`);
-      lines.push(`   ${formatCurrency(sal)} × (${step2.meses13Proporcional}/12) = ${formatCurrency(decimo)}`);
+      lines.push(`   ${formatCurrency(sal)} × (${step2.meses13Proporcional}/12) = ${formatCurrency(decimoCalc)}`);
+      if (Math.abs(decimo - decimoCalc) > 0.01) {
+        lines.push(`   ⚠ Valor ajustado manualmente: ${formatCurrency(decimo)}`);
+      }
       itemNum++;
     }
 
     // Férias proporcionais
-    const feriasProp = sal * (step2.mesesFeriasProporcional / 12);
+    const feriasPropCalc = sal * (step2.mesesFeriasProporcional / 12);
+    const feriasProp = valorVerba('ferias_proporcionais') || feriasPropCalc;
     let totalFerias = feriasProp;
 
     if (verbaAtiva('ferias_proporcionais')) {
       lines.push('');
       lines.push(`${itemNum}) FÉRIAS PROPORCIONAIS`);
       lines.push(`   Fórmula: Salário × (meses / 12)`);
-      lines.push(`   ${formatCurrency(sal)} × (${step2.mesesFeriasProporcional}/12) = ${formatCurrency(feriasProp)}`);
+      lines.push(`   ${formatCurrency(sal)} × (${step2.mesesFeriasProporcional}/12) = ${formatCurrency(feriasPropCalc)}`);
+      if (Math.abs(feriasProp - feriasPropCalc) > 0.01) {
+        lines.push(`   ⚠ Valor ajustado manualmente: ${formatCurrency(feriasProp)}`);
+      }
       itemNum++;
     }
 
     // Férias vencidas
     if (step1.temFeriasVencidas && step1.periodosVencidos > 0 && verbaAtiva('ferias_vencidas')) {
-      const feriasVenc = sal * step1.periodosVencidos;
+      const feriasVencCalc = sal * step1.periodosVencidos;
+      const feriasVenc = valorVerba('ferias_vencidas');
       totalFerias += feriasVenc;
       lines.push('');
       lines.push(`${itemNum}) FÉRIAS VENCIDAS`);
       lines.push(`   Fórmula: Salário × períodos vencidos`);
-      lines.push(`   ${formatCurrency(sal)} × ${step1.periodosVencidos} = ${formatCurrency(feriasVenc)}`);
+      lines.push(`   ${formatCurrency(sal)} × ${step1.periodosVencidos} = ${formatCurrency(feriasVencCalc)}`);
+      if (Math.abs(feriasVenc - feriasVencCalc) > 0.01) {
+        lines.push(`   ⚠ Valor ajustado manualmente: ${formatCurrency(feriasVenc)}`);
+      }
       itemNum++;
     }
 
     // 1/3 férias
     if (step2.consideraTercoFerias && verbaAtiva('terco_ferias')) {
-      const terco = totalFerias / 3;
+      const terco = valorVerba('terco_ferias');
       lines.push('');
       lines.push(`${itemNum}) 1/3 CONSTITUCIONAL SOBRE FÉRIAS`);
       lines.push(`   Fórmula: (Férias proporcionais${step1.temFeriasVencidas ? ' + Férias vencidas' : ''}) / 3`);
