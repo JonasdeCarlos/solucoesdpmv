@@ -52,6 +52,9 @@ export interface DPProfile {
   admissao_modelo_contrato: string;
   admissao_caminho_dominio: string;
   admissao_clausulas_especificas: string;
+  procuracao_govbr: boolean;
+  procuracao_conectividade: boolean;
+  govbr_duas_etapas: boolean;
 }
 
 export function emptyProfile(client_id: string): DPProfile {
@@ -88,6 +91,9 @@ export function emptyProfile(client_id: string): DPProfile {
     admissao_modelo_contrato: '',
     admissao_caminho_dominio: '',
     admissao_clausulas_especificas: '',
+    procuracao_govbr: false,
+    procuracao_conectividade: false,
+    govbr_duas_etapas: false,
   };
 }
 

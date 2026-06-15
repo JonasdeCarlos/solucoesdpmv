@@ -328,6 +328,24 @@ export default function PerfilTab({ cliente, onClienteSaved }: { cliente: Client
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader><CardTitle className="text-base">Procurações e Acessos</CardTitle></CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="flex items-center gap-3 p-3 rounded-md border">
+            <Switch checked={form.procuracao_govbr} onCheckedChange={(v)=>set('procuracao_govbr', v)}/>
+            <Label className="cursor-pointer">Procuração gov.br</Label>
+          </div>
+          <div className="flex items-center gap-3 p-3 rounded-md border">
+            <Switch checked={form.procuracao_conectividade} onCheckedChange={(v)=>set('procuracao_conectividade', v)}/>
+            <Label className="cursor-pointer">Procuração Conectividade</Label>
+          </div>
+          <div className="flex items-center gap-3 p-3 rounded-md border">
+            <Switch checked={form.govbr_duas_etapas} onCheckedChange={(v)=>set('govbr_duas_etapas', v)}/>
+            <Label className="cursor-pointer">gov.br em duas etapas</Label>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="flex justify-end sticky bottom-2">
         <Button onClick={saveAll} size="lg" className="shadow-lg"><Save className="w-4 h-4 mr-1"/>Salvar perfil</Button>
       </div>
