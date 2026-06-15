@@ -423,6 +423,56 @@ export function calcularTotal(verbas: VerbaRescisoria[]): number {
   return round2(verbas.reduce((acc, v) => v.tipo === 'credito' ? acc + v.valor : acc - v.valor, 0));
 }
 
+/**
+ * Recalcula verbas dependentes (reflexos) a partir dos valores atuais das verbas-base.
+ * Útil após edição manual de uma linha (ex.: saldo de salário, férias, aviso prévio)
+ * para que 1/3 férias, projeção do aviso, FGTS sobre aviso e multa FGTS sejam
+ * atualizados automaticamente.
+ */
+export function recalcDependents(
+  verbas: VerbaRescisoria[],
+  step1: Step1Data,
+  step2: Step2Data
+): VerbaRescisoria[] {
+  const next = verbas.map(v => ({ ...v }));
+  const byId = (id: string) => next.find(v => v.id === id);
+  const valOf = (id: string) => byId(id)?.valor ?? 0;
+  const setVal = (id: string, valor: number) => {
+    const v = byId(id);
+    if (v) v.valor = round2(valor);
+  };
+
+  // 1/3 constitucional sobre férias (proporcionais + vencidas)
+  if (step2.consideraTercoFerias && byId('terco_ferias')) {
+    const totalFerias = valOf('ferias_proporcionais') + valOf('ferias_vencidas');
+    setVal('terco_ferias', totalFerias / 3);
+  }
+
+  // 1/3 sobre férias da projeção do aviso prévio
+  if (byId('reflexo_aviso_terco')) {
+    setVal('reflexo_aviso_terco', valOf('reflexo_aviso_ferias') / 3);
+  }
+
+  // FGTS sobre aviso prévio e reflexos (8% sobre as bases)
+  if (byId('fgts_aviso')) {
+    const base =
+      valOf('aviso_previo_indenizado') +
+      valOf('dias_indenizados_ano') +
+      valOf('reflexo_aviso_13') +
+      valOf('reflexo_aviso_ferias') +
+      valOf('reflexo_aviso_terco');
+    setVal('fgts_aviso', base * 0.08);
+  }
+
+  // Multa FGTS (sobre FGTS + FGTS aviso + FGTS outros créditos)
+  if (byId('multa_fgts') && step1.calculaMultaFGTS && step1.percentualMultaFGTS > 0) {
+    const baseMulta = valOf('fgts') + valOf('fgts_aviso') + valOf('fgts_outros_creditos');
+    setVal('multa_fgts', baseMulta * (step1.percentualMultaFGTS / 100));
+  }
+
+  return next;
+}
+
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
