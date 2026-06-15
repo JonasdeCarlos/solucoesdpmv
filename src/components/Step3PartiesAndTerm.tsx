@@ -371,9 +371,9 @@ ${data.empregadoNome || '[NOME DO EMPREGADO]'}`;
           </div>
         </CardHeader>
         <CardContent>
-          <ResultsTable verbas={verbas} editable onUpdate={onVerbaUpdate} />
+          <ResultsTable verbas={verbas} editable onUpdate={handleVerbaUpdate} />
           <p className="text-xs text-muted-foreground mt-2">
-            Edições manuais nas linhas não recalculam automaticamente verbas dependentes (ex.: FGTS sobre saldo de salário). Use "Recalcular rescisão" para refazer todos os valores a partir dos dados informados nas etapas 1 e 2.
+            Ao editar uma linha, os reflexos dependentes (1/3 férias, projeção do aviso prévio, FGTS sobre aviso e multa FGTS) e o total são atualizados automaticamente. Para refazer tudo a partir das etapas 1 e 2, use "Recalcular rescisão".
           </p>
           <p className="text-sm text-muted-foreground mt-2">
             Total por extenso: <strong>{numberToWords(total)}</strong>
