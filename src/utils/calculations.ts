@@ -453,6 +453,49 @@ export function recalcDependents(
     setVal('reflexo_aviso_terco', valOf('reflexo_aviso_ferias') / 3);
   }
 
+  // FGTS do período — recomputa a partir das verbas editadas (saldo / 13º)
+  // quando o FGTS não foi informado manualmente.
+  if (byId('fgts') && step1.calculaFGTS && (step2.fgtsManual === null || step2.fgtsManual <= 0)) {
+    const sal = step1.salarioMensal;
+    let baseSalarial = 0;
+    if (step1.dataAdmissao && step1.dataDesligamento) {
+      const start = new Date(step1.dataAdmissao);
+      const end = new Date(step1.dataDesligamento);
+      const cursor = new Date(start.getFullYear(), start.getMonth(), 1);
+      while (
+        cursor.getFullYear() < end.getFullYear() ||
+        (cursor.getFullYear() === end.getFullYear() && cursor.getMonth() <= end.getMonth())
+      ) {
+        const year = cursor.getFullYear();
+        const month = cursor.getMonth();
+        const totalDiasNoMes = new Date(year, month + 1, 0).getDate();
+        const isFirstMonth = year === start.getFullYear() && month === start.getMonth();
+        const isLastMonth = year === end.getFullYear() && month === end.getMonth();
+
+        let valorBase: number;
+        if (isLastMonth) {
+          // Usa o saldo de salário (possivelmente editado) como base do mês de desligamento
+          valorBase = valOf('saldo_salario');
+        } else if (isFirstMonth) {
+          const diasReais = totalDiasNoMes - start.getDate() + 1;
+          const dias = start.getDate() === 1 ? 30 : diasReais;
+          valorBase = dias >= 30 ? sal : (sal / 30) * dias;
+        } else {
+          valorBase = sal;
+        }
+        baseSalarial += valorBase;
+        cursor.setMonth(cursor.getMonth() + 1);
+      }
+    }
+    let base13Anterior = 0;
+    if (step2.incluir13AnosAnteriores && step1.dataAdmissao && step1.dataDesligamento) {
+      const meses = diffMonthsFull(step1.dataAdmissao, step1.dataDesligamento);
+      if (meses > 12) base13Anterior = sal * Math.floor(meses / 12);
+    }
+    const baseTotal = baseSalarial + valOf('13_proporcional') + base13Anterior;
+    setVal('fgts', baseTotal * 0.08);
+  }
+
   // FGTS sobre aviso prévio e reflexos (8% sobre as bases)
   if (byId('fgts_aviso')) {
     const base =
@@ -462,6 +505,14 @@ export function recalcDependents(
       valOf('reflexo_aviso_ferias') +
       valOf('reflexo_aviso_terco');
     setVal('fgts_aviso', base * 0.08);
+  }
+
+  // FGTS sobre outros créditos com incidência marcada
+  if (byId('fgts_outros_creditos')) {
+    const base = (step2.outrosCreditos || [])
+      .filter(c => c.incideFGTS && c.valor > 0)
+      .reduce((acc, c) => acc + c.valor, 0);
+    setVal('fgts_outros_creditos', base * 0.08);
   }
 
   // Multa FGTS (sobre FGTS + FGTS aviso + FGTS outros créditos)
