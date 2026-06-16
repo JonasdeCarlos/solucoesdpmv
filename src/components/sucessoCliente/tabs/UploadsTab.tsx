@@ -173,8 +173,8 @@ export default function UploadsTab({ client_id }: { client_id: string }) {
               <TableCell>v{u.version}</TableCell>
               <TableCell className="text-xs">{new Date(u.uploaded_at).toLocaleString('pt-BR')}</TableCell>
               <TableCell className="flex gap-1">
-                <Button size="sm" variant="ghost" title="Visualizar" onClick={()=>view(u.file_path, u.file_name, u.mime_type)}><Eye className="w-4 h-4"/></Button>
-                <Button size="sm" variant="ghost" title="Baixar" onClick={()=>download(u.file_path, u.file_name)}><Download className="w-4 h-4"/></Button>
+                <Button type="button" size="sm" variant="ghost" title="Visualizar" onClick={(e)=>{ e.preventDefault(); e.stopPropagation(); view(u.file_path, u.file_name, u.mime_type); }}><Eye className="w-4 h-4"/></Button>
+                <Button type="button" size="sm" variant="ghost" title="Baixar" onClick={(e)=>{ e.preventDefault(); e.stopPropagation(); download(u.file_path, u.file_name); }}><Download className="w-4 h-4"/></Button>
               </TableCell>
             </TableRow>
           ))}
@@ -219,12 +219,12 @@ export default function UploadsTab({ client_id }: { client_id: string }) {
           <div className="flex justify-end gap-2">
             {previewIsPdf && pdfPages > 1 && (
               <div className="mr-auto flex items-center gap-2 text-sm text-muted-foreground">
-                <Button variant="outline" size="sm" onClick={() => setPdfPage((p) => Math.max(1, p - 1))} disabled={pdfPage <= 1 || pdfRendering}>Anterior</Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => setPdfPage((p) => Math.max(1, p - 1))} disabled={pdfPage <= 1 || pdfRendering}>Anterior</Button>
                 <span>Página {pdfPage} de {pdfPages}</span>
-                <Button variant="outline" size="sm" onClick={() => setPdfPage((p) => Math.min(pdfPages, p + 1))} disabled={pdfPage >= pdfPages || pdfRendering}>Próxima</Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => setPdfPage((p) => Math.min(pdfPages, p + 1))} disabled={pdfPage >= pdfPages || pdfRendering}>Próxima</Button>
               </div>
             )}
-            <Button variant="outline" onClick={() => download(preview.path, preview.fileName)} disabled={!preview.path || preview.loading}>
+            <Button type="button" variant="outline" onClick={() => download(preview.path, preview.fileName)} disabled={!preview.path || preview.loading}>
               <Download className="w-4 h-4 mr-1" />Baixar
             </Button>
           </div>
