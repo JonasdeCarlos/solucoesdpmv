@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Upload, Download, Eye } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Upload, Download, Eye, Loader2 } from 'lucide-react';
 import { useUploads } from '@/hooks/useSucessoCliente';
 import { toast } from 'sonner';
 
@@ -17,9 +18,36 @@ const uploadTypeLabels: Record<string, string> = {
 
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : String(error || 'Erro desconhecido');
 
+const fileTypeFromName = (filename: string) => {
+  const ext = filename.split('.').pop()?.toLowerCase();
+  if (ext === 'pdf') return 'application/pdf';
+  if (ext === 'png') return 'image/png';
+  if (ext === 'jpg' || ext === 'jpeg') return 'image/jpeg';
+  return 'application/octet-stream';
+};
+
+const safeTitle = (filename: string) => filename.replace(/[<>&"']/g, '');
+
+type PreviewState = {
+  open: boolean;
+  loading: boolean;
+  url: string;
+  fileName: string;
+  type: string;
+  path: string;
+  error: string;
+};
+
 export default function UploadsTab({ client_id }: { client_id: string }) {
-  const { items, upload, getUrl } = useUploads(client_id);
+  const { items, upload, getFile } = useUploads(client_id);
   const [type, setType] = useState('holerite_modelo');
+  const [preview, setPreview] = useState<PreviewState>({ open: false, loading: false, url: '', fileName: '', type: '', path: '', error: '' });
+
+  useEffect(() => {
+    return () => {
+      if (preview.url) URL.revokeObjectURL(preview.url);
+    };
+  }, [preview.url]);
 
   const handle = async (f: File) => {
     const { error } = await upload(f, type);
@@ -27,35 +55,23 @@ export default function UploadsTab({ client_id }: { client_id: string }) {
     else toast.success('Arquivo enviado.');
   };
 
-  const view = async (path: string) => {
-    const tab = window.open('about:blank', '_blank');
-    if (!tab) {
-      toast.error('O navegador bloqueou a nova aba. Libere pop-ups para visualizar o arquivo.');
-      return;
-    }
-
+  const view = async (path: string, filename: string, mimeType?: string | null) => {
+    if (preview.url) URL.revokeObjectURL(preview.url);
+    setPreview({ open: true, loading: true, url: '', fileName: filename, type: '', path, error: '' });
     try {
-      tab.document.write('<!doctype html><title>Carregando arquivo...</title><body style="font-family:Arial,sans-serif;padding:24px">Carregando arquivo...</body>');
-      const url = await getUrl(path);
-      if (!url) {
-        tab.close();
-        toast.error('Não foi possível gerar o link do arquivo.');
-        return;
-      }
-      tab.location.href = url;
+      const data = await getFile(path);
+      const type = data.type || mimeType || fileTypeFromName(filename);
+      const blob = data.type ? data : new Blob([await data.arrayBuffer()], { type });
+      const url = URL.createObjectURL(blob);
+      setPreview({ open: true, loading: false, url, fileName: filename, type, path, error: '' });
     } catch (e: unknown) {
-      tab.close();
-      toast.error('Erro ao abrir: ' + errorMessage(e));
+      setPreview({ open: true, loading: false, url: '', fileName: filename, type: '', path, error: errorMessage(e) });
     }
   };
 
   const download = async (path: string, filename: string) => {
     try {
-      const url = await getUrl(path);
-      if (!url) { toast.error('Não foi possível gerar o link do arquivo.'); return; }
-      const resp = await fetch(url);
-      if (!resp.ok) throw new Error('HTTP ' + resp.status);
-      const blob = await resp.blob();
+      const blob = await getFile(path);
       const blobUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = blobUrl;
@@ -70,8 +86,12 @@ export default function UploadsTab({ client_id }: { client_id: string }) {
   };
 
   const label = (t: string) => uploadTypeLabels[t] || t;
+  const previewName = safeTitle(preview.fileName || 'Arquivo');
+  const previewIsPdf = preview.type.includes('pdf') || preview.fileName.toLowerCase().endsWith('.pdf');
+  const previewIsImage = preview.type.startsWith('image/') && !preview.fileName.toLowerCase().endsWith('.heic');
 
   return (
+    <>
     <Card><CardContent className="p-4 space-y-4">
       <div className="flex gap-2 items-end">
         <div>
@@ -101,7 +121,7 @@ export default function UploadsTab({ client_id }: { client_id: string }) {
               <TableCell>v{u.version}</TableCell>
               <TableCell className="text-xs">{new Date(u.uploaded_at).toLocaleString('pt-BR')}</TableCell>
               <TableCell className="flex gap-1">
-                <Button size="sm" variant="ghost" title="Visualizar" onClick={()=>view(u.file_path)}><Eye className="w-4 h-4"/></Button>
+                <Button size="sm" variant="ghost" title="Visualizar" onClick={()=>view(u.file_path, u.file_name, u.mime_type)}><Eye className="w-4 h-4"/></Button>
                 <Button size="sm" variant="ghost" title="Baixar" onClick={()=>download(u.file_path, u.file_name)}><Download className="w-4 h-4"/></Button>
               </TableCell>
             </TableRow>
@@ -109,5 +129,45 @@ export default function UploadsTab({ client_id }: { client_id: string }) {
         </TableBody>
       </Table>
     </CardContent></Card>
+      <Dialog open={preview.open} onOpenChange={(open) => {
+        setPreview((current) => {
+          if (!open && current.url) URL.revokeObjectURL(current.url);
+          return open ? current : { open: false, loading: false, url: '', fileName: '', type: '', path: '', error: '' };
+        });
+      }}>
+        <DialogContent className="max-w-5xl h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="truncate">{previewName}</DialogTitle>
+          </DialogHeader>
+          <div className="min-h-0 flex-1 rounded-md border bg-muted/20 overflow-hidden">
+            {preview.loading ? (
+              <div className="h-full grid place-items-center text-muted-foreground">
+                <Loader2 className="w-6 h-6 animate-spin mb-2" />
+                Carregando arquivo...
+              </div>
+            ) : preview.error ? (
+              <div className="h-full grid place-items-center p-6 text-center text-sm text-muted-foreground">
+                Não foi possível visualizar este arquivo: {preview.error}
+              </div>
+            ) : preview.url && previewIsPdf ? (
+              <embed src={`${preview.url}#toolbar=1`} type="application/pdf" className="w-full h-full" />
+            ) : preview.url && previewIsImage ? (
+              <div className="h-full grid place-items-center bg-background">
+                <img src={preview.url} alt={previewName} className="max-w-full max-h-full object-contain" />
+              </div>
+            ) : (
+              <div className="h-full grid place-items-center p-6 text-center text-sm text-muted-foreground">
+                Pré-visualização indisponível para este formato. Use o botão de download.
+              </div>
+            )}
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => download(preview.path, preview.fileName)} disabled={!preview.path || preview.loading}>
+              <Download className="w-4 h-4 mr-1" />Baixar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
