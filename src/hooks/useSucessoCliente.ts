@@ -111,11 +111,12 @@ export function useUploads(client_id: string | undefined) {
     if (!error) await load();
     return { error };
   };
-  const getUrl = async (path: string) => {
-    const { data } = await supabase.storage.from('cliente-dp-uploads').createSignedUrl(path, 3600);
-    return data?.signedUrl;
+  const getFile = async (path: string) => {
+    const { data, error } = await supabase.storage.from('cliente-dp-uploads').download(path);
+    if (error || !data) throw error || new Error('Arquivo não encontrado.');
+    return data;
   };
-  return { items, loading, upload, getUrl, reload: load };
+  return { items, loading, upload, getFile, reload: load };
 }
 
 export function useCCTs(client_id: string | undefined) {
