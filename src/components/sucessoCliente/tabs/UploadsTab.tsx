@@ -53,6 +53,10 @@ export default function UploadsTab({ client_id }: { client_id: string }) {
   const { items, upload, getFile } = useUploads(client_id);
   const [type, setType] = useState('holerite_modelo');
   const [preview, setPreview] = useState<PreviewState>(emptyPreview);
+  const [pdfPage, setPdfPage] = useState(1);
+  const [pdfPages, setPdfPages] = useState(0);
+  const [pdfRendering, setPdfRendering] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
     return () => {
@@ -75,8 +79,9 @@ export default function UploadsTab({ client_id }: { client_id: string }) {
       const blob = data.type ? data : new Blob([await data.arrayBuffer()], { type });
       const url = URL.createObjectURL(blob);
       const isPdf = type.includes('pdf') || filename.toLowerCase().endsWith('.pdf');
-      const pageUrls = isPdf ? await renderPdfPages(blob) : [];
-      setPreview({ open: true, loading: false, url, pageUrls, fileName: filename, type, path, error: '' });
+      setPdfPage(1);
+      setPdfPages(0);
+      setPreview({ open: true, loading: false, url, blob: isPdf ? blob : null, fileName: filename, type, path, error: '' });
     } catch (e: unknown) {
       setPreview({ ...emptyPreview, open: true, fileName: filename, path, error: errorMessage(e) });
     }
