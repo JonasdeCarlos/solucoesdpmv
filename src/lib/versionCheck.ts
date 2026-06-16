@@ -9,6 +9,18 @@
 
 const POLL_MS = 2 * 60 * 1000; // 2 minutos
 
+function hasUnsavedEdits(): boolean {
+  const el = document.activeElement as HTMLElement | null;
+  if (el) {
+    const tag = el.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
+    if (el.isContentEditable) return true;
+  }
+  // Heurística: rotas com formulários longos onde reload perde digitação.
+  if (/\/sucesso-cliente\//.test(window.location.pathname)) return true;
+  return false;
+}
+
 function currentBundleSignature(): string {
   const scripts = Array.from(document.querySelectorAll('script[src]')) as HTMLScriptElement[];
   return scripts
@@ -60,6 +72,10 @@ export function startVersionCheck() {
   const check = async () => {
     const remote = await fetchRemoteSignature();
     if (remote && remote !== initial) {
+      if (hasUnsavedEdits()) {
+        // Adia o reload até que o usuário termine de digitar / saia da rota sensível.
+        return;
+      }
       // Nova versão publicada — recarrega forçando bypass de cache.
       window.location.reload();
     }
