@@ -103,6 +103,40 @@ export default function UploadsTab({ client_id }: { client_id: string }) {
     }
   };
 
+  useEffect(() => {
+    if (!preview.open || !preview.blob || !previewIsPdf || !canvasRef.current) return;
+    let cancelled = false;
+
+    const render = async () => {
+      setPdfRendering(true);
+      try {
+        const bytes = await preview.blob!.arrayBuffer();
+        const pdf = await (pdfjs as any).getDocument({ data: bytes.slice(0) }).promise;
+        if (cancelled) return;
+        setPdfPages(pdf.numPages);
+        const page = await pdf.getPage(Math.min(pdfPage, pdf.numPages));
+        if (cancelled || !canvasRef.current) return;
+        const containerWidth = canvasRef.current.parentElement?.clientWidth || 900;
+        const baseViewport = page.getViewport({ scale: 1 });
+        const scale = Math.min(1.6, Math.max(0.8, (containerWidth - 32) / baseViewport.width));
+        const viewport = page.getViewport({ scale });
+        const canvas = canvasRef.current;
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        const context = canvas.getContext('2d');
+        if (!context) throw new Error('Não foi possível renderizar o PDF.');
+        await page.render({ canvasContext: context, viewport }).promise;
+      } catch (e) {
+        if (!cancelled) setPreview((current) => ({ ...current, error: errorMessage(e) }));
+      } finally {
+        if (!cancelled) setPdfRendering(false);
+      }
+    };
+
+    render();
+    return () => { cancelled = true; };
+  }, [preview.open, preview.blob, previewIsPdf, pdfPage]);
+
   const label = (t: string) => uploadTypeLabels[t] || t;
   const previewName = safeTitle(preview.fileName || 'Arquivo');
   const previewIsPdf = preview.type.includes('pdf') || preview.fileName.toLowerCase().endsWith('.pdf');
