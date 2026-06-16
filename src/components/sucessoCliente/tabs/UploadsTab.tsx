@@ -186,8 +186,12 @@ export default function UploadsTab({ client_id }: { client_id: string }) {
               <div className="h-full grid place-items-center p-6 text-center text-sm text-muted-foreground">
                 Não foi possível visualizar este arquivo: {preview.error}
               </div>
-            ) : preview.url && previewIsPdf ? (
-              <embed src={`${preview.url}#toolbar=1`} type="application/pdf" className="w-full h-full" />
+            ) : previewIsPdf && preview.pageUrls.length > 0 ? (
+              <div className="h-full overflow-auto bg-muted/40 p-4 space-y-4">
+                {preview.pageUrls.map((url, index) => (
+                  <img key={url} src={url} alt={`${previewName} página ${index + 1}`} className="mx-auto max-w-full rounded-sm shadow-sm" />
+                ))}
+              </div>
             ) : preview.url && previewIsImage ? (
               <div className="h-full grid place-items-center bg-background">
                 <img src={preview.url} alt={previewName} className="max-w-full max-h-full object-contain" />
