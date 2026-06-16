@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Upload, Download, Eye } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Upload, Download, Eye, Loader2 } from 'lucide-react';
 import { useUploads } from '@/hooks/useSucessoCliente';
 import { toast } from 'sonner';
 
@@ -27,9 +28,26 @@ const fileTypeFromName = (filename: string) => {
 
 const safeTitle = (filename: string) => filename.replace(/[<>&"']/g, '');
 
+type PreviewState = {
+  open: boolean;
+  loading: boolean;
+  url: string;
+  fileName: string;
+  type: string;
+  path: string;
+  error: string;
+};
+
 export default function UploadsTab({ client_id }: { client_id: string }) {
   const { items, upload, getFile } = useUploads(client_id);
   const [type, setType] = useState('holerite_modelo');
+  const [preview, setPreview] = useState<PreviewState>({ open: false, loading: false, url: '', fileName: '', type: '', path: '', error: '' });
+
+  useEffect(() => {
+    return () => {
+      if (preview.url) URL.revokeObjectURL(preview.url);
+    };
+  }, [preview.url]);
 
   const handle = async (f: File) => {
     const { error } = await upload(f, type);
@@ -38,41 +56,16 @@ export default function UploadsTab({ client_id }: { client_id: string }) {
   };
 
   const view = async (path: string, filename: string, mimeType?: string | null) => {
-    const tab = window.open('', '_blank');
-    if (!tab) {
-      await download(path, filename);
-      toast.message('Popup bloqueado — arquivo baixado.');
-      return;
-    }
-
+    if (preview.url) URL.revokeObjectURL(preview.url);
+    setPreview({ open: true, loading: true, url: '', fileName: filename, type: '', path, error: '' });
     try {
-      tab.document.write('<!doctype html><title>Carregando arquivo...</title><body style="font-family:Arial,sans-serif;padding:24px">Carregando arquivo...</body>');
-      tab.document.close();
-
       const data = await getFile(path);
       const type = data.type || mimeType || fileTypeFromName(filename);
       const blob = data.type ? data : new Blob([await data.arrayBuffer()], { type });
       const url = URL.createObjectURL(blob);
-      const title = safeTitle(filename || 'Arquivo');
-      const isPdf = type.includes('pdf') || filename.toLowerCase().endsWith('.pdf');
-      const isImage = type.startsWith('image/') && !filename.toLowerCase().endsWith('.heic');
-
-      if (isPdf) {
-        tab.document.open();
-        tab.document.write(`<!doctype html><title>${title}</title><style>html,body{margin:0;height:100%;overflow:hidden}embed{width:100%;height:100%;border:0}</style><embed src="${url}#toolbar=1" type="application/pdf" />`);
-        tab.document.close();
-      } else if (isImage) {
-        tab.document.open();
-        tab.document.write(`<!doctype html><title>${title}</title><style>html,body{margin:0;min-height:100%;background:#111;display:grid;place-items:center}img{max-width:100%;max-height:100vh;object-fit:contain}</style><img src="${url}" alt="${title}" />`);
-        tab.document.close();
-      } else {
-        tab.location.href = url;
-      }
-
-      setTimeout(() => URL.revokeObjectURL(url), 5 * 60_000);
+      setPreview({ open: true, loading: false, url, fileName: filename, type, path, error: '' });
     } catch (e: unknown) {
-      tab.close();
-      toast.error('Erro ao abrir: ' + errorMessage(e));
+      setPreview({ open: true, loading: false, url: '', fileName: filename, type: '', path, error: errorMessage(e) });
     }
   };
 
