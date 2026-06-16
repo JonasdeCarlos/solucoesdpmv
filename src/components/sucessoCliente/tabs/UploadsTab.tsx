@@ -20,11 +20,23 @@ export default function UploadsTab({ client_id }: { client_id: string }) {
   };
 
   const view = async (path: string) => {
+    const tab = window.open('about:blank', '_blank');
+    if (!tab) {
+      toast.error('O navegador bloqueou a nova aba. Libere pop-ups para visualizar o arquivo.');
+      return;
+    }
+
     try {
+      tab.document.write('<!doctype html><title>Carregando arquivo...</title><body style="font-family:Arial,sans-serif;padding:24px">Carregando arquivo...</body>');
       const url = await getUrl(path);
-      if (!url) { toast.error('Não foi possível gerar o link do arquivo.'); return; }
-      window.open(url, '_blank', 'noopener,noreferrer');
+      if (!url) {
+        tab.close();
+        toast.error('Não foi possível gerar o link do arquivo.');
+        return;
+      }
+      tab.location.href = url;
     } catch (e: any) {
+      tab.close();
       toast.error('Erro ao abrir: ' + (e?.message || e));
     }
   };
