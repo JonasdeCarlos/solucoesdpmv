@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -22,6 +23,7 @@ export default function RubricasTab({ client_id }: { client_id: string }) {
   const [importing, setImporting] = useState(false);
   const [extracted, setExtracted] = useState<Array<{ code: string; name: string; kind: 'provento' | 'desconto' | 'informativa'; referencia?: string; valor: number; selected: boolean }> | null>(null);
   const [meta, setMeta] = useState<{ competencia?: string; empresa?: string }>({});
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const exportCsv = () => {
     const rows = [['codigo','nome','tipo','percentuais','critica','inss','fgts','irrf','dsr','esocial','observacoes']];
@@ -85,14 +87,12 @@ export default function RubricasTab({ client_id }: { client_id: string }) {
       <div className="flex gap-2 justify-between flex-wrap">
         <div className="flex gap-2 flex-wrap">
           <Button onClick={()=>setEditing(blank())}><Plus className="w-4 h-4 mr-1"/>Nova rubrica</Button>
-          <Button asChild variant="outline" disabled={importing}>
-            <label className="cursor-pointer">
-              {importing ? <Loader2 className="w-4 h-4 mr-1 animate-spin"/> : <Upload className="w-4 h-4 mr-1"/>}
-              {importing ? 'Extraindo via IA...' : 'Importar Extrato Mensal (PDF)'}
-              <input type="file" accept="application/pdf" className="hidden" disabled={importing}
-                onChange={(e)=>{ const f = e.target.files?.[0]; if (f) handlePdfUpload(f); e.currentTarget.value=''; }}/>
-            </label>
+          <Button type="button" variant="outline" disabled={importing} onClick={()=>fileInputRef.current?.click()}>
+            {importing ? <Loader2 className="w-4 h-4 mr-1 animate-spin"/> : <Upload className="w-4 h-4 mr-1"/>}
+            {importing ? 'Extraindo via IA...' : 'Importar Extrato Mensal (PDF)'}
           </Button>
+          <input ref={fileInputRef} type="file" accept="application/pdf" className="hidden" disabled={importing}
+            onChange={(e)=>{ const f = e.target.files?.[0]; if (f) handlePdfUpload(f); e.currentTarget.value=''; }}/>
         </div>
         <Button variant="outline" onClick={exportCsv}><Download className="w-4 h-4 mr-1"/>Exportar CSV</Button>
       </div>
