@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -36,47 +36,30 @@ type PreviewState = {
   open: boolean;
   loading: boolean;
   url: string;
-  pageUrls: string[];
+  blob: Blob | null;
   fileName: string;
   type: string;
   path: string;
   error: string;
 };
 
-const emptyPreview: PreviewState = { open: false, loading: false, url: '', pageUrls: [], fileName: '', type: '', path: '', error: '' };
+const emptyPreview: PreviewState = { open: false, loading: false, url: '', blob: null, fileName: '', type: '', path: '', error: '' };
 
 const releasePreviewUrls = (state: PreviewState) => {
   if (state.url) URL.revokeObjectURL(state.url);
-  state.pageUrls.forEach((url) => URL.revokeObjectURL(url));
-};
-
-const renderPdfPages = async (blob: Blob) => {
-  const bytes = await blob.arrayBuffer();
-  const pdf = await (pdfjs as any).getDocument({ data: bytes.slice(0) }).promise;
-  const urls: string[] = [];
-
-  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
-    const page = await pdf.getPage(pageNumber);
-    const viewport = page.getViewport({ scale: 1.45 });
-    const canvas = document.createElement('canvas');
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
-    const context = canvas.getContext('2d');
-    if (!context) throw new Error('Não foi possível renderizar o PDF.');
-    await page.render({ canvasContext: context, viewport }).promise;
-    const pageBlob: Blob = await new Promise((resolve, reject) => {
-      canvas.toBlob((result) => result ? resolve(result) : reject(new Error('Falha ao gerar página do PDF.')), 'image/jpeg', 0.94);
-    });
-    urls.push(URL.createObjectURL(pageBlob));
-  }
-
-  return urls;
 };
 
 export default function UploadsTab({ client_id }: { client_id: string }) {
   const { items, upload, getFile } = useUploads(client_id);
   const [type, setType] = useState('holerite_modelo');
   const [preview, setPreview] = useState<PreviewState>(emptyPreview);
+  const [pdfPage, setPdfPage] = useState(1);
+  const [pdfPages, setPdfPages] = useState(0);
+  const [pdfRendering, setPdfRendering] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const previewName = safeTitle(preview.fileName || 'Arquivo');
+  const previewIsPdf = preview.type.includes('pdf') || preview.fileName.toLowerCase().endsWith('.pdf');
+  const previewIsImage = preview.type.startsWith('image/') && !preview.fileName.toLowerCase().endsWith('.heic');
 
   useEffect(() => {
     return () => {
@@ -99,8 +82,9 @@ export default function UploadsTab({ client_id }: { client_id: string }) {
       const blob = data.type ? data : new Blob([await data.arrayBuffer()], { type });
       const url = URL.createObjectURL(blob);
       const isPdf = type.includes('pdf') || filename.toLowerCase().endsWith('.pdf');
-      const pageUrls = isPdf ? await renderPdfPages(blob) : [];
-      setPreview({ open: true, loading: false, url, pageUrls, fileName: filename, type, path, error: '' });
+      setPdfPage(1);
+      setPdfPages(0);
+      setPreview({ open: true, loading: false, url, blob: isPdf ? blob : null, fileName: filename, type, path, error: '' });
     } catch (e: unknown) {
       setPreview({ ...emptyPreview, open: true, fileName: filename, path, error: errorMessage(e) });
     }
@@ -122,10 +106,41 @@ export default function UploadsTab({ client_id }: { client_id: string }) {
     }
   };
 
+  useEffect(() => {
+    if (!preview.open || !preview.blob || !previewIsPdf || !canvasRef.current) return;
+    let cancelled = false;
+
+    const render = async () => {
+      setPdfRendering(true);
+      try {
+        const bytes = await preview.blob!.arrayBuffer();
+        const pdf = await (pdfjs as any).getDocument({ data: bytes.slice(0) }).promise;
+        if (cancelled) return;
+        setPdfPages(pdf.numPages);
+        const page = await pdf.getPage(Math.min(pdfPage, pdf.numPages));
+        if (cancelled || !canvasRef.current) return;
+        const containerWidth = canvasRef.current.parentElement?.clientWidth || 900;
+        const baseViewport = page.getViewport({ scale: 1 });
+        const scale = Math.min(1.6, Math.max(0.8, (containerWidth - 32) / baseViewport.width));
+        const viewport = page.getViewport({ scale });
+        const canvas = canvasRef.current;
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        const context = canvas.getContext('2d');
+        if (!context) throw new Error('Não foi possível renderizar o PDF.');
+        await page.render({ canvasContext: context, viewport }).promise;
+      } catch (e) {
+        if (!cancelled) setPreview((current) => ({ ...current, error: errorMessage(e) }));
+      } finally {
+        if (!cancelled) setPdfRendering(false);
+      }
+    };
+
+    render();
+    return () => { cancelled = true; };
+  }, [preview.open, preview.blob, previewIsPdf, pdfPage]);
+
   const label = (t: string) => uploadTypeLabels[t] || t;
-  const previewName = safeTitle(preview.fileName || 'Arquivo');
-  const previewIsPdf = preview.type.includes('pdf') || preview.fileName.toLowerCase().endsWith('.pdf');
-  const previewIsImage = preview.type.startsWith('image/') && !preview.fileName.toLowerCase().endsWith('.heic');
 
   return (
     <>
@@ -158,8 +173,8 @@ export default function UploadsTab({ client_id }: { client_id: string }) {
               <TableCell>v{u.version}</TableCell>
               <TableCell className="text-xs">{new Date(u.uploaded_at).toLocaleString('pt-BR')}</TableCell>
               <TableCell className="flex gap-1">
-                <Button size="sm" variant="ghost" title="Visualizar" onClick={()=>view(u.file_path, u.file_name, u.mime_type)}><Eye className="w-4 h-4"/></Button>
-                <Button size="sm" variant="ghost" title="Baixar" onClick={()=>download(u.file_path, u.file_name)}><Download className="w-4 h-4"/></Button>
+                <Button type="button" size="sm" variant="ghost" title="Visualizar" onClick={(e)=>{ e.preventDefault(); e.stopPropagation(); view(u.file_path, u.file_name, u.mime_type); }}><Eye className="w-4 h-4"/></Button>
+                <Button type="button" size="sm" variant="ghost" title="Baixar" onClick={(e)=>{ e.preventDefault(); e.stopPropagation(); download(u.file_path, u.file_name); }}><Download className="w-4 h-4"/></Button>
               </TableCell>
             </TableRow>
           ))}
@@ -186,11 +201,10 @@ export default function UploadsTab({ client_id }: { client_id: string }) {
               <div className="h-full grid place-items-center p-6 text-center text-sm text-muted-foreground">
                 Não foi possível visualizar este arquivo: {preview.error}
               </div>
-            ) : previewIsPdf && preview.pageUrls.length > 0 ? (
-              <div className="h-full overflow-auto bg-muted/40 p-4 space-y-4">
-                {preview.pageUrls.map((url, index) => (
-                  <img key={url} src={url} alt={`${previewName} página ${index + 1}`} className="mx-auto max-w-full rounded-sm shadow-sm" />
-                ))}
+            ) : previewIsPdf && preview.blob ? (
+              <div className="h-full overflow-auto bg-muted/40 p-4">
+                {pdfRendering && <div className="text-center text-xs text-muted-foreground mb-2">Renderizando página...</div>}
+                <canvas ref={canvasRef} className="mx-auto max-w-full rounded-sm bg-background shadow-sm" />
               </div>
             ) : preview.url && previewIsImage ? (
               <div className="h-full grid place-items-center bg-background">
@@ -203,7 +217,14 @@ export default function UploadsTab({ client_id }: { client_id: string }) {
             )}
           </div>
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => download(preview.path, preview.fileName)} disabled={!preview.path || preview.loading}>
+            {previewIsPdf && pdfPages > 1 && (
+              <div className="mr-auto flex items-center gap-2 text-sm text-muted-foreground">
+                <Button type="button" variant="outline" size="sm" onClick={() => setPdfPage((p) => Math.max(1, p - 1))} disabled={pdfPage <= 1 || pdfRendering}>Anterior</Button>
+                <span>Página {pdfPage} de {pdfPages}</span>
+                <Button type="button" variant="outline" size="sm" onClick={() => setPdfPage((p) => Math.min(pdfPages, p + 1))} disabled={pdfPage >= pdfPages || pdfRendering}>Próxima</Button>
+              </div>
+            )}
+            <Button type="button" variant="outline" onClick={() => download(preview.path, preview.fileName)} disabled={!preview.path || preview.loading}>
               <Download className="w-4 h-4 mr-1" />Baixar
             </Button>
           </div>
