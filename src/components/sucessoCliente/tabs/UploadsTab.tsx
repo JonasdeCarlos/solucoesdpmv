@@ -9,13 +9,21 @@ import { Upload, Download, Eye } from 'lucide-react';
 import { useUploads } from '@/hooks/useSucessoCliente';
 import { toast } from 'sonner';
 
+const uploadTypeLabels: Record<string, string> = {
+  holerite_modelo: 'Holerite modelo',
+  ponto_modelo: 'Modelo de ponto',
+  outro: 'Outro',
+};
+
+const errorMessage = (error: unknown) => error instanceof Error ? error.message : String(error || 'Erro desconhecido');
+
 export default function UploadsTab({ client_id }: { client_id: string }) {
   const { items, upload, getUrl } = useUploads(client_id);
   const [type, setType] = useState('holerite_modelo');
 
   const handle = async (f: File) => {
     const { error } = await upload(f, type);
-    if (error) toast.error('Erro: ' + (error as any).message);
+    if (error) toast.error('Erro: ' + errorMessage(error));
     else toast.success('Arquivo enviado.');
   };
 
@@ -35,9 +43,9 @@ export default function UploadsTab({ client_id }: { client_id: string }) {
         return;
       }
       tab.location.href = url;
-    } catch (e: any) {
+    } catch (e: unknown) {
       tab.close();
-      toast.error('Erro ao abrir: ' + (e?.message || e));
+      toast.error('Erro ao abrir: ' + errorMessage(e));
     }
   };
 
@@ -56,12 +64,12 @@ export default function UploadsTab({ client_id }: { client_id: string }) {
       a.click();
       document.body.removeChild(a);
       setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
-    } catch (e: any) {
-      toast.error('Erro ao baixar: ' + (e?.message || e));
+    } catch (e: unknown) {
+      toast.error('Erro ao baixar: ' + errorMessage(e));
     }
   };
 
-  const label = (t: string) => ({ holerite_modelo: 'Holerite modelo', ponto_modelo: 'Modelo de ponto', outro: 'Outro' } as any)[t] || t;
+  const label = (t: string) => uploadTypeLabels[t] || t;
 
   return (
     <Card><CardContent className="p-4 space-y-4">
