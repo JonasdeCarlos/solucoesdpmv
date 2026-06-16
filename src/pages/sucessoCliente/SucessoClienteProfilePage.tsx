@@ -12,9 +12,6 @@ import UploadsTab from '@/components/sucessoCliente/tabs/UploadsTab';
 import DiarioTab from '@/components/sucessoCliente/tabs/DiarioTab';
 import CCTTab from '@/components/sucessoCliente/tabs/CCTTab';
 import RubricasTab from '@/components/sucessoCliente/tabs/RubricasTab';
-import ChecklistTab from '@/components/sucessoCliente/tabs/ChecklistTab';
-import MensagensTab from '@/components/sucessoCliente/tabs/MensagensTab';
-import CalendarioTab from '@/components/sucessoCliente/tabs/CalendarioTab';
 import RiscosTab from '@/components/sucessoCliente/tabs/RiscosTab';
 import AdmissoesTab from '@/components/sucessoCliente/tabs/AdmissoesTab';
 import { generatePerfilPdf, loadBranding } from '@/utils/sucessoCliente/perfilPdf';
@@ -100,9 +97,6 @@ export default function SucessoClienteProfilePage() {
           <TabsTrigger value="cct">CCT</TabsTrigger>
           <TabsTrigger value="rubricas">Rubricas</TabsTrigger>
           <TabsTrigger value="admissoes">Admissões</TabsTrigger>
-          <TabsTrigger value="checklist">Checklist</TabsTrigger>
-          <TabsTrigger value="mensagens">Mensagens</TabsTrigger>
-          <TabsTrigger value="calendario">Calendário</TabsTrigger>
           <TabsTrigger value="riscos">Riscos</TabsTrigger>
         </TabsList>
         <TabsContent value="perfil"><PerfilTab cliente={cliente} onClienteSaved={reload}/></TabsContent>
@@ -111,9 +105,6 @@ export default function SucessoClienteProfilePage() {
         <TabsContent value="cct"><CCTTab client_id={cliente.id}/></TabsContent>
         <TabsContent value="rubricas"><RubricasTab client_id={cliente.id}/></TabsContent>
         <TabsContent value="admissoes"><AdmissoesTab client_id={cliente.id}/></TabsContent>
-        <TabsContent value="checklist"><ChecklistTab client_id={cliente.id}/></TabsContent>
-        <TabsContent value="mensagens"><MensagensTab client_id={cliente.id} clienteNome={cliente.nome}/></TabsContent>
-        <TabsContent value="calendario"><CalendarioTab client_id={cliente.id}/></TabsContent>
         <TabsContent value="riscos"><RiscosTab client_id={cliente.id}/></TabsContent>
       </Tabs>
     </div>
