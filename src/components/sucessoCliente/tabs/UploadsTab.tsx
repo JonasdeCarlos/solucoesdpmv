@@ -201,11 +201,10 @@ export default function UploadsTab({ client_id }: { client_id: string }) {
               <div className="h-full grid place-items-center p-6 text-center text-sm text-muted-foreground">
                 Não foi possível visualizar este arquivo: {preview.error}
               </div>
-            ) : previewIsPdf && preview.pageUrls.length > 0 ? (
-              <div className="h-full overflow-auto bg-muted/40 p-4 space-y-4">
-                {preview.pageUrls.map((url, index) => (
-                  <img key={url} src={url} alt={`${previewName} página ${index + 1}`} className="mx-auto max-w-full rounded-sm shadow-sm" />
-                ))}
+            ) : previewIsPdf && preview.blob ? (
+              <div className="h-full overflow-auto bg-muted/40 p-4">
+                {pdfRendering && <div className="text-center text-xs text-muted-foreground mb-2">Renderizando página...</div>}
+                <canvas ref={canvasRef} className="mx-auto max-w-full rounded-sm bg-background shadow-sm" />
               </div>
             ) : preview.url && previewIsImage ? (
               <div className="h-full grid place-items-center bg-background">
@@ -218,6 +217,13 @@ export default function UploadsTab({ client_id }: { client_id: string }) {
             )}
           </div>
           <div className="flex justify-end gap-2">
+            {previewIsPdf && pdfPages > 1 && (
+              <div className="mr-auto flex items-center gap-2 text-sm text-muted-foreground">
+                <Button variant="outline" size="sm" onClick={() => setPdfPage((p) => Math.max(1, p - 1))} disabled={pdfPage <= 1 || pdfRendering}>Anterior</Button>
+                <span>Página {pdfPage} de {pdfPages}</span>
+                <Button variant="outline" size="sm" onClick={() => setPdfPage((p) => Math.min(pdfPages, p + 1))} disabled={pdfPage >= pdfPages || pdfRendering}>Próxima</Button>
+              </div>
+            )}
             <Button variant="outline" onClick={() => download(preview.path, preview.fileName)} disabled={!preview.path || preview.loading}>
               <Download className="w-4 h-4 mr-1" />Baixar
             </Button>
