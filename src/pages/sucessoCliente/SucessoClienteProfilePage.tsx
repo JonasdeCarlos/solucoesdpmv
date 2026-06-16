@@ -43,7 +43,12 @@ export default function SucessoClienteProfilePage() {
     return Math.round(((filled + profFilled) / (baseFields.length + PROFILE_KEYS.length)) * 100);
   }, [cliente, profile]);
 
-  const ccVencendo = ccts.find(c => c.validity_end && (new Date(c.validity_end).getTime() - Date.now()) / 86400000 <= 90);
+  const ccVencendo = ccts.find((c: any) => {
+    if (c.deleted_at || c.is_active === false) return false;
+    if (!c.validity_end) return false;
+    const dias = (new Date(c.validity_end).getTime() - Date.now()) / 86400000;
+    return dias >= 0 && dias <= 90;
+  });
   const altoRisco = risks.some(r => r.severity === 'alta');
 
   const exportPdf = async () => {

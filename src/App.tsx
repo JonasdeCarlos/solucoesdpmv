@@ -46,6 +46,7 @@ import FeriadosComunicadosPage from "./pages/FeriadosComunicadosPage";
 import SucessoClienteListPage from "./pages/sucessoCliente/SucessoClienteListPage";
 import SucessoClienteProfilePage from "./pages/sucessoCliente/SucessoClienteProfilePage";
 import SucessoClienteReportsPage from "./pages/sucessoCliente/SucessoClienteReportsPage";
+import GestaoCctPage from "./pages/sucessoCliente/GestaoCctPage";
 
 const queryClient = new QueryClient();
 
@@ -100,6 +101,7 @@ const App = () => (
               <Route path="/feriados-comunicados" element={<FeriadosComunicadosPage />} />
               <Route path="/sucesso-cliente" element={<SucessoClienteListPage />} />
               <Route path="/sucesso-cliente/relatorios" element={<SucessoClienteReportsPage />} />
+             <Route path="/sucesso-cliente/gestao-cct" element={<GestaoCctPage />} />
               <Route path="/sucesso-cliente/:id" element={<SucessoClienteProfilePage />} />
               <Route path="/usuarios" element={<UsuariosPage />} />
               <Route path="/banco-horas" element={<BhLayout />}>
