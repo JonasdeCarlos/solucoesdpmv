@@ -86,8 +86,12 @@ export default function UploadsTab({ client_id }: { client_id: string }) {
   };
 
   const label = (t: string) => uploadTypeLabels[t] || t;
+  const previewName = safeTitle(preview.fileName || 'Arquivo');
+  const previewIsPdf = preview.type.includes('pdf') || preview.fileName.toLowerCase().endsWith('.pdf');
+  const previewIsImage = preview.type.startsWith('image/') && !preview.fileName.toLowerCase().endsWith('.heic');
 
   return (
+    <>
     <Card><CardContent className="p-4 space-y-4">
       <div className="flex gap-2 items-end">
         <div>
@@ -125,5 +129,45 @@ export default function UploadsTab({ client_id }: { client_id: string }) {
         </TableBody>
       </Table>
     </CardContent></Card>
+      <Dialog open={preview.open} onOpenChange={(open) => {
+        setPreview((current) => {
+          if (!open && current.url) URL.revokeObjectURL(current.url);
+          return open ? current : { open: false, loading: false, url: '', fileName: '', type: '', path: '', error: '' };
+        });
+      }}>
+        <DialogContent className="max-w-5xl h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="truncate">{previewName}</DialogTitle>
+          </DialogHeader>
+          <div className="min-h-0 flex-1 rounded-md border bg-muted/20 overflow-hidden">
+            {preview.loading ? (
+              <div className="h-full grid place-items-center text-muted-foreground">
+                <Loader2 className="w-6 h-6 animate-spin mb-2" />
+                Carregando arquivo...
+              </div>
+            ) : preview.error ? (
+              <div className="h-full grid place-items-center p-6 text-center text-sm text-muted-foreground">
+                Não foi possível visualizar este arquivo: {preview.error}
+              </div>
+            ) : preview.url && previewIsPdf ? (
+              <embed src={`${preview.url}#toolbar=1`} type="application/pdf" className="w-full h-full" />
+            ) : preview.url && previewIsImage ? (
+              <div className="h-full grid place-items-center bg-background">
+                <img src={preview.url} alt={previewName} className="max-w-full max-h-full object-contain" />
+              </div>
+            ) : (
+              <div className="h-full grid place-items-center p-6 text-center text-sm text-muted-foreground">
+                Pré-visualização indisponível para este formato. Use o botão de download.
+              </div>
+            )}
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => download(preview.path, preview.fileName)} disabled={!preview.path || preview.loading}>
+              <Download className="w-4 h-4 mr-1" />Baixar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
