@@ -168,8 +168,8 @@ export default function UploadsTab({ client_id }: { client_id: string }) {
     </CardContent></Card>
       <Dialog open={preview.open} onOpenChange={(open) => {
         setPreview((current) => {
-          if (!open && current.url) URL.revokeObjectURL(current.url);
-          return open ? current : { open: false, loading: false, url: '', fileName: '', type: '', path: '', error: '' };
+          if (!open) releasePreviewUrls(current);
+          return open ? current : emptyPreview;
         });
       }}>
         <DialogContent className="max-w-5xl h-[85vh] flex flex-col">
