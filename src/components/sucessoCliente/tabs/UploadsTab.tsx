@@ -76,11 +76,11 @@ const renderPdfPages = async (blob: Blob) => {
 export default function UploadsTab({ client_id }: { client_id: string }) {
   const { items, upload, getFile } = useUploads(client_id);
   const [type, setType] = useState('holerite_modelo');
-  const [preview, setPreview] = useState<PreviewState>({ open: false, loading: false, url: '', fileName: '', type: '', path: '', error: '' });
+  const [preview, setPreview] = useState<PreviewState>(emptyPreview);
 
   useEffect(() => {
     return () => {
-      if (preview.url) URL.revokeObjectURL(preview.url);
+      releasePreviewUrls(preview);
     };
   }, [preview.url]);
 
@@ -91,16 +91,18 @@ export default function UploadsTab({ client_id }: { client_id: string }) {
   };
 
   const view = async (path: string, filename: string, mimeType?: string | null) => {
-    if (preview.url) URL.revokeObjectURL(preview.url);
-    setPreview({ open: true, loading: true, url: '', fileName: filename, type: '', path, error: '' });
+    releasePreviewUrls(preview);
+    setPreview({ ...emptyPreview, open: true, loading: true, fileName: filename, path });
     try {
       const data = await getFile(path);
       const type = data.type || mimeType || fileTypeFromName(filename);
       const blob = data.type ? data : new Blob([await data.arrayBuffer()], { type });
       const url = URL.createObjectURL(blob);
-      setPreview({ open: true, loading: false, url, fileName: filename, type, path, error: '' });
+      const isPdf = type.includes('pdf') || filename.toLowerCase().endsWith('.pdf');
+      const pageUrls = isPdf ? await renderPdfPages(blob) : [];
+      setPreview({ open: true, loading: false, url, pageUrls, fileName: filename, type, path, error: '' });
     } catch (e: unknown) {
-      setPreview({ open: true, loading: false, url: '', fileName: filename, type: '', path, error: errorMessage(e) });
+      setPreview({ ...emptyPreview, open: true, fileName: filename, path, error: errorMessage(e) });
     }
   };
 
