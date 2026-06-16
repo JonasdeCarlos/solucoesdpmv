@@ -57,6 +57,9 @@ export default function UploadsTab({ client_id }: { client_id: string }) {
   const [pdfPages, setPdfPages] = useState(0);
   const [pdfRendering, setPdfRendering] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const previewName = safeTitle(preview.fileName || 'Arquivo');
+  const previewIsPdf = preview.type.includes('pdf') || preview.fileName.toLowerCase().endsWith('.pdf');
+  const previewIsImage = preview.type.startsWith('image/') && !preview.fileName.toLowerCase().endsWith('.heic');
 
   useEffect(() => {
     return () => {
@@ -138,9 +141,6 @@ export default function UploadsTab({ client_id }: { client_id: string }) {
   }, [preview.open, preview.blob, previewIsPdf, pdfPage]);
 
   const label = (t: string) => uploadTypeLabels[t] || t;
-  const previewName = safeTitle(preview.fileName || 'Arquivo');
-  const previewIsPdf = preview.type.includes('pdf') || preview.fileName.toLowerCase().endsWith('.pdf');
-  const previewIsImage = preview.type.startsWith('image/') && !preview.fileName.toLowerCase().endsWith('.heic');
 
   return (
     <>
