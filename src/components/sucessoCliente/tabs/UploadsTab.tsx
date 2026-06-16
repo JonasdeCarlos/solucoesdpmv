@@ -9,6 +9,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Upload, Download, Eye, Loader2 } from 'lucide-react';
 import { useUploads } from '@/hooks/useSucessoCliente';
 import { toast } from 'sonner';
+import * as pdfjs from 'pdfjs-dist';
+import pdfWorkerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+
+(pdfjs as any).GlobalWorkerOptions.workerSrc = pdfWorkerSrc;
 
 const uploadTypeLabels: Record<string, string> = {
   holerite_modelo: 'Holerite modelo',
@@ -32,20 +36,51 @@ type PreviewState = {
   open: boolean;
   loading: boolean;
   url: string;
+  pageUrls: string[];
   fileName: string;
   type: string;
   path: string;
   error: string;
 };
 
+const emptyPreview: PreviewState = { open: false, loading: false, url: '', pageUrls: [], fileName: '', type: '', path: '', error: '' };
+
+const releasePreviewUrls = (state: PreviewState) => {
+  if (state.url) URL.revokeObjectURL(state.url);
+  state.pageUrls.forEach((url) => URL.revokeObjectURL(url));
+};
+
+const renderPdfPages = async (blob: Blob) => {
+  const bytes = await blob.arrayBuffer();
+  const pdf = await (pdfjs as any).getDocument({ data: bytes.slice(0) }).promise;
+  const urls: string[] = [];
+
+  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
+    const page = await pdf.getPage(pageNumber);
+    const viewport = page.getViewport({ scale: 1.45 });
+    const canvas = document.createElement('canvas');
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('Não foi possível renderizar o PDF.');
+    await page.render({ canvasContext: context, viewport }).promise;
+    const pageBlob: Blob = await new Promise((resolve, reject) => {
+      canvas.toBlob((result) => result ? resolve(result) : reject(new Error('Falha ao gerar página do PDF.')), 'image/jpeg', 0.94);
+    });
+    urls.push(URL.createObjectURL(pageBlob));
+  }
+
+  return urls;
+};
+
 export default function UploadsTab({ client_id }: { client_id: string }) {
   const { items, upload, getFile } = useUploads(client_id);
   const [type, setType] = useState('holerite_modelo');
-  const [preview, setPreview] = useState<PreviewState>({ open: false, loading: false, url: '', fileName: '', type: '', path: '', error: '' });
+  const [preview, setPreview] = useState<PreviewState>(emptyPreview);
 
   useEffect(() => {
     return () => {
-      if (preview.url) URL.revokeObjectURL(preview.url);
+      releasePreviewUrls(preview);
     };
   }, [preview.url]);
 
@@ -56,16 +91,18 @@ export default function UploadsTab({ client_id }: { client_id: string }) {
   };
 
   const view = async (path: string, filename: string, mimeType?: string | null) => {
-    if (preview.url) URL.revokeObjectURL(preview.url);
-    setPreview({ open: true, loading: true, url: '', fileName: filename, type: '', path, error: '' });
+    releasePreviewUrls(preview);
+    setPreview({ ...emptyPreview, open: true, loading: true, fileName: filename, path });
     try {
       const data = await getFile(path);
       const type = data.type || mimeType || fileTypeFromName(filename);
       const blob = data.type ? data : new Blob([await data.arrayBuffer()], { type });
       const url = URL.createObjectURL(blob);
-      setPreview({ open: true, loading: false, url, fileName: filename, type, path, error: '' });
+      const isPdf = type.includes('pdf') || filename.toLowerCase().endsWith('.pdf');
+      const pageUrls = isPdf ? await renderPdfPages(blob) : [];
+      setPreview({ open: true, loading: false, url, pageUrls, fileName: filename, type, path, error: '' });
     } catch (e: unknown) {
-      setPreview({ open: true, loading: false, url: '', fileName: filename, type: '', path, error: errorMessage(e) });
+      setPreview({ ...emptyPreview, open: true, fileName: filename, path, error: errorMessage(e) });
     }
   };
 
@@ -131,8 +168,8 @@ export default function UploadsTab({ client_id }: { client_id: string }) {
     </CardContent></Card>
       <Dialog open={preview.open} onOpenChange={(open) => {
         setPreview((current) => {
-          if (!open && current.url) URL.revokeObjectURL(current.url);
-          return open ? current : { open: false, loading: false, url: '', fileName: '', type: '', path: '', error: '' };
+          if (!open) releasePreviewUrls(current);
+          return open ? current : emptyPreview;
         });
       }}>
         <DialogContent className="max-w-5xl h-[85vh] flex flex-col">
@@ -149,8 +186,12 @@ export default function UploadsTab({ client_id }: { client_id: string }) {
               <div className="h-full grid place-items-center p-6 text-center text-sm text-muted-foreground">
                 Não foi possível visualizar este arquivo: {preview.error}
               </div>
-            ) : preview.url && previewIsPdf ? (
-              <embed src={`${preview.url}#toolbar=1`} type="application/pdf" className="w-full h-full" />
+            ) : previewIsPdf && preview.pageUrls.length > 0 ? (
+              <div className="h-full overflow-auto bg-muted/40 p-4 space-y-4">
+                {preview.pageUrls.map((url, index) => (
+                  <img key={url} src={url} alt={`${previewName} página ${index + 1}`} className="mx-auto max-w-full rounded-sm shadow-sm" />
+                ))}
+              </div>
             ) : preview.url && previewIsImage ? (
               <div className="h-full grid place-items-center bg-background">
                 <img src={preview.url} alt={previewName} className="max-w-full max-h-full object-contain" />
