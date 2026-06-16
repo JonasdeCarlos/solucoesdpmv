@@ -17,8 +17,18 @@ const uploadTypeLabels: Record<string, string> = {
 
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : String(error || 'Erro desconhecido');
 
+const fileTypeFromName = (filename: string) => {
+  const ext = filename.split('.').pop()?.toLowerCase();
+  if (ext === 'pdf') return 'application/pdf';
+  if (ext === 'png') return 'image/png';
+  if (ext === 'jpg' || ext === 'jpeg') return 'image/jpeg';
+  return 'application/octet-stream';
+};
+
+const safeTitle = (filename: string) => filename.replace(/[<>&"']/g, '');
+
 export default function UploadsTab({ client_id }: { client_id: string }) {
-  const { items, upload, getUrl } = useUploads(client_id);
+  const { items, upload, getFile } = useUploads(client_id);
   const [type, setType] = useState('holerite_modelo');
 
   const handle = async (f: File) => {
@@ -27,22 +37,39 @@ export default function UploadsTab({ client_id }: { client_id: string }) {
     else toast.success('Arquivo enviado.');
   };
 
-  const view = async (path: string) => {
-    const tab = window.open('about:blank', '_blank');
+  const view = async (path: string, filename: string, mimeType?: string | null) => {
+    const tab = window.open('', '_blank');
     if (!tab) {
-      toast.error('O navegador bloqueou a nova aba. Libere pop-ups para visualizar o arquivo.');
+      await download(path, filename);
+      toast.message('Popup bloqueado — arquivo baixado.');
       return;
     }
 
     try {
       tab.document.write('<!doctype html><title>Carregando arquivo...</title><body style="font-family:Arial,sans-serif;padding:24px">Carregando arquivo...</body>');
-      const url = await getUrl(path);
-      if (!url) {
-        tab.close();
-        toast.error('Não foi possível gerar o link do arquivo.');
-        return;
+      tab.document.close();
+
+      const data = await getFile(path);
+      const type = data.type || mimeType || fileTypeFromName(filename);
+      const blob = data.type ? data : new Blob([await data.arrayBuffer()], { type });
+      const url = URL.createObjectURL(blob);
+      const title = safeTitle(filename || 'Arquivo');
+      const isPdf = type.includes('pdf') || filename.toLowerCase().endsWith('.pdf');
+      const isImage = type.startsWith('image/') && !filename.toLowerCase().endsWith('.heic');
+
+      if (isPdf) {
+        tab.document.open();
+        tab.document.write(`<!doctype html><title>${title}</title><style>html,body{margin:0;height:100%;overflow:hidden}embed{width:100%;height:100%;border:0}</style><embed src="${url}#toolbar=1" type="application/pdf" />`);
+        tab.document.close();
+      } else if (isImage) {
+        tab.document.open();
+        tab.document.write(`<!doctype html><title>${title}</title><style>html,body{margin:0;min-height:100%;background:#111;display:grid;place-items:center}img{max-width:100%;max-height:100vh;object-fit:contain}</style><img src="${url}" alt="${title}" />`);
+        tab.document.close();
+      } else {
+        tab.location.href = url;
       }
-      tab.location.href = url;
+
+      setTimeout(() => URL.revokeObjectURL(url), 5 * 60_000);
     } catch (e: unknown) {
       tab.close();
       toast.error('Erro ao abrir: ' + errorMessage(e));
@@ -51,11 +78,7 @@ export default function UploadsTab({ client_id }: { client_id: string }) {
 
   const download = async (path: string, filename: string) => {
     try {
-      const url = await getUrl(path);
-      if (!url) { toast.error('Não foi possível gerar o link do arquivo.'); return; }
-      const resp = await fetch(url);
-      if (!resp.ok) throw new Error('HTTP ' + resp.status);
-      const blob = await resp.blob();
+      const blob = await getFile(path);
       const blobUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = blobUrl;
@@ -101,7 +124,7 @@ export default function UploadsTab({ client_id }: { client_id: string }) {
               <TableCell>v{u.version}</TableCell>
               <TableCell className="text-xs">{new Date(u.uploaded_at).toLocaleString('pt-BR')}</TableCell>
               <TableCell className="flex gap-1">
-                <Button size="sm" variant="ghost" title="Visualizar" onClick={()=>view(u.file_path)}><Eye className="w-4 h-4"/></Button>
+                <Button size="sm" variant="ghost" title="Visualizar" onClick={()=>view(u.file_path, u.file_name, u.mime_type)}><Eye className="w-4 h-4"/></Button>
                 <Button size="sm" variant="ghost" title="Baixar" onClick={()=>download(u.file_path, u.file_name)}><Download className="w-4 h-4"/></Button>
               </TableCell>
             </TableRow>
