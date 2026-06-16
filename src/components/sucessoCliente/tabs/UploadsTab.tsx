@@ -9,6 +9,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Upload, Download, Eye, Loader2 } from 'lucide-react';
 import { useUploads } from '@/hooks/useSucessoCliente';
 import { toast } from 'sonner';
+import * as pdfjs from 'pdfjs-dist';
+import pdfWorkerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+
+(pdfjs as any).GlobalWorkerOptions.workerSrc = pdfWorkerSrc;
 
 const uploadTypeLabels: Record<string, string> = {
   holerite_modelo: 'Holerite modelo',
@@ -32,10 +36,41 @@ type PreviewState = {
   open: boolean;
   loading: boolean;
   url: string;
+  pageUrls: string[];
   fileName: string;
   type: string;
   path: string;
   error: string;
+};
+
+const emptyPreview: PreviewState = { open: false, loading: false, url: '', pageUrls: [], fileName: '', type: '', path: '', error: '' };
+
+const releasePreviewUrls = (state: PreviewState) => {
+  if (state.url) URL.revokeObjectURL(state.url);
+  state.pageUrls.forEach((url) => URL.revokeObjectURL(url));
+};
+
+const renderPdfPages = async (blob: Blob) => {
+  const bytes = await blob.arrayBuffer();
+  const pdf = await (pdfjs as any).getDocument({ data: bytes.slice(0) }).promise;
+  const urls: string[] = [];
+
+  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
+    const page = await pdf.getPage(pageNumber);
+    const viewport = page.getViewport({ scale: 1.45 });
+    const canvas = document.createElement('canvas');
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('Não foi possível renderizar o PDF.');
+    await page.render({ canvasContext: context, viewport }).promise;
+    const pageBlob: Blob = await new Promise((resolve, reject) => {
+      canvas.toBlob((result) => result ? resolve(result) : reject(new Error('Falha ao gerar página do PDF.')), 'image/jpeg', 0.94);
+    });
+    urls.push(URL.createObjectURL(pageBlob));
+  }
+
+  return urls;
 };
 
 export default function UploadsTab({ client_id }: { client_id: string }) {
