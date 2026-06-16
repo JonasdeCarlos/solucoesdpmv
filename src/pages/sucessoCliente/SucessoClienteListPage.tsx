@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Upload, Plus, Search, AlertTriangle, FileBarChart } from 'lucide-react';
+import { Upload, Plus, Search, AlertTriangle, FileBarChart, FileText } from 'lucide-react';
 import { useClientesDP } from '@/hooks/useSucessoCliente';
 import ImportClientesDialog from '@/components/sucessoCliente/ImportClientesDialog';
 import { supabase } from '@/integrations/supabase/client';
@@ -55,6 +55,7 @@ export default function SucessoClienteListPage() {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => navigate('/sucesso-cliente/relatorios')}><FileBarChart className="w-4 h-4 mr-1"/>Relatórios</Button>
+          <Button variant="outline" onClick={() => navigate('/sucesso-cliente/gestao-cct')}><FileText className="w-4 h-4 mr-1"/>Gestão de CCT</Button>
           <Button variant="outline" onClick={() => setImportOpen(true)}><Upload className="w-4 h-4 mr-1"/>Importar Excel</Button>
           <Button onClick={createNew}><Plus className="w-4 h-4 mr-1"/>Novo cliente</Button>
         </div>
