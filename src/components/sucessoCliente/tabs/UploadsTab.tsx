@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Upload, Download } from 'lucide-react';
+import { Upload, Download, Eye } from 'lucide-react';
 import { useUploads } from '@/hooks/useSucessoCliente';
 import { toast } from 'sonner';
 
@@ -19,9 +19,34 @@ export default function UploadsTab({ client_id }: { client_id: string }) {
     else toast.success('Arquivo enviado.');
   };
 
-  const open = async (path: string) => {
-    const url = await getUrl(path);
-    if (url) window.open(url, '_blank');
+  const view = async (path: string) => {
+    try {
+      const url = await getUrl(path);
+      if (!url) { toast.error('Não foi possível gerar o link do arquivo.'); return; }
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch (e: any) {
+      toast.error('Erro ao abrir: ' + (e?.message || e));
+    }
+  };
+
+  const download = async (path: string, filename: string) => {
+    try {
+      const url = await getUrl(path);
+      if (!url) { toast.error('Não foi possível gerar o link do arquivo.'); return; }
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const blob = await resp.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = filename || 'arquivo';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+    } catch (e: any) {
+      toast.error('Erro ao baixar: ' + (e?.message || e));
+    }
   };
 
   const label = (t: string) => ({ holerite_modelo: 'Holerite modelo', ponto_modelo: 'Modelo de ponto', outro: 'Outro' } as any)[t] || t;
@@ -55,7 +80,10 @@ export default function UploadsTab({ client_id }: { client_id: string }) {
               <TableCell className="truncate max-w-xs">{u.file_name}</TableCell>
               <TableCell>v{u.version}</TableCell>
               <TableCell className="text-xs">{new Date(u.uploaded_at).toLocaleString('pt-BR')}</TableCell>
-              <TableCell><Button size="sm" variant="ghost" onClick={()=>open(u.file_path)}><Download className="w-4 h-4"/></Button></TableCell>
+              <TableCell className="flex gap-1">
+                <Button size="sm" variant="ghost" title="Visualizar" onClick={()=>view(u.file_path)}><Eye className="w-4 h-4"/></Button>
+                <Button size="sm" variant="ghost" title="Baixar" onClick={()=>download(u.file_path, u.file_name)}><Download className="w-4 h-4"/></Button>
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>
