@@ -51,8 +51,21 @@ export default function RubricasTab({ client_id }: { client_id: string }) {
       if ((data as any)?.error) throw new Error((data as any).error);
       const rubricas = ((data as any).rubricas || []) as Array<{ code: string; name: string; kind: any; referencia?: string; valor: number }>;
       setMeta({ competencia: (data as any).competencia, empresa: (data as any).empresa });
-      setExtracted(rubricas.map(r => ({ ...r, kind: (r.kind || 'provento'), selected: true })));
-      toast.success(`${rubricas.length} rubricas extraídas.`);
+      if (rubricas.length === 0) { toast.error('Nenhuma rubrica encontrada no PDF.'); return; }
+      // Importa automaticamente todas as novas; abre o diálogo apenas para revisão posterior.
+      let ok = 0, skip = 0, fail = 0;
+      for (const r of rubricas) {
+        if (items.some(i => i.code === r.code)) { skip++; continue; }
+        const { error: saveErr } = await save({
+          code: r.code, name: r.name, kind: (r.kind || 'provento'),
+          percents_text: r.referencia || '', incidences: {}, is_critical: false, notes: '',
+        });
+        if (saveErr) { fail++; console.error('save rubrica falhou', r.code, saveErr); }
+        else ok++;
+      }
+      setExtracted(rubricas.map(r => ({ ...r, kind: (r.kind || 'provento'), selected: false })));
+      if (fail > 0) toast.error(`${ok} importadas, ${skip} já existiam, ${fail} falharam (ver console).`);
+      else toast.success(`${ok} importadas, ${skip} já existiam.`);
     } catch (e: unknown) {
       toast.error('Falha ao extrair: ' + (e instanceof Error ? e.message : String(e)));
     } finally {
