@@ -69,7 +69,7 @@ export default function AuditoriaTab({ client_id, cliente }: { client_id: string
                 <div className="text-xs text-muted-foreground">Início: {a.data_inicio ? new Date(a.data_inicio).toLocaleDateString('pt-BR'):'—'} • Consultor: {a.consultor||'—'} <Badge variant="outline" className="ml-2">{a.status}</Badge></div>
               </div>
               <Button size="icon" variant="ghost" onClick={()=>{ if(confirm('Excluir auditoria?')) remove(a.id); }}><Trash2 className="w-4 h-4 text-destructive"/></Button>
-            </Card></Card>
+            </CardContent></Card>
           ))
         }
       </div>
