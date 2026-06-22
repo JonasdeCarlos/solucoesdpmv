@@ -147,6 +147,17 @@ export default function CCTTab({ client_id }: { client_id: string }) {
     setReplicaOpen(true);
   };
 
+  const openReplicaAll = async () => {
+    const { data } = await supabase
+      .from('client_ccts' as any)
+      .select('*, clientes:client_id(nome)')
+      .neq('client_id', client_id)
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false });
+    setOrigemList((data || []) as any);
+    setReplicaOpen(true);
+  };
+
   const replicar = async (origem: any) => {
     await supabase.from('client_ccts' as any).insert({
       client_id, union_base: origem.union_base, sindicato: origem.sindicato, uf: origem.uf,
@@ -207,6 +218,9 @@ export default function CCTTab({ client_id }: { client_id: string }) {
         </Button>
         {stage && <span className="text-sm text-muted-foreground">{stage}</span>}
         {items[0]?.sindicato && <Button variant="outline" onClick={()=>openReplica(items[0].sindicato)}><Copy className="w-4 h-4 mr-1"/>Replicar de outro cliente</Button>}
+        <Button type="button" variant="outline" onClick={openReplicaAll}>
+          <Copy className="w-4 h-4 mr-1"/>Usar CCT de outra empresa
+        </Button>
       </CardContent></Card>
 
       <div className="space-y-2">
