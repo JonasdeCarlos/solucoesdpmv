@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Sparkles, Plus, Trash2, Copy, Pencil, FileDown, Loader2 } from 'lucide-react';
+import { Sparkles, Plus, Trash2, Copy, Pencil, FileDown, Loader2, Network, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useCargos, useEstruturaSalarial } from '@/hooks/useCargos';
@@ -214,10 +214,24 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
     setBusy('estrutura');
     try {
       const { data, error } = await supabase.functions.invoke('estrutura-salarial-sugerir', {
-        body: { empresa: cliente?.nome, cargos: items.map(i => ({ nome: i.nome, cbo: i.cbo, nivel: i.nivel, salario_atual: i.salario_atual })) },
+        body: {
+          empresa: cliente?.nome,
+          setor: cliente?.segmento || cliente?.cnae || '',
+          cargos: items.map(i => ({
+            nome: i.nome, cbo: i.cbo, area: i.area, nivel: i.nivel,
+            salario_atual: i.salario_atual, piso_salarial: i.piso_salarial,
+            piso_referencia: i.piso_referencia,
+          })),
+          pisos: pisosCCT.map(p => ({ funcao: p.funcao || p.label, grupo: p.grupo, valor: p.valor, ref: p.ref })),
+        },
       });
       if (error) throw error;
-      await saveEstrutura({ faixas: data?.faixas || [], escala_evolucao: data?.escala_evolucao || [] });
+      await saveEstrutura({
+        faixas: data?.faixas || [],
+        escala_evolucao: data?.escala_evolucao || [],
+        cargos_sugeridos: data?.cargos_sugeridos || [],
+        organograma: data?.organograma || [],
+      });
       toast.success('Estrutura salarial sugerida.');
     } catch (e:any) { toast.error('Falha: '+e.message); }
     finally { setBusy(null); }
@@ -240,7 +254,53 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
 
   const updateFaixa = (idx: number, patch: any) => {
     const faixas = (estrutura?.faixas || []).map((f:any,i:number)=> i===idx ? { ...f, ...patch } : f);
-    saveEstrutura({ faixas, escala_evolucao: estrutura?.escala_evolucao || [] });
+    saveEstrutura({
+      faixas,
+      escala_evolucao: estrutura?.escala_evolucao || [],
+      cargos_sugeridos: estrutura?.cargos_sugeridos || [],
+      organograma: estrutura?.organograma || [],
+    });
+  };
+
+  const removeFaixa = (idx: number) => {
+    const faixas = (estrutura?.faixas || []).filter((_:any,i:number)=> i!==idx);
+    saveEstrutura({
+      faixas,
+      escala_evolucao: estrutura?.escala_evolucao || [],
+      cargos_sugeridos: estrutura?.cargos_sugeridos || [],
+      organograma: estrutura?.organograma || [],
+    });
+  };
+
+  const removeSugestao = (idx: number) => {
+    const cargos_sugeridos = (estrutura?.cargos_sugeridos || []).filter((_:any,i:number)=> i!==idx);
+    saveEstrutura({
+      faixas: estrutura?.faixas || [],
+      escala_evolucao: estrutura?.escala_evolucao || [],
+      cargos_sugeridos,
+      organograma: estrutura?.organograma || [],
+    });
+  };
+
+  const adotarSugestao = async (s: any) => {
+    await save({
+      nome: s.nome, area: s.area || '', nivel: s.nivel || 'analista', cbo: '',
+      descricao_sumaria: s.justificativa || '', atividades: [],
+      requisitos: { escolaridade: '', experiencia: '', competencias: [] },
+      salario_atual: null,
+      piso_salarial: s.salario_min || null,
+      piso_referencia: 'Sugestão IA',
+    });
+    toast.success('Cargo adicionado ao cadastro.');
+  };
+
+  const [orgOpen, setOrgOpen] = useState(false);
+  const gerarOrganograma = async () => {
+    if (!(estrutura?.organograma || []).length) {
+      // se ainda não tem, dispara sugestão completa
+      await sugerirEstrutura();
+    }
+    setOrgOpen(true);
   };
 
   return (
