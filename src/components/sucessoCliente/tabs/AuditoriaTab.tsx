@@ -223,10 +223,10 @@ function AuditoriaDetail({ id, onBack }: { id: string; onBack: () => void }) {
                               <SelectContent>{STATUS.map(s=><SelectItem key={s.v} value={s.v}>{s.l}</SelectItem>)}</SelectContent>
                             </Select>
                           </div>
-                          <div><Label className="text-xs">Responsável (empresa)</Label><Input value={it.responsavel_empresa||''} onChange={e=>updateItem(it.id,{responsavel_empresa:e.target.value})}/></div>
-                          <div><Label className="text-xs">Documentos analisados</Label><Input value={it.documentos||''} onChange={e=>updateItem(it.id,{documentos:e.target.value})}/></div>
+                          <div><Label className="text-xs">Responsável (empresa)</Label><DebouncedInput value={it.responsavel_empresa||''} onCommit={(v)=>updateItem(it.id,{responsavel_empresa:v})}/></div>
+                          <div><Label className="text-xs">Documentos analisados</Label><DebouncedInput value={it.documentos||''} onCommit={(v)=>updateItem(it.id,{documentos:v})}/></div>
                         </div>
-                        <div><Label className="text-xs">Observações / evidências</Label><Textarea rows={2} value={it.observacoes||''} onChange={e=>updateItem(it.id,{observacoes:e.target.value})}/></div>
+                        <div><Label className="text-xs">Observações / evidências</Label><DebouncedTextarea rows={2} value={it.observacoes||''} onCommit={(v)=>updateItem(it.id,{observacoes:v})}/></div>
                       </CardContent>
                     </Card>
                   ))}
@@ -246,9 +246,9 @@ function AuditoriaDetail({ id, onBack }: { id: string; onBack: () => void }) {
               return (
                 <Card key={a.id}><CardContent className="p-3 space-y-2">
                   {item && <div className="text-xs text-muted-foreground">{item.area} • {item.titulo}</div>}
-                  <Textarea rows={2} value={a.acao_corretiva} onChange={e=>upsertAcao({...a, acao_corretiva: e.target.value})}/>
+                  <DebouncedTextarea rows={2} value={a.acao_corretiva} onCommit={(v)=>upsertAcao({...a, acao_corretiva: v})}/>
                   <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-                    <div><Label className="text-xs">Responsável</Label><Input value={a.responsavel||''} onChange={e=>upsertAcao({...a, responsavel: e.target.value})}/></div>
+                    <div><Label className="text-xs">Responsável</Label><DebouncedInput value={a.responsavel||''} onCommit={(v)=>upsertAcao({...a, responsavel: v})}/></div>
                     <div><Label className="text-xs">Prazo</Label><Input type="date" value={a.prazo||''} onChange={e=>upsertAcao({...a, prazo: e.target.value})}/></div>
                     <div><Label className="text-xs">Prioridade</Label>
                       <Select value={a.prioridade} onValueChange={v=>upsertAcao({...a,prioridade:v})}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{PRIO.map(p=><SelectItem key={p.v} value={p.v}>{p.l}</SelectItem>)}</SelectContent></Select>
