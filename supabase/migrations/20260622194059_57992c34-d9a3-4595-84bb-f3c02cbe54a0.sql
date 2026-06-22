@@ -1,0 +1,1 @@
+ALTER TABLE public.auditoria_acoes ADD COLUMN IF NOT EXISTS titulo text;

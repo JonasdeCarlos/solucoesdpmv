@@ -405,16 +405,30 @@ function AuditoriaDetail({ id, onBack }: { id: string; onBack: () => void }) {
         </Accordion>
       )}
 
-      {acoes.length > 0 && (
-        <Card>
-          <CardHeader><CardTitle className="text-base">Plano de Ação</CardTitle></CardHeader>
+      <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-base">Plano de Ação</CardTitle>
+            <Button size="sm" variant="outline" onClick={() => upsertAcao({ titulo: 'Conclusão', acao_corretiva: '', prioridade: 'media', status: 'nao_iniciado' })}>
+              <Plus className="w-4 h-4 mr-1"/>Adicionar ação manual
+            </Button>
+          </CardHeader>
           <CardContent className="space-y-2">
+            {acoes.length === 0 && (
+              <p className="text-xs text-muted-foreground text-center py-2">Nenhuma ação. Use "Gerar Plano de Ação" ou "Adicionar ação manual".</p>
+            )}
             {acoes.map(a => {
               const item = itens.find(i => i.id === a.item_id);
               const filesDaAcao = (acaoFiles || []).filter((f: any) => f.acao_id === a.id);
               return (
                 <Card key={a.id}><CardContent className="p-3 space-y-2">
-                  {item && <div className="text-xs text-muted-foreground">{item.area} • {item.titulo}</div>}
+                  {item ? (
+                    <div className="text-xs text-muted-foreground">{item.area} • {item.titulo}</div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <Label className="text-xs whitespace-nowrap">Tópico</Label>
+                      <DebouncedInput value={a.titulo || 'Conclusão'} onCommit={(v)=>upsertAcao({...a, titulo: v})} placeholder="Conclusão"/>
+                    </div>
+                  )}
                   <DebouncedTextarea rows={2} value={a.acao_corretiva} onCommit={(v)=>upsertAcao({...a, acao_corretiva: v})}/>
                   <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
                     <div><Label className="text-xs">Responsável</Label><DebouncedInput value={a.responsavel||''} onCommit={(v)=>upsertAcao({...a, responsavel: v})}/></div>
@@ -473,8 +487,7 @@ function AuditoriaDetail({ id, onBack }: { id: string; onBack: () => void }) {
               );
             })}
           </CardContent>
-        </Card>
-      )}
+      </Card>
     </div>
   );
 }
