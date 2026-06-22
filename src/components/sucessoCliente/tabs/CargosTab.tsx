@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useCargos, useEstruturaSalarial } from '@/hooks/useCargos';
 import { generateCargosPdf } from '@/utils/sucessoCliente/cargosPdf';
+import { DebouncedInput } from '@/components/sucessoCliente/DebouncedField';
 
 const NIVEIS = [
   { v:'operacional', l:'Operacional' },
@@ -152,11 +153,11 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
                 <tbody>
                 {(estrutura.faixas || []).map((f:any, idx:number) => (
                   <tr key={idx} className="border-t">
-                    <td className="p-1"><Input value={f.nome||''} onChange={e=>updateFaixa(idx,{nome:e.target.value})}/></td>
+                    <td className="p-1"><DebouncedInput value={f.nome||''} onCommit={(v)=>updateFaixa(idx,{nome:v})}/></td>
                     <td className="p-1 text-xs">{(f.cargos||[]).join(', ')}</td>
-                    <td className="p-1"><Input type="number" value={f.min||0} onChange={e=>updateFaixa(idx,{min:Number(e.target.value)})}/></td>
-                    <td className="p-1"><Input type="number" value={f.mid||0} onChange={e=>updateFaixa(idx,{mid:Number(e.target.value)})}/></td>
-                    <td className="p-1"><Input type="number" value={f.max||0} onChange={e=>updateFaixa(idx,{max:Number(e.target.value)})}/></td>
+                    <td className="p-1"><DebouncedInput type="number" value={f.min||0} onCommit={(v)=>updateFaixa(idx,{min:Number(v)})}/></td>
+                    <td className="p-1"><DebouncedInput type="number" value={f.mid||0} onCommit={(v)=>updateFaixa(idx,{mid:Number(v)})}/></td>
+                    <td className="p-1"><DebouncedInput type="number" value={f.max||0} onCommit={(v)=>updateFaixa(idx,{max:Number(v)})}/></td>
                   </tr>
                 ))}
                 </tbody>
