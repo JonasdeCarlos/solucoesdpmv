@@ -99,12 +99,17 @@ function TopicoCard({ it, updateItem, deleteItem }: { it: any; updateItem: (id: 
 export default function AuditoriaTab({ client_id, cliente }: { client_id: string; cliente: any }) {
   const { items, loading, create, remove } = useAuditorias(client_id);
   const selectedStorageKey = `auditoria:${client_id}:selected`;
+  const draftStorageKey = `auditoria:${client_id}:nova-draft`;
   const [selected, setSelectedState] = useState<string | null>(() => {
     try { return localStorage.getItem(selectedStorageKey); }
     catch { return null; }
   });
   const [creating, setCreating] = useState(false);
-  const [draft, setDraft] = useState<any>({ empresa_nome: cliente?.nome || '', cnpj: cliente?.cnpj || '', responsavel: '', consultor: '', data_inicio: new Date().toISOString().slice(0,10), objetivo: '' });
+  const [draft, setDraft] = useState<any>(() => {
+    const fallback = { empresa_nome: cliente?.nome || '', cnpj: cliente?.cnpj || '', responsavel: '', consultor: '', data_inicio: new Date().toISOString().slice(0,10), objetivo: '' };
+    try { return { ...fallback, ...(JSON.parse(localStorage.getItem(draftStorageKey) || 'null') || {}) }; }
+    catch { return fallback; }
+  });
   const [gen, setGen] = useState(false);
 
   const handleCreate = async () => {
@@ -113,6 +118,7 @@ export default function AuditoriaTab({ client_id, cliente }: { client_id: string
     const { data, error } = await create(draft);
     setCreating(false);
     if (error) return toast.error('Erro: '+error.message);
+    try { localStorage.removeItem(draftStorageKey); } catch { /* noop */ }
     setSelected((data as any)?.id || null);
     toast.success('Auditoria criada.');
   };
@@ -128,6 +134,11 @@ export default function AuditoriaTab({ client_id, cliente }: { client_id: string
   useEffect(() => {
     if (!loading && selected && items.length > 0 && !items.some((a: any) => a.id === selected)) setSelected(null);
   }, [items, loading, selected]);
+
+  useEffect(() => {
+    try { localStorage.setItem(draftStorageKey, JSON.stringify(draft)); }
+    catch { /* noop */ }
+  }, [draft, draftStorageKey]);
 
   if (selected) {
     return <AuditoriaDetail id={selected} onBack={() => setSelected(null)} />;
@@ -170,9 +181,14 @@ function AuditoriaDetail({ id, onBack }: { id: string; onBack: () => void }) {
   const { auditoria, itens, acoes, insertItens, updateItem, deleteItem, updateAuditoria, upsertAcao, deleteAcao } = useAuditoriaDetail(id);
   const [generating, setGenerating] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
-  const [sugArea, setSugArea] = useState('');
-  const [sugTitulo, setSugTitulo] = useState('');
-  const [sugDescricao, setSugDescricao] = useState('');
+  const sugestaoStorageKey = `auditoria:${id}:sugestao-draft`;
+  const sugestaoDraft = (() => {
+    try { return JSON.parse(localStorage.getItem(sugestaoStorageKey) || 'null') || {}; }
+    catch { return {}; }
+  })();
+  const [sugArea, setSugArea] = useState(sugestaoDraft.area || '');
+  const [sugTitulo, setSugTitulo] = useState(sugestaoDraft.titulo || '');
+  const [sugDescricao, setSugDescricao] = useState(sugestaoDraft.descricao || '');
   const [sugIa, setSugIa] = useState(false);
 
   const areas = useMemo(() => {
@@ -215,11 +231,19 @@ function AuditoriaDetail({ id, onBack }: { id: string; onBack: () => void }) {
         status: 'pendente',
       }]);
       setSugArea(''); setSugTitulo(''); setSugDescricao('');
+      try { localStorage.removeItem(sugestaoStorageKey); } catch { /* noop */ }
       toast.success('Tema adicionado à auditoria.');
     } catch (e: any) {
       toast.error('Falha ao adicionar tema: ' + e.message);
     } finally { setSugIa(false); }
   };
+
+  useEffect(() => {
+    try {
+      if (!sugArea && !sugTitulo && !sugDescricao) localStorage.removeItem(sugestaoStorageKey);
+      else localStorage.setItem(sugestaoStorageKey, JSON.stringify({ area: sugArea, titulo: sugTitulo, descricao: sugDescricao }));
+    } catch { /* noop */ }
+  }, [sugArea, sugDescricao, sugTitulo, sugestaoStorageKey]);
 
   const progresso = useMemo(() => {
     if (!itens.length) return 0;
