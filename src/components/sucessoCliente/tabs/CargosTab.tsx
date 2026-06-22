@@ -262,6 +262,20 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
     });
   };
 
+  const updateNivel = (faixaIdx: number, nivelIdx: number, valor: number) => {
+    const faixas = (estrutura?.faixas || []).map((f: any, i: number) => {
+      if (i !== faixaIdx) return f;
+      const niveis = (f.niveis || []).map((n: any, j: number) => j === nivelIdx ? { ...n, valor } : n);
+      return { ...f, niveis };
+    });
+    saveEstrutura({
+      faixas,
+      escala_evolucao: estrutura?.escala_evolucao || [],
+      cargos_sugeridos: estrutura?.cargos_sugeridos || [],
+      organograma: estrutura?.organograma || [],
+    });
+  };
+
   const removeFaixa = (idx: number) => {
     const faixas = (estrutura?.faixas || []).filter((_:any,i:number)=> i!==idx);
     saveEstrutura({
@@ -351,27 +365,74 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
         <Card>
           <CardHeader><CardTitle className="text-base">Estrutura Salarial</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            <div className="overflow-auto">
-              <table className="w-full text-sm border">
-                <thead className="bg-muted"><tr>
-                  <th className="p-2 text-left">Faixa</th><th className="p-2 text-left">Cargos</th><th className="p-2">Mín.</th><th className="p-2">Médio</th><th className="p-2">Máx.</th><th className="p-2 w-10"></th>
-                </tr></thead>
-                <tbody>
-                {(estrutura.faixas || []).map((f:any, idx:number) => (
-                  <tr key={idx} className="border-t">
-                    <td className="p-1"><DebouncedInput value={f.nome||''} onCommit={(v)=>updateFaixa(idx,{nome:v})}/></td>
-                    <td className="p-1 text-xs">{(f.cargos||[]).join(', ')}</td>
-                    <td className="p-1"><DebouncedInput type="number" value={f.min||0} onCommit={(v)=>updateFaixa(idx,{min:Number(v)})}/></td>
-                    <td className="p-1"><DebouncedInput type="number" value={f.mid||0} onCommit={(v)=>updateFaixa(idx,{mid:Number(v)})}/></td>
-                    <td className="p-1"><DebouncedInput type="number" value={f.max||0} onCommit={(v)=>updateFaixa(idx,{max:Number(v)})}/></td>
-                    <td className="p-1 text-center">
-                      <Button size="icon" variant="ghost" onClick={()=>{ if(confirm('Remover faixa?')) removeFaixa(idx); }}><Trash2 className="w-4 h-4 text-destructive"/></Button>
-                    </td>
-                  </tr>
-                ))}
-                </tbody>
-              </table>
-            </div>
+            {(() => {
+              const faixas = estrutura.faixas || [];
+              // Detecta colunas de níveis (união entre cargos, mantendo ordem do primeiro)
+              const nivelNomes: string[] = [];
+              for (const f of faixas) {
+                for (const n of (f.niveis || [])) {
+                  if (!nivelNomes.includes(n.nome)) nivelNomes.push(n.nome);
+                }
+              }
+              // Formato legado (min/mid/max) — converte para visualização
+              const isLegacy = nivelNomes.length === 0 && faixas.some((f: any) => f.min != null || f.max != null);
+              const cols = isLegacy ? ['Mínimo', 'Médio', 'Máximo'] : nivelNomes;
+              return (
+                <div className="overflow-auto">
+                  <table className="w-full text-sm border">
+                    <thead className="bg-muted"><tr>
+                      <th className="p-2 text-left">Cargo</th>
+                      <th className="p-2 text-left">Área</th>
+                      <th className="p-2 text-right">Piso CCT</th>
+                      {cols.map(c => <th key={c} className="p-2 text-right">{c}</th>)}
+                      <th className="p-2 w-10"></th>
+                    </tr></thead>
+                    <tbody>
+                    {faixas.map((f: any, idx: number) => {
+                      const niveis = f.niveis || (isLegacy ? [
+                        { nome: 'Mínimo', valor: f.min || 0 },
+                        { nome: 'Médio', valor: f.mid || 0 },
+                        { nome: 'Máximo', valor: f.max || 0 },
+                      ] : []);
+                      return (
+                        <tr key={idx} className="border-t">
+                          <td className="p-1">
+                            <DebouncedInput value={f.cargo || f.nome || ''} onCommit={(v)=>updateFaixa(idx, f.cargo != null ? { cargo: v } : { nome: v })}/>
+                          </td>
+                          <td className="p-1 text-xs">{f.area || (f.cargos || []).join(', ') || '—'}</td>
+                          <td className="p-1 text-right text-xs text-muted-foreground">
+                            {f.piso_cct ? 'R$ '+Number(f.piso_cct).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '—'}
+                          </td>
+                          {cols.map((cn, ni) => {
+                            const n = niveis.find((x: any) => x.nome === cn);
+                            return (
+                              <td key={cn} className="p-1">
+                                <DebouncedInput type="number" value={n?.valor || 0} onCommit={(v)=> {
+                                  if (f.niveis) {
+                                    const realIdx = (f.niveis || []).findIndex((x:any)=>x.nome===cn);
+                                    if (realIdx >= 0) updateNivel(idx, realIdx, Number(v));
+                                    else updateFaixa(idx, { niveis: [...(f.niveis||[]), { nome: cn, valor: Number(v) }] });
+                                  } else {
+                                    // legacy
+                                    const key = cn === 'Mínimo' ? 'min' : cn === 'Médio' ? 'mid' : 'max';
+                                    updateFaixa(idx, { [key]: Number(v) });
+                                  }
+                                }}/>
+                              </td>
+                            );
+                          })}
+                          <td className="p-1 text-center">
+                            <Button size="icon" variant="ghost" onClick={()=>{ if(confirm('Remover linha?')) removeFaixa(idx); }}><Trash2 className="w-4 h-4 text-destructive"/></Button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    </tbody>
+                  </table>
+                  <p className="text-[11px] text-muted-foreground mt-1">Cada cargo ocupa uma linha. O nível "Referência" corresponde ao salário atualmente praticado; o nível "Inicial" respeita o piso da CCT quando informado.</p>
+                </div>
+              );
+            })()}
             {(estrutura.cargos_sugeridos || []).length ? (
               <div>
                 <div className="text-sm font-semibold mb-1">Cargos sugeridos pela IA (não cadastrados)</div>
@@ -395,6 +456,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
             {estrutura.escala_evolucao?.length ? (
               <div>
                 <div className="text-sm font-semibold mb-1">Escala de evolução</div>
+                <p className="text-[11px] text-muted-foreground mb-2">O percentual indica quanto cada etapa representa do <strong>salário de Referência</strong> (teto, equivalente ao salário atualmente praticado). Ex.: 75% = salário inicial é 75% do teto do cargo.</p>
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
                   {estrutura.escala_evolucao.map((e:any,i:number) => (
                     <Card key={i}><CardContent className="p-2 text-center">
