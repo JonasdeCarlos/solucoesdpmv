@@ -418,7 +418,7 @@ function AuditoriaDetail({ id, onBack }: { id: string; onBack: () => void }) {
                   <DebouncedTextarea rows={2} value={a.acao_corretiva} onCommit={(v)=>upsertAcao({...a, acao_corretiva: v})}/>
                   <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
                     <div><Label className="text-xs">Responsável</Label><DebouncedInput value={a.responsavel||''} onCommit={(v)=>upsertAcao({...a, responsavel: v})}/></div>
-                    <div><Label className="text-xs">Prazo</Label><Input type="date" value={a.prazo||''} onChange={e=>upsertAcao({...a, prazo: e.target.value})}/></div>
+                    <div><Label className="text-xs">Prazo</Label><DebouncedInput type="date" value={a.prazo||''} onCommit={(v)=>upsertAcao({...a, prazo: v})}/></div>
                     <div><Label className="text-xs">Prioridade</Label>
                       <Select value={a.prioridade} onValueChange={v=>upsertAcao({...a,prioridade:v})}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{PRIO.map(p=><SelectItem key={p.v} value={p.v}>{p.l}</SelectItem>)}</SelectContent></Select>
                     </div>
