@@ -24,6 +24,64 @@ const STATUS = [
 const PRIO = [{ v:'alta',l:'Alta' },{ v:'media',l:'Média' },{ v:'baixa',l:'Baixa' }];
 const PSTAT = [{ v:'nao_iniciado',l:'Não iniciado' },{ v:'em_andamento',l:'Em andamento' },{ v:'concluido',l:'Concluído' }];
 
+function TopicoCard({ it, updateItem, deleteItem }: { it: any; updateItem: (id: string, patch: any) => Promise<any>; deleteItem: (id: string) => Promise<any> }) {
+  const [resp, setResp] = useState(it.responsavel_empresa || '');
+  const [docs, setDocs] = useState(it.documentos || '');
+  const [obs, setObs] = useState(it.observacoes || '');
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const dirty =
+    resp !== (it.responsavel_empresa || '') ||
+    docs !== (it.documentos || '') ||
+    obs !== (it.observacoes || '');
+
+  const salvar = async () => {
+    setSaving(true);
+    try {
+      await updateItem(it.id, { responsavel_empresa: resp, documentos: docs, observacoes: obs });
+      setSaved(true);
+      toast.success('Tópico salvo.');
+      setTimeout(() => setSaved(false), 1500);
+    } catch (e: any) {
+      toast.error('Falha ao salvar: ' + e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card className="border-l-4" style={{ borderLeftColor: it.status === 'conforme' ? '#16a34a' : it.status === 'nao_conforme' ? '#dc2626' : it.status === 'nao_aplicavel' ? '#94a3b8' : '#f59e0b' }}>
+      <CardContent className="p-3 space-y-2">
+        <div className="flex items-start justify-between gap-2">
+          <div className="font-medium text-sm flex-1">{it.titulo}</div>
+          <Button size="icon" variant="ghost" className="h-7 w-7 -mt-1 -mr-1" onClick={() => { if (confirm(`Excluir o tópico "${it.titulo}"?`)) deleteItem(it.id); }}>
+            <Trash2 className="w-4 h-4 text-destructive" />
+          </Button>
+        </div>
+        {it.descricao && <div className="text-xs text-muted-foreground">{it.descricao}</div>}
+        {it.acao && <div className="text-xs"><span className="font-semibold">Ação:</span> {it.acao}</div>}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+          <div><Label className="text-xs">Status</Label>
+            <Select value={it.status} onValueChange={(v) => updateItem(it.id, { status: v })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>{STATUS.map(s => <SelectItem key={s.v} value={s.v}>{s.l}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div><Label className="text-xs">Responsável (empresa)</Label><Input value={resp} onChange={e => setResp(e.target.value)} /></div>
+          <div><Label className="text-xs">Documentos analisados</Label><Input value={docs} onChange={e => setDocs(e.target.value)} /></div>
+        </div>
+        <div><Label className="text-xs">Observações / evidências</Label><Textarea rows={2} value={obs} onChange={e => setObs(e.target.value)} /></div>
+        <div className="flex justify-end">
+          <Button size="sm" onClick={salvar} disabled={saving || !dirty} variant={saved ? 'secondary' : 'default'}>
+            {saving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : saved ? <Check className="w-4 h-4 mr-1" /> : <Save className="w-4 h-4 mr-1" />}
+            {saved ? 'Salvo' : 'Salvar tópico'}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function AuditoriaTab({ client_id, cliente }: { client_id: string; cliente: any }) {
   const { items, create, remove } = useAuditorias(client_id);
   const [selected, setSelected] = useState<string | null>(null);
