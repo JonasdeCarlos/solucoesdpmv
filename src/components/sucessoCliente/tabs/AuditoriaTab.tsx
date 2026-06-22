@@ -405,8 +405,7 @@ function AuditoriaDetail({ id, onBack }: { id: string; onBack: () => void }) {
         </Accordion>
       )}
 
-      {acoes.length > 0 && (
-        <Card>
+      <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-base">Plano de Ação</CardTitle>
             <Button size="sm" variant="outline" onClick={() => upsertAcao({ titulo: 'Conclusão', acao_corretiva: '', prioridade: 'media', status: 'nao_iniciado' })}>
@@ -414,6 +413,9 @@ function AuditoriaDetail({ id, onBack }: { id: string; onBack: () => void }) {
             </Button>
           </CardHeader>
           <CardContent className="space-y-2">
+            {acoes.length === 0 && (
+              <p className="text-xs text-muted-foreground text-center py-2">Nenhuma ação. Use "Gerar Plano de Ação" ou "Adicionar ação manual".</p>
+            )}
             {acoes.map(a => {
               const item = itens.find(i => i.id === a.item_id);
               const filesDaAcao = (acaoFiles || []).filter((f: any) => f.acao_id === a.id);
@@ -485,8 +487,7 @@ function AuditoriaDetail({ id, onBack }: { id: string; onBack: () => void }) {
               );
             })}
           </CardContent>
-        </Card>
-      )}
+      </Card>
     </div>
   );
 }
