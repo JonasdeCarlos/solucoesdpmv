@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
+const sortAuditoriaItens = (rows: any[]) =>
+  [...rows].sort((a, b) =>
+    (a.area_ordem ?? 0) - (b.area_ordem ?? 0) ||
+    (a.item_ordem ?? 0) - (b.item_ordem ?? 0)
+  );
+
 export function useAuditorias(client_id?: string) {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,34 +59,45 @@ export function useAuditoriaDetail(auditoria_id?: string) {
 
   const insertItens = async (rows: any[]) => {
     if (!rows.length) return;
-    await supabase.from('auditoria_itens' as any).insert(rows.map(r => ({ ...r, auditoria_id })) as any);
-    await load();
+    const { data } = await supabase
+      .from('auditoria_itens' as any)
+      .insert(rows.map(r => ({ ...r, auditoria_id })) as any)
+      .select('*');
+    if (data) setItens(prev => sortAuditoriaItens([...prev, ...((data as any[]) || [])]));
   };
   const updateItem = async (id: string, patch: any) => {
-    await supabase.from('auditoria_itens' as any).update(patch).eq('id', id);
-    await load();
+    const { error } = await supabase.from('auditoria_itens' as any).update(patch).eq('id', id);
+    if (!error) setItens(prev => prev.map(item => item.id === id ? { ...item, ...patch } : item));
   };
   const updateAuditoria = async (patch: any) => {
     if (!auditoria_id) return;
-    await supabase.from('auditorias' as any).update(patch).eq('id', auditoria_id);
-    await load();
+    const { error } = await supabase.from('auditorias' as any).update(patch).eq('id', auditoria_id);
+    if (!error) setAuditoria((prev: any) => prev ? { ...prev, ...patch } : prev);
   };
   const upsertAcao = async (row: any) => {
     if (row.id) {
-      await supabase.from('auditoria_acoes' as any).update(row).eq('id', row.id);
+      const { error } = await supabase.from('auditoria_acoes' as any).update(row).eq('id', row.id);
+      if (!error) setAcoes(prev => prev.map(a => a.id === row.id ? { ...a, ...row } : a));
     } else {
-      await supabase.from('auditoria_acoes' as any).insert({ ...row, auditoria_id } as any);
+      const { data } = await supabase
+        .from('auditoria_acoes' as any)
+        .insert({ ...row, auditoria_id } as any)
+        .select('*')
+        .single();
+      if (data) setAcoes(prev => [...prev, data as any]);
     }
-    await load();
   };
   const deleteAcao = async (id: string) => {
-    await supabase.from('auditoria_acoes' as any).delete().eq('id', id);
-    await load();
+    const { error } = await supabase.from('auditoria_acoes' as any).delete().eq('id', id);
+    if (!error) setAcoes(prev => prev.filter(a => a.id !== id));
   };
   const deleteItem = async (id: string) => {
     await supabase.from('auditoria_acoes' as any).delete().eq('item_id', id);
-    await supabase.from('auditoria_itens' as any).delete().eq('id', id);
-    await load();
+    const { error } = await supabase.from('auditoria_itens' as any).delete().eq('id', id);
+    if (!error) {
+      setItens(prev => prev.filter(item => item.id !== id));
+      setAcoes(prev => prev.filter(acao => acao.item_id !== id));
+    }
   };
   return { auditoria, itens, acoes, loading, reload: load, insertItens, updateItem, deleteItem, updateAuditoria, upsertAcao, deleteAcao };
 }
