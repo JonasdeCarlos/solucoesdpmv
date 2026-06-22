@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Sparkles, Plus, FileDown, Trash2, ChevronLeft, Loader2 } from 'lucide-react';
+import { Sparkles, Plus, FileDown, Trash2, ChevronLeft, Loader2, Save, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuditorias, useAuditoriaDetail } from '@/hooks/useAuditoria';
@@ -282,29 +282,7 @@ function AuditoriaDetail({ id, onBack }: { id: string; onBack: () => void }) {
                 </AccordionTrigger>
                 <AccordionContent className="space-y-3 pt-2">
                   {list.map((it: any) => (
-                    <Card key={it.id} className="border-l-4" style={{borderLeftColor: it.status==='conforme'?'#16a34a':it.status==='nao_conforme'?'#dc2626':it.status==='nao_aplicavel'?'#94a3b8':'#f59e0b'}}>
-                      <CardContent className="p-3 space-y-2">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="font-medium text-sm flex-1">{it.titulo}</div>
-                          <Button size="icon" variant="ghost" className="h-7 w-7 -mt-1 -mr-1" onClick={()=>{ if(confirm(`Excluir o tópico "${it.titulo}"?`)) deleteItem(it.id); }}>
-                            <Trash2 className="w-4 h-4 text-destructive"/>
-                          </Button>
-                        </div>
-                        {it.descricao && <div className="text-xs text-muted-foreground">{it.descricao}</div>}
-                        {it.acao && <div className="text-xs"><span className="font-semibold">Ação:</span> {it.acao}</div>}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                          <div><Label className="text-xs">Status</Label>
-                            <Select value={it.status} onValueChange={(v)=>updateItem(it.id,{status:v})}>
-                              <SelectTrigger><SelectValue/></SelectTrigger>
-                              <SelectContent>{STATUS.map(s=><SelectItem key={s.v} value={s.v}>{s.l}</SelectItem>)}</SelectContent>
-                            </Select>
-                          </div>
-                          <div><Label className="text-xs">Responsável (empresa)</Label><DebouncedInput value={it.responsavel_empresa||''} onCommit={(v)=>updateItem(it.id,{responsavel_empresa:v})}/></div>
-                          <div><Label className="text-xs">Documentos analisados</Label><DebouncedInput value={it.documentos||''} onCommit={(v)=>updateItem(it.id,{documentos:v})}/></div>
-                        </div>
-                        <div><Label className="text-xs">Observações / evidências</Label><DebouncedTextarea rows={2} value={it.observacoes||''} onCommit={(v)=>updateItem(it.id,{observacoes:v})}/></div>
-                      </CardContent>
-                    </Card>
+                    <TopicoCard key={it.id} it={it} updateItem={updateItem} deleteItem={deleteItem}/>
                   ))}
                 </AccordionContent>
               </AccordionItem>
