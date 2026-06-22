@@ -16,18 +16,18 @@ PISOS DA CCT EVIDENCIADOS (referência obrigatória para salário inicial quando
 ${JSON.stringify(pisos || [], null, 2)}
 
 REGRAS OBRIGATÓRIAS:
-1. Agrupe em no mínimo 4 faixas salariais coerentes com o porte/setor.
-2. Para cada faixa retorne: nome, cargos que a compõem (lista), min, mid, max em BRL numérico.
-3. O salário ATUAL praticado deve ser respeitado como teto do cargo (último nível da faixa = max ≥ salário atual).
-4. O salário INICIAL (min) NUNCA pode ser inferior ao piso da CCT informado para o cargo/grupo. Se não houver piso, use mediana de mercado.
-5. Calcule o mid como média entre min e max (ou ponto coerente entre eles).
+1. CADA CARGO CADASTRADO É UMA LINHA INDIVIDUAL — NÃO agrupe cargos diferentes na mesma faixa. Cada cargo terá sua própria escala de níveis (steps).
+2. Para cada cargo, gere exatamente 4 níveis nesta ordem: "Inicial", "Pleno", "Sênior", "Referência".
+3. O nível "Referência" (último) DEVE ter valor IGUAL ao salário atual praticado do cargo. Se o cargo não tiver salário atual informado, use a mediana de mercado para o cargo/setor.
+4. O nível "Inicial" (primeiro) NUNCA pode ser inferior ao piso da CCT informado para o cargo/grupo. Se não houver piso, use ~75% do salário Referência (mínimo legal: salário-mínimo nacional vigente).
+5. Os níveis intermediários ("Pleno", "Sênior") devem ser distribuídos de forma crescente entre Inicial e Referência (progressão linear ou geométrica suave).
 6. Sugira cargos ADICIONAIS que a empresa deveria ter ainda que não cadastrados (ex.: supervisão, back-office, qualidade, segurança do trabalho, etc. conforme o setor) — retorne em "cargos_sugeridos" com nome, área, nivel, justificativa, salario_min, salario_max.
 7. Monte um ORGANOGRAMA hierárquico contemplando os cargos atuais E os sugeridos. Cada nó: id (slug único), nome, parent_id (null para topo), nivel.
-8. Escala de evolução (5 etapas: Inicial, Em desenvolvimento, Pleno, Sênior, Referência) com percentuais de incremento base.
+8. Escala de evolução (4 etapas iguais às dos cargos) com percentual_base representando o % DO SALÁRIO DE REFERÊNCIA (teto). Portanto Inicial≈75%, Pleno≈85%, Sênior≈93%, Referência=100%. Descrição curta de cada etapa.
 
 Retorne SOMENTE JSON válido neste formato:
 {
- "faixas":[{"nome":"...","cargos":["..."],"min":0,"mid":0,"max":0}],
+ "faixas":[{"cargo":"...","area":"...","cbo":"...","niveis":[{"nome":"Inicial","valor":0},{"nome":"Pleno","valor":0},{"nome":"Sênior","valor":0},{"nome":"Referência","valor":0}],"piso_cct":0,"salario_atual":0}],
  "escala_evolucao":[{"etapa":"...","percentual_base":0,"descricao":"..."}],
  "cargos_sugeridos":[{"nome":"...","area":"...","nivel":"...","justificativa":"...","salario_min":0,"salario_max":0}],
  "organograma":[{"id":"...","nome":"...","parent_id":null,"nivel":"..."}]
