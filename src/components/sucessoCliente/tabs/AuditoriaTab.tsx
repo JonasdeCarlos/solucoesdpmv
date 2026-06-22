@@ -79,7 +79,7 @@ export default function AuditoriaTab({ client_id, cliente }: { client_id: string
 }
 
 function AuditoriaDetail({ id, onBack }: { id: string; onBack: () => void }) {
-  const { auditoria, itens, acoes, insertItens, updateItem, updateAuditoria, upsertAcao, deleteAcao } = useAuditoriaDetail(id);
+  const { auditoria, itens, acoes, insertItens, updateItem, deleteItem, updateAuditoria, upsertAcao, deleteAcao } = useAuditoriaDetail(id);
   const [generating, setGenerating] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [sugArea, setSugArea] = useState('');
@@ -284,7 +284,12 @@ function AuditoriaDetail({ id, onBack }: { id: string; onBack: () => void }) {
                   {list.map((it: any) => (
                     <Card key={it.id} className="border-l-4" style={{borderLeftColor: it.status==='conforme'?'#16a34a':it.status==='nao_conforme'?'#dc2626':it.status==='nao_aplicavel'?'#94a3b8':'#f59e0b'}}>
                       <CardContent className="p-3 space-y-2">
-                        <div className="font-medium text-sm">{it.titulo}</div>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="font-medium text-sm flex-1">{it.titulo}</div>
+                          <Button size="icon" variant="ghost" className="h-7 w-7 -mt-1 -mr-1" onClick={()=>{ if(confirm(`Excluir o tópico "${it.titulo}"?`)) deleteItem(it.id); }}>
+                            <Trash2 className="w-4 h-4 text-destructive"/>
+                          </Button>
+                        </div>
                         {it.descricao && <div className="text-xs text-muted-foreground">{it.descricao}</div>}
                         {it.acao && <div className="text-xs"><span className="font-semibold">Ação:</span> {it.acao}</div>}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
