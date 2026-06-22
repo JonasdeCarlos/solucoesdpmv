@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuditorias, useAuditoriaDetail } from '@/hooks/useAuditoria';
 import { generateAuditoriaPdf } from '@/utils/sucessoCliente/auditoriaPdf';
+import { DebouncedInput, DebouncedTextarea } from '@/components/sucessoCliente/DebouncedField';
 
 const STATUS = [
   { v: 'pendente', l: 'Pendente' },
