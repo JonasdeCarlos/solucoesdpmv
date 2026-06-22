@@ -1,12 +1,15 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { PDFDocument } from 'pdf-lib';
+import { supabase } from '@/integrations/supabase/client';
 import { loadBranding } from './perfilPdf';
 
 type Args = {
-  tipo: 'diagnostico' | 'plano' | 'final';
+  tipo: 'diagnostico' | 'plano' | 'final' | 'dossie';
   auditoria: any;
   itens: any[];
   acoes: any[];
+  acaoFiles?: any[];
   parecer?: string;
   resumoNarrativo?: string;
 };
@@ -19,7 +22,7 @@ const PSTAT_LABEL: Record<string, string> = { nao_iniciado: 'Não iniciado', em_
 
 const hex = (h: string) => [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)] as [number,number,number];
 
-export async function generateAuditoriaPdf({ tipo, auditoria, itens, acoes, parecer, resumoNarrativo }: Args) {
+export async function generateAuditoriaPdf({ tipo, auditoria, itens, acoes, acaoFiles = [], parecer, resumoNarrativo }: Args) {
   const branding = await loadBranding();
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
   const W = doc.internal.pageSize.getWidth();
@@ -35,7 +38,9 @@ export async function generateAuditoriaPdf({ tipo, auditoria, itens, acoes, pare
     } catch {}
   }
   const titulo = tipo === 'diagnostico' ? 'Relatório Diagnóstico de Auditoria'
-    : tipo === 'plano' ? 'Plano de Ação' : 'Relatório Final de Auditoria';
+    : tipo === 'plano' ? 'Plano de Ação'
+    : tipo === 'dossie' ? 'Dossiê de Auditoria'
+    : 'Relatório Final de Auditoria';
   doc.setTextColor(255,255,255); doc.setFontSize(15); doc.text(titulo, 80, 35);
   doc.setFontSize(10); doc.text(`${auditoria.empresa_nome} ${auditoria.cnpj ? '— '+auditoria.cnpj : ''}`, 80, 55);
   doc.text(`Emitido em ${new Date().toLocaleDateString('pt-BR')}`, 80, 70);
@@ -62,7 +67,7 @@ export async function generateAuditoriaPdf({ tipo, auditoria, itens, acoes, pare
   para(`Data de início: ${auditoria.data_inicio ? new Date(auditoria.data_inicio).toLocaleDateString('pt-BR') : '—'}`);
   para(`Objetivo: ${auditoria.objetivo || '—'}`);
 
-  if (tipo === 'diagnostico' || tipo === 'final') {
+  if (tipo === 'diagnostico' || tipo === 'final' || tipo === 'dossie') {
     const total = itens.length;
     const conformes = itens.filter(i => i.status === 'conforme').length;
     const naoConf = itens.filter(i => i.status === 'nao_conforme').length;
@@ -105,7 +110,7 @@ export async function generateAuditoriaPdf({ tipo, auditoria, itens, acoes, pare
     }
   }
 
-  if (tipo === 'final') {
+  if (tipo === 'final' || tipo === 'dossie') {
     section('Itens Verificados — Detalhamento');
     const areas = Array.from(new Set(itens.map(i => i.area)));
     for (const a of areas) {
@@ -124,29 +129,45 @@ export async function generateAuditoriaPdf({ tipo, auditoria, itens, acoes, pare
     }
   }
 
-  if (tipo === 'plano' || tipo === 'final') {
+  if (tipo === 'plano' || tipo === 'final' || tipo === 'dossie') {
     section('Plano de Ação');
     if (acoes.length === 0) para('Nenhuma ação cadastrada.');
     else {
       autoTable(doc, {
         startY: y,
-        head: [['Item / Ação corretiva','Responsável','Prazo','Prior.','Status']],
+        head: [['Item / Ação corretiva','Responsável','Prazo','Prior.','Status','Anexos']],
         body: acoes.map(a => {
           const item = itens.find(i => i.id === a.item_id);
+          const anexos = acaoFiles.filter(f => f.acao_id === a.id);
           return [
             `${item ? item.titulo + '\n' : ''}${a.acao_corretiva}`,
             a.responsavel || '—',
             a.prazo ? new Date(a.prazo).toLocaleDateString('pt-BR') : '—',
             PRIO_LABEL[a.prioridade] || a.prioridade,
             PSTAT_LABEL[a.status] || a.status,
+            anexos.length ? anexos.map(f => `• ${f.file_name}`).join('\n') : '—',
           ];
         }),
         styles: { fontSize: 8, cellPadding: 3 },
         headStyles: { fillColor: [pr,pg,pb] },
-        columnStyles: { 0: { cellWidth: 250 } },
+        columnStyles: { 0: { cellWidth: 200 }, 5: { cellWidth: 90 } },
       });
       y = (doc as any).lastAutoTable.finalY + 10;
     }
+  }
+
+  if (tipo === 'dossie' && acaoFiles.length > 0) {
+    section('Documentos Anexados');
+    const nonPdf = acaoFiles.filter(f => !(f.mime_type || '').includes('pdf'));
+    if (nonPdf.length) {
+      para('Os documentos abaixo (Word/outros) estão registrados no sistema mas não podem ser embutidos automaticamente neste PDF:');
+      for (const f of nonPdf) {
+        const acao = acoes.find(a => a.id === f.acao_id);
+        const item = acao ? itens.find(i => i.id === acao.item_id) : null;
+        para(`• ${f.file_name} — ${item ? item.titulo : 'Ação ' + (acao?.acao_corretiva?.slice(0,40) || '')}`);
+      }
+    }
+    para('As páginas a seguir reúnem todos os documentos PDF anexados às ações deste plano.');
   }
 
   if (tipo === 'plano') {
@@ -170,5 +191,34 @@ export async function generateAuditoriaPdf({ tipo, auditoria, itens, acoes, pare
     doc.text(`${branding?.office_name || ''} • Auditoria Trabalhista • ${i}/${total}`, W/2, 825, { align: 'center' });
   }
 
-  doc.save(`Auditoria_${tipo}_${auditoria.empresa_nome.replace(/\s+/g,'_')}.pdf`);
+  const baseName = `Auditoria_${tipo}_${auditoria.empresa_nome.replace(/\s+/g,'_')}.pdf`;
+
+  // Dossiê: faz merge dos PDFs anexados
+  if (tipo === 'dossie') {
+    const pdfAnexos = acaoFiles.filter(f => (f.mime_type || '').includes('pdf'));
+    if (pdfAnexos.length) {
+      const basePdfBytes = doc.output('arraybuffer');
+      const merged = await PDFDocument.load(basePdfBytes);
+      for (const f of pdfAnexos) {
+        try {
+          const { data: signed } = await supabase.storage.from('auditoria-docs').createSignedUrl(f.file_path, 600);
+          if (!signed?.signedUrl) continue;
+          const buf = await fetch(signed.signedUrl).then(r => r.arrayBuffer());
+          const anex = await PDFDocument.load(buf, { ignoreEncryption: true });
+          const pages = await merged.copyPages(anex, anex.getPageIndices());
+          pages.forEach(p => merged.addPage(p));
+        } catch (e) {
+          console.warn('Falha ao anexar PDF', f.file_name, e);
+        }
+      }
+      const out = await merged.save();
+      const blob = new Blob([out as BlobPart], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = baseName; a.click();
+      URL.revokeObjectURL(url);
+      return;
+    }
+  }
+
+  doc.save(baseName);
 }

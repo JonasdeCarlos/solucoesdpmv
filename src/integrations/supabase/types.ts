@@ -227,6 +227,54 @@ export type Database = {
           },
         ]
       }
+      auditoria_acao_files: {
+        Row: {
+          acao_id: string
+          auditoria_id: string
+          created_at: string
+          file_name: string
+          file_path: string
+          id: string
+          mime_type: string | null
+          size_bytes: number | null
+        }
+        Insert: {
+          acao_id: string
+          auditoria_id: string
+          created_at?: string
+          file_name: string
+          file_path: string
+          id?: string
+          mime_type?: string | null
+          size_bytes?: number | null
+        }
+        Update: {
+          acao_id?: string
+          auditoria_id?: string
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          id?: string
+          mime_type?: string | null
+          size_bytes?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auditoria_acao_files_acao_id_fkey"
+            columns: ["acao_id"]
+            isOneToOne: false
+            referencedRelation: "auditoria_acoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "auditoria_acao_files_auditoria_id_fkey"
+            columns: ["auditoria_id"]
+            isOneToOne: false
+            referencedRelation: "auditorias"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       auditoria_acoes: {
         Row: {
           acao_corretiva: string

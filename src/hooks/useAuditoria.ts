@@ -40,19 +40,22 @@ export function useAuditoriaDetail(auditoria_id?: string) {
   const [auditoria, setAuditoria] = useState<any>(null);
   const [itens, setItens] = useState<any[]>([]);
   const [acoes, setAcoes] = useState<any[]>([]);
+  const [acaoFiles, setAcaoFiles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     if (!auditoria_id) return;
     setLoading(true);
-    const [a, i, ac] = await Promise.all([
+    const [a, i, ac, af] = await Promise.all([
       supabase.from('auditorias' as any).select('*').eq('id', auditoria_id).maybeSingle(),
       supabase.from('auditoria_itens' as any).select('*').eq('auditoria_id', auditoria_id).order('area_ordem').order('item_ordem'),
       supabase.from('auditoria_acoes' as any).select('*').eq('auditoria_id', auditoria_id).order('created_at'),
+      supabase.from('auditoria_acao_files' as any).select('*').eq('auditoria_id', auditoria_id).order('created_at'),
     ]);
     setAuditoria(a.data as any);
     setItens((i.data as any) || []);
     setAcoes((ac.data as any) || []);
+    setAcaoFiles((af.data as any) || []);
     setLoading(false);
   }, [auditoria_id]);
   useEffect(() => { load(); }, [load]);
@@ -89,7 +92,10 @@ export function useAuditoriaDetail(auditoria_id?: string) {
   };
   const deleteAcao = async (id: string) => {
     const { error } = await supabase.from('auditoria_acoes' as any).delete().eq('id', id);
-    if (!error) setAcoes(prev => prev.filter(a => a.id !== id));
+    if (!error) {
+      setAcoes(prev => prev.filter(a => a.id !== id));
+      setAcaoFiles(prev => prev.filter(f => f.acao_id !== id));
+    }
   };
   const deleteItem = async (id: string) => {
     await supabase.from('auditoria_acoes' as any).delete().eq('item_id', id);
@@ -97,7 +103,35 @@ export function useAuditoriaDetail(auditoria_id?: string) {
     if (!error) {
       setItens(prev => prev.filter(item => item.id !== id));
       setAcoes(prev => prev.filter(acao => acao.item_id !== id));
+      setAcaoFiles(prev => prev.filter(f => !acoes.some(a => a.item_id === id && a.id === f.acao_id)));
     }
   };
-  return { auditoria, itens, acoes, loading, reload: load, insertItens, updateItem, deleteItem, updateAuditoria, upsertAcao, deleteAcao };
+
+  const addAcaoFile = async (acao_id: string, file: File) => {
+    const path = `${auditoria_id}/${acao_id}/${Date.now()}_${file.name}`;
+    const up = await supabase.storage.from('auditoria-docs').upload(path, file, { contentType: file.type });
+    if (up.error) throw up.error;
+    const { data, error } = await supabase
+      .from('auditoria_acao_files' as any)
+      .insert({ acao_id, auditoria_id, file_name: file.name, file_path: path, mime_type: file.type, size_bytes: file.size } as any)
+      .select('*').single();
+    if (error) throw error;
+    setAcaoFiles(prev => [...prev, data as any]);
+    return data;
+  };
+  const removeAcaoFile = async (id: string) => {
+    const f = acaoFiles.find(x => x.id === id);
+    if (!f) return;
+    await supabase.storage.from('auditoria-docs').remove([f.file_path]);
+    const { error } = await supabase.from('auditoria_acao_files' as any).delete().eq('id', id);
+    if (!error) setAcaoFiles(prev => prev.filter(x => x.id !== id));
+  };
+  const getAcaoFileUrl = async (id: string) => {
+    const f = acaoFiles.find(x => x.id === id);
+    if (!f) return null;
+    const { data } = await supabase.storage.from('auditoria-docs').createSignedUrl(f.file_path, 3600);
+    return data?.signedUrl || null;
+  };
+
+  return { auditoria, itens, acoes, acaoFiles, loading, reload: load, insertItens, updateItem, deleteItem, updateAuditoria, upsertAcao, deleteAcao, addAcaoFile, removeAcaoFile, getAcaoFileUrl };
 }

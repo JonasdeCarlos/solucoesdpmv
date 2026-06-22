@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Sparkles, Plus, FileDown, Trash2, ChevronLeft, Loader2, Save, Check } from 'lucide-react';
+import { Sparkles, Plus, FileDown, Trash2, ChevronLeft, Loader2, Save, Check, Paperclip, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuditorias, useAuditoriaDetail } from '@/hooks/useAuditoria';
@@ -178,7 +178,7 @@ export default function AuditoriaTab({ client_id, cliente }: { client_id: string
 }
 
 function AuditoriaDetail({ id, onBack }: { id: string; onBack: () => void }) {
-  const { auditoria, itens, acoes, insertItens, updateItem, deleteItem, updateAuditoria, upsertAcao, deleteAcao } = useAuditoriaDetail(id);
+  const { auditoria, itens, acoes, acaoFiles, insertItens, updateItem, deleteItem, updateAuditoria, upsertAcao, deleteAcao, addAcaoFile, removeAcaoFile, getAcaoFileUrl } = useAuditoriaDetail(id);
   const [generating, setGenerating] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const sugestaoStorageKey = `auditoria:${id}:sugestao-draft`;
@@ -300,18 +300,19 @@ function AuditoriaDetail({ id, onBack }: { id: string; onBack: () => void }) {
     try {
       let parecer: string | undefined;
       let resumoNarrativo: string | undefined;
-      if (tipo === 'diagnostico' || tipo === 'final') {
+      if (tipo === 'diagnostico' || tipo === 'final' || (tipo as any) === 'dossie') {
         const resumo = {
           total: itens.length,
           conformes: itens.filter(i=>i.status==='conforme').length,
           nao_conformes: itens.filter(i=>i.status==='nao_conforme').length,
         };
         const { data } = await supabase.functions.invoke('auditoria-parecer', {
-          body: { empresa: auditoria.empresa_nome, resumo, itens: itens.map(i=>({titulo:i.titulo,area:i.area,status:i.status})), acoes, tipo: tipo==='final'?'final':'diagnostico' },
+          body: { empresa: auditoria.empresa_nome, resumo, itens: itens.map(i=>({titulo:i.titulo,area:i.area,status:i.status})), acoes, tipo: (tipo==='final'||(tipo as any)==='dossie')?'final':'diagnostico' },
         });
-        if (tipo === 'final') parecer = data?.texto; else resumoNarrativo = data?.texto;
+        if (tipo === 'final' || (tipo as any) === 'dossie') parecer = data?.texto;
+        else resumoNarrativo = data?.texto;
       }
-      await generateAuditoriaPdf({ tipo, auditoria, itens, acoes, parecer, resumoNarrativo });
+      await generateAuditoriaPdf({ tipo: tipo as any, auditoria, itens, acoes, acaoFiles, parecer, resumoNarrativo });
       toast.success('PDF gerado.');
     } catch (e:any) { toast.error('Falha: '+e.message); }
     finally { setBusy(null); }
@@ -336,6 +337,7 @@ function AuditoriaDetail({ id, onBack }: { id: string; onBack: () => void }) {
               <SelectItem value="diagnostico">Relatório Diagnóstico</SelectItem>
               <SelectItem value="plano">Plano de Ação</SelectItem>
               <SelectItem value="final">Relatório Final</SelectItem>
+              <SelectItem value="dossie">Dossiê (PDF + Anexos)</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -409,6 +411,7 @@ function AuditoriaDetail({ id, onBack }: { id: string; onBack: () => void }) {
           <CardContent className="space-y-2">
             {acoes.map(a => {
               const item = itens.find(i => i.id === a.item_id);
+              const filesDaAcao = (acaoFiles || []).filter((f: any) => f.acao_id === a.id);
               return (
                 <Card key={a.id}><CardContent className="p-3 space-y-2">
                   {item && <div className="text-xs text-muted-foreground">{item.area} • {item.titulo}</div>}
@@ -423,6 +426,48 @@ function AuditoriaDetail({ id, onBack }: { id: string; onBack: () => void }) {
                       <Select value={a.status} onValueChange={v=>upsertAcao({...a,status:v})}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{PSTAT.map(p=><SelectItem key={p.v} value={p.v}>{p.l}</SelectItem>)}</SelectContent></Select>
                     </div>
                     <div className="flex items-end"><Button size="icon" variant="ghost" onClick={()=>deleteAcao(a.id)}><Trash2 className="w-4 h-4 text-destructive"/></Button></div>
+                  </div>
+                  <div className="border-t pt-2 space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <Label className="text-xs flex items-center gap-1"><Paperclip className="w-3 h-3"/>Documentos (PDF/Word)</Label>
+                      <label className="cursor-pointer">
+                        <input type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" className="hidden" multiple
+                          onChange={async (e) => {
+                            const files = Array.from(e.target.files || []);
+                            e.target.value = '';
+                            for (const f of files) {
+                              try { await addAcaoFile(a.id, f); }
+                              catch (err: any) { toast.error('Falha no upload de ' + f.name + ': ' + err.message); }
+                            }
+                            if (files.length) toast.success('Documento(s) anexado(s).');
+                          }}/>
+                        <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded border hover:bg-accent">
+                          <Plus className="w-3 h-3"/> Anexar
+                        </span>
+                      </label>
+                    </div>
+                    {filesDaAcao.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">Nenhum documento anexado.</p>
+                    ) : (
+                      <ul className="space-y-1">
+                        {filesDaAcao.map((f: any) => (
+                          <li key={f.id} className="flex items-center justify-between gap-2 text-xs bg-muted/50 rounded px-2 py-1">
+                            <button className="flex items-center gap-1 truncate hover:underline text-left flex-1"
+                              onClick={async () => {
+                                const url = await getAcaoFileUrl(f.id);
+                                if (url) window.open(url, '_blank');
+                              }}>
+                              <FileText className="w-3 h-3 shrink-0"/>
+                              <span className="truncate">{f.file_name}</span>
+                            </button>
+                            <Button size="icon" variant="ghost" className="h-6 w-6"
+                              onClick={() => { if (confirm('Remover este documento?')) removeAcaoFile(f.id); }}>
+                              <Trash2 className="w-3 h-3 text-destructive"/>
+                            </Button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 </CardContent></Card>
               );
