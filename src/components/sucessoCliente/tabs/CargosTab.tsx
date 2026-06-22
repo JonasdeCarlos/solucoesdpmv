@@ -477,6 +477,53 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={orgOpen} onOpenChange={setOrgOpen}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-auto">
+          <DialogHeader><DialogTitle>Organograma sugerido</DialogTitle></DialogHeader>
+          {(estrutura?.organograma || []).length ? (
+            <OrgChart nodes={estrutura.organograma} />
+          ) : (
+            <p className="text-sm text-muted-foreground">Nenhum organograma disponível. Clique em "Sugerir Estrutura Salarial" para gerar.</p>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function OrgChart({ nodes }: { nodes: any[] }) {
+  const byParent = new Map<string | null, any[]>();
+  for (const n of nodes) {
+    const k = n.parent_id ?? null;
+    if (!byParent.has(k)) byParent.set(k, []);
+    byParent.get(k)!.push(n);
+  }
+  const renderNode = (n: any): any => {
+    const children = byParent.get(n.id) || [];
+    return (
+      <div key={n.id} className="flex flex-col items-center">
+        <div className="px-3 py-2 rounded-md border bg-card shadow-sm text-center min-w-[140px]">
+          <div className="text-sm font-semibold">{n.nome}</div>
+          {n.nivel && <div className="text-[10px] text-muted-foreground uppercase">{n.nivel}</div>}
+        </div>
+        {children.length ? (
+          <>
+            <div className="w-px h-4 bg-border" />
+            <div className="flex gap-4 items-start pt-2 border-t border-border">
+              {children.map(renderNode)}
+            </div>
+          </>
+        ) : null}
+      </div>
+    );
+  };
+  const roots = byParent.get(null) || [];
+  return (
+    <div className="overflow-auto p-4">
+      <div className="flex gap-6 justify-center items-start">
+        {roots.map(renderNode)}
+      </div>
     </div>
   );
 }
