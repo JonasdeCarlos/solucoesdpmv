@@ -227,6 +227,175 @@ export type Database = {
           },
         ]
       }
+      auditoria_acoes: {
+        Row: {
+          acao_corretiva: string
+          auditoria_id: string
+          created_at: string
+          id: string
+          item_id: string | null
+          prazo: string | null
+          prioridade: string
+          responsavel: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          acao_corretiva: string
+          auditoria_id: string
+          created_at?: string
+          id?: string
+          item_id?: string | null
+          prazo?: string | null
+          prioridade?: string
+          responsavel?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          acao_corretiva?: string
+          auditoria_id?: string
+          created_at?: string
+          id?: string
+          item_id?: string | null
+          prazo?: string | null
+          prioridade?: string
+          responsavel?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auditoria_acoes_auditoria_id_fkey"
+            columns: ["auditoria_id"]
+            isOneToOne: false
+            referencedRelation: "auditorias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "auditoria_acoes_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "auditoria_itens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      auditoria_itens: {
+        Row: {
+          acao: string | null
+          area: string
+          area_ordem: number | null
+          auditoria_id: string
+          created_at: string
+          descricao: string | null
+          documentos: string | null
+          id: string
+          item_ordem: number | null
+          observacoes: string | null
+          responsavel_empresa: string | null
+          status: string
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          acao?: string | null
+          area: string
+          area_ordem?: number | null
+          auditoria_id: string
+          created_at?: string
+          descricao?: string | null
+          documentos?: string | null
+          id?: string
+          item_ordem?: number | null
+          observacoes?: string | null
+          responsavel_empresa?: string | null
+          status?: string
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          acao?: string | null
+          area?: string
+          area_ordem?: number | null
+          auditoria_id?: string
+          created_at?: string
+          descricao?: string | null
+          documentos?: string | null
+          id?: string
+          item_ordem?: number | null
+          observacoes?: string | null
+          responsavel_empresa?: string | null
+          status?: string
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auditoria_itens_auditoria_id_fkey"
+            columns: ["auditoria_id"]
+            isOneToOne: false
+            referencedRelation: "auditorias"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      auditorias: {
+        Row: {
+          client_id: string
+          cnpj: string | null
+          consultor: string | null
+          created_at: string
+          data_inicio: string | null
+          empresa_nome: string
+          id: string
+          objetivo: string | null
+          parecer_final: string | null
+          responsavel: string | null
+          resumo_diagnostico: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          cnpj?: string | null
+          consultor?: string | null
+          created_at?: string
+          data_inicio?: string | null
+          empresa_nome: string
+          id?: string
+          objetivo?: string | null
+          parecer_final?: string | null
+          responsavel?: string | null
+          resumo_diagnostico?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          cnpj?: string | null
+          consultor?: string | null
+          created_at?: string
+          data_inicio?: string | null
+          empresa_nome?: string
+          id?: string
+          objetivo?: string | null
+          parecer_final?: string | null
+          responsavel?: string | null
+          resumo_diagnostico?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auditorias_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       aviso_contact_attempts: {
         Row: {
           attempt_type: string
@@ -749,6 +918,62 @@ export type Database = {
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "bh_employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cargos: {
+        Row: {
+          area: string | null
+          atividades: Json | null
+          cbo: string | null
+          client_id: string
+          created_at: string
+          descricao_sumaria: string | null
+          entrevista: string | null
+          id: string
+          nivel: string | null
+          nome: string
+          requisitos: Json | null
+          salario_atual: number | null
+          updated_at: string
+        }
+        Insert: {
+          area?: string | null
+          atividades?: Json | null
+          cbo?: string | null
+          client_id: string
+          created_at?: string
+          descricao_sumaria?: string | null
+          entrevista?: string | null
+          id?: string
+          nivel?: string | null
+          nome: string
+          requisitos?: Json | null
+          salario_atual?: number | null
+          updated_at?: string
+        }
+        Update: {
+          area?: string | null
+          atividades?: Json | null
+          cbo?: string | null
+          client_id?: string
+          created_at?: string
+          descricao_sumaria?: string | null
+          entrevista?: string | null
+          id?: string
+          nivel?: string | null
+          nome?: string
+          requisitos?: Json | null
+          salario_atual?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cargos_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
             referencedColumns: ["id"]
           },
         ]
@@ -1943,6 +2168,41 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      estruturas_salariais: {
+        Row: {
+          client_id: string
+          created_at: string
+          escala_evolucao: Json
+          faixas: Json
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          escala_evolucao?: Json
+          faixas?: Json
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          escala_evolucao?: Json
+          faixas?: Json
+          id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estruturas_salariais_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       feriados_municipais: {
         Row: {
