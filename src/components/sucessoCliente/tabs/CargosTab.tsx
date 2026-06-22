@@ -43,39 +43,67 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
   const [filterNivel, setFilterNivel] = useState('all');
   const [busy, setBusy] = useState<string | null>(null);
 
-  // Pisos evidenciados nas CCTs ativas — extraídos das cláusulas (titulo/descricao com "piso")
+  // Pisos evidenciados nas CCTs ativas — extrai função específica + valor (ex.: "Cozinheiro: R$ 1.800,00")
   const pisosCCT = useMemo(() => {
-    const out: { label: string; valor: number; ref: string }[] = [];
+    const out: { label: string; valor: number; ref: string; funcao?: string }[] = [];
     const active = (ccts || []).filter((c: any) => !c.deleted_at);
+    const reFuncao = /([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ0-9\s\/().º°ª\-–—]{2,70}?)\s*[:\-–—]\s*R\$\s*([\d.]+,\d{2}|\d+(?:,\d{2})?)/gi;
+    const reSimples = /R\$\s*([\d.]+,\d{2}|\d+(?:,\d{2})?)/gi;
+    const limpar = (s: string) => s.replace(/\s+/g, ' ').replace(/^[\s•·\-–—,;]+|[\s•·\-–—,;]+$/g, '').trim();
+    const parseV = (raw: string) => Number(raw.replace(/\./g, '').replace(',', '.'));
     for (const c of active) {
+      const sind = c.sindicato || 'CCT';
+      const dataBase = c.data_base ? ` • data-base ${c.data_base}` : '';
       const clauses = (c.ai_clauses || []) as any[];
       for (const cl of clauses) {
         const tit = String(cl?.titulo || '');
         const desc = String(cl?.descricao || '');
-        const blob = (tit + ' ' + desc);
+        const blob = (tit + ' \n ' + desc);
         if (!/piso|salário\s+normativo|salario\s+normativo/i.test(blob)) continue;
-        // captura todos os valores R$ X.XXX,XX no texto
-        const re = /R\$\s*([\d\.]+,\d{2}|\d+)/gi;
-        const matches = Array.from(blob.matchAll(re));
-        if (matches.length === 0) {
-          out.push({ label: `${tit || 'Piso'} — ${c.sindicato || 'CCT'}`, valor: 0, ref: `${c.sindicato || 'CCT'} — ${tit || 'Piso'}` });
-          continue;
-        }
-        for (const m of matches) {
-          const raw = m[1].replace(/\./g, '').replace(',', '.');
-          const v = Number(raw);
-          if (!isFinite(v) || v <= 0) continue;
+        // 1) tenta capturar pares Função: R$ Valor
+        const pares = Array.from(blob.matchAll(reFuncao));
+        const consumidos = new Set<number>();
+        for (const m of pares) {
+          const funcao = limpar(m[1]).replace(/^(o|a|os|as)\s+/i, '');
+          const v = parseV(m[2]);
+          if (!isFinite(v) || v <= 0 || !funcao || funcao.length > 60) continue;
+          // filtra ruído: precisa ter pelo menos uma letra
+          if (!/[A-Za-zÀ-ÿ]{3,}/.test(funcao)) continue;
+          consumidos.add(m.index || 0);
           out.push({
-            label: `${tit || 'Piso'} — R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (${c.sindicato || 'CCT'})`,
+            funcao,
             valor: v,
-            ref: `${c.sindicato || 'CCT'}${c.data_base ? ' • data-base ' + c.data_base : ''} — ${tit || 'Piso'}`,
+            label: `${funcao} — R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (${sind})`,
+            ref: `${sind}${dataBase} — ${funcao}${tit ? ' • ' + tit : ''}`,
+          });
+        }
+        // 2) valores soltos sem função explícita → usa o título da cláusula
+        const soltos = Array.from(blob.matchAll(reSimples));
+        for (const m of soltos) {
+          const idx = m.index || 0;
+          // pula se já foi capturado como par (idx do valor cai dentro do match anterior)
+          const dentroDePar = Array.from(consumidos).some(ci => {
+            const par = pares.find(p => (p.index || 0) === ci);
+            if (!par) return false;
+            return idx >= (par.index || 0) && idx < (par.index || 0) + par[0].length;
+          });
+          if (dentroDePar) continue;
+          const v = parseV(m[1]);
+          if (!isFinite(v) || v <= 0) continue;
+          const rotulo = tit || 'Piso';
+          out.push({
+            valor: v,
+            label: `${rotulo} — R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (${sind})`,
+            ref: `${sind}${dataBase} — ${rotulo}`,
           });
         }
       }
     }
     // dedupe por label
     const seen = new Set<string>();
-    return out.filter(p => seen.has(p.label) ? false : (seen.add(p.label), true));
+    return out
+      .filter(p => seen.has(p.label) ? false : (seen.add(p.label), true))
+      .sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'));
   }, [ccts]);
 
   const areas = useMemo(() => Array.from(new Set(items.map(i => i.area).filter(Boolean))), [items]);
