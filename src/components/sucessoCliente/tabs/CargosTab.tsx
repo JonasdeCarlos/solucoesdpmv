@@ -43,14 +43,26 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
   const [filterNivel, setFilterNivel] = useState('all');
   const [busy, setBusy] = useState<string | null>(null);
 
-  // Pisos evidenciados nas CCTs ativas — extrai função específica + valor (ex.: "Cozinheiro: R$ 1.800,00")
+  // Pisos evidenciados nas CCTs ativas — extrai cada função específica com seu valor.
+  // Lida com formatos do tipo: "GRUPO I - Garçom (CBO 513405), Barman, Cozinheiro - R$ 1.750,00"
+  // e "Para Cozinheiro, Pizzaiolo, o piso salarial é de R$ 1.910,18".
   const pisosCCT = useMemo(() => {
-    const out: { label: string; valor: number; ref: string; funcao?: string }[] = [];
+    const out: { label: string; valor: number; ref: string; funcao?: string; grupo?: string }[] = [];
     const active = (ccts || []).filter((c: any) => !c.deleted_at);
-    const reFuncao = /([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ0-9\s\/().º°ª\-–—]{2,70}?)\s*[:\-–—]\s*R\$\s*([\d.]+,\d{2}|\d+(?:,\d{2})?)/gi;
-    const reSimples = /R\$\s*([\d.]+,\d{2}|\d+(?:,\d{2})?)/gi;
-    const limpar = (s: string) => s.replace(/\s+/g, ' ').replace(/^[\s•·\-–—,;]+|[\s•·\-–—,;]+$/g, '').trim();
     const parseV = (raw: string) => Number(raw.replace(/\./g, '').replace(',', '.'));
+    const limpar = (s: string) =>
+      s
+        .replace(/\([^)]*\)/g, ' ')              // remove "(CBO ...)"
+        .replace(/\bCBO\s*[\d.\-]+/gi, ' ')      // remove "CBO 12345"
+        .replace(/\s+/g, ' ')
+        .replace(/^[\s•·\-–—,;.:]+|[\s•·\-–—,;.:]+$/g, '')
+        .trim();
+    const isFuncao = (s: string) =>
+      s.length >= 3 &&
+      s.length <= 70 &&
+      /[A-Za-zÀ-ÿ]{3,}/.test(s) &&
+      !/^(GRUPO|PARA|O PISO|É DE|SERÃO|SERA|SALARIAL|CATEGORIA|TRABALHADORES?|MAIS|R\$)/i.test(s);
+
     for (const c of active) {
       const sind = c.sindicato || 'CCT';
       const dataBase = c.data_base ? ` • data-base ${c.data_base}` : '';
@@ -58,44 +70,61 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
       for (const cl of clauses) {
         const tit = String(cl?.titulo || '');
         const desc = String(cl?.descricao || '');
-        const blob = (tit + ' \n ' + desc);
+        const trecho = String(cl?.trecho_base || '');
+        const blob = `${tit}\n${desc}\n${trecho}`;
         if (!/piso|salário\s+normativo|salario\s+normativo/i.test(blob)) continue;
-        // 1) tenta capturar pares Função: R$ Valor
-        const pares = Array.from(blob.matchAll(reFuncao));
-        const consumidos = new Set<number>();
-        for (const m of pares) {
-          const funcao = limpar(m[1]).replace(/^(o|a|os|as)\s+/i, '');
-          const v = parseV(m[2]);
-          if (!isFinite(v) || v <= 0 || !funcao || funcao.length > 60) continue;
-          // filtra ruído: precisa ter pelo menos uma letra
-          if (!/[A-Za-zÀ-ÿ]{3,}/.test(funcao)) continue;
-          consumidos.add(m.index || 0);
-          out.push({
-            funcao,
-            valor: v,
-            label: `${funcao} — R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (${sind})`,
-            ref: `${sind}${dataBase} — ${funcao}${tit ? ' • ' + tit : ''}`,
-          });
-        }
-        // 2) valores soltos sem função explícita → usa o título da cláusula
-        const soltos = Array.from(blob.matchAll(reSimples));
-        for (const m of soltos) {
-          const idx = m.index || 0;
-          // pula se já foi capturado como par (idx do valor cai dentro do match anterior)
-          const dentroDePar = Array.from(consumidos).some(ci => {
-            const par = pares.find(p => (p.index || 0) === ci);
-            if (!par) return false;
-            return idx >= (par.index || 0) && idx < (par.index || 0) + par[0].length;
-          });
-          if (dentroDePar) continue;
-          const v = parseV(m[1]);
-          if (!isFinite(v) || v <= 0) continue;
+
+        // Extrai grupo (se houver)
+        const mGrupo = blob.match(/GRUPO\s+([IVXLCDM\d]+)/i);
+        const grupo = mGrupo ? `GRUPO ${mGrupo[1].toUpperCase()}` : '';
+
+        // Pega o(s) valor(es) R$
+        const reValor = /R\$\s*([\d.]+,\d{2}|\d+(?:,\d{2})?)/gi;
+        const valores = Array.from(blob.matchAll(reValor));
+        if (valores.length === 0) continue;
+
+        // Usa o trecho mais "limpo" (descricao + trecho_base) para extrair funções
+        const fonte = (desc + ' ' + trecho).replace(/\s+/g, ' ');
+        // Pega o trecho ANTES do primeiro R$ — geralmente a lista de funções
+        const idxRS = fonte.search(/R\$/i);
+        let antes = idxRS > 0 ? fonte.slice(0, idxRS) : fonte;
+        // Remove preâmbulos
+        antes = antes
+          .replace(/^.*?(GRUPO\s+[IVXLCDM\d]+\s*[-–—:]\s*)/i, '')
+          .replace(/^.*?\bPara\b\s*/i, '')
+          .replace(/,?\s*o\s+piso\s+salarial.*$/i, '')
+          .replace(/[-–—]\s*$/, '');
+
+        // Divide por vírgula, "e", ";", "/"
+        const partes = antes
+          .split(/,| e | ou |;|\//gi)
+          .map(limpar)
+          .filter(Boolean)
+          .filter(isFuncao);
+
+        // Valor principal = primeiro R$ encontrado
+        const v = parseV(valores[0][1]);
+        if (!isFinite(v) || v <= 0) continue;
+
+        if (partes.length === 0) {
+          // Fallback: título da cláusula
           const rotulo = tit || 'Piso';
           out.push({
+            grupo,
             valor: v,
-            label: `${rotulo} — R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (${sind})`,
-            ref: `${sind}${dataBase} — ${rotulo}`,
+            label: `${grupo ? grupo + ' • ' : ''}${rotulo} — R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (${sind})`,
+            ref: `${sind}${dataBase} — ${grupo || rotulo}`,
           });
+        } else {
+          for (const funcao of partes) {
+            out.push({
+              funcao,
+              grupo,
+              valor: v,
+              label: `${funcao} — R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}${grupo ? ' • ' + grupo : ''} (${sind})`,
+              ref: `${sind}${dataBase} — ${funcao}${grupo ? ' • ' + grupo : ''}`,
+            });
+          }
         }
       }
     }
