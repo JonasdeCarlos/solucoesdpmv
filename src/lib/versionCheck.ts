@@ -63,6 +63,20 @@ export function startVersionCheck() {
   if (started) return;
   started = true;
 
+  // Só roda no site publicado (produção). Em preview/dev do Lovable e em
+  // localhost o HMR/edição constante mudaria o bundle e dispararia reloads
+  // que apagam o que o usuário está digitando.
+  if (typeof window === 'undefined') return;
+  const host = window.location.hostname;
+  const isPreview =
+    host.includes('lovableproject.com') ||
+    host.includes('id-preview') ||
+    host === 'localhost' ||
+    host === '127.0.0.1';
+  // @ts-ignore — import.meta.env existe no Vite
+  const isDev = !!(import.meta as any).env?.DEV;
+  if (isPreview || isDev) return;
+
   // Limpa SWs antigos (esta app não usa SW; se houver, é resíduo).
   unregisterStaleServiceWorkers();
 
