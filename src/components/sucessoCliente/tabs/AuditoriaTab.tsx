@@ -82,12 +82,56 @@ function AuditoriaDetail({ id, onBack }: { id: string; onBack: () => void }) {
   const { auditoria, itens, acoes, insertItens, updateItem, updateAuditoria, upsertAcao, deleteAcao } = useAuditoriaDetail(id);
   const [generating, setGenerating] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const [sugArea, setSugArea] = useState('');
+  const [sugTitulo, setSugTitulo] = useState('');
+  const [sugDescricao, setSugDescricao] = useState('');
+  const [sugIa, setSugIa] = useState(false);
 
   const areas = useMemo(() => {
     const map = new Map<string, any[]>();
     for (const i of itens) { if (!map.has(i.area)) map.set(i.area, []); map.get(i.area)!.push(i); }
     return Array.from(map.entries());
   }, [itens]);
+
+  const sugerirTema = async () => {
+    const titulo = sugTitulo.trim();
+    const area = (sugArea.trim() || 'Tema sugerido');
+    if (!titulo) { toast.error('Informe o tema/título.'); return; }
+    setSugIa(true);
+    try {
+      let descricao = sugDescricao.trim();
+      let acao = '';
+      try {
+        const { data } = await supabase.functions.invoke('auditoria-gerar-roteiro', {
+          body: {
+            empresa: auditoria.empresa_nome,
+            cnpj: auditoria.cnpj,
+            objetivo: `Detalhar APENAS o tema solicitado: "${titulo}" (área: ${area}). Retorne 1 área com 1 item somente.`,
+          },
+        });
+        const it = data?.areas?.[0]?.itens?.[0];
+        if (it) {
+          if (!descricao) descricao = it.descricao || '';
+          acao = it.acao || '';
+        }
+      } catch { /* segue sem IA */ }
+      const lista = itens.filter(i => i.area === area);
+      const area_ordem = areas.findIndex(([a]) => a === area);
+      await insertItens([{
+        area,
+        area_ordem: area_ordem >= 0 ? area_ordem : areas.length,
+        item_ordem: lista.length,
+        titulo,
+        descricao,
+        acao,
+        status: 'pendente',
+      }]);
+      setSugArea(''); setSugTitulo(''); setSugDescricao('');
+      toast.success('Tema adicionado à auditoria.');
+    } catch (e: any) {
+      toast.error('Falha ao adicionar tema: ' + e.message);
+    } finally { setSugIa(false); }
+  };
 
   const progresso = useMemo(() => {
     if (!itens.length) return 0;
@@ -191,6 +235,32 @@ function AuditoriaDetail({ id, onBack }: { id: string; onBack: () => void }) {
         <div className="flex-1"><div className="text-xs text-muted-foreground">Progresso geral</div><Progress value={progresso}/></div>
         <div className="text-2xl font-bold">{progresso}%</div>
       </CardContent></Card>
+
+      <Card>
+        <CardHeader><CardTitle className="text-base">Sugerir tema não contemplado</CardTitle></CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-12 gap-2">
+          <div className="md:col-span-3">
+            <Label className="text-xs">Área</Label>
+            <Input list="auditoria-areas" placeholder="Ex.: Jornada, Férias…" value={sugArea} onChange={e=>setSugArea(e.target.value)}/>
+            <datalist id="auditoria-areas">
+              {areas.map(([a]) => <option key={a} value={a}/>)}
+            </datalist>
+          </div>
+          <div className="md:col-span-4">
+            <Label className="text-xs">Tema / Título</Label>
+            <Input value={sugTitulo} onChange={e=>setSugTitulo(e.target.value)} placeholder="Ex.: Controle de banco de horas"/>
+          </div>
+          <div className="md:col-span-4">
+            <Label className="text-xs">Descrição (opcional)</Label>
+            <Input value={sugDescricao} onChange={e=>setSugDescricao(e.target.value)} placeholder="A IA complementa se vazio"/>
+          </div>
+          <div className="md:col-span-1 flex items-end">
+            <Button onClick={sugerirTema} disabled={sugIa} className="w-full">
+              {sugIa ? <Loader2 className="w-4 h-4 animate-spin"/> : <Plus className="w-4 h-4"/>}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {itens.length === 0 ? (
         <Card><CardContent className="p-8 text-center text-muted-foreground">
