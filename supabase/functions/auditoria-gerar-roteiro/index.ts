@@ -10,7 +10,8 @@ Deno.serve(async (req) => {
     const prompt = `Você é auditor trabalhista sênior. Gere um roteiro estruturado de auditoria trabalhista para a empresa "${empresa}" (CNPJ: ${cnpj || "n/i"}; segmento: ${segmento || "n/i"}).
 Objetivo informado: ${objetivo || "Auditoria trabalhista completa"}.
 
-Cubra no mínimo 10 áreas: Admissão e Documentação, Jornada de Trabalho, Folha de Pagamento, Benefícios Obrigatórios, SST, FGTS e INSS, Contratos Especiais, Férias e 13º, Rescisões, eSocial. Acrescente outras se relevantes.
+Cubra no mínimo 11 áreas: Admissão e Documentação, Contratos de Trabalho, Jornada de Trabalho, Folha de Pagamento, Benefícios Obrigatórios, SST, FGTS e INSS, Contratos Especiais, Férias e 13º, Rescisões, eSocial. Acrescente outras se relevantes.
+Em "Contratos de Trabalho" inclua itens como: tipo de contrato (CLT, experiência, prazo determinado, intermitente, teletrabalho), cláusulas obrigatórias, prorrogações, aditivos, assinatura/registro, conformidade com CCT, exclusividade, confidencialidade e cláusulas restritivas.
 Para cada área, gere de 3 a 6 itens com: titulo (curto), descricao (o que verificar), acao (como verificar, passo do auditor).
 Retorne SOMENTE JSON sem markdown no formato:
 {"areas":[{"nome":"...","itens":[{"titulo":"...","descricao":"...","acao":"..."}]}]}`;
