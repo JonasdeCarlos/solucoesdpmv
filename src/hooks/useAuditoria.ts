@@ -77,5 +77,10 @@ export function useAuditoriaDetail(auditoria_id?: string) {
     await supabase.from('auditoria_acoes' as any).delete().eq('id', id);
     await load();
   };
-  return { auditoria, itens, acoes, loading, reload: load, insertItens, updateItem, updateAuditoria, upsertAcao, deleteAcao };
+  const deleteItem = async (id: string) => {
+    await supabase.from('auditoria_acoes' as any).delete().eq('item_id', id);
+    await supabase.from('auditoria_itens' as any).delete().eq('id', id);
+    await load();
+  };
+  return { auditoria, itens, acoes, loading, reload: load, insertItens, updateItem, deleteItem, updateAuditoria, upsertAcao, deleteAcao };
 }
