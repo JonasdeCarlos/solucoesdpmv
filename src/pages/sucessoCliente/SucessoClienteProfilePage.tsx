@@ -14,6 +14,8 @@ import CCTTab from '@/components/sucessoCliente/tabs/CCTTab';
 import RubricasTab from '@/components/sucessoCliente/tabs/RubricasTab';
 import RiscosTab from '@/components/sucessoCliente/tabs/RiscosTab';
 import AdmissoesTab from '@/components/sucessoCliente/tabs/AdmissoesTab';
+import AuditoriaTab from '@/components/sucessoCliente/tabs/AuditoriaTab';
+import CargosTab from '@/components/sucessoCliente/tabs/CargosTab';
 import { generatePerfilPdf, loadBranding } from '@/utils/sucessoCliente/perfilPdf';
 import { toast } from 'sonner';
 
@@ -98,6 +100,8 @@ export default function SucessoClienteProfilePage() {
           <TabsTrigger value="rubricas">Rubricas</TabsTrigger>
           <TabsTrigger value="admissoes">Admissões</TabsTrigger>
           <TabsTrigger value="riscos">Riscos</TabsTrigger>
+          <TabsTrigger value="auditoria">Auditoria</TabsTrigger>
+          <TabsTrigger value="cargos">Cargos & Salários</TabsTrigger>
         </TabsList>
         <TabsContent value="perfil"><PerfilTab cliente={cliente} onClienteSaved={reload}/></TabsContent>
         <TabsContent value="uploads"><UploadsTab client_id={cliente.id}/></TabsContent>
@@ -106,6 +110,8 @@ export default function SucessoClienteProfilePage() {
         <TabsContent value="rubricas"><RubricasTab client_id={cliente.id}/></TabsContent>
         <TabsContent value="admissoes"><AdmissoesTab client_id={cliente.id}/></TabsContent>
         <TabsContent value="riscos"><RiscosTab client_id={cliente.id}/></TabsContent>
+        <TabsContent value="auditoria"><AuditoriaTab client_id={cliente.id} cliente={cliente}/></TabsContent>
+        <TabsContent value="cargos"><CargosTab client_id={cliente.id} cliente={cliente}/></TabsContent>
       </Tabs>
     </div>
   );
