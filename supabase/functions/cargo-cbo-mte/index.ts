@@ -9,10 +9,29 @@ Deno.serve(async (req) => {
     const KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!KEY) throw new Error("LOVABLE_API_KEY missing");
 
+    // Grounding: busca título oficial e descrição sumária no ocupacoes.com.br (mirror do MTE)
+    let oficial = "";
+    try {
+      const html = await fetch(`https://www.ocupacoes.com.br/cbo-mte/${code}`, {
+        headers: { "User-Agent": "Mozilla/5.0" },
+      }).then((x) => (x.ok ? x.text() : ""));
+      const titulo = html.match(/<h2>\s*([^<]+?)\s*<\/h2>/)?.[1]?.trim() || "";
+      const familia = html.match(/\/cbo-mte\/(\d{4}-[^"]+)"><span class="level">(\d{4})\s*-\s*<\/span>\s*<span class="full-description">([^<]+)/);
+      const sumaria = html.match(/<h2>Descrição Sumária<\/h2>\s*([\s\S]*?)\s*<h2>/)?.[1]?.replace(/\s+/g, " ").trim() || "";
+      oficial = [
+        titulo && `Título oficial: ${titulo}`,
+        familia && `Família ${familia[2]}: ${familia[3].trim()}`,
+        sumaria && `Descrição sumária oficial: ${sumaria}`,
+      ].filter(Boolean).join("\n");
+    } catch (_) { /* ignore */ }
+
     const prompt = `Você é um especialista em CBO (Classificação Brasileira de Ocupações) do MTE/MTb. Liste as ÁREAS DE ATIVIDADE oficiais da família ocupacional CBO ${code}${nome ? ` (cargo informado: ${nome})` : ""}, EXATAMENTE como aparecem no site oficial do MTE (cbo.mte.gov.br → "Áreas de Atividade") — organizadas em GACs (Grandes Áreas de Competência) identificadas por letra (A, B, C, D, ...), cada uma com seu título (ex.: "CRIAR PRATOS", "ELABORAR CARDÁPIO") e as atividades específicas (verbo no infinitivo + complemento) que aparecem ao expandir o "+" daquele tópico.
+
+${oficial ? `DADOS OFICIAIS CONFIRMADOS DO CBO ${code} (use como âncora — NÃO confunda com outro CBO):\n${oficial}\n` : ""}
 
 Regras:
 - Use APENAS conteúdo oficial do CBO/MTE; NÃO invente.
+- O CBO ${code} é ESTRITAMENTE o cargo acima. NÃO traga atividades de outros cargos/famílias.
 - Mantenha as letras de ordem (A, B, C...) e os títulos dos GACs em CAIXA ALTA, idênticos ao site.
 - Para cada GAC, liste TODAS as atividades expandidas.
 - Se o código não existir, retorne areas_de_atividade vazio e explique em "observacao".
@@ -36,7 +55,7 @@ Retorne SOMENTE JSON neste formato:
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-2.5-pro",
         messages: [{ role: "user", content: prompt }],
         response_format: { type: "json_object" },
       }),
