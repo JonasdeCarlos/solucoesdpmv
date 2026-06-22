@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -25,9 +25,15 @@ const PRIO = [{ v:'alta',l:'Alta' },{ v:'media',l:'Média' },{ v:'baixa',l:'Baix
 const PSTAT = [{ v:'nao_iniciado',l:'Não iniciado' },{ v:'em_andamento',l:'Em andamento' },{ v:'concluido',l:'Concluído' }];
 
 function TopicoCard({ it, updateItem, deleteItem }: { it: any; updateItem: (id: string, patch: any) => Promise<any>; deleteItem: (id: string) => Promise<any> }) {
-  const [resp, setResp] = useState(it.responsavel_empresa || '');
-  const [docs, setDocs] = useState(it.documentos || '');
-  const [obs, setObs] = useState(it.observacoes || '');
+  const draftKey = `auditoria-item-draft:${it.id}`;
+  const readDraft = () => {
+    try { return JSON.parse(localStorage.getItem(draftKey) || 'null'); }
+    catch { return null; }
+  };
+  const draft = readDraft();
+  const [resp, setResp] = useState(draft?.responsavel_empresa ?? it.responsavel_empresa ?? '');
+  const [docs, setDocs] = useState(draft?.documentos ?? it.documentos ?? '');
+  const [obs, setObs] = useState(draft?.observacoes ?? it.observacoes ?? '');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const dirty =
@@ -39,6 +45,7 @@ function TopicoCard({ it, updateItem, deleteItem }: { it: any; updateItem: (id: 
     setSaving(true);
     try {
       await updateItem(it.id, { responsavel_empresa: resp, documentos: docs, observacoes: obs });
+      try { localStorage.removeItem(draftKey); } catch { /* noop */ }
       setSaved(true);
       toast.success('Tópico salvo.');
       setTimeout(() => setSaved(false), 1500);
@@ -48,6 +55,13 @@ function TopicoCard({ it, updateItem, deleteItem }: { it: any; updateItem: (id: 
       setSaving(false);
     }
   };
+
+  useEffect(() => {
+    try {
+      if (!dirty) localStorage.removeItem(draftKey);
+      else localStorage.setItem(draftKey, JSON.stringify({ responsavel_empresa: resp, documentos: docs, observacoes: obs }));
+    } catch { /* noop */ }
+  }, [dirty, docs, draftKey, obs, resp]);
 
   return (
     <Card className="border-l-4" style={{ borderLeftColor: it.status === 'conforme' ? '#16a34a' : it.status === 'nao_conforme' ? '#dc2626' : it.status === 'nao_aplicavel' ? '#94a3b8' : '#f59e0b' }}>
@@ -83,10 +97,19 @@ function TopicoCard({ it, updateItem, deleteItem }: { it: any; updateItem: (id: 
 }
 
 export default function AuditoriaTab({ client_id, cliente }: { client_id: string; cliente: any }) {
-  const { items, create, remove } = useAuditorias(client_id);
-  const [selected, setSelected] = useState<string | null>(null);
+  const { items, loading, create, remove } = useAuditorias(client_id);
+  const selectedStorageKey = `auditoria:${client_id}:selected`;
+  const draftStorageKey = `auditoria:${client_id}:nova-draft`;
+  const [selected, setSelectedState] = useState<string | null>(() => {
+    try { return localStorage.getItem(selectedStorageKey); }
+    catch { return null; }
+  });
   const [creating, setCreating] = useState(false);
-  const [draft, setDraft] = useState<any>({ empresa_nome: cliente?.nome || '', cnpj: cliente?.cnpj || '', responsavel: '', consultor: '', data_inicio: new Date().toISOString().slice(0,10), objetivo: '' });
+  const [draft, setDraft] = useState<any>(() => {
+    const fallback = { empresa_nome: cliente?.nome || '', cnpj: cliente?.cnpj || '', responsavel: '', consultor: '', data_inicio: new Date().toISOString().slice(0,10), objetivo: '' };
+    try { return { ...fallback, ...(JSON.parse(localStorage.getItem(draftStorageKey) || 'null') || {}) }; }
+    catch { return fallback; }
+  });
   const [gen, setGen] = useState(false);
 
   const handleCreate = async () => {
@@ -95,9 +118,27 @@ export default function AuditoriaTab({ client_id, cliente }: { client_id: string
     const { data, error } = await create(draft);
     setCreating(false);
     if (error) return toast.error('Erro: '+error.message);
+    try { localStorage.removeItem(draftStorageKey); } catch { /* noop */ }
     setSelected((data as any)?.id || null);
     toast.success('Auditoria criada.');
   };
+
+  const setSelected = (id: string | null) => {
+    setSelectedState(id);
+    try {
+      if (id) localStorage.setItem(selectedStorageKey, id);
+      else localStorage.removeItem(selectedStorageKey);
+    } catch { /* noop */ }
+  };
+
+  useEffect(() => {
+    if (!loading && selected && items.length > 0 && !items.some((a: any) => a.id === selected)) setSelected(null);
+  }, [items, loading, selected]);
+
+  useEffect(() => {
+    try { localStorage.setItem(draftStorageKey, JSON.stringify(draft)); }
+    catch { /* noop */ }
+  }, [draft, draftStorageKey]);
 
   if (selected) {
     return <AuditoriaDetail id={selected} onBack={() => setSelected(null)} />;
@@ -140,9 +181,14 @@ function AuditoriaDetail({ id, onBack }: { id: string; onBack: () => void }) {
   const { auditoria, itens, acoes, insertItens, updateItem, deleteItem, updateAuditoria, upsertAcao, deleteAcao } = useAuditoriaDetail(id);
   const [generating, setGenerating] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
-  const [sugArea, setSugArea] = useState('');
-  const [sugTitulo, setSugTitulo] = useState('');
-  const [sugDescricao, setSugDescricao] = useState('');
+  const sugestaoStorageKey = `auditoria:${id}:sugestao-draft`;
+  const sugestaoDraft = (() => {
+    try { return JSON.parse(localStorage.getItem(sugestaoStorageKey) || 'null') || {}; }
+    catch { return {}; }
+  })();
+  const [sugArea, setSugArea] = useState(sugestaoDraft.area || '');
+  const [sugTitulo, setSugTitulo] = useState(sugestaoDraft.titulo || '');
+  const [sugDescricao, setSugDescricao] = useState(sugestaoDraft.descricao || '');
   const [sugIa, setSugIa] = useState(false);
 
   const areas = useMemo(() => {
@@ -185,11 +231,19 @@ function AuditoriaDetail({ id, onBack }: { id: string; onBack: () => void }) {
         status: 'pendente',
       }]);
       setSugArea(''); setSugTitulo(''); setSugDescricao('');
+      try { localStorage.removeItem(sugestaoStorageKey); } catch { /* noop */ }
       toast.success('Tema adicionado à auditoria.');
     } catch (e: any) {
       toast.error('Falha ao adicionar tema: ' + e.message);
     } finally { setSugIa(false); }
   };
+
+  useEffect(() => {
+    try {
+      if (!sugArea && !sugTitulo && !sugDescricao) localStorage.removeItem(sugestaoStorageKey);
+      else localStorage.setItem(sugestaoStorageKey, JSON.stringify({ area: sugArea, titulo: sugTitulo, descricao: sugDescricao }));
+    } catch { /* noop */ }
+  }, [sugArea, sugDescricao, sugTitulo, sugestaoStorageKey]);
 
   const progresso = useMemo(() => {
     if (!itens.length) return 0;

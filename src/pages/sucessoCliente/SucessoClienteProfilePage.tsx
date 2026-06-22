@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -24,6 +24,11 @@ const PROFILE_KEYS = ['digisac_contact_name','channel_default','sla_hours','has_
 export default function SucessoClienteProfilePage() {
   const { id } = useParams();
   const nav = useNavigate();
+  const tabStorageKey = `sucesso-cliente:${id || 'global'}:active-tab`;
+  const [activeTab, setActiveTab] = useState(() => {
+    try { return localStorage.getItem(tabStorageKey) || 'perfil'; }
+    catch { return 'perfil'; }
+  });
   const { cliente, reload } = useCliente(id);
   const { profile } = useDPProfile(id);
   const { items: ccts } = useCCTs(id);
@@ -49,6 +54,16 @@ export default function SucessoClienteProfilePage() {
     return dias >= 0 && dias <= 90;
   });
   const altoRisco = risks.some(r => r.severity === 'alta');
+
+  useEffect(() => {
+    try { setActiveTab(localStorage.getItem(tabStorageKey) || 'perfil'); }
+    catch { setActiveTab('perfil'); }
+  }, [tabStorageKey]);
+
+  useEffect(() => {
+    try { localStorage.setItem(tabStorageKey, activeTab); }
+    catch { /* noop */ }
+  }, [activeTab, tabStorageKey]);
 
   const exportPdf = async () => {
     if (!cliente) return;
@@ -91,7 +106,7 @@ export default function SucessoClienteProfilePage() {
         </CardContent></Card>
       )}
 
-      <Tabs defaultValue="perfil">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="flex flex-wrap h-auto">
           <TabsTrigger value="perfil">Perfil</TabsTrigger>
           <TabsTrigger value="uploads">Uploads</TabsTrigger>
