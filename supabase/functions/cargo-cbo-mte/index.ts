@@ -9,20 +9,23 @@ Deno.serve(async (req) => {
     const KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!KEY) throw new Error("LOVABLE_API_KEY missing");
 
-    const prompt = `Você é um especialista em CBO (Classificação Brasileira de Ocupações) do MTE/MTb. Liste as atividades/atribuições oficiais da família ocupacional CBO ${code}${nome ? ` (cargo informado: ${nome})` : ""}, conforme consta no site oficial do MTE/CBO (www.mtecbo.gov.br) e na descrição oficial da família ocupacional.
+    const prompt = `Você é um especialista em CBO (Classificação Brasileira de Ocupações) do MTE/MTb. Liste as ÁREAS DE ATIVIDADE oficiais da família ocupacional CBO ${code}${nome ? ` (cargo informado: ${nome})` : ""}, EXATAMENTE como aparecem no site oficial do MTE (cbo.mte.gov.br → "Áreas de Atividade") — organizadas em GACs (Grandes Áreas de Competência) identificadas por letra (A, B, C, D, ...), cada uma com seu título (ex.: "CRIAR PRATOS", "ELABORAR CARDÁPIO") e as atividades específicas (verbo no infinitivo + complemento) que aparecem ao expandir o "+" daquele tópico.
 
 Regras:
-- Use APENAS conteúdo oficial do CBO/MTE; não invente.
-- Liste o título oficial da família e as atividades em verbo no infinitivo + complemento.
-- Se o código não existir, retorne lista vazia e indique no campo "observacao".
+- Use APENAS conteúdo oficial do CBO/MTE; NÃO invente.
+- Mantenha as letras de ordem (A, B, C...) e os títulos dos GACs em CAIXA ALTA, idênticos ao site.
+- Para cada GAC, liste TODAS as atividades expandidas.
+- Se o código não existir, retorne areas_de_atividade vazio e explique em "observacao".
 
-Retorne SOMENTE JSON:
+Retorne SOMENTE JSON neste formato:
 {
   "cbo": "${code}",
   "titulo_oficial": "...",
   "descricao_sumaria": "...",
-  "atividades": ["...", "..."],
-  "areas_de_atividade": ["..."],
+  "areas_de_atividade": [
+    { "ordem": "A", "titulo": "CRIAR PRATOS", "atividades": ["criar receitas", "..."] },
+    { "ordem": "B", "titulo": "ELABORAR CARDÁPIO", "atividades": ["..."] }
+  ],
   "observacao": ""
 }`;
 
