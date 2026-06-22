@@ -411,6 +411,7 @@ function AuditoriaDetail({ id, onBack }: { id: string; onBack: () => void }) {
           <CardContent className="space-y-2">
             {acoes.map(a => {
               const item = itens.find(i => i.id === a.item_id);
+              const filesDaAcao = (acaoFiles || []).filter((f: any) => f.acao_id === a.id);
               return (
                 <Card key={a.id}><CardContent className="p-3 space-y-2">
                   {item && <div className="text-xs text-muted-foreground">{item.area} • {item.titulo}</div>}
@@ -425,6 +426,48 @@ function AuditoriaDetail({ id, onBack }: { id: string; onBack: () => void }) {
                       <Select value={a.status} onValueChange={v=>upsertAcao({...a,status:v})}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{PSTAT.map(p=><SelectItem key={p.v} value={p.v}>{p.l}</SelectItem>)}</SelectContent></Select>
                     </div>
                     <div className="flex items-end"><Button size="icon" variant="ghost" onClick={()=>deleteAcao(a.id)}><Trash2 className="w-4 h-4 text-destructive"/></Button></div>
+                  </div>
+                  <div className="border-t pt-2 space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <Label className="text-xs flex items-center gap-1"><Paperclip className="w-3 h-3"/>Documentos (PDF/Word)</Label>
+                      <label className="cursor-pointer">
+                        <input type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" className="hidden" multiple
+                          onChange={async (e) => {
+                            const files = Array.from(e.target.files || []);
+                            e.target.value = '';
+                            for (const f of files) {
+                              try { await addAcaoFile(a.id, f); }
+                              catch (err: any) { toast.error('Falha no upload de ' + f.name + ': ' + err.message); }
+                            }
+                            if (files.length) toast.success('Documento(s) anexado(s).');
+                          }}/>
+                        <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded border hover:bg-accent">
+                          <Plus className="w-3 h-3"/> Anexar
+                        </span>
+                      </label>
+                    </div>
+                    {filesDaAcao.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">Nenhum documento anexado.</p>
+                    ) : (
+                      <ul className="space-y-1">
+                        {filesDaAcao.map((f: any) => (
+                          <li key={f.id} className="flex items-center justify-between gap-2 text-xs bg-muted/50 rounded px-2 py-1">
+                            <button className="flex items-center gap-1 truncate hover:underline text-left flex-1"
+                              onClick={async () => {
+                                const url = await getAcaoFileUrl(f.id);
+                                if (url) window.open(url, '_blank');
+                              }}>
+                              <FileText className="w-3 h-3 shrink-0"/>
+                              <span className="truncate">{f.file_name}</span>
+                            </button>
+                            <Button size="icon" variant="ghost" className="h-6 w-6"
+                              onClick={() => { if (confirm('Remover este documento?')) removeAcaoFile(f.id); }}>
+                              <Trash2 className="w-3 h-3 text-destructive"/>
+                            </Button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 </CardContent></Card>
               );
