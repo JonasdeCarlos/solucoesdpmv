@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Sparkles, Plus, FileDown, Trash2, ChevronLeft, Loader2, Save, Check } from 'lucide-react';
+import { Sparkles, Plus, FileDown, Trash2, ChevronLeft, Loader2, Save, Check, Paperclip, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuditorias, useAuditoriaDetail } from '@/hooks/useAuditoria';
@@ -178,7 +178,7 @@ export default function AuditoriaTab({ client_id, cliente }: { client_id: string
 }
 
 function AuditoriaDetail({ id, onBack }: { id: string; onBack: () => void }) {
-  const { auditoria, itens, acoes, insertItens, updateItem, deleteItem, updateAuditoria, upsertAcao, deleteAcao } = useAuditoriaDetail(id);
+  const { auditoria, itens, acoes, acaoFiles, insertItens, updateItem, deleteItem, updateAuditoria, upsertAcao, deleteAcao, addAcaoFile, removeAcaoFile, getAcaoFileUrl } = useAuditoriaDetail(id);
   const [generating, setGenerating] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const sugestaoStorageKey = `auditoria:${id}:sugestao-draft`;
@@ -300,18 +300,19 @@ function AuditoriaDetail({ id, onBack }: { id: string; onBack: () => void }) {
     try {
       let parecer: string | undefined;
       let resumoNarrativo: string | undefined;
-      if (tipo === 'diagnostico' || tipo === 'final') {
+      if (tipo === 'diagnostico' || tipo === 'final' || (tipo as any) === 'dossie') {
         const resumo = {
           total: itens.length,
           conformes: itens.filter(i=>i.status==='conforme').length,
           nao_conformes: itens.filter(i=>i.status==='nao_conforme').length,
         };
         const { data } = await supabase.functions.invoke('auditoria-parecer', {
-          body: { empresa: auditoria.empresa_nome, resumo, itens: itens.map(i=>({titulo:i.titulo,area:i.area,status:i.status})), acoes, tipo: tipo==='final'?'final':'diagnostico' },
+          body: { empresa: auditoria.empresa_nome, resumo, itens: itens.map(i=>({titulo:i.titulo,area:i.area,status:i.status})), acoes, tipo: (tipo==='final'||(tipo as any)==='dossie')?'final':'diagnostico' },
         });
-        if (tipo === 'final') parecer = data?.texto; else resumoNarrativo = data?.texto;
+        if (tipo === 'final' || (tipo as any) === 'dossie') parecer = data?.texto;
+        else resumoNarrativo = data?.texto;
       }
-      await generateAuditoriaPdf({ tipo, auditoria, itens, acoes, parecer, resumoNarrativo });
+      await generateAuditoriaPdf({ tipo: tipo as any, auditoria, itens, acoes, acaoFiles, parecer, resumoNarrativo });
       toast.success('PDF gerado.');
     } catch (e:any) { toast.error('Falha: '+e.message); }
     finally { setBusy(null); }
@@ -336,6 +337,7 @@ function AuditoriaDetail({ id, onBack }: { id: string; onBack: () => void }) {
               <SelectItem value="diagnostico">Relatório Diagnóstico</SelectItem>
               <SelectItem value="plano">Plano de Ação</SelectItem>
               <SelectItem value="final">Relatório Final</SelectItem>
+              <SelectItem value="dossie">Dossiê (PDF + Anexos)</SelectItem>
             </SelectContent>
           </Select>
         </div>
