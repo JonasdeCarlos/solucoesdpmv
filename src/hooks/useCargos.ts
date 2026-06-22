@@ -43,7 +43,7 @@ export function useEstruturaSalarial(client_id?: string) {
     setLoading(false);
   }, [client_id]);
   useEffect(() => { load(); }, [load]);
-  const save = async (payload: { faixas: any[]; escala_evolucao: any[] }) => {
+  const save = async (payload: { faixas: any[]; escala_evolucao: any[]; cargos_sugeridos?: any[]; organograma?: any[] }) => {
     if (estrutura?.id) {
       await supabase.from('estruturas_salariais' as any).update(payload).eq('id', estrutura.id);
     } else {
