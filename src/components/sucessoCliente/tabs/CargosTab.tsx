@@ -172,7 +172,12 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
             <Card key={c.id}><CardContent className="p-3 flex items-center justify-between">
               <div className="flex-1">
                 <div className="font-medium">{c.nome} {c.cbo && <span className="text-xs text-muted-foreground">(CBO {c.cbo})</span>}</div>
-                <div className="text-xs text-muted-foreground">{c.area || '—'} • <Badge variant="outline">{NIVEIS.find(n=>n.v===c.nivel)?.l || c.nivel}</Badge> {c.salario_atual ? ' • R$ '+Number(c.salario_atual).toLocaleString('pt-BR',{minimumFractionDigits:2}) : ''}</div>
+                <div className="text-xs text-muted-foreground">
+                  {c.area || '—'} • <Badge variant="outline">{NIVEIS.find(n=>n.v===c.nivel)?.l || c.nivel}</Badge>
+                  {c.salario_atual ? ' • Salário R$ '+Number(c.salario_atual).toLocaleString('pt-BR',{minimumFractionDigits:2}) : ''}
+                  {c.piso_salarial ? ' • Piso R$ '+Number(c.piso_salarial).toLocaleString('pt-BR',{minimumFractionDigits:2}) : ''}
+                  {c.piso_referencia ? ` (${c.piso_referencia})` : ''}
+                </div>
               </div>
               <div className="flex gap-1">
                 <Button size="icon" variant="ghost" onClick={()=>openEdit(c)}><Pencil className="w-4 h-4"/></Button>
