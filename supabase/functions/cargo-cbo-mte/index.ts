@@ -83,7 +83,9 @@ function parseDescricao(html: string, targetCode: string) {
 }
 
 function parseAreas(html: string): AreaAtividade[] {
-  const table = html.match(/<table[^>]*id=["']formSite019:gacs["'][\s\S]*?<\/table>/i)?.[0] || "";
+  const start = html.search(/<table[^>]*id=["']formSite019:gacs["']/i);
+  const end = start >= 0 ? html.indexOf('<div class="margem"', start) : -1;
+  const table = start >= 0 ? html.slice(start, end > start ? end : undefined) : "";
   const chunks = table.split(/<tr\s+class=["'](?:odd|even)["']><td\s+style=["']text-size:12px;["'][^>]*>/i).slice(1);
   return chunks.map((chunk) => {
     const ps = Array.from(chunk.matchAll(/<p[^>]*class=["']texto_normal["'][^>]*>([\s\S]*?)<\/p>/gi)).map((m) => stripTags(m[1])).filter(Boolean);
