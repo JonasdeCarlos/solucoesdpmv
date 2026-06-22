@@ -1,0 +1,1 @@
+ALTER TABLE public.estruturas_salariais ADD COLUMN IF NOT EXISTS cargos_sugeridos jsonb NOT NULL DEFAULT '[]'::jsonb; ALTER TABLE public.estruturas_salariais ADD COLUMN IF NOT EXISTS organograma jsonb NOT NULL DEFAULT '[]'::jsonb;
