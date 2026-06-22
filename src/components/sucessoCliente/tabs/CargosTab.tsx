@@ -11,6 +11,7 @@ import { Sparkles, Plus, Trash2, Copy, Pencil, FileDown, Loader2 } from 'lucide-
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useCargos, useEstruturaSalarial } from '@/hooks/useCargos';
+import { useCCTs } from '@/hooks/useSucessoCliente';
 import { generateCargosPdf } from '@/utils/sucessoCliente/cargosPdf';
 import { DebouncedInput } from '@/components/sucessoCliente/DebouncedField';
 
@@ -28,16 +29,54 @@ const emptyDraft = () => ({
   descricao_sumaria: '', atividades: [] as string[],
   requisitos: { escolaridade: '', experiencia: '', competencias: [] as string[] },
   salario_atual: '' as any,
+  piso_salarial: '' as any,
+  piso_referencia: '',
 });
 
 export default function CargosTab({ client_id, cliente }: { client_id: string; cliente: any }) {
   const { items, save, remove, duplicate } = useCargos(client_id);
   const { estrutura, save: saveEstrutura } = useEstruturaSalarial(client_id);
+  const { items: ccts } = useCCTs(client_id);
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<any>(emptyDraft());
   const [filterArea, setFilterArea] = useState('all');
   const [filterNivel, setFilterNivel] = useState('all');
   const [busy, setBusy] = useState<string | null>(null);
+
+  // Pisos evidenciados nas CCTs ativas — extraídos das cláusulas (titulo/descricao com "piso")
+  const pisosCCT = useMemo(() => {
+    const out: { label: string; valor: number; ref: string }[] = [];
+    const active = (ccts || []).filter((c: any) => !c.deleted_at);
+    for (const c of active) {
+      const clauses = (c.ai_clauses || []) as any[];
+      for (const cl of clauses) {
+        const tit = String(cl?.titulo || '');
+        const desc = String(cl?.descricao || '');
+        const blob = (tit + ' ' + desc);
+        if (!/piso|salário\s+normativo|salario\s+normativo/i.test(blob)) continue;
+        // captura todos os valores R$ X.XXX,XX no texto
+        const re = /R\$\s*([\d\.]+,\d{2}|\d+)/gi;
+        const matches = Array.from(blob.matchAll(re));
+        if (matches.length === 0) {
+          out.push({ label: `${tit || 'Piso'} — ${c.sindicato || 'CCT'}`, valor: 0, ref: `${c.sindicato || 'CCT'} — ${tit || 'Piso'}` });
+          continue;
+        }
+        for (const m of matches) {
+          const raw = m[1].replace(/\./g, '').replace(',', '.');
+          const v = Number(raw);
+          if (!isFinite(v) || v <= 0) continue;
+          out.push({
+            label: `${tit || 'Piso'} — R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (${c.sindicato || 'CCT'})`,
+            valor: v,
+            ref: `${c.sindicato || 'CCT'}${c.data_base ? ' • data-base ' + c.data_base : ''} — ${tit || 'Piso'}`,
+          });
+        }
+      }
+    }
+    // dedupe por label
+    const seen = new Set<string>();
+    return out.filter(p => seen.has(p.label) ? false : (seen.add(p.label), true));
+  }, [ccts]);
 
   const areas = useMemo(() => Array.from(new Set(items.map(i => i.area).filter(Boolean))), [items]);
   const filtered = items.filter(i =>
@@ -64,7 +103,11 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
 
   const salvar = async () => {
     if (!draft.nome) return toast.error('Informe o nome do cargo.');
-    const payload = { ...draft, salario_atual: draft.salario_atual === '' ? null : Number(draft.salario_atual) };
+    const payload = {
+      ...draft,
+      salario_atual: draft.salario_atual === '' || draft.salario_atual == null ? null : Number(draft.salario_atual),
+      piso_salarial: draft.piso_salarial === '' || draft.piso_salarial == null ? null : Number(draft.piso_salarial),
+    };
     await save(payload);
     setOpen(false); toast.success('Cargo salvo.');
   };
@@ -192,6 +235,35 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
               <Select value={draft.nivel} onValueChange={v=>setDraft({...draft,nivel:v})}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{NIVEIS.map(n=><SelectItem key={n.v} value={n.v}>{n.l}</SelectItem>)}</SelectContent></Select>
             </div>
             <div className="md:col-span-2"><Label className="text-xs">Salário atual (opcional)</Label><Input type="number" value={draft.salario_atual} onChange={e=>setDraft({...draft,salario_atual:e.target.value})}/></div>
+            <div>
+              <Label className="text-xs">Piso da categoria (CCT)</Label>
+              <Select
+                value={draft.piso_referencia ? `ref:${draft.piso_referencia}` : 'manual'}
+                onValueChange={(v) => {
+                  if (v === 'manual') { setDraft({ ...draft, piso_referencia: '' }); return; }
+                  const idx = Number(v.replace('idx:', ''));
+                  const p = pisosCCT[idx];
+                  if (!p) return;
+                  setDraft({ ...draft, piso_salarial: p.valor || draft.piso_salarial, piso_referencia: p.ref });
+                }}
+              >
+                <SelectTrigger><SelectValue placeholder={pisosCCT.length ? 'Selecionar piso evidenciado…' : 'Nenhum piso na CCT — informar manual'}/></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="manual">Informar manualmente</SelectItem>
+                  {pisosCCT.map((p, i) => (
+                    <SelectItem key={i} value={`idx:${i}`}>{p.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">Valor do piso (R$)</Label>
+              <Input type="number" step="0.01" value={draft.piso_salarial} onChange={e=>setDraft({...draft,piso_salarial:e.target.value})}/>
+            </div>
+            <div className="md:col-span-2">
+              <Label className="text-xs">Referência do piso (CCT / cláusula)</Label>
+              <Input value={draft.piso_referencia || ''} onChange={e=>setDraft({...draft,piso_referencia:e.target.value})} placeholder="Ex.: SINDICATO XYZ — cláusula 5ª, data-base 2025"/>
+            </div>
             <div className="md:col-span-2"><Label className="text-xs">Entrevista com ocupante/gestor</Label><Textarea rows={5} value={draft.entrevista} onChange={e=>setDraft({...draft,entrevista:e.target.value})}/></div>
             <div className="md:col-span-2 flex justify-end">
               <Button variant="outline" onClick={formalizar} disabled={busy==='formalizar'}>{busy==='formalizar' ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <Sparkles className="w-4 h-4 mr-2"/>}Formalizar com IA</Button>
