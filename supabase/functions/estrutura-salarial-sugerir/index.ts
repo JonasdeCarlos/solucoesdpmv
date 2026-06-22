@@ -6,7 +6,8 @@ Deno.serve(async (req) => {
     const { cargos, empresa, pisos, setor } = await req.json();
     const KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!KEY) throw new Error("LOVABLE_API_KEY missing");
-    const prompt = `Você é consultor sênior de Cargos & Salários no Brasil.
+    const prompt = `Você é consultor SÊNIOR de Cargos & Salários no Brasil, com profundo conhecimento de estrutura organizacional setorial (CBO 2002, pesquisas Catho/Robert Half/Hays, convenções coletivas SINTHORESP/FOHB/ABRASEL para A&B, NR's, e benchmarking de mercado).
+
 Empresa: "${empresa || ""}" ${setor ? `(setor: ${setor})` : ""}.
 
 CARGOS ATUAIS (com salário praticado e piso da CCT quando informado):
@@ -21,8 +22,15 @@ REGRAS OBRIGATÓRIAS:
 3. O nível "Referência" (último) DEVE ter valor IGUAL ao salário atual praticado do cargo. Se o cargo não tiver salário atual informado, use a mediana de mercado para o cargo/setor.
 4. O nível "Inicial" (primeiro) NUNCA pode ser inferior ao piso da CCT informado para o cargo/grupo. Se não houver piso, use ~75% do salário Referência (mínimo legal: salário-mínimo nacional vigente).
 5. Os níveis intermediários ("Pleno", "Sênior") devem ser distribuídos de forma crescente entre Inicial e Referência (progressão linear ou geométrica suave).
-6. Sugira cargos ADICIONAIS que a empresa deveria ter ainda que não cadastrados (ex.: supervisão, back-office, qualidade, segurança do trabalho, etc. conforme o setor) — retorne em "cargos_sugeridos" com nome, área, nivel, justificativa, salario_min, salario_max.
-7. Monte um ORGANOGRAMA hierárquico contemplando os cargos atuais E os sugeridos. Cada nó: id (slug único), nome, parent_id (null para topo), nivel.
+6. SUGESTÕES AMPLAS E PROFUNDAS DE CARGOS (cargos_sugeridos) — Esta é a parte mais importante. Você DEVE sugerir um conjunto AMPLO (mínimo 10–20 cargos quando o porte/setor permitir) cobrindo TODOS os níveis hierárquicos e funcionais típicos do setor, mesmo que não cadastrados. Pense exaustivamente em:
+   • Operação principal — todos os cargos típicos da atividade-fim do setor. Para Alimentos & Bebidas (restaurantes/bares/hotéis), considere obrigatoriamente: Maître/Chefe de Salão, Chefe de Fila (Chef de Rang), Garçom, Commis de Rang (Cumim), Sommelier, Barman/Bartender, Barback, Hostess/Recepcionista de salão, Chef Executivo, Sous Chef, Chef de Partida (Chef de Partie), Cozinheiro, Auxiliar de Cozinha, Confeiteiro, Padeiro, Pizzaiolo, Churrasqueiro, Steward, Copeiro, Lavador de Louça. Para outros setores, faça o mesmo nível de granularidade.
+   • Supervisão e gerência intermediária (supervisor, encarregado, líder de turno, gerente operacional, gerente de unidade).
+   • Back-office e suporte (compras, almoxarifado/estoque, controladoria, financeiro, RH/DP, TI, marketing, comercial).
+   • Qualidade, segurança do trabalho (técnico de segurança, SESMT quando aplicável), manutenção, higienização.
+   • Diretoria/C-level conforme o porte.
+   Para CADA sugestão, retorne: nome, area, nivel, justificativa (cite a referência: CBO, CCT, pesquisa salarial ou prática de mercado), salario_min, salario_max (faixa realista pt-BR).
+   NÃO repita cargos já cadastrados. Priorize cobertura ampla — é melhor sugerir 15 cargos relevantes do que 4 genéricos.
+7. Monte um ORGANOGRAMA hierárquico CONTEMPLANDO os cargos atuais E TODOS os sugeridos (não omita níveis intermediários). Cada nó: id (slug único, ex: "chef-de-fila"), nome, parent_id (null para topo), nivel. Respeite a cadeia de comando real do setor (ex.: Cumim → Garçom → Chef de Fila → Maître → Gerente de A&B → Diretor de Operações).
 8. Escala de evolução (4 etapas iguais às dos cargos) com percentual_base representando o % DO SALÁRIO DE REFERÊNCIA (teto). Portanto Inicial≈75%, Pleno≈85%, Sênior≈93%, Referência=100%. Descrição curta de cada etapa.
 
 Retorne SOMENTE JSON válido neste formato:
@@ -36,7 +44,7 @@ Retorne SOMENTE JSON válido neste formato:
       method: "POST",
       headers: { Authorization: `Bearer ${KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-2.5-pro",
         messages: [{ role: "user", content: prompt }],
         response_format: { type: "json_object" },
       }),
