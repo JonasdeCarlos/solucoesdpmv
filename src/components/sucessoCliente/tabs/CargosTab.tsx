@@ -101,6 +101,35 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
     finally { setBusy(null); }
   };
 
+  const buscarMTE = async () => {
+    if (!draft.cbo?.trim()) return toast.error('Informe o código CBO.');
+    setBusy('mte');
+    try {
+      const { data, error } = await supabase.functions.invoke('cargo-cbo-mte', {
+        body: { cbo: draft.cbo, nome: draft.nome },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      const novas: string[] = Array.isArray(data?.atividades) ? data.atividades : [];
+      if (novas.length === 0) {
+        toast.info(data?.observacao || 'Nenhuma atividade encontrada para esse CBO.');
+        return;
+      }
+      setDraft((d: any) => {
+        const atuais: string[] = Array.isArray(d.atividades) ? d.atividades : [];
+        const merged = Array.from(new Set([...atuais, ...novas].map(s => s.trim()).filter(Boolean)));
+        return {
+          ...d,
+          descricao_sumaria: d.descricao_sumaria || data?.descricao_sumaria || '',
+          atividades: merged,
+        };
+      });
+      toast.success(`${novas.length} atividades trazidas do CBO ${data?.cbo || draft.cbo}${data?.titulo_oficial ? ' — ' + data.titulo_oficial : ''}.`);
+    } catch (e: any) {
+      toast.error('Falha: ' + e.message);
+    } finally { setBusy(null); }
+  };
+
   const salvar = async () => {
     if (!draft.nome) return toast.error('Informe o nome do cargo.');
     const payload = {
@@ -274,7 +303,14 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
               <Button variant="outline" onClick={formalizar} disabled={busy==='formalizar'}>{busy==='formalizar' ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <Sparkles className="w-4 h-4 mr-2"/>}Formalizar com IA</Button>
             </div>
             <div className="md:col-span-2"><Label className="text-xs">Descrição sumária</Label><Textarea rows={4} value={draft.descricao_sumaria} onChange={e=>setDraft({...draft,descricao_sumaria:e.target.value})}/></div>
-            <div className="md:col-span-2"><Label className="text-xs">Atividades (uma por linha)</Label>
+            <div className="md:col-span-2">
+              <div className="flex items-center justify-between mb-1">
+                <Label className="text-xs">Atividades (uma por linha)</Label>
+                <Button type="button" size="sm" variant="outline" onClick={buscarMTE} disabled={busy==='mte' || !draft.cbo}>
+                  {busy==='mte' ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <Sparkles className="w-4 h-4 mr-2"/>}
+                  Trazer atividades do CBO/MTE
+                </Button>
+              </div>
               <Textarea rows={6} value={(draft.atividades||[]).join('\n')} onChange={e=>setDraft({...draft,atividades:e.target.value.split('\n').filter(Boolean)})}/>
             </div>
             <div><Label className="text-xs">Escolaridade</Label><Input value={draft.requisitos?.escolaridade||''} onChange={e=>setDraft({...draft,requisitos:{...draft.requisitos,escolaridade:e.target.value}})}/></div>
