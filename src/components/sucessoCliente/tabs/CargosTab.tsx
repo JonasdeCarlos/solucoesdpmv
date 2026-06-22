@@ -354,7 +354,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
             <div className="overflow-auto">
               <table className="w-full text-sm border">
                 <thead className="bg-muted"><tr>
-                  <th className="p-2 text-left">Faixa</th><th className="p-2 text-left">Cargos</th><th className="p-2">Mín.</th><th className="p-2">Médio</th><th className="p-2">Máx.</th>
+                  <th className="p-2 text-left">Faixa</th><th className="p-2 text-left">Cargos</th><th className="p-2">Mín.</th><th className="p-2">Médio</th><th className="p-2">Máx.</th><th className="p-2 w-10"></th>
                 </tr></thead>
                 <tbody>
                 {(estrutura.faixas || []).map((f:any, idx:number) => (
@@ -364,11 +364,34 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
                     <td className="p-1"><DebouncedInput type="number" value={f.min||0} onCommit={(v)=>updateFaixa(idx,{min:Number(v)})}/></td>
                     <td className="p-1"><DebouncedInput type="number" value={f.mid||0} onCommit={(v)=>updateFaixa(idx,{mid:Number(v)})}/></td>
                     <td className="p-1"><DebouncedInput type="number" value={f.max||0} onCommit={(v)=>updateFaixa(idx,{max:Number(v)})}/></td>
+                    <td className="p-1 text-center">
+                      <Button size="icon" variant="ghost" onClick={()=>{ if(confirm('Remover faixa?')) removeFaixa(idx); }}><Trash2 className="w-4 h-4 text-destructive"/></Button>
+                    </td>
                   </tr>
                 ))}
                 </tbody>
               </table>
             </div>
+            {(estrutura.cargos_sugeridos || []).length ? (
+              <div>
+                <div className="text-sm font-semibold mb-1">Cargos sugeridos pela IA (não cadastrados)</div>
+                <div className="space-y-1">
+                  {(estrutura.cargos_sugeridos || []).map((s:any, i:number) => (
+                    <Card key={i}><CardContent className="p-2 flex items-center justify-between gap-2">
+                      <div className="flex-1 text-sm">
+                        <div className="font-medium">{s.nome} <span className="text-xs text-muted-foreground">• {s.area || '—'} • {s.nivel || '—'}</span></div>
+                        <div className="text-xs text-muted-foreground">{s.justificativa}</div>
+                        <div className="text-xs">Faixa sugerida: R$ {Number(s.salario_min||0).toLocaleString('pt-BR',{minimumFractionDigits:2})} — R$ {Number(s.salario_max||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</div>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button size="sm" variant="outline" onClick={()=>adotarSugestao(s)}>Adotar</Button>
+                        <Button size="icon" variant="ghost" onClick={()=>removeSugestao(i)}><X className="w-4 h-4 text-destructive"/></Button>
+                      </div>
+                    </CardContent></Card>
+                  ))}
+                </div>
+              </div>
+            ) : null}
             {estrutura.escala_evolucao?.length ? (
               <div>
                 <div className="text-sm font-semibold mb-1">Escala de evolução</div>
