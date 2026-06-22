@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Sparkles, Plus, Trash2, Copy, Pencil, FileDown, Loader2 } from 'lucide-react';
+import { Sparkles, Plus, Trash2, Copy, Pencil, FileDown, Loader2, Network, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useCargos, useEstruturaSalarial } from '@/hooks/useCargos';
@@ -214,10 +214,24 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
     setBusy('estrutura');
     try {
       const { data, error } = await supabase.functions.invoke('estrutura-salarial-sugerir', {
-        body: { empresa: cliente?.nome, cargos: items.map(i => ({ nome: i.nome, cbo: i.cbo, nivel: i.nivel, salario_atual: i.salario_atual })) },
+        body: {
+          empresa: cliente?.nome,
+          setor: cliente?.segmento || cliente?.cnae || '',
+          cargos: items.map(i => ({
+            nome: i.nome, cbo: i.cbo, area: i.area, nivel: i.nivel,
+            salario_atual: i.salario_atual, piso_salarial: i.piso_salarial,
+            piso_referencia: i.piso_referencia,
+          })),
+          pisos: pisosCCT.map(p => ({ funcao: p.funcao || p.label, grupo: p.grupo, valor: p.valor, ref: p.ref })),
+        },
       });
       if (error) throw error;
-      await saveEstrutura({ faixas: data?.faixas || [], escala_evolucao: data?.escala_evolucao || [] });
+      await saveEstrutura({
+        faixas: data?.faixas || [],
+        escala_evolucao: data?.escala_evolucao || [],
+        cargos_sugeridos: data?.cargos_sugeridos || [],
+        organograma: data?.organograma || [],
+      });
       toast.success('Estrutura salarial sugerida.');
     } catch (e:any) { toast.error('Falha: '+e.message); }
     finally { setBusy(null); }
@@ -240,7 +254,53 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
 
   const updateFaixa = (idx: number, patch: any) => {
     const faixas = (estrutura?.faixas || []).map((f:any,i:number)=> i===idx ? { ...f, ...patch } : f);
-    saveEstrutura({ faixas, escala_evolucao: estrutura?.escala_evolucao || [] });
+    saveEstrutura({
+      faixas,
+      escala_evolucao: estrutura?.escala_evolucao || [],
+      cargos_sugeridos: estrutura?.cargos_sugeridos || [],
+      organograma: estrutura?.organograma || [],
+    });
+  };
+
+  const removeFaixa = (idx: number) => {
+    const faixas = (estrutura?.faixas || []).filter((_:any,i:number)=> i!==idx);
+    saveEstrutura({
+      faixas,
+      escala_evolucao: estrutura?.escala_evolucao || [],
+      cargos_sugeridos: estrutura?.cargos_sugeridos || [],
+      organograma: estrutura?.organograma || [],
+    });
+  };
+
+  const removeSugestao = (idx: number) => {
+    const cargos_sugeridos = (estrutura?.cargos_sugeridos || []).filter((_:any,i:number)=> i!==idx);
+    saveEstrutura({
+      faixas: estrutura?.faixas || [],
+      escala_evolucao: estrutura?.escala_evolucao || [],
+      cargos_sugeridos,
+      organograma: estrutura?.organograma || [],
+    });
+  };
+
+  const adotarSugestao = async (s: any) => {
+    await save({
+      nome: s.nome, area: s.area || '', nivel: s.nivel || 'analista', cbo: '',
+      descricao_sumaria: s.justificativa || '', atividades: [],
+      requisitos: { escolaridade: '', experiencia: '', competencias: [] },
+      salario_atual: null,
+      piso_salarial: s.salario_min || null,
+      piso_referencia: 'Sugestão IA',
+    });
+    toast.success('Cargo adicionado ao cadastro.');
+  };
+
+  const [orgOpen, setOrgOpen] = useState(false);
+  const gerarOrganograma = async () => {
+    if (!(estrutura?.organograma || []).length) {
+      // se ainda não tem, dispara sugestão completa
+      await sugerirEstrutura();
+    }
+    setOrgOpen(true);
   };
 
   return (
@@ -259,6 +319,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
         <div className="flex gap-2 flex-wrap">
           <Button onClick={openNew}><Plus className="w-4 h-4 mr-1"/>Novo cargo</Button>
           <Button variant="outline" onClick={sugerirEstrutura} disabled={busy==='estrutura'}>{busy==='estrutura' ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <Sparkles className="w-4 h-4 mr-2"/>}Sugerir Estrutura Salarial</Button>
+          <Button variant="outline" onClick={gerarOrganograma} disabled={busy==='estrutura'}><Network className="w-4 h-4 mr-2"/>Gerar Organograma</Button>
           <Button variant="outline" onClick={exportarPdf} disabled={busy==='pdf'}>{busy==='pdf' ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <FileDown className="w-4 h-4 mr-2"/>}Gerar Relatório Final</Button>
         </div>
       </div>
@@ -293,7 +354,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
             <div className="overflow-auto">
               <table className="w-full text-sm border">
                 <thead className="bg-muted"><tr>
-                  <th className="p-2 text-left">Faixa</th><th className="p-2 text-left">Cargos</th><th className="p-2">Mín.</th><th className="p-2">Médio</th><th className="p-2">Máx.</th>
+                  <th className="p-2 text-left">Faixa</th><th className="p-2 text-left">Cargos</th><th className="p-2">Mín.</th><th className="p-2">Médio</th><th className="p-2">Máx.</th><th className="p-2 w-10"></th>
                 </tr></thead>
                 <tbody>
                 {(estrutura.faixas || []).map((f:any, idx:number) => (
@@ -303,11 +364,34 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
                     <td className="p-1"><DebouncedInput type="number" value={f.min||0} onCommit={(v)=>updateFaixa(idx,{min:Number(v)})}/></td>
                     <td className="p-1"><DebouncedInput type="number" value={f.mid||0} onCommit={(v)=>updateFaixa(idx,{mid:Number(v)})}/></td>
                     <td className="p-1"><DebouncedInput type="number" value={f.max||0} onCommit={(v)=>updateFaixa(idx,{max:Number(v)})}/></td>
+                    <td className="p-1 text-center">
+                      <Button size="icon" variant="ghost" onClick={()=>{ if(confirm('Remover faixa?')) removeFaixa(idx); }}><Trash2 className="w-4 h-4 text-destructive"/></Button>
+                    </td>
                   </tr>
                 ))}
                 </tbody>
               </table>
             </div>
+            {(estrutura.cargos_sugeridos || []).length ? (
+              <div>
+                <div className="text-sm font-semibold mb-1">Cargos sugeridos pela IA (não cadastrados)</div>
+                <div className="space-y-1">
+                  {(estrutura.cargos_sugeridos || []).map((s:any, i:number) => (
+                    <Card key={i}><CardContent className="p-2 flex items-center justify-between gap-2">
+                      <div className="flex-1 text-sm">
+                        <div className="font-medium">{s.nome} <span className="text-xs text-muted-foreground">• {s.area || '—'} • {s.nivel || '—'}</span></div>
+                        <div className="text-xs text-muted-foreground">{s.justificativa}</div>
+                        <div className="text-xs">Faixa sugerida: R$ {Number(s.salario_min||0).toLocaleString('pt-BR',{minimumFractionDigits:2})} — R$ {Number(s.salario_max||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</div>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button size="sm" variant="outline" onClick={()=>adotarSugestao(s)}>Adotar</Button>
+                        <Button size="icon" variant="ghost" onClick={()=>removeSugestao(i)}><X className="w-4 h-4 text-destructive"/></Button>
+                      </div>
+                    </CardContent></Card>
+                  ))}
+                </div>
+              </div>
+            ) : null}
             {estrutura.escala_evolucao?.length ? (
               <div>
                 <div className="text-sm font-semibold mb-1">Escala de evolução</div>
@@ -393,6 +477,53 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={orgOpen} onOpenChange={setOrgOpen}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-auto">
+          <DialogHeader><DialogTitle>Organograma sugerido</DialogTitle></DialogHeader>
+          {(estrutura?.organograma || []).length ? (
+            <OrgChart nodes={estrutura.organograma} />
+          ) : (
+            <p className="text-sm text-muted-foreground">Nenhum organograma disponível. Clique em "Sugerir Estrutura Salarial" para gerar.</p>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function OrgChart({ nodes }: { nodes: any[] }) {
+  const byParent = new Map<string | null, any[]>();
+  for (const n of nodes) {
+    const k = n.parent_id ?? null;
+    if (!byParent.has(k)) byParent.set(k, []);
+    byParent.get(k)!.push(n);
+  }
+  const renderNode = (n: any): any => {
+    const children = byParent.get(n.id) || [];
+    return (
+      <div key={n.id} className="flex flex-col items-center">
+        <div className="px-3 py-2 rounded-md border bg-card shadow-sm text-center min-w-[140px]">
+          <div className="text-sm font-semibold">{n.nome}</div>
+          {n.nivel && <div className="text-[10px] text-muted-foreground uppercase">{n.nivel}</div>}
+        </div>
+        {children.length ? (
+          <>
+            <div className="w-px h-4 bg-border" />
+            <div className="flex gap-4 items-start pt-2 border-t border-border">
+              {children.map(renderNode)}
+            </div>
+          </>
+        ) : null}
+      </div>
+    );
+  };
+  const roots = byParent.get(null) || [];
+  return (
+    <div className="overflow-auto p-4">
+      <div className="flex gap-6 justify-center items-start">
+        {roots.map(renderNode)}
+      </div>
     </div>
   );
 }

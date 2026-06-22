@@ -2228,27 +2228,33 @@ export type Database = {
       }
       estruturas_salariais: {
         Row: {
+          cargos_sugeridos: Json
           client_id: string
           created_at: string
           escala_evolucao: Json
           faixas: Json
           id: string
+          organograma: Json
           updated_at: string
         }
         Insert: {
+          cargos_sugeridos?: Json
           client_id: string
           created_at?: string
           escala_evolucao?: Json
           faixas?: Json
           id?: string
+          organograma?: Json
           updated_at?: string
         }
         Update: {
+          cargos_sugeridos?: Json
           client_id?: string
           created_at?: string
           escala_evolucao?: Json
           faixas?: Json
           id?: string
+          organograma?: Json
           updated_at?: string
         }
         Relationships: [
