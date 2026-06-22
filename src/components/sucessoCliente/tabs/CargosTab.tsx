@@ -110,21 +110,32 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      const novas: string[] = Array.isArray(data?.atividades) ? data.atividades : [];
-      if (novas.length === 0) {
+      const areas: Array<{ ordem?: string; titulo?: string; atividades?: string[] }> =
+        Array.isArray(data?.areas_de_atividade) ? data.areas_de_atividade : [];
+      // Fallback: API antiga só retornou "atividades" plano
+      const planas: string[] = Array.isArray(data?.atividades) ? data.atividades : [];
+      if (areas.length === 0 && planas.length === 0) {
         toast.info(data?.observacao || 'Nenhuma atividade encontrada para esse CBO.');
         return;
       }
+      const linhas: string[] = areas.length
+        ? areas.flatMap((g) => {
+            const cab = `${(g.ordem || '').toString().toUpperCase()} — ${(g.titulo || '').toString().toUpperCase()}`.replace(/^ — /, '').trim();
+            const atv = (g.atividades || []).map(s => s.trim()).filter(Boolean).join(', ');
+            return cab ? [cab, atv].filter(Boolean) : [atv].filter(Boolean);
+          })
+        : planas;
       setDraft((d: any) => {
         const atuais: string[] = Array.isArray(d.atividades) ? d.atividades : [];
-        const merged = Array.from(new Set([...atuais, ...novas].map(s => s.trim()).filter(Boolean)));
+        const merged = Array.from(new Set([...atuais, ...linhas].map(s => s.trim()).filter(Boolean)));
         return {
           ...d,
           descricao_sumaria: d.descricao_sumaria || data?.descricao_sumaria || '',
           atividades: merged,
         };
       });
-      toast.success(`${novas.length} atividades trazidas do CBO ${data?.cbo || draft.cbo}${data?.titulo_oficial ? ' — ' + data.titulo_oficial : ''}.`);
+      const total = areas.reduce((s, g) => s + (g.atividades?.length || 0), 0) || planas.length;
+      toast.success(`${total} atividades em ${areas.length || 1} tópico(s) trazidas do CBO ${data?.cbo || draft.cbo}${data?.titulo_oficial ? ' — ' + data.titulo_oficial : ''}.`);
     } catch (e: any) {
       toast.error('Falha: ' + e.message);
     } finally { setBusy(null); }
