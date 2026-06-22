@@ -26,8 +26,8 @@ function stripTags(html = "") {
 }
 
 function attr(tag: string, name: string) {
-  const m = tag.match(new RegExp(`${name}=["']([^"']*)["']`, "i"));
-  return m ? decodeHtml(m[1]) : "";
+  const m = tag.match(new RegExp(`${name}=(["'])([\\s\\S]*?)\\1`, "i"));
+  return m ? decodeHtml(m[2]) : "";
 }
 
 function escapeRegExp(value: string) {
