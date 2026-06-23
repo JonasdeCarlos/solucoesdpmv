@@ -23,6 +23,9 @@ export default function PerfilTab({ cliente, onClienteSaved }: { cliente: Client
   const [pwd, setPwd] = useState('');
   const [pwdLoaded, setPwdLoaded] = useState(false);
   const [showPwd, setShowPwd] = useState(false);
+  const [ewPwd, setEwPwd] = useState('');
+  const [ewPwdLoaded, setEwPwdLoaded] = useState(false);
+  const [showEwPwd, setShowEwPwd] = useState(false);
   const [segmentos, setSegmentos] = useState<string[]>([]);
   const [municipios, setMunicipios] = useState<string[]>([]);
   const [ufs, setUfs] = useState<string[]>([]);
@@ -76,6 +79,12 @@ export default function PerfilTab({ cliente, onClienteSaved }: { cliente: Client
     setPwd((data as any) || ''); setPwdLoaded(true); setShowPwd(true);
   };
 
+  const loadEwPwd = async () => {
+    const { data, error } = await supabase.rpc('get_empregador_web_password' as any, { _client_id: cliente.id } as any);
+    if (error) { toast.error('Sem permissão para ver a senha.'); return; }
+    setEwPwd((data as any) || ''); setEwPwdLoaded(true); setShowEwPwd(true);
+  };
+
   const saveAll = async () => {
     const { error: e1 } = await supabase.from('clientes' as any).update({
       nome: cli.nome, codigo_cliente: cli.codigo_cliente || null, nome_fantasia: cli.nome_fantasia,
@@ -89,6 +98,9 @@ export default function PerfilTab({ cliente, onClienteSaved }: { cliente: Client
     if (e2) { toast.error('Erro ao salvar perfil: ' + e2.message); return; }
     if (pwdLoaded && isAdmin) {
       await supabase.rpc('set_timeclock_password' as any, { _client_id: cliente.id, _password: pwd } as any);
+    }
+    if (ewPwdLoaded && isAdmin) {
+      await supabase.rpc('set_empregador_web_password' as any, { _client_id: cliente.id, _password: ewPwd } as any);
     }
     toast.success('Salvo.');
     onClienteSaved();
