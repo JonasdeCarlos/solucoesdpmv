@@ -553,7 +553,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
         <DialogContent className="max-w-5xl max-h-[90vh] overflow-auto">
           <DialogHeader><DialogTitle>Organograma sugerido</DialogTitle></DialogHeader>
           {(estrutura?.organograma || []).length ? (
-            <OrgChart nodes={estrutura.organograma} />
+            <OrgChart nodes={estrutura.organograma} cadastrados={items.map((i:any)=>i.nome)} />
           ) : (
             <p className="text-sm text-muted-foreground">Nenhum organograma disponível. Clique em "Sugerir Estrutura Salarial" para gerar.</p>
           )}
@@ -563,9 +563,14 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
   );
 }
 
-function OrgChart({ nodes }: { nodes: any[] }) {
+function OrgChart({ nodes, cadastrados }: { nodes: any[]; cadastrados: string[] }) {
+  const norm = (s: string) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'');
+  const allow = new Set((cadastrados || []).map(norm));
+  const filtered = nodes.filter(n => allow.has(norm(n.nome)));
+  const allowedIds = new Set(filtered.map(n => n.id));
+  const cleaned = filtered.map(n => ({ ...n, parent_id: n.parent_id && allowedIds.has(n.parent_id) ? n.parent_id : null }));
   const byParent = new Map<string | null, any[]>();
-  for (const n of nodes) {
+  for (const n of cleaned) {
     const k = n.parent_id ?? null;
     if (!byParent.has(k)) byParent.set(k, []);
     byParent.get(k)!.push(n);
