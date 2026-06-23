@@ -3,6 +3,28 @@ import autoTable from 'jspdf-autotable';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { supabase } from '@/integrations/supabase/client';
 import { loadBranding } from './perfilPdf';
+import JSZip from 'jszip';
+
+// Extrai texto plano de arquivos ODT (OpenOffice) ou DOCX (Word).
+async function extractTextFromOfficeZip(buf: ArrayBuffer, kind: 'odt' | 'docx'): Promise<string[]> {
+  const zip = await JSZip.loadAsync(buf);
+  const entry = kind === 'odt' ? zip.file('content.xml') : zip.file('word/document.xml');
+  if (!entry) return [];
+  const xml = await entry.async('string');
+  // Quebra por parágrafo
+  const tag = kind === 'odt' ? 'text:p' : 'w:p';
+  const re = new RegExp(`<${tag}[\\s\\S]*?</${tag}>`, 'g');
+  const blocks = xml.match(re) || [];
+  const paragraphs: string[] = [];
+  for (const b of blocks) {
+    const text = b.replace(/<[^>]+>/g, '')
+      .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"').replace(/&apos;/g, "'")
+      .replace(/\s+/g, ' ').trim();
+    if (text) paragraphs.push(text);
+  }
+  return paragraphs;
+}
 
 type Args = {
   tipo: 'diagnostico' | 'plano' | 'final' | 'dossie';
@@ -219,6 +241,7 @@ export async function generateAuditoriaPdf({ tipo, auditoria, itens, acoes, acao
         added++;
 
         const buf = await fetch(signed.signedUrl).then(r => r.arrayBuffer());
+        const fileExt = ext(f.file_name);
         if (isPdf(f)) {
           const anex = await PDFDocument.load(buf, { ignoreEncryption: true });
           const pages = await merged.copyPages(anex, anex.getPageIndices());
@@ -232,6 +255,52 @@ export async function generateAuditoriaPdf({ tipo, auditoria, itens, acoes, acao
           const scale = Math.min(maxW / img.width, maxH / img.height, 1);
           const w = img.width * scale, h = img.height * scale;
           page.drawImage(img, { x: (595 - w) / 2, y: (842 - h) / 2, width: w, height: h });
+        } else if (fileExt === 'odt' || fileExt === 'docx') {
+          // Converte ODT/DOCX em páginas de texto plano
+          try {
+            const paragraphs = await extractTextFromOfficeZip(buf, fileExt as 'odt' | 'docx');
+            if (!paragraphs.length) {
+              cover.drawText('Documento vazio ou ilegível.', { x: 24, y: 700, size: 10, font: helv, color: rgb(0.5,0.1,0.1) });
+            } else {
+              const helvReg = await merged.embedFont(StandardFonts.Helvetica);
+              const pageW = 595, pageH = 842, margin = 50, lineH = 13, fontSize = 10;
+              const maxW = pageW - margin * 2;
+              let page = merged.addPage([pageW, pageH]);
+              page.drawRectangle({ x: 0, y: pageH - 28, width: pageW, height: 28, color: rgb(pr/255, pg/255, pb/255) });
+              page.drawText(`Conteúdo: ${f.file_name}`.slice(0, 80), { x: margin, y: pageH - 19, size: 10, font: helv, color: rgb(1,1,1) });
+              let yy = pageH - margin - 10;
+              const wrap = (text: string): string[] => {
+                const words = text.split(' ');
+                const lines: string[] = [];
+                let cur = '';
+                for (const w of words) {
+                  const test = cur ? cur + ' ' + w : w;
+                  if (helvReg.widthOfTextAtSize(test, fontSize) > maxW) {
+                    if (cur) lines.push(cur);
+                    cur = w;
+                  } else cur = test;
+                }
+                if (cur) lines.push(cur);
+                return lines;
+              };
+              const sanitize = (s: string) => s.replace(/[^\x09\x0A\x0D\x20-\x7E\u00A0-\u00FF\u0100-\u017F]/g, '');
+              for (const p of paragraphs) {
+                const lines = wrap(sanitize(p));
+                for (const ln of lines) {
+                  if (yy < margin) {
+                    page = merged.addPage([pageW, pageH]);
+                    yy = pageH - margin;
+                  }
+                  try { page.drawText(ln, { x: margin, y: yy, size: fontSize, font: helvReg, color: rgb(0.1,0.1,0.1) }); } catch {}
+                  yy -= lineH;
+                }
+                yy -= 4;
+              }
+            }
+          } catch (err) {
+            console.warn('Falha ao converter office', f.file_name, err);
+            cover.drawText('Não foi possível extrair o conteúdo deste documento.', { x: 24, y: 700, size: 10, font: helv, color: rgb(0.5,0.1,0.1) });
+          }
         } else {
           cover.drawText('Formato não suportado para visualização (Word/Excel/outros).', { x: 24, y: 700, size: 10, font: helv, color: rgb(0.5,0.1,0.1) });
           cover.drawText('O arquivo permanece disponível no sistema.', { x: 24, y: 685, size: 10, font: helv, color: rgb(0.3,0.3,0.3) });
