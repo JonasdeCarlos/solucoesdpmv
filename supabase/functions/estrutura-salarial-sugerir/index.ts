@@ -30,7 +30,7 @@ REGRAS OBRIGATÓRIAS:
    • Diretoria/C-level conforme o porte.
    Para CADA sugestão, retorne: nome, area, nivel, justificativa (cite a referência: CBO, CCT, pesquisa salarial ou prática de mercado), salario_min, salario_max (faixa realista pt-BR).
    NÃO repita cargos já cadastrados. Priorize cobertura ampla — é melhor sugerir 15 cargos relevantes do que 4 genéricos.
-7. Monte um ORGANOGRAMA hierárquico CONTEMPLANDO os cargos atuais E TODOS os sugeridos (não omita níveis intermediários). Cada nó: id (slug único, ex: "chef-de-fila"), nome, parent_id (null para topo), nivel. Respeite a cadeia de comando real do setor (ex.: Cumim → Garçom → Chef de Fila → Maître → Gerente de A&B → Diretor de Operações).
+7. Monte um ORGANOGRAMA hierárquico contendo EXCLUSIVAMENTE os cargos cadastrados (lista CARGOS ATUAIS acima). NÃO inclua cargos sugeridos nem cargos que não estejam cadastrados. Cada nó: id (slug único derivado do nome do cargo cadastrado), nome (EXATAMENTE como aparece em CARGOS ATUAIS), parent_id (null para topo, ou id de outro cargo cadastrado), nivel. Respeite a cadeia de comando real do setor para ordenar APENAS os cargos cadastrados.
 8. Escala de evolução (4 etapas iguais às dos cargos) com percentual_base representando o % DO SALÁRIO DE REFERÊNCIA (teto). Portanto Inicial≈75%, Pleno≈85%, Sênior≈93%, Referência=100%. Descrição curta de cada etapa.
 
 Retorne SOMENTE JSON válido neste formato:
