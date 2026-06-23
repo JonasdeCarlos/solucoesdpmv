@@ -13,7 +13,7 @@ export async function generateCargosPdf(params: {
   empresa: string;
   consultor?: string;
   cargos: any[];
-  estrutura?: { faixas: any[]; escala_evolucao: any[] } | null;
+  estrutura?: { faixas: any[]; escala_evolucao: any[]; cargos_sugeridos?: any[]; organograma?: any[] } | null;
   introducao?: string;
   consideracoes?: string;
 }) {
@@ -104,6 +104,61 @@ export async function generateCargosPdf(params: {
   }
 
   if (consideracoes) { section('Considerações Finais'); para(consideracoes); }
+
+  // Cargos sugeridos pela IA
+  const sugeridos = estrutura?.cargos_sugeridos || [];
+  if (sugeridos.length) {
+    doc.addPage(); y = 60;
+    section('Cargos Sugeridos pela IA');
+    autoTable(doc, {
+      startY: y,
+      head: [['Cargo','Área','Nível','Faixa Salarial','Justificativa']],
+      body: sugeridos.map((s:any)=> [
+        s.nome || '—',
+        s.area || '—',
+        NIVEL_LABEL[s.nivel] || s.nivel || '—',
+        `${brl(s.salario_min)} – ${brl(s.salario_max)}`,
+        s.justificativa || '',
+      ]),
+      headStyles: { fillColor: [pr,pg,pb] },
+      styles: { fontSize: 8, cellPadding: 3, valign: 'top' },
+      columnStyles: { 4: { cellWidth: 200 } },
+    });
+    y = (doc as any).lastAutoTable.finalY + 10;
+  }
+
+  // Organograma sugerido
+  const orgNodes: any[] = estrutura?.organograma || [];
+  if (orgNodes.length) {
+    doc.addPage(); y = 60;
+    section('Organograma Sugerido');
+    doc.setFontSize(8); doc.setTextColor(90,90,90);
+    para('Estrutura hierárquica sugerida com base nos cargos cadastrados e nas sugestões da IA.');
+    doc.setTextColor(0,0,0);
+
+    const byParent = new Map<string|null, any[]>();
+    for (const n of orgNodes) {
+      const p = n.parent_id || null;
+      if (!byParent.has(p)) byParent.set(p, []);
+      byParent.get(p)!.push(n);
+    }
+    const drawNode = (node: any, depth: number) => {
+      if (y > 780) { doc.addPage(); y = 40; }
+      const x = 24 + depth * 18;
+      const boxW = Math.min(W - 40 - depth * 18, 360);
+      doc.setDrawColor(pr,pg,pb); doc.setFillColor(245,248,240);
+      doc.roundedRect(x, y, boxW, 22, 3, 3, 'FD');
+      doc.setFontSize(9); doc.setTextColor(40,40,40);
+      const label = `${node.nome || '—'}${node.nivel ? '  ·  '+(NIVEL_LABEL[node.nivel] || node.nivel) : ''}`;
+      doc.text(doc.splitTextToSize(label, boxW - 10)[0], x + 6, y + 14);
+      y += 26;
+      const children = byParent.get(node.id) || [];
+      for (const c of children) drawNode(c, depth + 1);
+    };
+    const roots = byParent.get(null) || [];
+    for (const r of roots) drawNode(r, 0);
+    y += 6;
+  }
 
   const total = doc.getNumberOfPages();
   for (let i = 1; i <= total; i++) {
