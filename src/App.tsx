@@ -48,6 +48,7 @@ import SucessoClienteProfilePage from "./pages/sucessoCliente/SucessoClienteProf
 import SucessoClienteReportsPage from "./pages/sucessoCliente/SucessoClienteReportsPage";
 import GestaoCctPage from "./pages/sucessoCliente/GestaoCctPage";
 import FeedbackPublicPage from "./pages/sucessoCliente/FeedbackPublicPage";
+import EmpresaFeedbackPage from "./pages/sucessoCliente/EmpresaFeedbackPage";
 
 const queryClient = new QueryClient();
 
@@ -66,6 +67,8 @@ const App = () => (
             <Route path="/admissao/publico/:templateId" element={<PublicoNovaPage />} />
             {/* Feedback — link público compartilhável */}
             <Route path="/feedback/:token" element={<FeedbackPublicPage />} />
+            {/* Ferramenta de Feedback — link público por empresa */}
+            <Route path="/empresa/:token/feedback" element={<EmpresaFeedbackPage />} />
             {/* Admissão — escritório (senha) */}
             <Route path="/admissao/escritorio/login" element={<EscritorioLoginPage />} />
             <Route element={<OfficeGuard />}>
