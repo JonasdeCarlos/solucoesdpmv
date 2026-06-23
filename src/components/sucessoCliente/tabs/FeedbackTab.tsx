@@ -12,6 +12,7 @@ import { useFeedback, type FeedbackRecord } from '@/hooks/useFeedback';
 import { generateFeedbackPdf } from '@/utils/sucessoCliente/feedbackPdf';
 import { generateFeedbackGuidePdf } from '@/utils/sucessoCliente/feedbackGuidePdf';
 import { useAiUsage } from '@/hooks/useAiUsage';
+import { buildExternalAppLink } from '@/utils/publicLinks';
 import { toast } from 'sonner';
 
 type Tipo = 'feedback' | 'cobranca' | 'alinhamento';
@@ -91,13 +92,13 @@ export default function FeedbackTab({ client_id, cliente }: { client_id: string;
   };
 
   const handleShare = async (rec: FeedbackRecord) => {
-    const link = `${window.location.origin}/feedback/${rec.public_token}`;
+    const link = buildExternalAppLink(`/feedback/${rec.public_token}`);
     try { await navigator.clipboard.writeText(link); toast.success('Link copiado: ' + link); }
     catch { prompt('Copie o link:', link); }
   };
 
   const empresaLink = cliente?.public_feedback_token
-    ? `${window.location.origin}/empresa/${cliente.public_feedback_token}/feedback`
+    ? buildExternalAppLink(`/empresa/${cliente.public_feedback_token}/feedback`)
     : '';
 
   const copyEmpresaLink = async () => {
