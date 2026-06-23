@@ -1384,6 +1384,9 @@ export type Database = {
           created_by: string | null
           digisac_contact_id: string | null
           digisac_contact_name: string | null
+          empregador_web_password_encrypted: string | null
+          empregador_web_url: string | null
+          empregador_web_user: string | null
           govbr_duas_etapas: boolean
           has_timeclock: boolean | null
           has_variables: boolean | null
@@ -1395,6 +1398,7 @@ export type Database = {
           preview_deadline_day: number | null
           preview_rules: string | null
           procuracao_conectividade: boolean
+          procuracao_empregador_web: boolean
           procuracao_govbr: boolean
           sla_hours: number | null
           sst_contato_email: string
@@ -1426,6 +1430,9 @@ export type Database = {
           created_by?: string | null
           digisac_contact_id?: string | null
           digisac_contact_name?: string | null
+          empregador_web_password_encrypted?: string | null
+          empregador_web_url?: string | null
+          empregador_web_user?: string | null
           govbr_duas_etapas?: boolean
           has_timeclock?: boolean | null
           has_variables?: boolean | null
@@ -1437,6 +1444,7 @@ export type Database = {
           preview_deadline_day?: number | null
           preview_rules?: string | null
           procuracao_conectividade?: boolean
+          procuracao_empregador_web?: boolean
           procuracao_govbr?: boolean
           sla_hours?: number | null
           sst_contato_email?: string
@@ -1468,6 +1476,9 @@ export type Database = {
           created_by?: string | null
           digisac_contact_id?: string | null
           digisac_contact_name?: string | null
+          empregador_web_password_encrypted?: string | null
+          empregador_web_url?: string | null
+          empregador_web_user?: string | null
           govbr_duas_etapas?: boolean
           has_timeclock?: boolean | null
           has_variables?: boolean | null
@@ -1479,6 +1490,7 @@ export type Database = {
           preview_deadline_day?: number | null
           preview_rules?: string | null
           procuracao_conectividade?: boolean
+          procuracao_empregador_web?: boolean
           procuracao_govbr?: boolean
           sla_hours?: number | null
           sst_contato_email?: string
@@ -3514,6 +3526,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_empregador_web_password: {
+        Args: { _client_id: string }
+        Returns: string
+      }
       get_timeclock_password: { Args: { _client_id: string }; Returns: string }
       has_role: {
         Args: {
@@ -3524,6 +3540,10 @@ export type Database = {
       }
       is_admin_or_master: { Args: { _user_id: string }; Returns: boolean }
       normalize_email: { Args: { _email: string }; Returns: string }
+      set_empregador_web_password: {
+        Args: { _client_id: string; _password: string }
+        Returns: undefined
+      }
       set_timeclock_password: {
         Args: { _client_id: string; _password: string }
         Returns: undefined

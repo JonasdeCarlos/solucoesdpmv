@@ -23,6 +23,9 @@ export default function PerfilTab({ cliente, onClienteSaved }: { cliente: Client
   const [pwd, setPwd] = useState('');
   const [pwdLoaded, setPwdLoaded] = useState(false);
   const [showPwd, setShowPwd] = useState(false);
+  const [ewPwd, setEwPwd] = useState('');
+  const [ewPwdLoaded, setEwPwdLoaded] = useState(false);
+  const [showEwPwd, setShowEwPwd] = useState(false);
   const [segmentos, setSegmentos] = useState<string[]>([]);
   const [municipios, setMunicipios] = useState<string[]>([]);
   const [ufs, setUfs] = useState<string[]>([]);
@@ -76,6 +79,12 @@ export default function PerfilTab({ cliente, onClienteSaved }: { cliente: Client
     setPwd((data as any) || ''); setPwdLoaded(true); setShowPwd(true);
   };
 
+  const loadEwPwd = async () => {
+    const { data, error } = await supabase.rpc('get_empregador_web_password' as any, { _client_id: cliente.id } as any);
+    if (error) { toast.error('Sem permissão para ver a senha.'); return; }
+    setEwPwd((data as any) || ''); setEwPwdLoaded(true); setShowEwPwd(true);
+  };
+
   const saveAll = async () => {
     const { error: e1 } = await supabase.from('clientes' as any).update({
       nome: cli.nome, codigo_cliente: cli.codigo_cliente || null, nome_fantasia: cli.nome_fantasia,
@@ -89,6 +98,9 @@ export default function PerfilTab({ cliente, onClienteSaved }: { cliente: Client
     if (e2) { toast.error('Erro ao salvar perfil: ' + e2.message); return; }
     if (pwdLoaded && isAdmin) {
       await supabase.rpc('set_timeclock_password' as any, { _client_id: cliente.id, _password: pwd } as any);
+    }
+    if (ewPwdLoaded && isAdmin) {
+      await supabase.rpc('set_empregador_web_password' as any, { _client_id: cliente.id, _password: ewPwd } as any);
     }
     toast.success('Salvo.');
     onClienteSaved();
@@ -342,6 +354,38 @@ export default function PerfilTab({ cliente, onClienteSaved }: { cliente: Client
           <div className="flex items-center gap-3 p-3 rounded-md border">
             <Switch checked={form.govbr_duas_etapas} onCheckedChange={(v)=>set('govbr_duas_etapas', v)}/>
             <Label className="cursor-pointer">gov.br em duas etapas</Label>
+          </div>
+          <div className="flex items-center gap-3 p-3 rounded-md border md:col-span-3">
+            <Switch checked={form.procuracao_empregador_web} onCheckedChange={(v)=>set('procuracao_empregador_web', v)}/>
+            <Label className="cursor-pointer">Possui procuração para o Empregador Web</Label>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle className="text-base">Empregador Web (eSocial Doméstico / Conectividade)</CardTitle></CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div>
+            <Label>URL de acesso</Label>
+            <Input value={form.empregador_web_url} onChange={(e)=>set('empregador_web_url', e.target.value)} placeholder="https://..."/>
+            {form.empregador_web_url && (
+              <a
+                href={/^https?:\/\//i.test(form.empregador_web_url) ? form.empregador_web_url : `https://${form.empregador_web_url}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-primary underline mt-1 inline-block break-all"
+              >
+                Abrir: {form.empregador_web_url}
+              </a>
+            )}
+          </div>
+          <div><Label>Usuário</Label><Input value={form.empregador_web_user} onChange={(e)=>set('empregador_web_user', e.target.value)} placeholder="CPF / login"/></div>
+          <div>
+            <Label>Senha {!isAdmin && <span className="text-xs text-muted-foreground">(somente admin)</span>}</Label>
+            <div className="flex gap-1">
+              <Input type={showEwPwd ? 'text' : 'password'} value={ewPwd} onChange={(e)=>{setEwPwd(e.target.value); setEwPwdLoaded(true);}} placeholder={isAdmin ? (ewPwdLoaded ? '' : '•••• (clique para carregar)') : 'restrito'} disabled={!isAdmin}/>
+              {isAdmin && <Button type="button" variant="outline" size="icon" onClick={() => ewPwdLoaded ? setShowEwPwd(s=>!s) : loadEwPwd()}>{showEwPwd ? <EyeOff className="w-4 h-4"/> : <Eye className="w-4 h-4"/>}</Button>}
+            </div>
           </div>
         </CardContent>
       </Card>

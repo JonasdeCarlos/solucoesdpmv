@@ -55,6 +55,9 @@ export interface DPProfile {
   procuracao_govbr: boolean;
   procuracao_conectividade: boolean;
   govbr_duas_etapas: boolean;
+  procuracao_empregador_web: boolean;
+  empregador_web_user: string;
+  empregador_web_url: string;
 }
 
 export function emptyProfile(client_id: string): DPProfile {
@@ -94,6 +97,9 @@ export function emptyProfile(client_id: string): DPProfile {
     procuracao_govbr: false,
     procuracao_conectividade: false,
     govbr_duas_etapas: false,
+    procuracao_empregador_web: false,
+    empregador_web_user: '',
+    empregador_web_url: '',
   };
 }
 
