@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { PDFDocument } from 'pdf-lib';
+import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { supabase } from '@/integrations/supabase/client';
 import { loadBranding } from './perfilPdf';
 
@@ -158,16 +158,12 @@ export async function generateAuditoriaPdf({ tipo, auditoria, itens, acoes, acao
 
   if (tipo === 'dossie' && acaoFiles.length > 0) {
     section('Documentos Anexados');
-    const nonPdf = acaoFiles.filter(f => !(f.mime_type || '').includes('pdf'));
-    if (nonPdf.length) {
-      para('Os documentos abaixo (Word/outros) estão registrados no sistema mas não podem ser embutidos automaticamente neste PDF:');
-      for (const f of nonPdf) {
-        const acao = acoes.find(a => a.id === f.acao_id);
-        const item = acao ? itens.find(i => i.id === acao.item_id) : null;
-        para(`• ${f.file_name} — ${item ? item.titulo : 'Ação ' + (acao?.acao_corretiva?.slice(0,40) || '')}`);
-      }
+    para(`Total de anexos: ${acaoFiles.length}. As páginas a seguir reúnem os documentos PDF e imagens anexados ao plano. Arquivos em outros formatos (Word, planilhas) ficam apenas listados.`);
+    for (const f of acaoFiles) {
+      const acao = acoes.find(a => a.id === f.acao_id);
+      const item = acao ? itens.find(i => i.id === acao.item_id) : null;
+      para(`• ${f.file_name} — ${item ? item.titulo : 'Ação ' + (acao?.acao_corretiva?.slice(0,40) || '')}`);
     }
-    para('As páginas a seguir reúnem todos os documentos PDF anexados às ações deste plano.');
   }
 
   if (tipo === 'plano') {
@@ -193,24 +189,59 @@ export async function generateAuditoriaPdf({ tipo, auditoria, itens, acoes, acao
 
   const baseName = `Auditoria_${tipo}_${auditoria.empresa_nome.replace(/\s+/g,'_')}.pdf`;
 
-  // Dossiê: faz merge dos PDFs anexados
-  if (tipo === 'dossie') {
-    const pdfAnexos = acaoFiles.filter(f => (f.mime_type || '').includes('pdf'));
-    if (pdfAnexos.length) {
-      const basePdfBytes = doc.output('arraybuffer');
-      const merged = await PDFDocument.load(basePdfBytes);
-      for (const f of pdfAnexos) {
-        try {
-          const { data: signed } = await supabase.storage.from('auditoria-docs').createSignedUrl(f.file_path, 600);
-          if (!signed?.signedUrl) continue;
-          const buf = await fetch(signed.signedUrl).then(r => r.arrayBuffer());
+  // Dossiê: faz merge dos PDFs/imagens anexados
+  if (tipo === 'dossie' && acaoFiles.length) {
+    const ext = (n: string) => (n.split('.').pop() || '').toLowerCase();
+    const isPdf = (f: any) => (f.mime_type || '').includes('pdf') || ext(f.file_name) === 'pdf';
+    const isImg = (f: any) => /^(jpe?g|png)$/.test(ext(f.file_name)) || /^image\/(jpeg|png)/.test(f.mime_type || '');
+
+    const basePdfBytes = doc.output('arraybuffer');
+    const merged = await PDFDocument.load(basePdfBytes);
+    const helv = await merged.embedFont(StandardFonts.HelveticaBold);
+    let added = 0;
+
+    for (const f of acaoFiles) {
+      const acao = acoes.find(a => a.id === f.acao_id);
+      const item = acao ? itens.find(i => i.id === acao.item_id) : null;
+      const titulo = `${item ? item.titulo : 'Ação'} — ${f.file_name}`;
+      try {
+        const { data: signed } = await supabase.storage.from('auditoria-docs').createSignedUrl(f.file_path, 600);
+        if (!signed?.signedUrl) { console.warn('Sem URL assinada', f.file_name); continue; }
+
+        // Capa do anexo
+        const cover = merged.addPage([595, 842]);
+        cover.drawRectangle({ x: 0, y: 800, width: 595, height: 42, color: rgb(pr/255, pg/255, pb/255) });
+        cover.drawText('Anexo', { x: 24, y: 815, size: 16, font: helv, color: rgb(1,1,1) });
+        cover.drawText(titulo.slice(0, 80), { x: 24, y: 760, size: 12, font: helv, color: rgb(0,0,0) });
+        if (acao?.acao_corretiva) {
+          cover.drawText(`Ação: ${String(acao.acao_corretiva).slice(0,90)}`, { x: 24, y: 740, size: 10, font: helv, color: rgb(0.3,0.3,0.3) });
+        }
+        added++;
+
+        const buf = await fetch(signed.signedUrl).then(r => r.arrayBuffer());
+        if (isPdf(f)) {
           const anex = await PDFDocument.load(buf, { ignoreEncryption: true });
           const pages = await merged.copyPages(anex, anex.getPageIndices());
           pages.forEach(p => merged.addPage(p));
-        } catch (e) {
-          console.warn('Falha ao anexar PDF', f.file_name, e);
+        } else if (isImg(f)) {
+          const img = ext(f.file_name) === 'png' || (f.mime_type || '').includes('png')
+            ? await merged.embedPng(buf)
+            : await merged.embedJpg(buf);
+          const page = merged.addPage([595, 842]);
+          const maxW = 555, maxH = 780;
+          const scale = Math.min(maxW / img.width, maxH / img.height, 1);
+          const w = img.width * scale, h = img.height * scale;
+          page.drawImage(img, { x: (595 - w) / 2, y: (842 - h) / 2, width: w, height: h });
+        } else {
+          cover.drawText('Formato não suportado para visualização (Word/Excel/outros).', { x: 24, y: 700, size: 10, font: helv, color: rgb(0.5,0.1,0.1) });
+          cover.drawText('O arquivo permanece disponível no sistema.', { x: 24, y: 685, size: 10, font: helv, color: rgb(0.3,0.3,0.3) });
         }
+      } catch (e) {
+        console.warn('Falha ao anexar', f.file_name, e);
       }
+    }
+
+    if (added > 0) {
       const out = await merged.save();
       const blob = new Blob([out as BlobPart], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
