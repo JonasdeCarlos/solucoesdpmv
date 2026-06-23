@@ -78,7 +78,11 @@ export default function CCTTab({ client_id }: { client_id: string }) {
         text = await file.text();
       }
       if (!text.trim() && !pdf_base64) throw new Error('Não foi possível ler o arquivo. Envie um PDF ou TXT válido.');
-      const path = `${client_id}/cct/${Date.now()}_${file.name}`;
+      const safeName = file.name
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9._-]+/g, '_')
+        .replace(/_+/g, '_');
+      const path = `${client_id}/cct/${Date.now()}_${safeName}`;
       setStage('Enviando arquivo…');
       const { error: uploadError } = await supabase.storage.from('cliente-dp-uploads').upload(path, file);
       if (uploadError) throw uploadError;
