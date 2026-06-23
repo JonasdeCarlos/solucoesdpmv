@@ -130,29 +130,7 @@ export async function generateCargosPdf(params: {
 
   if (consideracoes) { section('Considerações Finais'); para(consideracoes); }
 
-  // Cargos sugeridos pela IA
-  const sugeridos = estrutura?.cargos_sugeridos || [];
-  if (sugeridos.length) {
-    doc.addPage(); y = 60;
-    section('Cargos Sugeridos pela IA');
-    autoTable(doc, {
-      startY: y,
-      head: [['Cargo','Área','Nível','Faixa Salarial','Justificativa']],
-      body: sugeridos.map((s:any)=> [
-        s.nome || '—',
-        s.area || '—',
-        NIVEL_LABEL[s.nivel] || s.nivel || '—',
-        `${brl(s.salario_min)} – ${brl(s.salario_max)}`,
-        s.justificativa || '',
-      ]),
-      headStyles: { fillColor: [pr,pg,pb] },
-      styles: { fontSize: 8, cellPadding: 3, valign: 'top' },
-      columnStyles: { 4: { cellWidth: 200 } },
-    });
-    y = (doc as any).lastAutoTable.finalY + 10;
-  }
-
-  // Organograma sugerido
+  // Organograma sugerido (visual tree, igual à pré-visualização "Gerar Organograma")
   const orgNodes: any[] = estrutura?.organograma || [];
   if (orgNodes.length) {
     doc.addPage(); y = 60;
@@ -167,22 +145,114 @@ export async function generateCargosPdf(params: {
       if (!byParent.has(p)) byParent.set(p, []);
       byParent.get(p)!.push(n);
     }
-    const drawNode = (node: any, depth: number) => {
-      if (y > 780) { doc.addPage(); y = 40; }
-      const x = 24 + depth * 18;
-      const boxW = Math.min(W - 40 - depth * 18, 360);
-      doc.setDrawColor(pr,pg,pb); doc.setFillColor(245,248,240);
-      doc.roundedRect(x, y, boxW, 22, 3, 3, 'FD');
-      doc.setFontSize(9); doc.setTextColor(40,40,40);
-      const label = `${node.nome || '—'}${node.nivel ? '  ·  '+(NIVEL_LABEL[node.nivel] || node.nivel) : ''}`;
-      doc.text(doc.splitTextToSize(label, boxW - 10)[0], x + 6, y + 14);
-      y += 26;
-      const children = byParent.get(node.id) || [];
-      for (const c of children) drawNode(c, depth + 1);
-    };
     const roots = byParent.get(null) || [];
-    for (const r of roots) drawNode(r, 0);
-    y += 6;
+
+    // Tree layout: measure subtree width then position
+    const BOX_W = 110;
+    const BOX_H = 34;
+    const H_GAP = 12;   // gap entre irmãos
+    const V_GAP = 28;   // gap vertical entre níveis
+
+    type Pos = { x: number; y: number; w: number; node: any };
+    const positions: Pos[] = [];
+
+    const measure = (node: any): number => {
+      const children = byParent.get(node.id) || [];
+      if (!children.length) return BOX_W;
+      const sum = children.reduce((acc, c) => acc + measure(c), 0) + H_GAP * (children.length - 1);
+      return Math.max(BOX_W, sum);
+    };
+    const place = (node: any, left: number, top: number) => {
+      const width = measure(node);
+      const cx = left + width / 2;
+      positions.push({ x: cx - BOX_W / 2, y: top, w: BOX_W, node });
+      const children = byParent.get(node.id) || [];
+      if (!children.length) return;
+      let cursor = left;
+      for (const ch of children) {
+        const cw = measure(ch);
+        place(ch, cursor, top + BOX_H + V_GAP);
+        cursor += cw + H_GAP;
+      }
+    };
+
+    // Forest: place each root side by side, total width
+    let totalW = roots.reduce((a, r) => a + measure(r), 0) + H_GAP * Math.max(0, roots.length - 1);
+    let startLeft = Math.max(20, (W - totalW) / 2);
+    let scale = 1;
+    const available = W - 40;
+    if (totalW > available) {
+      scale = available / totalW;
+      startLeft = 20;
+    }
+    let cursor = startLeft / scale;
+    for (const r of roots) {
+      const rw = measure(r);
+      place(r, cursor, y / scale);
+      cursor += rw + H_GAP;
+    }
+
+    // Compute bounds
+    const maxY = positions.reduce((m, p) => Math.max(m, p.y + BOX_H), y / scale);
+    // If too tall for one page, just render at scale (scaled). We won't paginate the tree.
+    const availH = 800 - y;
+    const treeH = (maxY - y / scale) * scale;
+    if (treeH > availH) {
+      scale = Math.min(scale, availH / (maxY - y / scale));
+    }
+
+    // Draw connectors (parent bottom → children top with elbow)
+    doc.setDrawColor(pr, pg, pb);
+    doc.setLineWidth(0.6);
+    const posById = new Map<string, Pos>();
+    for (const p of positions) posById.set(p.node.id, p);
+    for (const p of positions) {
+      const children = byParent.get(p.node.id) || [];
+      if (!children.length) continue;
+      const parentBottomX = (p.x + BOX_W / 2) * scale;
+      const parentBottomY = (p.y + BOX_H) * scale;
+      const childTopY = (p.y + BOX_H + V_GAP) * scale;
+      const midY = (parentBottomY + childTopY) / 2;
+      // vertical from parent
+      doc.line(parentBottomX, parentBottomY, parentBottomX, midY);
+      const childCenters = children
+        .map(c => posById.get(c.id))
+        .filter(Boolean)
+        .map(cp => (cp!.x + BOX_W / 2) * scale);
+      if (childCenters.length) {
+        const minX = Math.min(...childCenters);
+        const maxX = Math.max(...childCenters);
+        doc.line(minX, midY, maxX, midY);
+        for (const cx of childCenters) {
+          doc.line(cx, midY, cx, (p.y + BOX_H + V_GAP) * scale);
+        }
+      }
+    }
+
+    // Draw boxes
+    doc.setLineWidth(0.6);
+    for (const p of positions) {
+      const x = p.x * scale;
+      const yy = p.y * scale;
+      const w = BOX_W * scale;
+      const h = BOX_H * scale;
+      doc.setDrawColor(pr, pg, pb);
+      doc.setFillColor(245, 248, 240);
+      doc.roundedRect(x, yy, w, h, 3 * scale, 3 * scale, 'FD');
+      doc.setTextColor(40, 40, 40);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(Math.max(6, 8 * scale));
+      const nameLines = doc.splitTextToSize(p.node.nome || '—', w - 6);
+      doc.text(nameLines[0], x + w / 2, yy + h / 2 - 1, { align: 'center' });
+      if (p.node.nivel) {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(Math.max(5, 6.5 * scale));
+        doc.setTextColor(110, 110, 110);
+        doc.text((NIVEL_LABEL[p.node.nivel] || p.node.nivel).toUpperCase(), x + w / 2, yy + h - 4, { align: 'center' });
+      }
+    }
+    doc.setFont('helvetica', 'normal');
+    y = y + treeH + 16;
   }
 
   const total = doc.getNumberOfPages();
