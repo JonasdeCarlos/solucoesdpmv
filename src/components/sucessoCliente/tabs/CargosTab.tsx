@@ -226,11 +226,20 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
         },
       });
       if (error) throw error;
+      // Filtra organograma para conter APENAS cargos cadastrados (preview e PDF ficam idênticos)
+      const norm = (s: string) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'');
+      const cadastrados = new Set(items.map(i => norm(i.nome)));
+      const orgRaw: any[] = data?.organograma || [];
+      const orgFiltrado = orgRaw.filter(n => cadastrados.has(norm(n.nome)));
+      const allowedIds = new Set(orgFiltrado.map(n => n.id));
+      for (const n of orgFiltrado) {
+        if (n.parent_id && !allowedIds.has(n.parent_id)) n.parent_id = null;
+      }
       await saveEstrutura({
         faixas: data?.faixas || [],
         escala_evolucao: data?.escala_evolucao || [],
         cargos_sugeridos: data?.cargos_sugeridos || [],
-        organograma: data?.organograma || [],
+        organograma: orgFiltrado,
       });
       toast.success('Estrutura salarial sugerida.');
     } catch (e:any) { toast.error('Falha: '+e.message); }
