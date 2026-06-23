@@ -16,8 +16,9 @@ export async function generateCargosPdf(params: {
   estrutura?: { faixas: any[]; escala_evolucao: any[]; cargos_sugeridos?: any[]; organograma?: any[] } | null;
   introducao?: string;
   consideracoes?: string;
+  incluirOrganograma?: boolean;
 }) {
-  const { empresa, consultor, cargos, estrutura, introducao, consideracoes } = params;
+  const { empresa, consultor, cargos, estrutura, introducao, consideracoes, incluirOrganograma = true } = params;
   const branding = await loadBranding();
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
   const W = doc.internal.pageSize.getWidth();
@@ -141,7 +142,7 @@ export async function generateCargosPdf(params: {
   for (const n of orgNodes) {
     if (n.parent_id && !allowedIds.has(n.parent_id)) n.parent_id = null;
   }
-  if (orgNodes.length) {
+  if (orgNodes.length && incluirOrganograma) {
     doc.addPage(); y = 60;
     section('Organograma Sugerido');
     doc.setFontSize(8); doc.setTextColor(90,90,90);
