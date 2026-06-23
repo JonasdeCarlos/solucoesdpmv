@@ -1,4 +1,5 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const SAFE_GUIDELINES = `Regras OBRIGATÓRIAS para evitar assédio moral:
 - Tom respeitoso, profissional e construtivo, sempre na 1ª pessoa do plural ("nós", "podemos", "vamos").
@@ -14,7 +15,7 @@ Deno.serve(async (req) => {
     const KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!KEY) throw new Error("LOVABLE_API_KEY missing");
     const body = await req.json();
-    const { tipo, employee_name, employee_role, pontos_fortes, pontos_melhorar, fato_ocorrido, tom, manager_name } = body || {};
+    const { tipo, employee_name, employee_role, pontos_fortes, pontos_melhorar, fato_ocorrido, tom, manager_name, client_id } = body || {};
 
     let instruction = "";
     if (tipo === "feedback") {
@@ -60,7 +61,24 @@ Retorne APENAS o texto final pronto para uso, sem cabeçalhos markdown ou JSON.`
     if (r.status === 402) return new Response(JSON.stringify({ error: "Créditos de IA esgotados. Adicione créditos no workspace." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     const data = await r.json();
     const texto = data?.choices?.[0]?.message?.content || "";
-    return new Response(JSON.stringify({ texto }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    const usage = data?.usage || {};
+    const prompt_tokens = Number(usage.prompt_tokens || 0);
+    const completion_tokens = Number(usage.completion_tokens || 0);
+    const total_tokens = Number(usage.total_tokens || (prompt_tokens + completion_tokens));
+    // Gemini 2.5 Flash via Lovable AI: estimativa em créditos (1 crédito ≈ US$0,01)
+    // Preço aprox.: input $0.30/1M tok, output $2.50/1M tok
+    const credits_estimate = +((prompt_tokens * 0.00003) + (completion_tokens * 0.00025)).toFixed(6);
+    if (client_id) {
+      try {
+        const supa = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+        await supa.from("ai_usage_log").insert({
+          client_id, function_name: "feedback-generate", model: "google/gemini-2.5-flash",
+          prompt_tokens, completion_tokens, total_tokens, credits_estimate,
+          meta: { tipo, tom: tom || null },
+        });
+      } catch (_) { /* não bloqueia */ }
+    }
+    return new Response(JSON.stringify({ texto, usage: { prompt_tokens, completion_tokens, total_tokens, credits_estimate } }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : String(e) }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }

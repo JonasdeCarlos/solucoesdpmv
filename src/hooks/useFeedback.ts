@@ -71,9 +71,9 @@ export function useFeedback(client_id: string | undefined) {
     fato_ocorrido?: string;
     tom?: 'leve' | 'medio' | 'cobranca';
   }) => {
-    const { data, error } = await supabase.functions.invoke('feedback-generate', { body: input });
+    const { data, error } = await supabase.functions.invoke('feedback-generate', { body: { ...input, client_id } });
     if (error) return { error };
-    return { texto: (data as any)?.texto as string };
+    return { texto: (data as any)?.texto as string, usage: (data as any)?.usage };
   };
 
   return { items, loading, reload: load, create, update, remove, generate };
