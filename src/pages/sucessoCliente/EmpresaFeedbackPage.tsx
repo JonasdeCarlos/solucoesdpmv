@@ -11,6 +11,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Wand2, FileDown, Trash2, Share2, Pencil, Save, X } from 'lucide-react';
 import { generateFeedbackPdf } from '@/utils/sucessoCliente/feedbackPdf';
+import { buildExternalAppLink } from '@/utils/publicLinks';
 import { toast } from 'sonner';
 
 type Tipo = 'feedback' | 'cobranca' | 'alinhamento';
@@ -83,7 +84,7 @@ export default function EmpresaFeedbackPage() {
   };
 
   const handleShare = async (rec: any) => {
-    const link = `${window.location.origin}/feedback/${rec.public_token}`;
+    const link = buildExternalAppLink(`/feedback/${rec.public_token}`);
     try { await navigator.clipboard.writeText(link); toast.success('Link copiado.'); }
     catch { prompt('Copie o link:', link); }
   };
