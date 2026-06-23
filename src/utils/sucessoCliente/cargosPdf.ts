@@ -131,12 +131,21 @@ export async function generateCargosPdf(params: {
   if (consideracoes) { section('Considerações Finais'); para(consideracoes); }
 
   // Organograma sugerido (visual tree, igual à pré-visualização "Gerar Organograma")
-  const orgNodes: any[] = estrutura?.organograma || [];
+  // Filtra para conter APENAS cargos cadastrados (segurança caso a IA sugira extras)
+  const norm = (s: string) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'');
+  const cadastradosSet = new Set(cargos.map(c => norm(c.nome)));
+  const allOrg: any[] = estrutura?.organograma || [];
+  const orgNodes = allOrg.filter(n => cadastradosSet.has(norm(n.nome)));
+  const allowedIds = new Set(orgNodes.map(n => n.id));
+  // Limpa parent_id que aponte para nós removidos
+  for (const n of orgNodes) {
+    if (n.parent_id && !allowedIds.has(n.parent_id)) n.parent_id = null;
+  }
   if (orgNodes.length) {
     doc.addPage(); y = 60;
     section('Organograma Sugerido');
     doc.setFontSize(8); doc.setTextColor(90,90,90);
-    para('Estrutura hierárquica sugerida com base nos cargos cadastrados e nas sugestões da IA.');
+    para('Estrutura hierárquica baseada exclusivamente nos cargos cadastrados pela empresa.');
     doc.setTextColor(0,0,0);
 
     const byParent = new Map<string|null, any[]>();
@@ -148,10 +157,10 @@ export async function generateCargosPdf(params: {
     const roots = byParent.get(null) || [];
 
     // Tree layout: measure subtree width then position
-    const BOX_W = 110;
-    const BOX_H = 34;
-    const H_GAP = 12;   // gap entre irmãos
-    const V_GAP = 28;   // gap vertical entre níveis
+    const BOX_W = 130;
+    const BOX_H = 42;
+    const H_GAP = 24;   // gap entre irmãos
+    const V_GAP = 34;   // gap vertical entre níveis
 
     type Pos = { x: number; y: number; w: number; node: any };
     const positions: Pos[] = [];
@@ -241,14 +250,23 @@ export async function generateCargosPdf(params: {
       doc.roundedRect(x, yy, w, h, 3 * scale, 3 * scale, 'FD');
       doc.setTextColor(40, 40, 40);
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(Math.max(6, 8 * scale));
-      const nameLines = doc.splitTextToSize(p.node.nome || '—', w - 6);
-      doc.text(nameLines[0], x + w / 2, yy + h / 2 - 1, { align: 'center' });
-      if (p.node.nivel) {
+      const fontSize = Math.max(6, 8 * scale);
+      doc.setFontSize(fontSize);
+      const nameLines = doc.splitTextToSize(p.node.nome || '—', w - 8).slice(0, 2);
+      const lineH = fontSize * 1.1;
+      const nivelLabel = p.node.nivel ? (NIVEL_LABEL[p.node.nivel] || p.node.nivel).toUpperCase() : '';
+      const nivelSize = Math.max(5, 6.5 * scale);
+      const blockH = nameLines.length * lineH + (nivelLabel ? nivelSize + 2 : 0);
+      let ty = yy + (h - blockH) / 2 + fontSize * 0.8;
+      for (const ln of nameLines) {
+        doc.text(ln, x + w / 2, ty, { align: 'center' });
+        ty += lineH;
+      }
+      if (nivelLabel) {
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(Math.max(5, 6.5 * scale));
+        doc.setFontSize(nivelSize);
         doc.setTextColor(110, 110, 110);
-        doc.text((NIVEL_LABEL[p.node.nivel] || p.node.nivel).toUpperCase(), x + w / 2, yy + h - 4, { align: 'center' });
+        doc.text(nivelLabel, x + w / 2, ty + 2, { align: 'center' });
       }
     }
     doc.setFont('helvetica', 'normal');
