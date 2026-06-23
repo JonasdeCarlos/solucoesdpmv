@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Sparkles, Plus, Trash2, Copy, Pencil, FileDown, Loader2, Network, X } from 'lucide-react';
+import { Sparkles, Plus, Trash2, Copy, Pencil, FileDown, Loader2, Network, X, Pencil as PencilIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useCargos, useEstruturaSalarial } from '@/hooks/useCargos';
@@ -247,6 +247,11 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
   };
 
   const exportarPdf = async () => {
+    const temOrg = (estrutura?.organograma || []).length > 0;
+    let incluirOrganograma = false;
+    if (temOrg) {
+      incluirOrganograma = window.confirm('Deseja incluir o organograma no relatório final?');
+    }
     setBusy('pdf');
     try {
       let introducao = ''; let consideracoes = '';
@@ -255,7 +260,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
         introducao = data?.introducao_metodologia || '';
         consideracoes = data?.consideracoes_finais || '';
       } catch {}
-      await generateCargosPdf({ empresa: cliente?.nome || '—', cargos: items, estrutura, introducao, consideracoes });
+      await generateCargosPdf({ empresa: cliente?.nome || '—', cargos: items, estrutura, introducao, consideracoes, incluirOrganograma });
       toast.success('PDF gerado.');
     } catch (e:any) { toast.error('Falha: '+e.message); }
     finally { setBusy(null); }
@@ -318,12 +323,22 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
   };
 
   const [orgOpen, setOrgOpen] = useState(false);
+  const [orgEditOpen, setOrgEditOpen] = useState(false);
   const gerarOrganograma = async () => {
     if (!(estrutura?.organograma || []).length) {
       // se ainda não tem, dispara sugestão completa
       await sugerirEstrutura();
     }
     setOrgOpen(true);
+  };
+
+  const saveOrganograma = (organograma: any[]) => {
+    saveEstrutura({
+      faixas: estrutura?.faixas || [],
+      escala_evolucao: estrutura?.escala_evolucao || [],
+      cargos_sugeridos: estrutura?.cargos_sugeridos || [],
+      organograma,
+    });
   };
 
   return (
@@ -343,6 +358,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
           <Button onClick={openNew}><Plus className="w-4 h-4 mr-1"/>Novo cargo</Button>
           <Button variant="outline" onClick={sugerirEstrutura} disabled={busy==='estrutura'}>{busy==='estrutura' ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <Sparkles className="w-4 h-4 mr-2"/>}Sugerir Estrutura Salarial</Button>
           <Button variant="outline" onClick={gerarOrganograma} disabled={busy==='estrutura'}><Network className="w-4 h-4 mr-2"/>Gerar Organograma</Button>
+          <Button variant="outline" onClick={()=>setOrgEditOpen(true)}><PencilIcon className="w-4 h-4 mr-2"/>Editar Organograma</Button>
           <Button variant="outline" onClick={exportarPdf} disabled={busy==='pdf'}>{busy==='pdf' ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <FileDown className="w-4 h-4 mr-2"/>}Gerar Relatório Final</Button>
         </div>
       </div>
@@ -559,6 +575,118 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
           )}
         </DialogContent>
       </Dialog>
+
+      <Dialog open={orgEditOpen} onOpenChange={setOrgEditOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-auto">
+          <DialogHeader><DialogTitle>Editar Organograma</DialogTitle></DialogHeader>
+          <OrgEditor
+            nodes={estrutura?.organograma || []}
+            cargos={items}
+            onChange={saveOrganograma}
+          />
+          <DialogFooter>
+            <Button onClick={()=>setOrgEditOpen(false)}>Concluir</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function OrgEditor({ nodes, cargos, onChange }: { nodes: any[]; cargos: any[]; onChange: (n: any[]) => void }) {
+  const [novoNome, setNovoNome] = useState('');
+  const [novoNivel, setNovoNivel] = useState('analista');
+  const [novoParent, setNovoParent] = useState<string>('none');
+
+  const genId = () => 'org_' + Math.random().toString(36).slice(2, 10);
+
+  const add = () => {
+    if (!novoNome.trim()) return toast.error('Informe o nome do cargo.');
+    const next = [...nodes, { id: genId(), nome: novoNome.trim(), nivel: novoNivel, parent_id: novoParent === 'none' ? null : novoParent }];
+    onChange(next);
+    setNovoNome(''); setNovoParent('none');
+  };
+
+  const update = (id: string, patch: any) => {
+    const next = nodes.map(n => n.id === id ? { ...n, ...patch } : n);
+    onChange(next);
+  };
+
+  const remove = (id: string) => {
+    if (!confirm('Remover este cargo do organograma?')) return;
+    // remove e re-aponta filhos para null
+    const next = nodes.filter(n => n.id !== id).map(n => n.parent_id === id ? { ...n, parent_id: null } : n);
+    onChange(next);
+  };
+
+  const addCargoCadastrado = (nome: string) => {
+    if (nodes.some(n => (n.nome || '').toLowerCase() === nome.toLowerCase())) return;
+    const cargo = cargos.find(c => c.nome === nome);
+    onChange([...nodes, { id: genId(), nome, nivel: cargo?.nivel || 'analista', parent_id: null }]);
+  };
+
+  const naoAdicionados = cargos.filter(c => !nodes.some(n => (n.nome || '').toLowerCase() === (c.nome || '').toLowerCase()));
+
+  return (
+    <div className="space-y-4">
+      {naoAdicionados.length > 0 && (
+        <div>
+          <Label className="text-xs">Cargos cadastrados ainda fora do organograma</Label>
+          <div className="flex flex-wrap gap-1 mt-1">
+            {naoAdicionados.map(c => (
+              <Button key={c.id} size="sm" variant="outline" onClick={()=>addCargoCadastrado(c.nome)}>
+                <Plus className="w-3 h-3 mr-1"/>{c.nome}
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="border rounded-md p-3 space-y-2">
+        <div className="text-sm font-semibold">Adicionar novo nó</div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+          <Input placeholder="Nome do cargo" value={novoNome} onChange={e=>setNovoNome(e.target.value)} />
+          <Select value={novoNivel} onValueChange={setNovoNivel}>
+            <SelectTrigger><SelectValue/></SelectTrigger>
+            <SelectContent>{NIVEIS.map(n => <SelectItem key={n.v} value={n.v}>{n.l}</SelectItem>)}</SelectContent>
+          </Select>
+          <Select value={novoParent} onValueChange={setNovoParent}>
+            <SelectTrigger><SelectValue placeholder="Reporta a…"/></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">— Topo (sem chefe) —</SelectItem>
+              {nodes.map(n => <SelectItem key={n.id} value={n.id}>{n.nome}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <Button size="sm" onClick={add}><Plus className="w-4 h-4 mr-1"/>Adicionar</Button>
+      </div>
+
+      <div className="space-y-1">
+        <div className="text-sm font-semibold">Estrutura atual ({nodes.length})</div>
+        {nodes.length === 0 ? (
+          <p className="text-xs text-muted-foreground">Nenhum nó. Adicione cargos acima.</p>
+        ) : (
+          <div className="space-y-1">
+            {nodes.map(n => (
+              <div key={n.id} className="flex items-center gap-2 border rounded p-2">
+                <Input className="flex-1" value={n.nome} onChange={e=>update(n.id, { nome: e.target.value })} />
+                <Select value={n.nivel || 'analista'} onValueChange={(v)=>update(n.id, { nivel: v })}>
+                  <SelectTrigger className="w-[140px]"><SelectValue/></SelectTrigger>
+                  <SelectContent>{NIVEIS.map(nv => <SelectItem key={nv.v} value={nv.v}>{nv.l}</SelectItem>)}</SelectContent>
+                </Select>
+                <Select value={n.parent_id || 'none'} onValueChange={(v)=>update(n.id, { parent_id: v === 'none' ? null : v })}>
+                  <SelectTrigger className="w-[180px]"><SelectValue placeholder="Reporta a…"/></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">— Topo —</SelectItem>
+                    {nodes.filter(o => o.id !== n.id).map(o => <SelectItem key={o.id} value={o.id}>{o.nome}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Button size="icon" variant="ghost" onClick={()=>remove(n.id)}><Trash2 className="w-4 h-4 text-destructive"/></Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
