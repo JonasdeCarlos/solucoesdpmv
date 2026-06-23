@@ -227,6 +227,53 @@ export type Database = {
           },
         ]
       }
+      ai_usage_log: {
+        Row: {
+          client_id: string | null
+          completion_tokens: number
+          created_at: string
+          credits_estimate: number
+          function_name: string
+          id: string
+          meta: Json | null
+          model: string | null
+          prompt_tokens: number
+          total_tokens: number
+        }
+        Insert: {
+          client_id?: string | null
+          completion_tokens?: number
+          created_at?: string
+          credits_estimate?: number
+          function_name: string
+          id?: string
+          meta?: Json | null
+          model?: string | null
+          prompt_tokens?: number
+          total_tokens?: number
+        }
+        Update: {
+          client_id?: string | null
+          completion_tokens?: number
+          created_at?: string
+          credits_estimate?: number
+          function_name?: string
+          id?: string
+          meta?: Json | null
+          model?: string | null
+          prompt_tokens?: number
+          total_tokens?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_usage_log_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       auditoria_acao_files: {
         Row: {
           acao_id: string
@@ -1656,6 +1703,7 @@ export type Database = {
           municipio: string | null
           nome: string
           nome_fantasia: string | null
+          public_feedback_token: string | null
           segmento: string | null
           status: string
           tipo: string
@@ -1676,6 +1724,7 @@ export type Database = {
           municipio?: string | null
           nome: string
           nome_fantasia?: string | null
+          public_feedback_token?: string | null
           segmento?: string | null
           status?: string
           tipo?: string
@@ -1696,6 +1745,7 @@ export type Database = {
           municipio?: string | null
           nome?: string
           nome_fantasia?: string | null
+          public_feedback_token?: string | null
           segmento?: string | null
           status?: string
           tipo?: string
