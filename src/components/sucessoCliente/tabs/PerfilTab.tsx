@@ -355,6 +355,38 @@ export default function PerfilTab({ cliente, onClienteSaved }: { cliente: Client
             <Switch checked={form.govbr_duas_etapas} onCheckedChange={(v)=>set('govbr_duas_etapas', v)}/>
             <Label className="cursor-pointer">gov.br em duas etapas</Label>
           </div>
+          <div className="flex items-center gap-3 p-3 rounded-md border md:col-span-3">
+            <Switch checked={form.procuracao_empregador_web} onCheckedChange={(v)=>set('procuracao_empregador_web', v)}/>
+            <Label className="cursor-pointer">Possui procuração para o Empregador Web</Label>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle className="text-base">Empregador Web (eSocial Doméstico / Conectividade)</CardTitle></CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div>
+            <Label>URL de acesso</Label>
+            <Input value={form.empregador_web_url} onChange={(e)=>set('empregador_web_url', e.target.value)} placeholder="https://..."/>
+            {form.empregador_web_url && (
+              <a
+                href={/^https?:\/\//i.test(form.empregador_web_url) ? form.empregador_web_url : `https://${form.empregador_web_url}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-primary underline mt-1 inline-block break-all"
+              >
+                Abrir: {form.empregador_web_url}
+              </a>
+            )}
+          </div>
+          <div><Label>Usuário</Label><Input value={form.empregador_web_user} onChange={(e)=>set('empregador_web_user', e.target.value)} placeholder="CPF / login"/></div>
+          <div>
+            <Label>Senha {!isAdmin && <span className="text-xs text-muted-foreground">(somente admin)</span>}</Label>
+            <div className="flex gap-1">
+              <Input type={showEwPwd ? 'text' : 'password'} value={ewPwd} onChange={(e)=>{setEwPwd(e.target.value); setEwPwdLoaded(true);}} placeholder={isAdmin ? (ewPwdLoaded ? '' : '•••• (clique para carregar)') : 'restrito'} disabled={!isAdmin}/>
+              {isAdmin && <Button type="button" variant="outline" size="icon" onClick={() => ewPwdLoaded ? setShowEwPwd(s=>!s) : loadEwPwd()}>{showEwPwd ? <EyeOff className="w-4 h-4"/> : <Eye className="w-4 h-4"/>}</Button>}
+            </div>
+          </div>
         </CardContent>
       </Card>
 
