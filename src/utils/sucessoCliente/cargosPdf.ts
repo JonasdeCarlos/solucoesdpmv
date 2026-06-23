@@ -29,7 +29,12 @@ export async function generateCargosPdf(params: {
   if (branding?.logo_url) {
     try {
       const img = await fetch(branding.logo_url).then(r => r.blob()).then(b => new Promise<string>((res) => { const fr = new FileReader(); fr.onload = () => res(fr.result as string); fr.readAsDataURL(b); }));
-      doc.addImage(img, 'PNG', W/2-40, 50, 80, 80);
+      const props = (doc as any).getImageProperties(img);
+      const maxH = 90, maxW = 180;
+      const ratio = props.width / props.height;
+      let h = maxH, w = h * ratio;
+      if (w > maxW) { w = maxW; h = w / ratio; }
+      doc.addImage(img, props.fileType || 'PNG', W/2 - w/2, 40, w, h);
     } catch {}
   }
   doc.setTextColor(255,255,255); doc.setFontSize(22); doc.text('Plano de Cargos e Salários', W/2, 180, { align: 'center' });
@@ -81,10 +86,30 @@ export async function generateCargosPdf(params: {
 
   if (estrutura?.faixas?.length) {
     section('Estrutura Salarial');
+    // Detect column names from the new `niveis` shape, fallback to legacy min/mid/max
+    const colSet = new Set<string>();
+    for (const f of estrutura.faixas) {
+      if (Array.isArray(f.niveis)) for (const n of f.niveis) colSet.add(n.nome);
+    }
+    const isLegacy = colSet.size === 0;
+    const cols = isLegacy ? ['Mínimo','Médio','Máximo'] : Array.from(colSet);
     autoTable(doc, {
       startY: y,
-      head: [['Faixa','Cargos','Mín.','Médio','Máx.']],
-      body: estrutura.faixas.map((f: any) => [f.nome, (f.cargos||[]).join(', '), brl(f.min), brl(f.mid), brl(f.max)]),
+      head: [['Cargo','Área','Piso CCT', ...cols]],
+      body: estrutura.faixas.map((f: any) => {
+        const cargo = f.cargo || f.nome || '—';
+        const area = f.area || (f.cargos || []).join(', ') || '—';
+        const piso = f.piso_cct ? brl(f.piso_cct) : '—';
+        const vals = cols.map(cn => {
+          if (Array.isArray(f.niveis)) {
+            const n = f.niveis.find((x:any)=> x.nome === cn);
+            return brl(n?.valor || 0);
+          }
+          const key = cn === 'Mínimo' ? 'min' : cn === 'Médio' ? 'mid' : 'max';
+          return brl(f[key]);
+        });
+        return [cargo, area, piso, ...vals];
+      }),
       headStyles: { fillColor: [pr,pg,pb] },
       styles: { fontSize: 8, cellPadding: 3 },
     });
