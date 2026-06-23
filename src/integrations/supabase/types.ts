@@ -2267,6 +2267,80 @@ export type Database = {
           },
         ]
       }
+      feedback_records: {
+        Row: {
+          client_id: string
+          created_at: string
+          created_by: string | null
+          employee_name: string
+          employee_role: string | null
+          fato_ocorrido: string | null
+          generated_text: string | null
+          id: string
+          manager_name: string | null
+          pontos_fortes: string | null
+          pontos_melhorar: string | null
+          public_token: string
+          signature_data: string | null
+          signed_at: string | null
+          signed_by: string | null
+          tipo: string
+          tom: string | null
+          updated_at: string
+          view_log: Json
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          employee_name: string
+          employee_role?: string | null
+          fato_ocorrido?: string | null
+          generated_text?: string | null
+          id?: string
+          manager_name?: string | null
+          pontos_fortes?: string | null
+          pontos_melhorar?: string | null
+          public_token?: string
+          signature_data?: string | null
+          signed_at?: string | null
+          signed_by?: string | null
+          tipo: string
+          tom?: string | null
+          updated_at?: string
+          view_log?: Json
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          employee_name?: string
+          employee_role?: string | null
+          fato_ocorrido?: string | null
+          generated_text?: string | null
+          id?: string
+          manager_name?: string | null
+          pontos_fortes?: string | null
+          pontos_melhorar?: string | null
+          public_token?: string
+          signature_data?: string | null
+          signed_at?: string | null
+          signed_by?: string | null
+          tipo?: string
+          tom?: string | null
+          updated_at?: string
+          view_log?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feedback_records_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       feriados_municipais: {
         Row: {
           conta_dia_nao_util: boolean
