@@ -295,22 +295,26 @@ function AuditoriaDetail({ id, onBack }: { id: string; onBack: () => void }) {
     finally { setBusy(null); }
   };
 
-  const exportPdf = async (tipo: 'diagnostico' | 'plano' | 'final') => {
+  const exportPdf = async (tipo: 'diagnostico' | 'plano' | 'final' | 'dossie') => {
     setBusy(tipo);
     try {
       let parecer: string | undefined;
       let resumoNarrativo: string | undefined;
-      if (tipo === 'diagnostico' || tipo === 'final' || (tipo as any) === 'dossie') {
-        const resumo = {
-          total: itens.length,
-          conformes: itens.filter(i=>i.status==='conforme').length,
-          nao_conformes: itens.filter(i=>i.status==='nao_conforme').length,
-        };
-        const { data } = await supabase.functions.invoke('auditoria-parecer', {
-          body: { empresa: auditoria.empresa_nome, resumo, itens: itens.map(i=>({titulo:i.titulo,area:i.area,status:i.status})), acoes, tipo: (tipo==='final'||(tipo as any)==='dossie')?'final':'diagnostico' },
-        });
-        if (tipo === 'final' || (tipo as any) === 'dossie') parecer = data?.texto;
-        else resumoNarrativo = data?.texto;
+      if (tipo === 'diagnostico' || tipo === 'final' || tipo === 'dossie') {
+        try {
+          const resumo = {
+            total: itens.length,
+            conformes: itens.filter(i=>i.status==='conforme').length,
+            nao_conformes: itens.filter(i=>i.status==='nao_conforme').length,
+          };
+          const { data } = await supabase.functions.invoke('auditoria-parecer', {
+            body: { empresa: auditoria.empresa_nome, resumo, itens: itens.map(i=>({titulo:i.titulo,area:i.area,status:i.status})), acoes, tipo: (tipo==='final'||tipo==='dossie')?'final':'diagnostico' },
+          });
+          if (tipo === 'final' || tipo === 'dossie') parecer = data?.texto;
+          else resumoNarrativo = data?.texto;
+        } catch (err) {
+          console.warn('auditoria-parecer falhou, seguindo sem narrativa', err);
+        }
       }
       await generateAuditoriaPdf({ tipo: tipo as any, auditoria, itens, acoes, acaoFiles, parecer, resumoNarrativo });
       toast.success('PDF gerado.');
