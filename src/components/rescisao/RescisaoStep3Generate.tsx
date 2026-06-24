@@ -97,7 +97,10 @@ const RescisaoStep3Generate: React.FC<Props> = ({ capaData, files, onBack, onFin
       const merged = await PDFDocument.create();
 
       // 1. Generate cover
-      const capaDoc = await gerarCapaRescisao(capaData);
+      const capaDoc = await gerarCapaRescisao({
+        ...capaData,
+        uploadedDocs: files.map(f => ({ categoria: f.category, nome: f.name })),
+      });
       const capaBytes = capaDoc.output('arraybuffer');
       const capaPdf = await PDFDocument.load(capaBytes);
       const capaPages = await merged.copyPages(capaPdf, capaPdf.getPageIndices());
