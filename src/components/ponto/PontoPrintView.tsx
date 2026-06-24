@@ -187,7 +187,6 @@ const PontoPrintView: React.FC<Props> = ({ identificacao, config, diasCalculados
           {exibirIntrajornada && <div className="summary-item"><div className="label">Int. Devido</div><div className="value" style={{color: resumo.totalIntervaloDevido > 0 ? '#c2410c' : ''}}>{minutesToHHMM(resumo.totalIntervaloDevido)}</div></div>}
         </div>
 
-        <div className="signatures">
         <div className="tipos-resumo">
           <div className="titulo">Resumo por tipo de dia</div>
           <div className="chips">
