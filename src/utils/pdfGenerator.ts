@@ -553,11 +553,14 @@ function renderMemoriaPages(doc: jsPDF, step1: Step1Data, step2: Step2Data, verb
     } else {
       const fgtsDetail = calcularFgtsDetalhado(
         sal, step1.dataAdmissao, step1.dataDesligamento,
-        decimo, step2.incluir13AnosAnteriores, step2.diasTrabalhadosMes
+        decimo, step2.incluir13AnosAnteriores, step2.diasTrabalhadosMes,
+        step1.fgtsApenasMesRescisao,
       );
 
       const fgtsLines: string[] = [
-        `Fórmula mensal: Salário / 30 × dias trabalhados`,
+        step1.fgtsApenasMesRescisao
+          ? `Apenas mês da rescisão (empregador já recolheu meses anteriores)`
+          : `Fórmula mensal: Salário / 30 × dias trabalhados`,
         '',
         'Detalhamento mês a mês:',
       ];
