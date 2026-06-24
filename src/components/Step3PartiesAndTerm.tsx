@@ -295,7 +295,8 @@ ${data.empregadoNome || '[NOME DO EMPREGADO]'}`;
         const saldoEdit = valorVerba('saldo_salario');
         const fgtsDetail = calcularFgtsDetalhado(
           sal, step1.dataAdmissao, step1.dataDesligamento,
-          decimoEdit, step2.incluir13AnosAnteriores, step2.diasTrabalhadosMes
+          decimoEdit, step2.incluir13AnosAnteriores, step2.diasTrabalhadosMes,
+          step1.fgtsApenasMesRescisao,
         );
 
         // Aplica o saldo de salário editado no último mês (mês do desligamento)
@@ -310,7 +311,9 @@ ${data.empregadoNome || '[NOME DO EMPREGADO]'}`;
 
         lines.push('');
         lines.push(`${itemNum}) FGTS DO PERÍODO — DETALHAMENTO MÊS A MÊS`);
-        lines.push(`   Fórmula mensal: Salário / 30 × dias trabalhados`);
+        lines.push(step1.fgtsApenasMesRescisao
+          ? `   Apenas mês da rescisão (empregador já recolheu meses anteriores)`
+          : `   Fórmula mensal: Salário / 30 × dias trabalhados`);
         lines.push('');
         lines.push('   Mês         | Dias | Base (R$)');
         lines.push('   ' + '-'.repeat(42));
