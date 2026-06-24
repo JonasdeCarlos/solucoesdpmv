@@ -17,6 +17,7 @@ const AvisoEmpresasPage = () => {
   const [editing, setEditing] = useState<Record<string, string>>({});
   const [editingWa, setEditingWa] = useState<Record<string, string[]>>({});
   const [editingGestor, setEditingGestor] = useState<Record<string, string>>({});
+  const [editingName, setEditingName] = useState<Record<string, string>>({});
   const [newNumByEmp, setNewNumByEmp] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [pinging, setPinging] = useState(false);
@@ -63,6 +64,16 @@ const AvisoEmpresasPage = () => {
       .map(([id]) => id);
   }, [editingGestor, empresas]);
 
+  const dirtyNameIds = useMemo(() => {
+    return Object.entries(editingName)
+      .filter(([id, v]) => {
+        const emp = empresas.find((e) => e.id === id);
+        if (!emp) return false;
+        return (v ?? '').trim() !== (emp.name || '');
+      })
+      .map(([id]) => id);
+  }, [editingName, empresas]);
+
   const aplicarEmTodosFiltrados = (valor: string) => {
     const next: Record<string, string> = { ...editing };
     filt.forEach((e) => { next[e.id] = valor; });
@@ -70,7 +81,7 @@ const AvisoEmpresasPage = () => {
   };
 
   const saveAll = async () => {
-    if (dirtyIds.length === 0 && dirtyWaIds.length === 0 && dirtyGestorIds.length === 0) {
+    if (dirtyIds.length === 0 && dirtyWaIds.length === 0 && dirtyGestorIds.length === 0 && dirtyNameIds.length === 0) {
       toast.info('Nenhuma alteração pendente.');
       return;
     }
@@ -96,9 +107,16 @@ const AvisoEmpresasPage = () => {
         const { error } = await updateEmpresa(id, { gestor_digisac_user_id: val || null } as any);
         if (!error) ok++;
       }
+      for (const id of dirtyNameIds) {
+        const novoNome = (editingName[id] ?? '').trim();
+        if (!novoNome) continue;
+        const { error } = await updateEmpresa(id, { name: novoNome } as any);
+        if (!error) ok++;
+      }
       setEditing({});
       setEditingWa({});
       setEditingGestor({});
+      setEditingName({});
       setNewNumByEmp({});
       toast.success(`${ok} empresa(s) atualizadas.`);
     } catch (e: any) {
@@ -108,7 +126,7 @@ const AvisoEmpresasPage = () => {
     }
   };
 
-  const descartar = () => { setEditing({}); setEditingWa({}); setEditingGestor({}); setNewNumByEmp({}); };
+  const descartar = () => { setEditing({}); setEditingWa({}); setEditingGestor({}); setEditingName({}); setNewNumByEmp({}); };
 
   const numsOf = (e: any): string[] =>
     editingWa[e.id] !== undefined ? editingWa[e.id] : (e.whatsapp_numeros || []);
@@ -154,9 +172,9 @@ const AvisoEmpresasPage = () => {
             {pinging ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Wrench className="w-3 h-3 mr-1" />}
             Testar conexão Digisac
           </Button>
-          {(dirtyIds.length + dirtyWaIds.length + dirtyGestorIds.length) > 0 && (
+          {(dirtyIds.length + dirtyWaIds.length + dirtyGestorIds.length + dirtyNameIds.length) > 0 && (
             <>
-              <span className="text-xs text-amber-700 font-medium">{dirtyIds.length + dirtyWaIds.length + dirtyGestorIds.length} alteração(ões) não salvas</span>
+              <span className="text-xs text-amber-700 font-medium">{dirtyIds.length + dirtyWaIds.length + dirtyGestorIds.length + dirtyNameIds.length} alteração(ões) não salvas</span>
               <Button variant="ghost" size="sm" onClick={descartar} disabled={saving}>
                 <X className="w-3 h-3 mr-1" /> Descartar
               </Button>
@@ -203,10 +221,18 @@ const AvisoEmpresasPage = () => {
                 const isWaDirty = editingWa[e.id] !== undefined && baseline !== editedJoin;
                 const curGestor = editingGestor[e.id] !== undefined ? editingGestor[e.id] : (e.gestor_digisac_user_id || '');
                 const isGestorDirty = editingGestor[e.id] !== undefined && (editingGestor[e.id] ?? '') !== (e.gestor_digisac_user_id || '');
+                const curName = editingName[e.id] !== undefined ? editingName[e.id] : (e.name || '');
+                const isNameDirty = editingName[e.id] !== undefined && (editingName[e.id] ?? '').trim() !== (e.name || '');
                 return (
-                <tr key={e.id} className={`border-t hover:bg-muted/30 ${(isDirty || isWaDirty || isGestorDirty) ? 'bg-amber-500/5' : ''}`}>
+                <tr key={e.id} className={`border-t hover:bg-muted/30 ${(isDirty || isWaDirty || isGestorDirty || isNameDirty) ? 'bg-amber-500/5' : ''}`}>
                   <td className="p-2 font-mono">{e.code}</td>
-                  <td className="p-2">{e.name}</td>
+                  <td className="p-2 min-w-[220px]">
+                    <Input
+                      className="h-8 text-xs"
+                      value={curName}
+                      onChange={(ev) => setEditingName((s) => ({ ...s, [e.id]: ev.target.value }))}
+                    />
+                  </td>
                   <td className="p-2 font-mono text-xs">{formatCnpj(e.cnpj)}</td>
                   <td className="p-2 min-w-[260px]">
                     <div className="flex flex-col gap-1">
