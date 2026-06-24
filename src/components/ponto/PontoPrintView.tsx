@@ -36,6 +36,10 @@ const PontoPrintView: React.FC<Props> = ({ identificacao, config, diasCalculados
     return acc;
   }, {});
 
+  const diasFalta = diasCalculados.filter(d => d.tipoDia === 'falta');
+  const diasFolgaDsr = diasCalculados.filter(d => d.tipoDia === 'folga_dsr');
+  const diasIntrajornada = diasCalculados.filter(d => (d.intervaloDevido || 0) > 0);
+
   const handlePrint = () => {
     const content = printRef.current;
     if (!content) return;
@@ -196,6 +200,16 @@ const PontoPrintView: React.FC<Props> = ({ identificacao, config, diasCalculados
               .map(([tipo, qtd]) => (
                 <div key={tipo} className="chip"><b>{TIPO_DIA_LABELS[tipo] || tipo}:</b>{qtd}</div>
               ))}
+          </div>
+        </div>
+
+        <div className="tipos-resumo">
+          <div className="titulo">Memória — Faltas, Faltas/DSR e Intrajornada</div>
+          <div className="chips">
+            <div className="chip"><b>Dias de Falta:</b>{diasFalta.length}{diasFalta.length > 0 ? ` (${diasFalta.map(d => String(d.dia).padStart(2,'0')).join(', ')})` : ''}</div>
+            <div className="chip"><b>Dias Folga/DSR:</b>{diasFolgaDsr.length}{diasFolgaDsr.length > 0 ? ` (${diasFolgaDsr.map(d => String(d.dia).padStart(2,'0')).join(', ')})` : ''}</div>
+            <div className="chip"><b>Dias c/ Intrajornada Devida:</b>{diasIntrajornada.length}{diasIntrajornada.length > 0 ? ` (${diasIntrajornada.map(d => `${String(d.dia).padStart(2,'0')}=${minutesToHHMM(d.intervaloDevido)}`).join(', ')})` : ''}</div>
+            <div className="chip"><b>Total Intrajornada Devida:</b>{minutesToHHMM(resumo.totalIntervaloDevido)}</div>
           </div>
         </div>
 
