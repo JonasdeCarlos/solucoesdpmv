@@ -86,30 +86,68 @@ export async function processarImportacao(opts: {
   }
   const importId = (importRow as any).id;
 
-  // 2. Bulk upsert empresas (1 roundtrip)
-  const empresasPayload = parsed.empresas.map((e) => ({
-    code: e.code,
-    name: e.name,
-    cnpj: normalizeCnpj(e.cnpj),
-  }));
+  // 2. Cruza com cadastro existente por CNPJ → CÓDIGO → RAZÃO SOCIAL (evita duplicar
+  //    empresas cadastradas manualmente ou com pequenas divergências).
+  const normName = (s: string) =>
+    (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .toUpperCase().replace(/\s+/g, ' ').trim();
 
   let empresasMap = new Map<string, { id: string; responsavel: string }>();
   try {
-    const { error: upErr } = await withRetry('upsert empresas', async () => {
-      return await supabase
-        .from('aviso_empresas' as any)
-        .upsert(empresasPayload as any, { onConflict: 'code,cnpj', ignoreDuplicates: false });
-    });
-    if (upErr) errors.push({ stage: 'upsert_empresas', msg: upErr.message });
-
-    // Busca ids + responsavel atual
-    const codes = empresasPayload.map((e) => e.code);
-    const { data: empresas, error: selErr } = await withRetry('select empresas', async () =>
-      await supabase.from('aviso_empresas' as any).select('id, code, cnpj, responsavel').in('code', codes)
+    const { data: existentes, error: selAllErr } = await withRetry('select all empresas', async () =>
+      await supabase.from('aviso_empresas' as any).select('id, code, cnpj, name, responsavel')
     );
-    if (selErr) errors.push({ stage: 'select_empresas', msg: selErr.message });
-    for (const e of (empresas || []) as any[]) {
-      empresasMap.set(`${e.code}|${e.cnpj}`, { id: e.id, responsavel: e.responsavel || '' });
+    if (selAllErr) errors.push({ stage: 'select_all_empresas', msg: selAllErr.message });
+    const byCnpj = new Map<string, any>();
+    const byCode = new Map<string, any>();
+    const byName = new Map<string, any>();
+    for (const r of (existentes || []) as any[]) {
+      const c = normalizeCnpj(r.cnpj || '');
+      if (c) byCnpj.set(c, r);
+      const cd = String(r.code || '').trim();
+      if (cd) byCode.set(cd, r);
+      const nm = normName(r.name || '');
+      if (nm) byName.set(nm, r);
+    }
+
+    const toInsert: any[] = [];
+    for (const e of parsed.empresas) {
+      const cnpjN = normalizeCnpj(e.cnpj);
+      const codeT = String(e.code || '').trim();
+      const nameN = normName(e.name);
+      let existing =
+        (cnpjN && byCnpj.get(cnpjN)) ||
+        (codeT && byCode.get(codeT)) ||
+        (nameN && byName.get(nameN));
+
+      if (existing) {
+        // Preenche campos identificadores ausentes na linha já cadastrada
+        const patch: any = {};
+        if ((!existing.code || existing.code === '') && codeT) patch.code = codeT;
+        if ((!existing.cnpj || existing.cnpj === '') && cnpjN) patch.cnpj = cnpjN;
+        if ((!existing.name || existing.name === '') && e.name) patch.name = e.name;
+        if (Object.keys(patch).length) {
+          const { error: upErr } = await supabase
+            .from('aviso_empresas' as any).update(patch as any).eq('id', existing.id);
+          if (upErr) errors.push({ stage: 'patch_empresa', msg: upErr.message });
+          Object.assign(existing, patch);
+          if (patch.cnpj) byCnpj.set(cnpjN, existing);
+          if (patch.code) byCode.set(codeT, existing);
+        }
+        empresasMap.set(`${codeT}|${cnpjN}`, { id: existing.id, responsavel: existing.responsavel || '' });
+      } else {
+        toInsert.push({ code: codeT, name: e.name, cnpj: cnpjN });
+      }
+    }
+
+    if (toInsert.length) {
+      const { data: inseridas, error: insErr } = await withRetry('insert empresas novas', async () =>
+        await supabase.from('aviso_empresas' as any).insert(toInsert as any).select('id, code, cnpj, responsavel')
+      );
+      if (insErr) errors.push({ stage: 'insert_empresas', msg: insErr.message });
+      for (const r of (inseridas || []) as any[]) {
+        empresasMap.set(`${r.code}|${r.cnpj}`, { id: r.id, responsavel: r.responsavel || '' });
+      }
     }
   } catch (e: any) {
     errors.push({ stage: 'empresas', msg: e?.message });
