@@ -421,6 +421,7 @@ function renderMemoriaPages(doc: jsPDF, step1: Step1Data, step2: Step2Data, verb
 
   // Helper: verba exists and has non-zero value
   const verbaAtiva = (id: string) => verbas.some(v => v.id === id && v.valor !== 0);
+  const valorVerba = (id: string) => verbas.find(v => v.id === id)?.valor ?? 0;
 
   let y = addHeader(doc, 'MEMÓRIA DE CÁLCULO — RESCISÃO CLT');
   y += 3;
@@ -577,13 +578,50 @@ function renderMemoriaPages(doc: jsPDF, step1: Step1Data, step2: Step2Data, verb
       fgtsLines.push(`FGTS = 8% × ${formatCurrency(fgtsDetail.baseTotal)} = ${formatCurrency(fgtsDetail.fgtsTotal)}`);
       items.push({ title: 'FGTS DO PERÍODO — DETALHAMENTO MÊS A MÊS', lines: fgtsLines });
 
-      if (step1.calculaMultaFGTS && step1.percentualMultaFGTS > 0 && verbaAtiva('multa_fgts')) {
-        const multa = fgtsDetail.fgtsTotal * (step1.percentualMultaFGTS / 100);
-        items.push({ title: 'MULTA FGTS', lines: [
-          `${step1.percentualMultaFGTS}% × ${formatCurrency(fgtsDetail.fgtsTotal)} = ${formatCurrency(multa)}`,
-        ]});
-      }
     }
+  }
+
+  // FGTS sobre aviso prévio e reflexos
+  if (step1.calculaFGTS && verbaAtiva('fgts_aviso')) {
+    const avisoInd = valorVerba('aviso_previo_indenizado');
+    const reflex13 = valorVerba('reflexo_aviso_13');
+    const reflexFer = valorVerba('reflexo_aviso_ferias');
+    const reflexTerco = valorVerba('reflexo_aviso_terco');
+    const baseAviso = avisoInd + reflex13 + reflexFer + reflexTerco;
+    const fgtsAviso = valorVerba('fgts_aviso');
+    items.push({ title: 'FGTS SOBRE AVISO PRÉVIO E REFLEXOS', lines: [
+      `Fórmula: 8% × (aviso prévio indenizado + reflexos no 13º, férias e 1/3)`,
+      `Base: ${formatCurrency(avisoInd)} + ${formatCurrency(reflex13)} + ${formatCurrency(reflexFer)} + ${formatCurrency(reflexTerco)} = ${formatCurrency(baseAviso)}`,
+      `FGTS = 8% × ${formatCurrency(baseAviso)} = ${formatCurrency(fgtsAviso)}`,
+    ]});
+  }
+
+  // FGTS sobre verbas adicionais
+  if (step1.calculaFGTS && verbaAtiva('fgts_outros_creditos')) {
+    const creditosFgts = (step2.outrosCreditos || []).filter((c) => c.incideFGTS && c.valor > 0);
+    const baseOutros = creditosFgts.reduce((acc, c) => acc + c.valor, 0);
+    const fgtsOutros = valorVerba('fgts_outros_creditos');
+    const linhas: string[] = [`Fórmula: 8% × soma das verbas adicionais com incidência de FGTS`];
+    creditosFgts.forEach((c) => {
+      linhas.push(`• ${(c.descricao || 'Verba adicional')}: ${formatCurrency(c.valor)}`);
+    });
+    linhas.push(`Base: ${formatCurrency(baseOutros)}`);
+    linhas.push(`FGTS = 8% × ${formatCurrency(baseOutros)} = ${formatCurrency(fgtsOutros)}`);
+    items.push({ title: 'FGTS SOBRE VERBAS ADICIONAIS', lines: linhas });
+  }
+
+  // Multa FGTS
+  if (step1.calculaFGTS && step1.calculaMultaFGTS && step1.percentualMultaFGTS > 0 && verbaAtiva('multa_fgts')) {
+    const fgtsPer = valorVerba('fgts');
+    const fgtsAv = valorVerba('fgts_aviso');
+    const fgtsAd = valorVerba('fgts_outros_creditos');
+    const baseMulta = fgtsPer + fgtsAv + fgtsAd;
+    const multa = valorVerba('multa_fgts');
+    items.push({ title: 'MULTA FGTS', lines: [
+      `Fórmula: ${step1.percentualMultaFGTS}% × (FGTS período + FGTS aviso + FGTS verbas adicionais)`,
+      `Base: ${formatCurrency(fgtsPer)} + ${formatCurrency(fgtsAv)} + ${formatCurrency(fgtsAd)} = ${formatCurrency(baseMulta)}`,
+      `= ${step1.percentualMultaFGTS}% × ${formatCurrency(baseMulta)} = ${formatCurrency(multa)}`,
+    ]});
   }
 
   step2.outrosCreditos.forEach((c, idx) => {
