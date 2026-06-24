@@ -25,7 +25,6 @@ export const DOCUMENTOS_COMUNS: RescisaoDocLinha[] = [
   { documento: 'Comprovante de pagamento', empregado: '1 via', empregador: '1 via' },
   { documento: 'Folha de Ponto do mês (se houver)', empregado: '1 via', empregador: '1 via', observacoes: 'Fundamental para conferência' },
   { documento: 'Extrato FGTS', empregado: '1 via', empregador: '1 via', observacoes: 'Quando aplicável' },
-  { documento: 'Chave FGTS', empregado: '1 via', empregador: '1 via', observacoes: 'Quando houver saque' },
   { documento: 'Seguro-Desemprego', empregado: '1 via', empregador: '1 via', observacoes: 'Quando aplicável' },
 ];
 
