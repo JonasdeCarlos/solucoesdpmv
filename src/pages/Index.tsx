@@ -50,6 +50,7 @@ const Index = () => {
     temFeriasVencidas: false,
     periodosVencidos: 1,
     calculaFGTS: false,
+    fgtsApenasMesRescisao: false,
     calculaMultaFGTS: false,
     percentualMultaFGTS: 0,
     calculaAvisoPrevioIndenizado: false,
@@ -114,7 +115,9 @@ const Index = () => {
         : step1.dataAdmissao;
       const meses13 = Math.min(12, diffMonths(inicioAno, step1.dataDesligamento));
       const totalMesesVinculo = diffMonths(step1.dataAdmissao, step1.dataDesligamento);
-      const mesesFerias = totalMesesVinculo % 12;
+      const restoFerias = totalMesesVinculo % 12;
+      // Se completou período aquisitivo exato (12/12, 24/12...), mantém 12 avos proporcionais
+      const mesesFerias = restoFerias === 0 && totalMesesVinculo > 0 ? 12 : restoFerias;
       const diaDesl = step1.dataDesligamento.getDate();
       const ultimoDiaMes = new Date(step1.dataDesligamento.getFullYear(), step1.dataDesligamento.getMonth() + 1, 0).getDate();
       const diasMes = diaDesl >= ultimoDiaMes ? 30 : diaDesl;
@@ -159,6 +162,7 @@ const Index = () => {
       temFeriasVencidas: false,
       periodosVencidos: 1,
       calculaFGTS: false,
+      fgtsApenasMesRescisao: false,
       calculaMultaFGTS: false,
       percentualMultaFGTS: 0,
       calculaAvisoPrevioIndenizado: false,
