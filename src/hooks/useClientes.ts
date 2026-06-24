@@ -10,7 +10,7 @@ export function useClientes() {
     const { data, error } = await supabase
       .from('clientes' as any)
       .select('*')
-      .order('created_at', { ascending: true });
+      .order('nome', { ascending: true });
     if (!error && data) {
       setClientes((data as any[]).map((d) => ({
         id: d.id,

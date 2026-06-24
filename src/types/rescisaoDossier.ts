@@ -30,7 +30,7 @@ export const DOC_CATEGORIES = [
   'TRCT',
   'Termo de Quitação/Homologação',
   'Aviso Prévio',
-  'Extrato FGTS / Chave',
+  'Extrato FGTS',
   'GRRF/Guia FGTS',
   'Seguro-Desemprego / Requerimento',
   'Exame Demissional (ASO)',
