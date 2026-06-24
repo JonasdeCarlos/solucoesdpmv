@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,10 +6,21 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Send, Loader2, ArrowLeft, MessageSquare } from 'lucide-react';
+import { Send, Loader2, ArrowLeft, MessageSquare, Trash2, History } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAvisoEmpresas } from '@/hooks/useAvisoEmpresas';
 import { formatCnpj } from '@/utils/avisos/normalize';
+
+interface MensagemHist {
+  id: string;
+  empresa_id: string;
+  empresa_code: string | null;
+  empresa_name: string | null;
+  mensagem: string;
+  sucesso: boolean;
+  erro: string | null;
+  created_at: string;
+}
 
 const MensageriaPage = () => {
   const { empresas, loading } = useAvisoEmpresas();
@@ -17,6 +28,21 @@ const MensageriaPage = () => {
   const [q, setQ] = useState('');
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [sentIds, setSentIds] = useState<Set<string>>(new Set());
+  const [historico, setHistorico] = useState<MensagemHist[]>([]);
+  const [loadingHist, setLoadingHist] = useState(true);
+
+  const refreshHist = useCallback(async () => {
+    setLoadingHist(true);
+    const { data } = await supabase
+      .from('aviso_mensagens_enviadas' as any)
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(200);
+    setHistorico((data as any) || []);
+    setLoadingHist(false);
+  }, []);
+
+  useEffect(() => { refreshHist(); }, [refreshHist]);
 
   const filt = useMemo(
     () => empresas.filter((e) =>
@@ -30,19 +56,43 @@ const MensageriaPage = () => {
     if (!texto) { toast.error('Digite a mensagem antes de enviar.'); return; }
     if (texto.length > 4000) { toast.error('Mensagem muito longa (máx. 4000).'); return; }
     setSendingId(empresaId);
+    const empresa = empresas.find((e) => e.id === empresaId);
+    let sucesso = false;
+    let erroMsg: string | null = null;
     try {
       const { data, error } = await supabase.functions.invoke('avisos-digisac-mensagem', {
         body: { empresa_id: empresaId, mensagem: texto },
       });
       if (error) throw new Error(error.message);
       if ((data as any)?.erro) throw new Error(String((data as any).erro));
+      sucesso = true;
       setSentIds((prev) => new Set(prev).add(empresaId));
       toast.success(`Enviado para ${empresaName}.`);
     } catch (e) {
+      erroMsg = (e as Error).message;
       toast.error(`Falha ao enviar para ${empresaName}: ${(e as Error).message}`);
     } finally {
       setSendingId(null);
     }
+    // Registra no histórico (sucesso e falha)
+    const { data: user } = await supabase.auth.getUser();
+    await supabase.from('aviso_mensagens_enviadas' as any).insert({
+      empresa_id: empresaId,
+      empresa_code: empresa?.code ?? null,
+      empresa_name: empresa?.name ?? empresaName,
+      mensagem: texto,
+      sucesso,
+      erro: erroMsg,
+      enviado_por: user?.user?.id ?? null,
+    } as any);
+    refreshHist();
+  };
+
+  const excluirHist = async (id: string) => {
+    if (!confirm('Excluir este registro do histórico?')) return;
+    const { error } = await supabase.from('aviso_mensagens_enviadas' as any).delete().eq('id', id);
+    if (error) { toast.error('Falha ao excluir.'); return; }
+    setHistorico((h) => h.filter((m) => m.id !== id));
   };
 
   return (
@@ -138,6 +188,58 @@ const MensageriaPage = () => {
                 {filt.length === 0 && (
                   <tr><td colSpan={5} className="py-6 text-center text-muted-foreground">Nenhuma empresa.</td></tr>
                 )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+
+      <Card className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-semibold flex items-center gap-2"><History className="h-4 w-4" />Histórico de envios</h2>
+          <div className="text-sm text-muted-foreground">{historico.length} registro{historico.length === 1 ? '' : 's'}</div>
+        </div>
+        {loadingHist ? (
+          <div className="text-sm text-muted-foreground">Carregando...</div>
+        ) : historico.length === 0 ? (
+          <div className="text-sm text-muted-foreground">Nenhuma mensagem enviada ainda.</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-left text-muted-foreground">
+                  <th className="py-2 pr-3">Data</th>
+                  <th className="py-2 pr-3">Empresa</th>
+                  <th className="py-2 pr-3">Mensagem</th>
+                  <th className="py-2 pr-3">Status</th>
+                  <th className="py-2 pr-3"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {historico.map((m) => (
+                  <tr key={m.id} className="border-b align-top">
+                    <td className="py-2 pr-3 whitespace-nowrap text-muted-foreground">
+                      {new Date(m.created_at).toLocaleString('pt-BR')}
+                    </td>
+                    <td className="py-2 pr-3">
+                      <div className="font-mono text-xs text-muted-foreground">{m.empresa_code}</div>
+                      <div>{m.empresa_name}</div>
+                    </td>
+                    <td className="py-2 pr-3 max-w-[480px] whitespace-pre-wrap">{m.mensagem}</td>
+                    <td className="py-2 pr-3">
+                      {m.sucesso ? (
+                        <Badge className="bg-green-500/15 text-green-700 border-green-500/30" variant="outline">Enviada</Badge>
+                      ) : (
+                        <Badge variant="destructive" title={m.erro || ''}>Falha</Badge>
+                      )}
+                    </td>
+                    <td className="py-2 pr-3 text-right">
+                      <Button variant="ghost" size="icon" onClick={() => excluirHist(m.id)} title="Excluir">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
