@@ -83,8 +83,12 @@ const RescisaoPdfPage: React.FC = () => {
   };
 
   const handleFinish = async (pdfBlob: Blob, fileName: string) => {
-    // Upload final PDF to storage
-    const path = `dossiers/${Date.now()}_${fileName}`;
+    // Upload final PDF to storage — sanitize path (ASCII only, sem espaços)
+    const safeName = fileName
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-zA-Z0-9._-]+/g, '_');
+    const path = `dossiers/${Date.now()}_${safeName}`;
     const { error: upErr } = await supabase.storage.from('rescisao-docs').upload(path, pdfBlob, {
       contentType: 'application/pdf',
     });
@@ -113,15 +117,20 @@ const RescisaoPdfPage: React.FC = () => {
 
   const handleDownload = async (d: any) => {
     if (!d.final_pdf_url) return;
-    const { data } = await supabase.storage.from('rescisao-docs').download(d.final_pdf_url);
-    if (data) {
+    const { data, error } = await supabase.storage.from('rescisao-docs').download(d.final_pdf_url);
+    if (error || !data) {
+      console.error('Falha ao baixar dossiê:', error);
+      alert('Não foi possível baixar o dossiê: ' + (error?.message ?? 'arquivo não encontrado'));
+      return;
+    }
       const url = URL.createObjectURL(data);
       const a = document.createElement('a');
       a.href = url;
       a.download = `RESCISÃO - ${d.employee_name}.pdf`;
+      document.body.appendChild(a);
       a.click();
+      a.remove();
       URL.revokeObjectURL(url);
-    }
   };
 
   if (wizardOpen) {
