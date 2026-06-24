@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Send, Loader2, ArrowLeft, MessageSquare, Trash2, History } from 'lucide-react';
+import { Send, Loader2, ArrowLeft, MessageSquare, Trash2, History, Save, BookmarkPlus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAvisoEmpresas } from '@/hooks/useAvisoEmpresas';
 import { formatCnpj } from '@/utils/avisos/normalize';
@@ -22,6 +22,13 @@ interface MensagemHist {
   created_at: string;
 }
 
+interface Modelo {
+  id: string;
+  titulo: string;
+  texto: string;
+  updated_at: string;
+}
+
 const MensageriaPage = () => {
   const { empresas, loading } = useAvisoEmpresas();
   const [mensagem, setMensagem] = useState('');
@@ -30,6 +37,9 @@ const MensageriaPage = () => {
   const [sentIds, setSentIds] = useState<Set<string>>(new Set());
   const [historico, setHistorico] = useState<MensagemHist[]>([]);
   const [loadingHist, setLoadingHist] = useState(true);
+  const [modelos, setModelos] = useState<Modelo[]>([]);
+  const [modeloId, setModeloId] = useState<string | null>(null);
+  const [savingModelo, setSavingModelo] = useState(false);
 
   const refreshHist = useCallback(async () => {
     setLoadingHist(true);
@@ -42,7 +52,66 @@ const MensageriaPage = () => {
     setLoadingHist(false);
   }, []);
 
-  useEffect(() => { refreshHist(); }, [refreshHist]);
+  const refreshModelos = useCallback(async () => {
+    const { data } = await supabase
+      .from('aviso_mensagens_modelos' as any)
+      .select('*')
+      .order('updated_at', { ascending: false });
+    setModelos((data as any) || []);
+  }, []);
+
+  useEffect(() => { refreshHist(); refreshModelos(); }, [refreshHist, refreshModelos]);
+
+  const carregarModelo = (id: string) => {
+    if (id === '__new__') { setModeloId(null); setMensagem(''); return; }
+    const m = modelos.find((x) => x.id === id);
+    if (!m) return;
+    setModeloId(m.id);
+    setMensagem(m.texto);
+  };
+
+  const salvarModelo = async () => {
+    const texto = mensagem.trim();
+    if (!texto) { toast.error('Digite a mensagem antes de salvar.'); return; }
+    setSavingModelo(true);
+    try {
+      if (modeloId) {
+        const { error } = await supabase
+          .from('aviso_mensagens_modelos' as any)
+          .update({ texto } as any)
+          .eq('id', modeloId);
+        if (error) throw error;
+        toast.success('Modelo atualizado.');
+      } else {
+        const titulo = (prompt('Nome do modelo:', texto.slice(0, 40)) || '').trim();
+        if (!titulo) { setSavingModelo(false); return; }
+        const { data: user } = await supabase.auth.getUser();
+        const { data, error } = await supabase
+          .from('aviso_mensagens_modelos' as any)
+          .insert({ titulo, texto, criado_por: user?.user?.id ?? null } as any)
+          .select()
+          .single();
+        if (error) throw error;
+        setModeloId((data as any)?.id ?? null);
+        toast.success('Modelo salvo.');
+      }
+      refreshModelos();
+    } catch (e) {
+      toast.error('Falha ao salvar: ' + (e as Error).message);
+    } finally {
+      setSavingModelo(false);
+    }
+  };
+
+  const excluirModelo = async () => {
+    if (!modeloId) return;
+    if (!confirm('Excluir este modelo?')) return;
+    const { error } = await supabase.from('aviso_mensagens_modelos' as any).delete().eq('id', modeloId);
+    if (error) { toast.error('Falha ao excluir.'); return; }
+    setModeloId(null);
+    setMensagem('');
+    refreshModelos();
+  };
 
   const filt = useMemo(
     () => empresas.filter((e) =>
