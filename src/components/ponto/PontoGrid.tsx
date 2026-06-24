@@ -14,6 +14,7 @@ const TIPO_DIA_OPTIONS: { value: TipoDia; label: string }[] = [
   { value: 'normal', label: 'Normal' },
   { value: 'feriado', label: 'Feriado' },
   { value: 'folga_dsr', label: 'Folga/DSR' },
+  { value: 'folga_comp_feriado', label: 'Folga Comp. Feriado' },
   { value: 'falta', label: 'Falta' },
   { value: 'afastamento', label: 'Afastamento' },
 ];

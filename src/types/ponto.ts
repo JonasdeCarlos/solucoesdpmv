@@ -1,4 +1,4 @@
-export type TipoDia = 'normal' | 'feriado' | 'folga_dsr' | 'falta' | 'afastamento';
+export type TipoDia = 'normal' | 'feriado' | 'folga_dsr' | 'folga_comp_feriado' | 'falta' | 'afastamento';
 
 export type DiaSemanaKey = 'Dom' | 'Seg' | 'Ter' | 'Qua' | 'Qui' | 'Sex' | 'Sáb';
 
