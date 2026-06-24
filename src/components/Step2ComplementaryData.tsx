@@ -313,9 +313,13 @@ const Step2ComplementaryData = ({ step1, data, onChange, onBack, onCalculate }: 
   const mesesProp = step1.dataAdmissao && step1.dataDesligamento
     ? diffMonths(new Date(step1.dataAdmissao.getFullYear(), 0, 1), step1.dataDesligamento)
     : 0;
-  const mesesFeriasProp = step1.dataAdmissao && step1.dataDesligamento
-    ? diffMonths(step1.dataAdmissao, step1.dataDesligamento) % 12
-    : 0;
+  const mesesFeriasProp = (() => {
+    if (!step1.dataAdmissao || !step1.dataDesligamento) return 0;
+    const total = diffMonths(step1.dataAdmissao, step1.dataDesligamento);
+    const resto = total % 12;
+    // Período aquisitivo completo (12/12, 24/12...) → 12 avos proporcionais
+    return resto === 0 && total > 0 ? 12 : resto;
+  })();
 
   return (
     <Card className="animate-fade-in">

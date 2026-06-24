@@ -44,6 +44,7 @@ export interface Step1Data {
   temFeriasVencidas: boolean;
   periodosVencidos: number;
   calculaFGTS: boolean;
+  fgtsApenasMesRescisao: boolean;
   calculaMultaFGTS: boolean;
   percentualMultaFGTS: number;
   calculaAvisoPrevioIndenizado: boolean;
@@ -266,6 +267,12 @@ export function calcularVerbas(step1: Step1Data, step2: Step2Data): VerbaResciso
 
           const isFirstMonth = year === start.getFullYear() && month === start.getMonth();
           const isLastMonth = year === end.getFullYear() && month === end.getMonth();
+
+          // Modo "apenas mês de rescisão": pula meses anteriores (empregador já recolheu)
+          if (step1.fgtsApenasMesRescisao && !isLastMonth) {
+            cursor.setMonth(cursor.getMonth() + 1);
+            continue;
+          }
 
           let diasTrabalhados: number;
           if (isFirstMonth && isLastMonth) {

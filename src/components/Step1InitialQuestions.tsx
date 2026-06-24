@@ -302,6 +302,20 @@ const Step1InitialQuestions = ({ data, onChange, onNext }: Step1Props) => {
               <Label>Calcula FGTS do período?</Label>
               <Switch checked={data.calculaFGTS} onCheckedChange={(v) => update({ calculaFGTS: v })} />
             </div>
+            {data.calculaFGTS && (
+              <div className="flex items-center justify-between gap-3 pt-2 border-t">
+                <div className="space-y-0.5">
+                  <Label className="text-sm">Calcular FGTS apenas do mês da rescisão</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Use quando o empregador já recolheu FGTS dos meses anteriores nos recibos. O cálculo considerará apenas o saldo do mês de rescisão e as verbas rescisórias com incidência de FGTS (13º proporcional, aviso prévio, etc.).
+                  </p>
+                </div>
+                <Switch
+                  checked={data.fgtsApenasMesRescisao}
+                  onCheckedChange={(v) => update({ fgtsApenasMesRescisao: v })}
+                />
+              </div>
+            )}
           </div>
 
           {/* Multa FGTS */}
