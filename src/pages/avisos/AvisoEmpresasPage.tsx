@@ -17,6 +17,7 @@ const AvisoEmpresasPage = () => {
   const [editing, setEditing] = useState<Record<string, string>>({});
   const [editingWa, setEditingWa] = useState<Record<string, string[]>>({});
   const [editingGestor, setEditingGestor] = useState<Record<string, string>>({});
+  const [editingName, setEditingName] = useState<Record<string, string>>({});
   const [newNumByEmp, setNewNumByEmp] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [pinging, setPinging] = useState(false);
@@ -63,6 +64,16 @@ const AvisoEmpresasPage = () => {
       .map(([id]) => id);
   }, [editingGestor, empresas]);
 
+  const dirtyNameIds = useMemo(() => {
+    return Object.entries(editingName)
+      .filter(([id, v]) => {
+        const emp = empresas.find((e) => e.id === id);
+        if (!emp) return false;
+        return (v ?? '').trim() !== (emp.name || '');
+      })
+      .map(([id]) => id);
+  }, [editingName, empresas]);
+
   const aplicarEmTodosFiltrados = (valor: string) => {
     const next: Record<string, string> = { ...editing };
     filt.forEach((e) => { next[e.id] = valor; });
@@ -70,7 +81,7 @@ const AvisoEmpresasPage = () => {
   };
 
   const saveAll = async () => {
-    if (dirtyIds.length === 0 && dirtyWaIds.length === 0 && dirtyGestorIds.length === 0) {
+    if (dirtyIds.length === 0 && dirtyWaIds.length === 0 && dirtyGestorIds.length === 0 && dirtyNameIds.length === 0) {
       toast.info('Nenhuma alteração pendente.');
       return;
     }
@@ -96,9 +107,16 @@ const AvisoEmpresasPage = () => {
         const { error } = await updateEmpresa(id, { gestor_digisac_user_id: val || null } as any);
         if (!error) ok++;
       }
+      for (const id of dirtyNameIds) {
+        const novoNome = (editingName[id] ?? '').trim();
+        if (!novoNome) continue;
+        const { error } = await updateEmpresa(id, { name: novoNome } as any);
+        if (!error) ok++;
+      }
       setEditing({});
       setEditingWa({});
       setEditingGestor({});
+      setEditingName({});
       setNewNumByEmp({});
       toast.success(`${ok} empresa(s) atualizadas.`);
     } catch (e: any) {
