@@ -9,6 +9,11 @@ import { useDigisacUsers } from '@/hooks/useDigisacUsers';
 import { formatCnpj } from '@/utils/avisos/normalize';
 import { pingDigisac } from '@/utils/avisos/digisac';
 import { Save, Loader2, X, Wrench, Plus, Trash2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { normalizeCnpj } from '@/utils/avisos/normalize';
+import {
+  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
+} from '@/components/ui/dialog';
 
 const AvisoEmpresasPage = () => {
   const { empresas, loading, setResponsavelAndPropagate, updateEmpresa } = useAvisoEmpresas();
@@ -21,6 +26,9 @@ const AvisoEmpresasPage = () => {
   const [newNumByEmp, setNewNumByEmp] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [pinging, setPinging] = useState(false);
+  const [novaOpen, setNovaOpen] = useState(false);
+  const [nova, setNova] = useState({ name: '', code: '', cnpj: '', whatsapp: '', responsavel: '' });
+  const [savingNova, setSavingNova] = useState(false);
   const filt = useMemo(() => empresas.filter((e) =>
     !q || `${e.code} ${e.name} ${e.cnpj} ${e.responsavel} ${(e.whatsapp_numeros || []).join(' ')}`.toLowerCase().includes(q.toLowerCase())
   ), [empresas, q]);
@@ -127,6 +135,50 @@ const AvisoEmpresasPage = () => {
   };
 
   const descartar = () => { setEditing({}); setEditingWa({}); setEditingGestor({}); setEditingName({}); setNewNumByEmp({}); };
+
+  const normName = (s: string) =>
+    (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/\s+/g, ' ').trim();
+
+  const criarEmpresa = async () => {
+    const name = nova.name.trim();
+    if (!name) { toast.error('Informe a razão social.'); return; }
+    const cnpjN = normalizeCnpj(nova.cnpj);
+    const codeT = nova.code.trim();
+    const nameN = normName(name);
+
+    // Cruzamento: CNPJ → código → razão social
+    const dup = empresas.find((e) =>
+      (cnpjN && normalizeCnpj(e.cnpj) === cnpjN) ||
+      (codeT && String(e.code).trim() === codeT) ||
+      (nameN && normName(e.name) === nameN)
+    );
+    if (dup) {
+      toast.error(`Já existe empresa equivalente: ${dup.code} — ${dup.name}`);
+      return;
+    }
+
+    setSavingNova(true);
+    try {
+      const codigoFinal = codeT || `MAN-${Date.now().toString(36).toUpperCase()}`;
+      const wa = (nova.whatsapp || '').replace(/\D/g, '');
+      const { error } = await supabase.from('aviso_empresas' as any).insert({
+        code: codigoFinal,
+        name,
+        cnpj: cnpjN,
+        responsavel: nova.responsavel.trim(),
+        whatsapp: wa,
+        whatsapp_numeros: wa ? [wa] : [],
+      } as any);
+      if (error) throw error;
+      toast.success('Empresa cadastrada.');
+      setNovaOpen(false);
+      setNova({ name: '', code: '', cnpj: '', whatsapp: '', responsavel: '' });
+    } catch (e: any) {
+      toast.error('Falha ao cadastrar: ' + (e?.message || 'erro'));
+    } finally {
+      setSavingNova(false);
+    }
+  };
 
   const numsOf = (e: any): string[] =>
     editingWa[e.id] !== undefined ? editingWa[e.id] : (e.whatsapp_numeros || []);
