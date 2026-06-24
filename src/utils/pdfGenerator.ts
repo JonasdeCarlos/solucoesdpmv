@@ -421,6 +421,7 @@ function renderMemoriaPages(doc: jsPDF, step1: Step1Data, step2: Step2Data, verb
 
   // Helper: verba exists and has non-zero value
   const verbaAtiva = (id: string) => verbas.some(v => v.id === id && v.valor !== 0);
+  const valorVerba = (id: string) => verbas.find(v => v.id === id)?.valor ?? 0;
 
   let y = addHeader(doc, 'MEMÓRIA DE CÁLCULO — RESCISÃO CLT');
   y += 3;
