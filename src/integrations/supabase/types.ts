@@ -675,6 +675,33 @@ export type Database = {
           },
         ]
       }
+      aviso_mensagens_modelos: {
+        Row: {
+          created_at: string
+          criado_por: string | null
+          id: string
+          texto: string
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          criado_por?: string | null
+          id?: string
+          texto: string
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          criado_por?: string | null
+          id?: string
+          texto?: string
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       avisos: {
         Row: {
           aviso1_at: string | null
