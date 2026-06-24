@@ -193,6 +193,7 @@ const AvisosListPage = () => {
         </div>
         <div className="flex gap-2">
           <Link to="/avisos/empresas"><Button variant="outline">Empresas</Button></Link>
+          <Link to="/avisos/mensageria"><Button variant="outline">Mensageria</Button></Link>
           <Link to="/avisos/import"><Button>Importar PDF</Button></Link>
         </div>
       </div>
