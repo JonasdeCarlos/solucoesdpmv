@@ -13,6 +13,7 @@ const TIPO_DIA_LABELS: Record<string, string> = {
   normal: 'Normal',
   feriado: 'Feriado',
   folga_dsr: 'Folga/DSR',
+  folga_comp_feriado: 'Folga Comp. Feriado',
   falta: 'Falta',
   afastamento: 'Afastamento',
 };
