@@ -297,7 +297,7 @@ export function calcularVerbas(step1: Step1Data, step2: Step2Data): VerbaResciso
       }
       // Adiciona 13º proporcional à base
       baseFGTS += decimo;
-      if (step2.incluir13AnosAnteriores) {
+      if (!step1.fgtsApenasMesRescisao && step2.incluir13AnosAnteriores) {
         const mesesVinculo = step1.dataAdmissao && step1.dataDesligamento
           ? diffMonthsFull(step1.dataAdmissao, step1.dataDesligamento)
           : 0;
