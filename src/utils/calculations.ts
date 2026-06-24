@@ -468,7 +468,9 @@ export function recalcDependents(
     if (step1.dataAdmissao && step1.dataDesligamento) {
       const start = new Date(step1.dataAdmissao);
       const end = new Date(step1.dataDesligamento);
-      const cursor = new Date(start.getFullYear(), start.getMonth(), 1);
+      const cursor = step1.fgtsApenasMesRescisao
+        ? new Date(end.getFullYear(), end.getMonth(), 1)
+        : new Date(start.getFullYear(), start.getMonth(), 1);
       while (
         cursor.getFullYear() < end.getFullYear() ||
         (cursor.getFullYear() === end.getFullYear() && cursor.getMonth() <= end.getMonth())
@@ -495,7 +497,7 @@ export function recalcDependents(
       }
     }
     let base13Anterior = 0;
-    if (step2.incluir13AnosAnteriores && step1.dataAdmissao && step1.dataDesligamento) {
+    if (!step1.fgtsApenasMesRescisao && step2.incluir13AnosAnteriores && step1.dataAdmissao && step1.dataDesligamento) {
       const meses = diffMonthsFull(step1.dataAdmissao, step1.dataDesligamento);
       if (meses > 12) base13Anterior = sal * Math.floor(meses / 12);
     }
