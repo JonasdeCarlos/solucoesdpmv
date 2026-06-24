@@ -35,6 +35,7 @@ import AvisosListPage from "./pages/avisos/AvisosListPage";
 import AvisosImportPage from "./pages/avisos/AvisosImportPage";
 import AvisoEmpresasPage from "./pages/avisos/AvisoEmpresasPage";
 import AvisoDetailPage from "./pages/avisos/AvisoDetailPage";
+import MensageriaPage from "./pages/avisos/MensageriaPage";
 import UsuariosPage from "./pages/UsuariosPage";
 import BhLayout from "./components/bancohoras/BhLayout";
 import BhDashboardPage from "./pages/bancoHoras/BhDashboardPage";
@@ -102,6 +103,7 @@ const App = () => (
               <Route path="/avisos" element={<AvisosListPage />} />
               <Route path="/avisos/import" element={<AvisosImportPage />} />
               <Route path="/avisos/empresas" element={<AvisoEmpresasPage />} />
+              <Route path="/avisos/mensageria" element={<MensageriaPage />} />
               <Route path="/avisos/:id" element={<AvisoDetailPage />} />
               <Route path="/provisoes-dsr" element={<ProvisoesDsrPage />} />
               <Route path="/feriados-comunicados" element={<FeriadosComunicadosPage />} />
