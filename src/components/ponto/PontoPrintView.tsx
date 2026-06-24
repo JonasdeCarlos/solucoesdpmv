@@ -9,6 +9,14 @@ import { type PontoResumo, minutesToHHMM } from '@/utils/pontoCalculations';
 const MARCACAO_LABELS_4 = ['Entrada', 'Saída Int.', 'Ent. Int.', 'Saída'];
 const MARCACAO_LABELS_6 = ['Entrada', 'S.Int.1', 'E.Int.1', 'S.Int.2', 'E.Int.2', 'Saída'];
 
+const TIPO_DIA_LABELS: Record<string, string> = {
+  normal: 'Normal',
+  feriado: 'Feriado',
+  folga_dsr: 'Folga/DSR',
+  falta: 'Falta',
+  afastamento: 'Afastamento',
+};
+
 interface Props {
   identificacao: PontoIdentificacao;
   config: PontoConfig;
@@ -20,6 +28,12 @@ const PontoPrintView: React.FC<Props> = ({ identificacao, config, diasCalculados
   const printRef = useRef<HTMLDivElement>(null);
   const [exibirIntrajornada, setExibirIntrajornada] = useState(true);
   const labels = config.colunasMarcacoes === 6 ? MARCACAO_LABELS_6 : MARCACAO_LABELS_4;
+
+  const contagemTipos = diasCalculados.reduce<Record<string, number>>((acc, d) => {
+    const key = d.tipoDia || 'normal';
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
 
   const handlePrint = () => {
     const content = printRef.current;
@@ -55,6 +69,11 @@ const PontoPrintView: React.FC<Props> = ({ identificacao, config, diasCalculados
           .sig-line { text-align: center; width: 45%; }
           .sig-line hr { border: none; border-top: 1px solid #333; margin-bottom: 4px; }
           .disclaimer { margin-top: 16px; font-size: 7pt; color: #666; text-align: center; border-top: 1px solid #ccc; padding-top: 6px; }
+          .tipos-resumo { margin-top: 10px; padding: 6px 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 8.5pt; }
+          .tipos-resumo .titulo { font-weight: bold; font-size: 8pt; text-transform: uppercase; color: #555; margin-bottom: 4px; }
+          .tipos-resumo .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+          .tipos-resumo .chip { background: #f3f4f6; border: 1px solid #ddd; border-radius: 3px; padding: 2px 8px; font-family: monospace; }
+          .tipos-resumo .chip b { font-family: Arial, sans-serif; margin-right: 4px; }
           @media print { body { padding: 10mm; } }
         </style>
       </head>
@@ -166,6 +185,17 @@ const PontoPrintView: React.FC<Props> = ({ identificacao, config, diasCalculados
           <div className="summary-item"><div className="label">Noturno Real</div><div className="value">{minutesToHHMM(resumo.totalNoturnoReal)}</div></div>
           <div className="summary-item"><div className="label">Noturno Convertido</div><div className="value">{minutesToHHMM(resumo.totalNoturnoConvertido)}</div></div>
           {exibirIntrajornada && <div className="summary-item"><div className="label">Int. Devido</div><div className="value" style={{color: resumo.totalIntervaloDevido > 0 ? '#c2410c' : ''}}>{minutesToHHMM(resumo.totalIntervaloDevido)}</div></div>}
+        </div>
+
+        <div className="tipos-resumo">
+          <div className="titulo">Resumo por tipo de dia</div>
+          <div className="chips">
+            {Object.entries(contagemTipos)
+              .sort((a, b) => b[1] - a[1])
+              .map(([tipo, qtd]) => (
+                <div key={tipo} className="chip"><b>{TIPO_DIA_LABELS[tipo] || tipo}:</b>{qtd}</div>
+              ))}
+          </div>
         </div>
 
         <div className="signatures">
