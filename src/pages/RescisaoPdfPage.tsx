@@ -89,6 +89,10 @@ const RescisaoPdfPage: React.FC = () => {
       contentType: 'application/pdf',
     });
 
+    if (upErr) {
+      console.error('Falha ao salvar PDF no storage:', upErr);
+      alert('Não foi possível salvar o PDF para o histórico: ' + upErr.message);
+    }
     const pdfUrl = upErr ? null : path;
 
     await createDossier({
