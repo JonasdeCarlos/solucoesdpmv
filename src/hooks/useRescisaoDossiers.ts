@@ -11,7 +11,8 @@ export function useRescisaoDossiers() {
     const { data, error } = await supabase
       .from('rescisao_dossiers' as any)
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(10);
     if (!error && data) {
       setDossiers(data as any as RescisaoDossier[]);
     }
@@ -26,7 +27,23 @@ export function useRescisaoDossiers() {
       .insert(d as any)
       .select()
       .single();
-    if (!error) await fetchDossiers();
+    if (!error) {
+      // Mantém apenas as 10 montagens mais recentes
+      const { data: all } = await supabase
+        .from('rescisao_dossiers' as any)
+        .select('id, final_pdf_url, created_at')
+        .order('created_at', { ascending: false });
+      if (all && all.length > 10) {
+        const excess = (all as any[]).slice(10);
+        const ids = excess.map((r: any) => r.id);
+        const paths = excess.map((r: any) => r.final_pdf_url).filter(Boolean);
+        if (paths.length) {
+          await supabase.storage.from('rescisao-docs').remove(paths);
+        }
+        await supabase.from('rescisao_dossiers' as any).delete().in('id', ids);
+      }
+      await fetchDossiers();
+    }
     return { data: data as any as RescisaoDossier | null, error };
   };
 
