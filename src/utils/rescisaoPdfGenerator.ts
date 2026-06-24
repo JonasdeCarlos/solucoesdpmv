@@ -11,6 +11,7 @@ interface CapaParams {
   competenceMonth: string;
   checkedBy: string;
   rescisaoTipo?: RescisaoTipoId;
+  uploadedDocs?: { categoria: string; nome: string }[];
 }
 
 /** Carrega logo como base64 a partir do public folder */
@@ -95,10 +96,25 @@ export async function gerarCapaRescisao(params: CapaParams): Promise<jsPDF> {
 
   const greenColor: [number, number, number] = [98, 142, 63]; // #628E3F
 
-  // === Documentos específicos do tipo selecionado ===
+  // === Apenas os documentos efetivamente enviados no dossiê ===
+  const uploaded = params.uploadedDocs ?? [];
+  const rows: RescisaoDocLinha[] = uploaded.length
+    ? uploaded.map(u => {
+        const match = tipoCfg.documentos.find(d =>
+          d.documento.toLowerCase().includes(u.categoria.toLowerCase()) ||
+          u.categoria.toLowerCase().includes(d.documento.toLowerCase().split('/')[0].toLowerCase())
+        );
+        return {
+          documento: u.categoria,
+          empregado: match?.empregado ?? '1 via',
+          empregador: match?.empregador ?? '1 via',
+          observacoes: u.nome,
+        };
+      })
+    : tipoCfg.documentos;
   y = renderDocsTable(doc, {
-    title: tipoCfg.label.toUpperCase(),
-    rows: tipoCfg.documentos,
+    title: `${tipoCfg.label.toUpperCase()} — DOCUMENTOS DO DOSSIÊ`,
+    rows,
     startY: y,
     mx,
     textW,
