@@ -220,6 +220,68 @@ const AvisoEmpresasPage = () => {
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <h1 className="text-2xl font-bold">Empresas</h1>
         <div className="flex items-center gap-2 flex-wrap">
+          <Dialog open={novaOpen} onOpenChange={setNovaOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" variant="default">
+                <Plus className="w-3 h-3 mr-1" /> Nova empresa
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Cadastrar empresa</DialogTitle></DialogHeader>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs font-medium">Razão social *</label>
+                  <Input value={nova.name} onChange={(e) => setNova((s) => ({ ...s, name: e.target.value }))} />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs font-medium">Código</label>
+                    <Input
+                      value={nova.code}
+                      onChange={(e) => setNova((s) => ({ ...s, code: e.target.value }))}
+                      placeholder="(opcional — auto)"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium">CNPJ</label>
+                    <Input
+                      value={nova.cnpj}
+                      onChange={(e) => setNova((s) => ({ ...s, cnpj: e.target.value }))}
+                      placeholder="00.000.000/0000-00"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs font-medium">WhatsApp</label>
+                    <Input
+                      value={nova.whatsapp}
+                      onChange={(e) => setNova((s) => ({ ...s, whatsapp: e.target.value }))}
+                      placeholder="55DDDNUMERO"
+                      inputMode="numeric"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium">Responsável</label>
+                    <Input
+                      value={nova.responsavel}
+                      onChange={(e) => setNova((s) => ({ ...s, responsavel: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  O cadastro é cruzado por CNPJ → Código → Razão Social. Empresas equivalentes serão reaproveitadas na próxima importação.
+                </p>
+              </div>
+              <DialogFooter>
+                <Button variant="ghost" onClick={() => setNovaOpen(false)} disabled={savingNova}>Cancelar</Button>
+                <Button onClick={criarEmpresa} disabled={savingNova}>
+                  {savingNova ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Save className="w-3 h-3 mr-1" />}
+                  Cadastrar
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
           <Button variant="outline" size="sm" onClick={testarConexao} disabled={pinging}>
             {pinging ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Wrench className="w-3 h-3 mr-1" />}
             Testar conexão Digisac
