@@ -24,6 +24,7 @@ export function calcularFgtsDetalhado(
   decimoProporcional: number,
   incluir13Anteriores: boolean,
   diasTrabalhadosMesDesligamento?: number,
+  apenasUltimoMes?: boolean,
 ): FgtsDetalheResult {
   const meses: FgtsMesDetalhe[] = [];
   let baseSalarial = 0;
@@ -31,7 +32,9 @@ export function calcularFgtsDetalhado(
   if (dataAdmissao && dataDesligamento) {
     const start = new Date(dataAdmissao);
     const end = new Date(dataDesligamento);
-    const cursor = new Date(start.getFullYear(), start.getMonth(), 1);
+    const cursor = apenasUltimoMes
+      ? new Date(end.getFullYear(), end.getMonth(), 1)
+      : new Date(start.getFullYear(), start.getMonth(), 1);
 
     while (
       cursor.getFullYear() < end.getFullYear() ||
@@ -75,7 +78,7 @@ export function calcularFgtsDetalhado(
   }
 
   let base13Anterior = 0;
-  if (incluir13Anteriores && dataAdmissao && dataDesligamento) {
+  if (incluir13Anteriores && !apenasUltimoMes && dataAdmissao && dataDesligamento) {
     const diffY = dataDesligamento.getFullYear() - dataAdmissao.getFullYear();
     const diffM = dataDesligamento.getMonth() - dataAdmissao.getMonth();
     const diffD = dataDesligamento.getDate() - dataAdmissao.getDate();
