@@ -175,6 +175,30 @@ const MensageriaPage = () => {
       </div>
 
       <Card className="p-4 space-y-3">
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="flex-1 min-w-[240px]">
+            <label className="text-sm font-medium">Modelo salvo</label>
+            <select
+              className="mt-1 w-full h-9 rounded-md border bg-background px-2 text-sm"
+              value={modeloId ?? '__new__'}
+              onChange={(e) => carregarModelo(e.target.value)}
+            >
+              <option value="__new__">— Novo / em branco —</option>
+              {modelos.map((m) => (
+                <option key={m.id} value={m.id}>{m.titulo}</option>
+              ))}
+            </select>
+          </div>
+          <Button variant="outline" onClick={salvarModelo} disabled={savingModelo || !mensagem.trim()}>
+            {savingModelo ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : modeloId ? <Save className="h-4 w-4 mr-1" /> : <BookmarkPlus className="h-4 w-4 mr-1" />}
+            {modeloId ? 'Atualizar modelo' : 'Salvar como modelo'}
+          </Button>
+          {modeloId && (
+            <Button variant="ghost" size="icon" onClick={excluirModelo} title="Excluir modelo">
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
         <div>
           <label className="text-sm font-medium">Mensagem</label>
           <Textarea
