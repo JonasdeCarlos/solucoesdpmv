@@ -631,6 +631,50 @@ export type Database = {
         }
         Relationships: []
       }
+      aviso_mensagens_enviadas: {
+        Row: {
+          created_at: string
+          empresa_code: string | null
+          empresa_id: string
+          empresa_name: string | null
+          enviado_por: string | null
+          erro: string | null
+          id: string
+          mensagem: string
+          sucesso: boolean
+        }
+        Insert: {
+          created_at?: string
+          empresa_code?: string | null
+          empresa_id: string
+          empresa_name?: string | null
+          enviado_por?: string | null
+          erro?: string | null
+          id?: string
+          mensagem: string
+          sucesso?: boolean
+        }
+        Update: {
+          created_at?: string
+          empresa_code?: string | null
+          empresa_id?: string
+          empresa_name?: string | null
+          enviado_por?: string | null
+          erro?: string | null
+          id?: string
+          mensagem?: string
+          sucesso?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aviso_mensagens_enviadas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "aviso_empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       avisos: {
         Row: {
           aviso1_at: string | null
