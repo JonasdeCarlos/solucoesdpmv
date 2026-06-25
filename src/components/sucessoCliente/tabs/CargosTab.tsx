@@ -1013,7 +1013,7 @@ function CriteriosManuaisBlock({ criterios, cargos, etapas, onAdd, onRemove }: {
   };
   return (
     <div className="pt-2 border-t">
-      <div className="text-sm font-semibold mb-1">Critérios manuais para evolução salarial</div>
+      <div className="text-sm font-semibold mb-1">Critérios específicos para evolução salarial</div>
       <p className="text-[11px] text-muted-foreground mb-2">Adicione critérios complementares aos sugeridos pela IA (ex.: avaliação de desempenho semestral, certificações específicas, tempo mínimo no nível). Informe o cargo e o nível-alvo (ex.: "Para alcançar Pleno") a que o critério se refere. Serão incluídos no relatório final.</p>
       <div className="flex flex-wrap gap-2 mb-2 items-end">
         <div className="min-w-[200px]">
@@ -1045,7 +1045,7 @@ function CriteriosManuaisBlock({ criterios, cargos, etapas, onAdd, onRemove }: {
         <Button type="button" onClick={submit}><Plus className="w-4 h-4 mr-1"/>Adicionar</Button>
       </div>
       {criterios.length === 0 ? (
-        <p className="text-xs text-muted-foreground">Nenhum critério manual cadastrado.</p>
+        <p className="text-xs text-muted-foreground">Nenhum critério específico cadastrado.</p>
       ) : (
         <ul className="space-y-1">
           {criterios.map((c: any, i: number) => (
