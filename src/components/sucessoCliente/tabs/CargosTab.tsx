@@ -238,6 +238,34 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
     });
   };
 
+  const recalcularFaixas = () => {
+    const escala = (estrutura?.escala_evolucao || []) as any[];
+    if (!escala.length) return toast.error('Sem escala de evolução para recalcular.');
+    const faixas = (estrutura?.faixas || []).map((f: any) => {
+      const niveis = (f.niveis || []) as any[];
+      if (niveis.length < 2) return f;
+      const inicial = Number(niveis[0]?.valor) || 0;
+      const pctInicial = Number(escala[0]?.percentual_base) || 0;
+      if (!inicial || !pctInicial) return f;
+      const ref = inicial * (100 / pctInicial);
+      const novos = niveis.map((n: any, j: number) => {
+        if (j === 0) return n;
+        const pct = Number(escala[j]?.percentual_base);
+        if (!pct) return n;
+        return { ...n, valor: Math.round(ref * pct) / 100 };
+      });
+      return { ...f, niveis: novos };
+    });
+    saveEstrutura({
+      faixas,
+      escala_evolucao: estrutura?.escala_evolucao || [],
+      cargos_sugeridos: estrutura?.cargos_sugeridos || [],
+      organograma: estrutura?.organograma || [],
+      criterios_manuais: estrutura?.criterios_manuais || [],
+    });
+    toast.success('Faixas recalculadas pela escala de evolução.');
+  };
+
   const removeSugestao = (idx: number) => {
     const cargos_sugeridos = (estrutura?.cargos_sugeridos || []).filter((_:any,i:number)=> i!==idx);
     saveEstrutura({
@@ -249,11 +277,12 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
     });
   };
 
-  const addCriterio = (texto: string, cargo: string) => {
+  const addCriterio = (texto: string, cargo: string, nivelAlvo: string) => {
     const t = (texto || '').trim();
     if (!t) return;
     const c = (cargo || '').trim() || 'Geral (todos os cargos)';
-    const criterios_manuais = [ ...(estrutura?.criterios_manuais || []), { cargo: c, texto: t, created_at: new Date().toISOString() } ];
+    const nv = (nivelAlvo || '').trim() || 'Qualquer nível';
+    const criterios_manuais = [ ...(estrutura?.criterios_manuais || []), { cargo: c, nivel_alvo: nv, texto: t, created_at: new Date().toISOString() } ];
     saveEstrutura({
       faixas: estrutura?.faixas || [],
       escala_evolucao: estrutura?.escala_evolucao || [],
@@ -431,7 +460,12 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
 
       {estrutura && (estrutura.faixas?.length || estrutura.escala_evolucao?.length) ? (
         <Card>
-          <CardHeader><CardTitle className="text-base">Estrutura Salarial</CardTitle></CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-base">Estrutura Salarial</CardTitle>
+            <Button size="sm" variant="outline" onClick={recalcularFaixas}>
+              <Sparkles className="w-4 h-4 mr-1"/>Recalcular faixas
+            </Button>
+          </CardHeader>
           <CardContent className="space-y-4">
             {(() => {
               const faixas = estrutura.faixas || [];
@@ -539,6 +573,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
             <CriteriosManuaisBlock
               criterios={(estrutura?.criterios_manuais || []) as any[]}
               cargos={items}
+              etapas={(estrutura?.escala_evolucao || []).map((e: any) => e.etapa).filter(Boolean)}
               onAdd={addCriterio}
               onRemove={removeCriterio}
             />
@@ -877,18 +912,21 @@ function OrgChart({ nodes, cadastrados }: { nodes: any[]; cadastrados: string[] 
   );
 }
 
-function CriteriosManuaisBlock({ criterios, cargos, onAdd, onRemove }: { criterios: any[]; cargos: any[]; onAdd: (t: string, cargo: string) => void; onRemove: (i: number) => void }) {
+function CriteriosManuaisBlock({ criterios, cargos, etapas, onAdd, onRemove }: { criterios: any[]; cargos: any[]; etapas: string[]; onAdd: (t: string, cargo: string, nivelAlvo: string) => void; onRemove: (i: number) => void }) {
   const [v, setV] = useState('');
   const [cargoSel, setCargoSel] = useState<string>('__all__');
+  const [nivelSel, setNivelSel] = useState<string>('__any__');
+  const opcoesNiveis = etapas && etapas.length ? etapas : ['Inicial','Pleno','Sênior','Especialista','Referência'];
   const submit = () => {
     const cargoNome = cargoSel === '__all__' ? 'Geral (todos os cargos)' : cargoSel;
-    onAdd(v, cargoNome);
+    const nivelNome = nivelSel === '__any__' ? 'Qualquer nível' : `Para alcançar ${nivelSel}`;
+    onAdd(v, cargoNome, nivelNome);
     setV('');
   };
   return (
     <div className="pt-2 border-t">
       <div className="text-sm font-semibold mb-1">Critérios manuais para evolução salarial</div>
-      <p className="text-[11px] text-muted-foreground mb-2">Adicione critérios complementares aos sugeridos pela IA (ex.: avaliação de desempenho semestral, certificações específicas, tempo mínimo no nível). Informe a qual cargo o critério se refere. Serão incluídos no relatório final.</p>
+      <p className="text-[11px] text-muted-foreground mb-2">Adicione critérios complementares aos sugeridos pela IA (ex.: avaliação de desempenho semestral, certificações específicas, tempo mínimo no nível). Informe o cargo e o nível-alvo (ex.: "Para alcançar Pleno") a que o critério se refere. Serão incluídos no relatório final.</p>
       <div className="flex flex-wrap gap-2 mb-2 items-end">
         <div className="min-w-[200px]">
           <Label className="text-xs">Cargo de referência</Label>
@@ -899,6 +937,16 @@ function CriteriosManuaisBlock({ criterios, cargos, onAdd, onRemove }: { criteri
               {cargos.map((c:any) => (
                 <SelectItem key={c.id} value={c.nome}>{c.nome}</SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="min-w-[180px]">
+          <Label className="text-xs">Nível-alvo</Label>
+          <Select value={nivelSel} onValueChange={setNivelSel}>
+            <SelectTrigger><SelectValue/></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__any__">Qualquer nível</SelectItem>
+              {opcoesNiveis.map(n => <SelectItem key={n} value={n}>Para alcançar {n}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
@@ -916,6 +964,7 @@ function CriteriosManuaisBlock({ criterios, cargos, onAdd, onRemove }: { criteri
             <li key={i} className="flex items-center justify-between gap-2 text-sm border rounded p-2">
               <span>
                 <Badge variant="outline" className="mr-2">{c.cargo || 'Geral (todos os cargos)'}</Badge>
+                {c.nivel_alvo ? <Badge variant="secondary" className="mr-2">{c.nivel_alvo}</Badge> : null}
                 {c.texto || c}
               </span>
               <Button size="icon" variant="ghost" onClick={()=>onRemove(i)}><X className="w-4 h-4 text-destructive"/></Button>
