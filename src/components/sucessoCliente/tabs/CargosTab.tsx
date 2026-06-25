@@ -866,3 +866,29 @@ function OrgChart({ nodes, cadastrados }: { nodes: any[]; cadastrados: string[] 
     </div>
   );
 }
+
+function CriteriosManuaisBlock({ criterios, onAdd, onRemove }: { criterios: any[]; onAdd: (t: string) => void; onRemove: (i: number) => void }) {
+  const [v, setV] = useState('');
+  return (
+    <div className="pt-2 border-t">
+      <div className="text-sm font-semibold mb-1">Critérios manuais para evolução salarial</div>
+      <p className="text-[11px] text-muted-foreground mb-2">Adicione critérios complementares aos sugeridos pela IA (ex.: avaliação de desempenho semestral, certificações específicas, tempo mínimo no nível). Serão incluídos no relatório final.</p>
+      <div className="flex gap-2 mb-2">
+        <Input placeholder="Ex.: Tempo mínimo de 12 meses no nível anterior" value={v} onChange={e=>setV(e.target.value)} onKeyDown={e=>{ if(e.key==='Enter'){ onAdd(v); setV(''); } }} />
+        <Button type="button" onClick={()=>{ onAdd(v); setV(''); }}><Plus className="w-4 h-4"/></Button>
+      </div>
+      {criterios.length === 0 ? (
+        <p className="text-xs text-muted-foreground">Nenhum critério manual cadastrado.</p>
+      ) : (
+        <ul className="space-y-1">
+          {criterios.map((c: any, i: number) => (
+            <li key={i} className="flex items-center justify-between gap-2 text-sm border rounded p-2">
+              <span>{c.texto || c}</span>
+              <Button size="icon" variant="ghost" onClick={()=>onRemove(i)}><X className="w-4 h-4 text-destructive"/></Button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
