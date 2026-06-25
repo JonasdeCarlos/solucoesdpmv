@@ -184,13 +184,30 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
       escala_evolucao: estrutura?.escala_evolucao || [],
       cargos_sugeridos: estrutura?.cargos_sugeridos || [],
       organograma: estrutura?.organograma || [],
+      criterios_manuais: estrutura?.criterios_manuais || [],
     });
   };
 
   const updateNivel = (faixaIdx: number, nivelIdx: number, valor: number) => {
     const faixas = (estrutura?.faixas || []).map((f: any, i: number) => {
       if (i !== faixaIdx) return f;
-      const niveis = (f.niveis || []).map((n: any, j: number) => j === nivelIdx ? { ...n, valor } : n);
+      let niveis = (f.niveis || []).map((n: any, j: number) => j === nivelIdx ? { ...n, valor } : n);
+      // Cascata: ao alterar a PRIMEIRA faixa/nível (Inicial), recalcula as seguintes
+      // mantendo a proporção atual entre níveis (ou usando escala_evolucao quando disponível).
+      if (nivelIdx === 0 && niveis.length > 1 && valor > 0) {
+        const escala = (estrutura?.escala_evolucao || []) as any[];
+        const baseInicialPct = escala[0]?.percentual_base;
+        const ref = valor * (baseInicialPct ? 100 / Number(baseInicialPct) : (niveis[niveis.length-1].valor / Math.max(1, niveis[0].valor)));
+        niveis = niveis.map((n: any, j: number) => {
+          if (j === 0) return { ...n, valor };
+          const pct = escala[j]?.percentual_base;
+          if (pct) return { ...n, valor: Math.round(ref * Number(pct)) / 100 };
+          // fallback proporcional linear entre Inicial(valor) e Referência atual
+          const last = niveis[niveis.length - 1]?.valor || ref;
+          const t = j / (niveis.length - 1);
+          return { ...n, valor: Math.round((valor + (last - valor) * t) * 100) / 100 };
+        });
+      }
       return { ...f, niveis };
     });
     saveEstrutura({
@@ -198,6 +215,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
       escala_evolucao: estrutura?.escala_evolucao || [],
       cargos_sugeridos: estrutura?.cargos_sugeridos || [],
       organograma: estrutura?.organograma || [],
+      criterios_manuais: estrutura?.criterios_manuais || [],
     });
   };
 
@@ -208,6 +226,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
       escala_evolucao: estrutura?.escala_evolucao || [],
       cargos_sugeridos: estrutura?.cargos_sugeridos || [],
       organograma: estrutura?.organograma || [],
+      criterios_manuais: estrutura?.criterios_manuais || [],
     });
   };
 
@@ -218,6 +237,30 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
       escala_evolucao: estrutura?.escala_evolucao || [],
       cargos_sugeridos,
       organograma: estrutura?.organograma || [],
+      criterios_manuais: estrutura?.criterios_manuais || [],
+    });
+  };
+
+  const addCriterio = (texto: string) => {
+    const t = (texto || '').trim();
+    if (!t) return;
+    const criterios_manuais = [ ...(estrutura?.criterios_manuais || []), { texto: t, created_at: new Date().toISOString() } ];
+    saveEstrutura({
+      faixas: estrutura?.faixas || [],
+      escala_evolucao: estrutura?.escala_evolucao || [],
+      cargos_sugeridos: estrutura?.cargos_sugeridos || [],
+      organograma: estrutura?.organograma || [],
+      criterios_manuais,
+    });
+  };
+  const removeCriterio = (idx: number) => {
+    const criterios_manuais = (estrutura?.criterios_manuais || []).filter((_:any,i:number)=> i!==idx);
+    saveEstrutura({
+      faixas: estrutura?.faixas || [],
+      escala_evolucao: estrutura?.escala_evolucao || [],
+      cargos_sugeridos: estrutura?.cargos_sugeridos || [],
+      organograma: estrutura?.organograma || [],
+      criterios_manuais,
     });
   };
 
