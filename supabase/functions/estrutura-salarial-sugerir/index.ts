@@ -40,18 +40,40 @@ Retorne SOMENTE JSON válido neste formato:
  "cargos_sugeridos":[{"nome":"...","area":"...","nivel":"...","justificativa":"...","salario_min":0,"salario_max":0}],
  "organograma":[{"id":"...","nome":"...","parent_id":null,"nivel":"..."}]
 }`;
-    const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-pro",
-        messages: [{ role: "user", content: prompt }],
-        response_format: { type: "json_object" },
-      }),
-    });
-    const data = await r.json();
-    const content = data.choices?.[0]?.message?.content || "{}";
-    return new Response(content, { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    const models = ["google/gemini-2.5-pro", "google/gemini-2.5-flash"];
+    let lastErr: { status: number; body: string } | null = null;
+    for (const model of models) {
+      const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model,
+          messages: [{ role: "user", content: prompt }],
+          response_format: { type: "json_object" },
+        }),
+      });
+      if (!r.ok) {
+        lastErr = { status: r.status, body: await r.text() };
+        console.error(`AI ${model} falhou:`, r.status, lastErr.body);
+        if (r.status === 429 || r.status === 402) break; // sem créditos
+        continue;
+      }
+      const data = await r.json();
+      const content = data.choices?.[0]?.message?.content;
+      if (!content) {
+        lastErr = { status: 500, body: "Resposta vazia da IA" };
+        continue;
+      }
+      return new Response(content, { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    const msg = lastErr?.status === 429
+      ? "Limite de requisições à IA atingido. Aguarde alguns instantes e tente novamente."
+      : lastErr?.status === 402
+        ? "Créditos da IA esgotados. Adicione créditos no workspace para continuar."
+        : lastErr?.status === 403
+          ? "Acesso à IA bloqueado (403). Verifique se a IA Lovable está habilitada e com créditos disponíveis no workspace."
+          : `Falha ao consultar IA (${lastErr?.status}). Tente novamente.`;
+    return new Response(JSON.stringify({ error: msg, detail: lastErr?.body }), { status: lastErr?.status || 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : String(e) }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
