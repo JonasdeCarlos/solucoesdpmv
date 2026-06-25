@@ -45,33 +45,41 @@ export async function processarImportacao(opts: {
   const errors: any[] = [];
   const emissionIso = parseEmissionDate(parsed.emission_date);
 
-  // 1. Cria registro de import
-  const { data: importRow, error: impErr } = await supabase
-    .from('aviso_imports' as any)
-    .insert({
-      file_name: fileName,
-      file_path: filePath,
-      emission_date: emissionIso,
-      emission_time: parsed.emission_time || null,
-      total_empresas: parsed.empresas.length,
-      total_rows: 0,
-      novos: 0,
-      ignorados: 0,
-      errors_json: [],
-      imported_by: importedBy,
-      file_hash: fileHash || null,
-    } as any)
-    .select()
-    .single();
-  if (impErr || !importRow) {
-    if (fileHash && (impErr as any)?.code === '23505') {
-      const { data: existing } = await supabase
-        .from('aviso_imports' as any)
-        .select('id,total_empresas,total_rows,errors_json')
-        .eq('file_hash', fileHash)
-        .maybeSingle();
-      if (existing) {
-        const existingRow = existing as any;
+  // 1. Cria registro de import (com fallback de reimportação após exclusão)
+  const insertImportRow = async () =>
+    await supabase
+      .from('aviso_imports' as any)
+      .insert({
+        file_name: fileName,
+        file_path: filePath,
+        emission_date: emissionIso,
+        emission_time: parsed.emission_time || null,
+        total_empresas: parsed.empresas.length,
+        total_rows: 0,
+        novos: 0,
+        ignorados: 0,
+        errors_json: [],
+        imported_by: importedBy,
+        file_hash: fileHash || null,
+      } as any)
+      .select()
+      .single();
+
+  let { data: importRow, error: impErr } = await insertImportRow();
+  if ((impErr || !importRow) && fileHash && (impErr as any)?.code === '23505') {
+    const { data: existing } = await supabase
+      .from('aviso_imports' as any)
+      .select('id,total_empresas,total_rows,errors_json')
+      .eq('file_hash', fileHash)
+      .maybeSingle();
+    if (existing) {
+      const existingRow = existing as any;
+      // Se já existem avisos vinculados, manter comportamento antigo (skip).
+      const { count } = await supabase
+        .from('avisos' as any)
+        .select('id', { count: 'exact', head: true })
+        .eq('import_id', existingRow.id);
+      if (count && count > 0) {
         return {
           importId: existingRow.id,
           totalEmpresas: existingRow.total_empresas ?? parsed.empresas.length,
@@ -81,8 +89,16 @@ export async function processarImportacao(opts: {
           errors: [...(existingRow.errors_json || []), { stage: 'duplicate_file', msg: 'Arquivo PDF já importado anteriormente.' }],
         };
       }
+      // Sem avisos remanescentes → admin excluiu tudo. Removemos o import
+      // antigo (que carrega o file_hash) e reinserimos para liberar a chave única.
+      await supabase.from('aviso_imports' as any).delete().eq('id', existingRow.id);
+      const retry = await insertImportRow();
+      importRow = retry.data as any;
+      impErr = retry.error as any;
     }
-    throw new Error(impErr?.message || 'Falha ao criar import');
+  }
+  if (impErr || !importRow) {
+    throw new Error((impErr as any)?.message || 'Falha ao criar import');
   }
   const importId = (importRow as any).id;
 
