@@ -13,14 +13,19 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
-import { Send, Phone, X, ExternalLink, CheckSquare, ChevronDown } from 'lucide-react';
+import { Send, Phone, X, ExternalLink, CheckSquare, ChevronDown, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAvisos } from '@/hooks/useAvisos';
 import { useAvisoEmpresas } from '@/hooks/useAvisoEmpresas';
 import { useOperatorName } from '@/hooks/useOperatorName';
+import { useUserRole } from '@/hooks/useUserRole';
 import { MOTIVO_CATEGORIES, STATUS_OPTIONS, formatBR, formatCnpj, statusLabel } from '@/utils/avisos/normalize';
 import { sendAvisoDigisac } from '@/utils/avisos/digisac';
 import CallDialog from '@/components/avisos/CallDialog';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 const STATUS_COLOR: Record<string, string> = {
   sem_retorno: 'bg-destructive/15 text-destructive border-destructive/30',
@@ -36,9 +41,10 @@ const TRI_STATE = [
 ];
 
 const AvisosListPage = () => {
-  const { items, loading, updateAviso, addAttempt, refresh } = useAvisos();
+  const { items, loading, updateAviso, deleteAviso, addAttempt, refresh } = useAvisos();
   const { empresas, setEmpresaDefaultResponsavel } = useAvisoEmpresas();
   const { ensure } = useOperatorName();
+  const { isAdmin } = useUserRole();
   const [params, setParams] = useSearchParams();
 
   const [empresaF, setEmpresaF] = useState(params.get('empresa') || 'all');
@@ -396,6 +402,36 @@ const AvisosListPage = () => {
                       </SelectContent>
                     </Select>
                     <Link to={`/avisos/${a.id}`}><Button size="sm" variant="ghost"><ExternalLink className="w-3 h-3" /></Button></Link>
+                    {isAdmin && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" title="Excluir aviso">
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Excluir este aviso?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              {a.employee_name} — {a.motivo} ({formatBR(a.due_date)}). Após excluir, este mesmo aviso poderá ser reimportado a partir de um novo PDF.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              onClick={async () => {
+                                const { error } = await deleteAviso(a.id);
+                                if (error) toast.error('Falha ao excluir: ' + error.message);
+                                else toast.success('Aviso excluído.');
+                              }}
+                            >
+                              Excluir
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
                   </div>
                 </div>
               </div>
