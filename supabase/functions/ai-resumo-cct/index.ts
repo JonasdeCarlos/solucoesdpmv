@@ -38,7 +38,9 @@ Deno.serve(async (req) => {
     const body = BodySchema.safeParse(await req.json());
     if (!body.success) return jsonResponse({ error: body.error.flatten().fieldErrors }, 400);
     const { text, pdf_base64 } = body.data;
-    const useVision = !text || text.trim().length < 120 || !looksLikeCct(text);
+    // Prefer text whenever available to avoid slow vision OCR (which often exceeds the 150s edge timeout).
+    const hasUsableText = !!text && text.trim().length >= 120;
+    const useVision = !hasUsableText;
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY missing");
 
@@ -87,11 +89,17 @@ Para campos não encontrados, retorne string vazia. Nunca invente CNPJ ou endere
       userContent.push({ type: "text", text: `<documento>\n${truncated}\n</documento>` });
     }
 
-    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    // Abort before the 150s edge function idle timeout so we return a friendly error instead of 504.
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 135_000);
+    let resp: Response;
+    try {
+      resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+      signal: controller.signal,
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: useVision ? "google/gemini-2.5-flash-lite" : "google/gemini-2.5-flash",
         temperature: 0,
         messages: [{ role: "user", content: userContent }],
         tools: [{
@@ -125,7 +133,17 @@ Para campos não encontrados, retorne string vazia. Nunca invente CNPJ ou endere
         }],
         tool_choice: { type: "function", function: { name: "save_cct" } }
       })
-    });
+      });
+    } catch (err) {
+      clearTimeout(timeoutId);
+      if (err instanceof Error && err.name === "AbortError") {
+        return jsonResponse({
+          error: "A análise da CCT excedeu o tempo limite. Tente enviar o texto extraído (cópia/colar) em vez do PDF, ou divida o documento.",
+        }, 504);
+      }
+      throw err;
+    }
+    clearTimeout(timeoutId);
 
     if (!resp.ok) {
       const t = await resp.text();
