@@ -14,6 +14,7 @@ import { useCargos, useEstruturaSalarial } from '@/hooks/useCargos';
 import { useCCTs } from '@/hooks/useSucessoCliente';
 import { generateCargosPdf } from '@/utils/sucessoCliente/cargosPdf';
 import { DebouncedInput } from '@/components/sucessoCliente/DebouncedField';
+import { extractPisosCCT } from '@/utils/sucessoCliente/pisosCCT';
 
 const NIVEIS = [
   { v:'operacional', l:'Operacional' },
@@ -43,97 +44,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
   const [filterNivel, setFilterNivel] = useState('all');
   const [busy, setBusy] = useState<string | null>(null);
 
-  // Pisos evidenciados nas CCTs ativas — extrai cada função específica com seu valor.
-  // Lida com formatos do tipo: "GRUPO I - Garçom (CBO 513405), Barman, Cozinheiro - R$ 1.750,00"
-  // e "Para Cozinheiro, Pizzaiolo, o piso salarial é de R$ 1.910,18".
-  const pisosCCT = useMemo(() => {
-    const out: { label: string; valor: number; ref: string; funcao?: string; grupo?: string }[] = [];
-    const active = (ccts || []).filter((c: any) => !c.deleted_at);
-    const parseV = (raw: string) => Number(raw.replace(/\./g, '').replace(',', '.'));
-    const limpar = (s: string) =>
-      s
-        .replace(/\([^)]*\)/g, ' ')              // remove "(CBO ...)"
-        .replace(/\bCBO\s*[\d.\-]+/gi, ' ')      // remove "CBO 12345"
-        .replace(/\s+/g, ' ')
-        .replace(/^[\s•·\-–—,;.:]+|[\s•·\-–—,;.:]+$/g, '')
-        .trim();
-    const isFuncao = (s: string) =>
-      s.length >= 3 &&
-      s.length <= 70 &&
-      /[A-Za-zÀ-ÿ]{3,}/.test(s) &&
-      !/^(GRUPO|PARA|O PISO|É DE|SERÃO|SERA|SALARIAL|CATEGORIA|TRABALHADORES?|MAIS|R\$)/i.test(s);
-
-    for (const c of active) {
-      const sind = c.sindicato || 'CCT';
-      const dataBase = c.data_base ? ` • data-base ${c.data_base}` : '';
-      const clauses = (c.ai_clauses || []) as any[];
-      for (const cl of clauses) {
-        const tit = String(cl?.titulo || '');
-        const desc = String(cl?.descricao || '');
-        const trecho = String(cl?.trecho_base || '');
-        const blob = `${tit}\n${desc}\n${trecho}`;
-        if (!/piso|salário\s+normativo|salario\s+normativo/i.test(blob)) continue;
-
-        // Extrai grupo (se houver)
-        const mGrupo = blob.match(/GRUPO\s+([IVXLCDM\d]+)/i);
-        const grupo = mGrupo ? `GRUPO ${mGrupo[1].toUpperCase()}` : '';
-
-        // Pega o(s) valor(es) R$
-        const reValor = /R\$\s*([\d.]+,\d{2}|\d+(?:,\d{2})?)/gi;
-        const valores = Array.from(blob.matchAll(reValor));
-        if (valores.length === 0) continue;
-
-        // Usa o trecho mais "limpo" (descricao + trecho_base) para extrair funções
-        const fonte = (desc + ' ' + trecho).replace(/\s+/g, ' ');
-        // Pega o trecho ANTES do primeiro R$ — geralmente a lista de funções
-        const idxRS = fonte.search(/R\$/i);
-        let antes = idxRS > 0 ? fonte.slice(0, idxRS) : fonte;
-        // Remove preâmbulos
-        antes = antes
-          .replace(/^.*?(GRUPO\s+[IVXLCDM\d]+\s*[-–—:]\s*)/i, '')
-          .replace(/^.*?\bPara\b\s*/i, '')
-          .replace(/,?\s*o\s+piso\s+salarial.*$/i, '')
-          .replace(/[-–—]\s*$/, '');
-
-        // Divide por vírgula, "e", ";", "/"
-        const partes = antes
-          .split(/,| e | ou |;|\//gi)
-          .map(limpar)
-          .filter(Boolean)
-          .filter(isFuncao);
-
-        // Valor principal = primeiro R$ encontrado
-        const v = parseV(valores[0][1]);
-        if (!isFinite(v) || v <= 0) continue;
-
-        if (partes.length === 0) {
-          // Fallback: título da cláusula
-          const rotulo = tit || 'Piso';
-          out.push({
-            grupo,
-            valor: v,
-            label: `${grupo ? grupo + ' • ' : ''}${rotulo} — R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (${sind})`,
-            ref: `${sind}${dataBase} — ${grupo || rotulo}`,
-          });
-        } else {
-          for (const funcao of partes) {
-            out.push({
-              funcao,
-              grupo,
-              valor: v,
-              label: `${funcao} — R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}${grupo ? ' • ' + grupo : ''} (${sind})`,
-              ref: `${sind}${dataBase} — ${funcao}${grupo ? ' • ' + grupo : ''}`,
-            });
-          }
-        }
-      }
-    }
-    // dedupe por label
-    const seen = new Set<string>();
-    return out
-      .filter(p => seen.has(p.label) ? false : (seen.add(p.label), true))
-      .sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'));
-  }, [ccts]);
+  const pisosCCT = useMemo(() => extractPisosCCT(ccts as any[]), [ccts]);
 
   const areas = useMemo(() => Array.from(new Set(items.map(i => i.area).filter(Boolean))), [items]);
   const filtered = items.filter(i =>
