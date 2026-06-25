@@ -429,6 +429,12 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
         </div>
         <div className="flex gap-2 flex-wrap">
           <Button onClick={openNew}><Plus className="w-4 h-4 mr-1"/>Novo cargo</Button>
+          <label>
+            <input type="file" accept="application/pdf,.pdf" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImportExtrato(f); e.currentTarget.value = ''; }} />
+            <Button asChild variant="outline" disabled={busy==='import'}>
+              <span className="cursor-pointer">{busy==='import' ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <Upload className="w-4 h-4 mr-2"/>}Importar Extrato (PDF)</span>
+            </Button>
+          </label>
           <Button variant="outline" onClick={sugerirEstrutura} disabled={busy==='estrutura'}>{busy==='estrutura' ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <Sparkles className="w-4 h-4 mr-2"/>}Sugerir Estrutura Salarial</Button>
           <Button variant="outline" onClick={gerarOrganograma} disabled={busy==='estrutura'}><Network className="w-4 h-4 mr-2"/>Gerar Organograma</Button>
           <Button variant="outline" onClick={()=>setOrgEditOpen(true)}><PencilIcon className="w-4 h-4 mr-2"/>Editar Organograma</Button>
