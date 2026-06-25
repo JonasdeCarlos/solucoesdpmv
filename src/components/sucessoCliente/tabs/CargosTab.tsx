@@ -249,11 +249,12 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
     });
   };
 
-  const addCriterio = (texto: string, cargo: string) => {
+  const addCriterio = (texto: string, cargo: string, nivelAlvo: string) => {
     const t = (texto || '').trim();
     if (!t) return;
     const c = (cargo || '').trim() || 'Geral (todos os cargos)';
-    const criterios_manuais = [ ...(estrutura?.criterios_manuais || []), { cargo: c, texto: t, created_at: new Date().toISOString() } ];
+    const nv = (nivelAlvo || '').trim() || 'Qualquer nível';
+    const criterios_manuais = [ ...(estrutura?.criterios_manuais || []), { cargo: c, nivel_alvo: nv, texto: t, created_at: new Date().toISOString() } ];
     saveEstrutura({
       faixas: estrutura?.faixas || [],
       escala_evolucao: estrutura?.escala_evolucao || [],
