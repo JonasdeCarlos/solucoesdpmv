@@ -668,6 +668,102 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={importOpen} onOpenChange={setImportOpen}>
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Importação do Extrato — análise por IA</DialogTitle></DialogHeader>
+          {busy === 'import' && !importResult && (
+            <div className="py-10 flex flex-col items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="w-6 h-6 animate-spin" />
+              Lendo extrato e identificando cargos, CBO e salários…
+            </div>
+          )}
+          {importResult && (
+            <div className="space-y-4 text-sm">
+              <div>
+                <div className="font-semibold mb-1">Cargos identificados ({importResult.cargos?.length || 0})</div>
+                <div className="border rounded-md overflow-hidden">
+                  <table className="w-full text-xs">
+                    <thead className="bg-muted"><tr>
+                      <th className="text-left p-2">Cargo</th><th className="text-left p-2">CBO</th>
+                      <th className="text-right p-2">Qtd</th><th className="text-right p-2">Sal. mín</th>
+                      <th className="text-right p-2">Sal. máx</th><th className="text-left p-2">Funcionários</th>
+                    </tr></thead>
+                    <tbody>
+                      {(importResult.cargos || []).map((g: any, i: number) => (
+                        <tr key={i} className="border-t">
+                          <td className="p-2 font-medium">{g.cargo}</td>
+                          <td className="p-2">{g.cbo || '—'}</td>
+                          <td className="p-2 text-right">{g.qtd}</td>
+                          <td className="p-2 text-right">R$ {Number(g.salario_min).toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
+                          <td className="p-2 text-right">R$ {Number(g.salario_max).toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
+                          <td className="p-2 text-muted-foreground">{(g.funcionarios || []).join(', ')}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {(importResult.inconsistencias || []).length > 0 && (
+                <div>
+                  <div className="font-semibold mb-1 flex items-center gap-2"><AlertTriangle className="w-4 h-4 text-amber-600"/>Inconsistências detectadas</div>
+                  <ul className="list-disc pl-5 space-y-1">
+                    {importResult.inconsistencias.map((it: any, i: number) => (
+                      <li key={i}><Badge variant="outline" className="mr-2">{it.tipo}</Badge>{it.descricao}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {(importResult.pcs || []).length > 0 && (
+                <div>
+                  <div className="font-semibold mb-1">PCS sugerido pela IA</div>
+                  <div className="border rounded-md overflow-hidden">
+                    <table className="w-full text-xs">
+                      <thead className="bg-muted"><tr>
+                        <th className="text-left p-2">Cargo</th><th className="text-left p-2">Área</th>
+                        <th className="text-left p-2">Nível</th><th className="text-right p-2">Inicial</th>
+                        <th className="text-right p-2">Referência</th><th className="text-left p-2">Justificativa</th>
+                      </tr></thead>
+                      <tbody>
+                        {importResult.pcs.map((p: any, i: number) => (
+                          <tr key={i} className="border-t">
+                            <td className="p-2 font-medium">{p.nome}</td>
+                            <td className="p-2">{p.area}</td>
+                            <td className="p-2">{p.nivel}</td>
+                            <td className="p-2 text-right">R$ {Number(p.salario_inicial||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
+                            <td className="p-2 text-right">R$ {Number(p.salario_referencia||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
+                            <td className="p-2 text-muted-foreground">{p.justificativa}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {(importResult.recomendacoes || []).length > 0 && (
+                <div>
+                  <div className="font-semibold mb-1">Recomendações</div>
+                  <ul className="list-disc pl-5 space-y-1">
+                    {importResult.recomendacoes.map((r: string, i: number) => <li key={i}>{r}</li>)}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter className="flex-wrap gap-2">
+            <Button variant="ghost" onClick={() => setImportOpen(false)}>Fechar</Button>
+            {importResult?.cargos?.length ? (
+              <Button variant="outline" onClick={importarCargosExtrato}>Importar cargos do extrato</Button>
+            ) : null}
+            {importResult?.pcs?.length ? (
+              <Button onClick={adotarPcsSugerido}><Sparkles className="w-4 h-4 mr-2"/>Adotar PCS sugerido</Button>
+            ) : null}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
