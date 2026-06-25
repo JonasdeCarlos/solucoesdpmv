@@ -57,6 +57,7 @@ export default function CCTTab({ client_id }: { client_id: string }) {
   const [deleteResponsible, setDeleteResponsible] = useState('');
   const [deleting, setDeleting] = useState(false);
   const [pdfView, setPdfView] = useState<{ url: string; name: string } | null>(null);
+  const [pdfLoadingPath, setPdfLoadingPath] = useState<string | null>(null);
   const [notifyBusy, setNotifyBusy] = useState(false);
 
   const pisosCCT = useMemo(() => extractPisosCCT(items as any[]), [items]);
@@ -190,17 +191,24 @@ export default function CCTTab({ client_id }: { client_id: string }) {
 
   const openPdf = async (c: any) => {
     if (!c.doc_path) { toast.error('Arquivo original não disponível.'); return; }
+    if (!String(c.doc_name || c.doc_path).toLowerCase().endsWith('.pdf')) {
+      toast.error('A visualização integrada está disponível apenas para arquivos PDF.');
+      return;
+    }
     try {
+      setPdfLoadingPath(c.doc_path);
       const { data, error } = await supabase.storage
         .from('cliente-dp-uploads')
-        .createSignedUrl(c.doc_path, 600);
-      if (error || !data?.signedUrl) throw error || new Error('arquivo não encontrado');
-      const w = window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
-      if (!w) {
-        toast.error('Pop-up bloqueado. Permita pop-ups para este site.');
-      }
+        .download(c.doc_path);
+      if (error || !data) throw error || new Error('arquivo não encontrado');
+      if (pdfView?.url) URL.revokeObjectURL(pdfView.url);
+      const pdfBlob = data.type === 'application/pdf' ? data : new Blob([data], { type: 'application/pdf' });
+      const url = URL.createObjectURL(pdfBlob);
+      setPdfView({ url, name: c.doc_name || 'CCT.pdf' });
     } catch (e: any) {
-      toast.error('Erro ao abrir PDF: ' + (e?.message || 'desconhecido'));
+      toast.error('Erro ao carregar PDF: ' + (e?.message || 'desconhecido'));
+    } finally {
+      setPdfLoadingPath(null);
     }
   };
 
@@ -288,7 +296,10 @@ export default function CCTTab({ client_id }: { client_id: string }) {
                   {c.validity_end && <Badge variant={alert ? 'destructive' : 'outline'}>Vence: {new Date(c.validity_end).toLocaleDateString('pt-BR')}{d!==null && ` (${d}d)`}</Badge>}
                   {alert && <AlertTriangle className="w-4 h-4 text-amber-500"/>}
                   <Button size="sm" variant="outline" onClick={()=>setView(c)}>Ver resumo</Button>
-                  <Button size="sm" variant="outline" onClick={()=>openPdf(c)}><Eye className="w-4 h-4 mr-1"/>Ver PDF</Button>
+                  <Button size="sm" variant="outline" onClick={()=>openPdf(c)} disabled={pdfLoadingPath === c.doc_path}>
+                    {pdfLoadingPath === c.doc_path ? <Loader2 className="w-4 h-4 mr-1 animate-spin"/> : <Eye className="w-4 h-4 mr-1"/>}
+                    Ver PDF
+                  </Button>
                   <Button size="sm" variant="destructive" onClick={()=>setDeleteTarget(c)}><Trash2 className="w-4 h-4"/></Button>
                 </div>
               </div>
@@ -349,7 +360,10 @@ export default function CCTTab({ client_id }: { client_id: string }) {
                 </div>
               </div>
               <div className="pt-1">
-                <Button size="sm" variant="outline" onClick={()=>openPdf(view)}><Eye className="w-4 h-4 mr-1"/>Abrir CCT na íntegra (PDF)</Button>
+                <Button size="sm" variant="outline" onClick={()=>openPdf(view)} disabled={pdfLoadingPath === view.doc_path}>
+                  {pdfLoadingPath === view.doc_path ? <Loader2 className="w-4 h-4 mr-1 animate-spin"/> : <Eye className="w-4 h-4 mr-1"/>}
+                  Abrir CCT na íntegra (PDF)
+                </Button>
               </div>
             </div>
             <h4 className="font-bold text-sm">Resumo</h4>
@@ -422,8 +436,9 @@ export default function CCTTab({ client_id }: { client_id: string }) {
             </DialogTitle>
           </DialogHeader>
           {pdfView && (
-            <iframe
+            <embed
               src={`${pdfView.url}#toolbar=1&view=FitH`}
+              type="application/pdf"
               title={pdfView.name}
               className="flex-1 w-full rounded border"
               style={{ minHeight: '60vh' }}
