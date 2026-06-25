@@ -626,6 +626,12 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-auto">
           <DialogHeader><DialogTitle>{draft.id ? 'Editar cargo' : 'Novo cargo'}</DialogTitle></DialogHeader>
+          <div className="flex justify-end mb-1">
+            <Button type="button" size="sm" variant="secondary" onClick={completarComIA} disabled={busy==='completar'}>
+              {busy==='completar' ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <Sparkles className="w-4 h-4 mr-2"/>}
+              Preencher campos vazios com IA
+            </Button>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             <div><Label className="text-xs">Nome do cargo</Label><Input value={draft.nome} onChange={e=>setDraft({...draft,nome:e.target.value})}/></div>
             <div><Label className="text-xs">CBO</Label><Input value={draft.cbo} onChange={e=>setDraft({...draft,cbo:e.target.value})}/></div>
