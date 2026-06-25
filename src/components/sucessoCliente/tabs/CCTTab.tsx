@@ -195,21 +195,23 @@ export default function CCTTab({ client_id }: { client_id: string }) {
       if (error || !data) throw error || new Error('arquivo não encontrado');
       const blob = new Blob([await data.arrayBuffer()], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
-      const win = window.open('', '_blank', 'noopener,noreferrer');
-      if (!win) {
-        // popup bloqueado — força download
-        const a = document.createElement('a');
-        a.href = url; a.download = c.doc_name || 'cct.pdf'; a.click();
-        setTimeout(() => URL.revokeObjectURL(url), 60_000);
-        toast.message('Popup bloqueado — PDF baixado.');
-        return;
-      }
-      win.document.write(`<!doctype html><title>${c.doc_name || 'CCT'}</title><style>html,body{margin:0;height:100%}</style><embed src="${url}#toolbar=1" type="application/pdf" style="width:100%;height:100%"/>`);
-      win.document.close();
-      setTimeout(() => URL.revokeObjectURL(url), 5 * 60_000);
+      setPdfView({ url, name: c.doc_name || 'CCT' });
     } catch (e: any) {
       toast.error('Erro ao abrir PDF: ' + (e?.message || 'desconhecido'));
     }
+  };
+
+  const notificarVencimentos = async () => {
+    setNotifyBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('cct-aviso-vencimento', { body: { client_id } });
+      if (error) throw error;
+      const r = data as any;
+      if (r?.error) throw new Error(r.error);
+      toast.success(r?.message || `Aviso enviado para ${r?.enviados || 0} destinatário(s).`);
+    } catch (e: any) {
+      toast.error('Falha ao notificar: ' + (e?.message || 'erro'));
+    } finally { setNotifyBusy(false); }
   };
 
   return (
