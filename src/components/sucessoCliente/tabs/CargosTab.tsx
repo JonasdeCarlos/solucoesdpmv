@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Sparkles, Plus, Trash2, Copy, Pencil, FileDown, Loader2, Network, X, Pencil as PencilIcon } from 'lucide-react';
+import { Sparkles, Plus, Trash2, Copy, Pencil, FileDown, Loader2, Network, X, Pencil as PencilIcon, Upload, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useCargos, useEstruturaSalarial } from '@/hooks/useCargos';
@@ -324,6 +324,79 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
 
   const [orgOpen, setOrgOpen] = useState(false);
   const [orgEditOpen, setOrgEditOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importResult, setImportResult] = useState<any>(null);
+
+  const handleImportExtrato = async (file: File) => {
+    if (!file) return;
+    setBusy('import');
+    setImportResult(null);
+    setImportOpen(true);
+    try {
+      const buf = await file.arrayBuffer();
+      let bin = '';
+      const bytes = new Uint8Array(buf);
+      const chunk = 0x8000;
+      for (let i = 0; i < bytes.length; i += chunk) {
+        bin += String.fromCharCode(...bytes.subarray(i, i + chunk));
+      }
+      const b64 = btoa(bin);
+      const { data, error } = await supabase.functions.invoke('cargos-importar-extrato', {
+        body: { pdf_base64: b64, mime: file.type || 'application/pdf', setor: cliente?.segmento || cliente?.cnae || '' },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setImportResult(data);
+      toast.success(`${data?.linhas?.length || 0} empregados extraídos.`);
+    } catch (e: any) {
+      toast.error('Falha ao importar: ' + e.message);
+      setImportOpen(false);
+    } finally { setBusy(null); }
+  };
+
+  const importarCargosExtrato = async () => {
+    if (!importResult?.cargos?.length) return;
+    const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();
+    const existentes = new Set(items.map(i => norm(i.nome)));
+    let criados = 0;
+    for (const g of importResult.cargos) {
+      if (existentes.has(norm(g.cargo))) continue;
+      await save({
+        nome: g.cargo, cbo: g.cbo || '', area: '', nivel: 'operacional',
+        descricao_sumaria: '', atividades: [],
+        requisitos: { escolaridade: '', experiencia: '', competencias: [] },
+        salario_atual: g.salario_max || g.salario_medio || null,
+        piso_salarial: g.salario_min || null,
+        piso_referencia: 'Importado do extrato',
+      });
+      criados++;
+    }
+    toast.success(`${criados} cargo(s) importado(s).`);
+    setImportOpen(false);
+  };
+
+  const adotarPcsSugerido = async () => {
+    const pcs = importResult?.pcs || [];
+    if (!pcs.length) return;
+    const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();
+    const existentes = new Set(items.map(i => norm(i.nome)));
+    let criados = 0;
+    for (const p of pcs) {
+      if (existentes.has(norm(p.nome))) continue;
+      await save({
+        nome: p.nome, cbo: p.cbo || '', area: p.area || '', nivel: p.nivel || 'analista',
+        descricao_sumaria: p.justificativa || '', atividades: [],
+        requisitos: { escolaridade: '', experiencia: '', competencias: [] },
+        salario_atual: p.salario_referencia || null,
+        piso_salarial: p.salario_inicial || null,
+        piso_referencia: 'PCS sugerido pela IA',
+      });
+      criados++;
+    }
+    toast.success(`${criados} cargo(s) adicionado(s) do PCS sugerido.`);
+    setImportOpen(false);
+  };
+
   const gerarOrganograma = async () => {
     if (!(estrutura?.organograma || []).length) {
       // se ainda não tem, dispara sugestão completa
