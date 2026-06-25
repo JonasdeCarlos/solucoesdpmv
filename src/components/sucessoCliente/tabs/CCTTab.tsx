@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -13,7 +13,6 @@ import { toast } from 'sonner';
 import * as pdfjs from 'pdfjs-dist';
 import pdfWorkerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { extractPisosCCT } from '@/utils/sucessoCliente/pisosCCT';
-import { useMemo } from 'react';
 
 (pdfjs as any).GlobalWorkerOptions.workerSrc = pdfWorkerSrc;
 
@@ -44,6 +43,95 @@ async function fileToBase64(file: File): Promise<string> {
   return btoa(bin);
 }
 
+function PdfCanvasViewer({ data }: { data: ArrayBuffer }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [status, setStatus] = useState('Carregando PDF…');
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    let loadingTask: any = null;
+
+    const renderPdf = async () => {
+      const container = containerRef.current;
+      if (!container) return;
+      container.innerHTML = '';
+      setError('');
+      setStatus('Carregando PDF…');
+
+      try {
+        loadingTask = (pdfjs as any).getDocument({ data: data.slice(0) });
+        const pdf = await loadingTask.promise;
+        if (cancelled) return;
+        setStatus(`Renderizando ${pdf.numPages} página(s)…`);
+
+        for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
+          if (cancelled) return;
+          const page = await pdf.getPage(pageNumber);
+          const baseViewport = page.getViewport({ scale: 1 });
+          const availableWidth = Math.max(320, Math.min(container.clientWidth || 920, 1120) - 24);
+          const scale = Math.min(1.75, Math.max(0.7, availableWidth / baseViewport.width));
+          const viewport = page.getViewport({ scale });
+          const outputScale = Math.max(1, window.devicePixelRatio || 1);
+
+          const wrapper = document.createElement('div');
+          wrapper.className = 'mx-auto mb-4 max-w-full rounded border bg-background p-2 shadow-sm';
+
+          const label = document.createElement('div');
+          label.className = 'mb-2 text-center text-xs text-muted-foreground';
+          label.textContent = `Página ${pageNumber} de ${pdf.numPages}`;
+
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.floor(viewport.width * outputScale);
+          canvas.height = Math.floor(viewport.height * outputScale);
+          canvas.style.width = `${Math.floor(viewport.width)}px`;
+          canvas.style.height = `${Math.floor(viewport.height)}px`;
+          canvas.style.maxWidth = '100%';
+          canvas.style.display = 'block';
+          canvas.style.margin = '0 auto';
+
+          wrapper.appendChild(label);
+          wrapper.appendChild(canvas);
+          container.appendChild(wrapper);
+
+          const context = canvas.getContext('2d');
+          if (!context) throw new Error('Não foi possível iniciar o renderizador do PDF.');
+          await page.render({
+            canvasContext: context,
+            viewport,
+            transform: outputScale !== 1 ? [outputScale, 0, 0, outputScale, 0, 0] : undefined,
+          }).promise;
+        }
+
+        if (!cancelled) setStatus('');
+      } catch (e: any) {
+        if (!cancelled) {
+          setStatus('');
+          setError(e?.message || 'Não foi possível renderizar o PDF.');
+        }
+      }
+    };
+
+    renderPdf();
+    return () => {
+      cancelled = true;
+      try { loadingTask?.destroy?.(); } catch { /* noop */ }
+    };
+  }, [data]);
+
+  return (
+    <div className="flex-1 min-h-0 overflow-auto rounded border bg-muted/20 p-3">
+      {(status || error) && (
+        <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
+          {status && <Loader2 className="h-4 w-4 animate-spin" />}
+          <span>{error || status}</span>
+        </div>
+      )}
+      <div ref={containerRef} className="mx-auto w-full" />
+    </div>
+  );
+}
+
 export default function CCTTab({ client_id }: { client_id: string }) {
   const { items, reload } = useCCTs(client_id);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -56,7 +144,7 @@ export default function CCTTab({ client_id }: { client_id: string }) {
   const [deleteReason, setDeleteReason] = useState('');
   const [deleteResponsible, setDeleteResponsible] = useState('');
   const [deleting, setDeleting] = useState(false);
-  const [pdfView, setPdfView] = useState<{ url: string; name: string } | null>(null);
+  const [pdfView, setPdfView] = useState<{ url: string; name: string; data: ArrayBuffer } | null>(null);
   const [pdfLoadingPath, setPdfLoadingPath] = useState<string | null>(null);
   const [notifyBusy, setNotifyBusy] = useState(false);
 
@@ -203,8 +291,9 @@ export default function CCTTab({ client_id }: { client_id: string }) {
       if (error || !data) throw error || new Error('arquivo não encontrado');
       if (pdfView?.url) URL.revokeObjectURL(pdfView.url);
       const pdfBlob = data.type === 'application/pdf' ? data : new Blob([data], { type: 'application/pdf' });
+      const arrayBuffer = await pdfBlob.arrayBuffer();
       const url = URL.createObjectURL(pdfBlob);
-      setPdfView({ url, name: c.doc_name || 'CCT.pdf' });
+      setPdfView({ url, name: c.doc_name || 'CCT.pdf', data: arrayBuffer });
     } catch (e: any) {
       toast.error('Erro ao carregar PDF: ' + (e?.message || 'desconhecido'));
     } finally {
@@ -436,13 +525,7 @@ export default function CCTTab({ client_id }: { client_id: string }) {
             </DialogTitle>
           </DialogHeader>
           {pdfView && (
-            <embed
-              src={`${pdfView.url}#toolbar=1&view=FitH`}
-              type="application/pdf"
-              title={pdfView.name}
-              className="flex-1 w-full rounded border"
-              style={{ minHeight: '60vh' }}
-            />
+            <PdfCanvasViewer data={pdfView.data} />
           )}
         </DialogContent>
       </Dialog>
