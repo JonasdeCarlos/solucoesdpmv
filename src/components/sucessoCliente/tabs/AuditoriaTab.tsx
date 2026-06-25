@@ -197,6 +197,54 @@ function AuditoriaDetail({ id, onBack }: { id: string; onBack: () => void }) {
     return Array.from(map.entries());
   }, [itens]);
 
+  const [addingArea, setAddingArea] = useState<string | null>(null);
+  const [novoTitulo, setNovoTitulo] = useState('');
+  const [novaDescricao, setNovaDescricao] = useState('');
+  const [novaAcao, setNovaAcao] = useState('');
+  const [addingIa, setAddingIa] = useState(false);
+
+  const adicionarApontamento = async (area: string, withIa: boolean) => {
+    const titulo = novoTitulo.trim();
+    if (!titulo) { toast.error('Informe o título do apontamento.'); return; }
+    setAddingIa(true);
+    try {
+      let descricao = novaDescricao.trim();
+      let acao = novaAcao.trim();
+      if (withIa) {
+        try {
+          const { data } = await supabase.functions.invoke('auditoria-gerar-roteiro', {
+            body: {
+              empresa: auditoria.empresa_nome,
+              cnpj: auditoria.cnpj,
+              objetivo: `Detalhar APENAS o tema: "${titulo}" (área: ${area}). Retorne 1 área com 1 item somente.`,
+            },
+          });
+          const it = data?.areas?.[0]?.itens?.[0];
+          if (it) {
+            if (!descricao) descricao = it.descricao || '';
+            if (!acao) acao = it.acao || '';
+          }
+        } catch { /* segue sem IA */ }
+      }
+      const lista = itens.filter(i => i.area === area);
+      const area_ordem = areas.findIndex(([a]) => a === area);
+      await insertItens([{
+        area,
+        area_ordem: area_ordem >= 0 ? area_ordem : areas.length,
+        item_ordem: lista.length,
+        titulo,
+        descricao,
+        acao,
+        status: 'pendente',
+      }]);
+      setNovoTitulo(''); setNovaDescricao(''); setNovaAcao('');
+      setAddingArea(null);
+      toast.success('Apontamento adicionado.');
+    } catch (e: any) {
+      toast.error('Falha ao adicionar: ' + e.message);
+    } finally { setAddingIa(false); }
+  };
+
   const sugerirTema = async () => {
     const titulo = sugTitulo.trim();
     const area = (sugArea.trim() || 'Tema sugerido');
@@ -402,6 +450,29 @@ function AuditoriaDetail({ id, onBack }: { id: string; onBack: () => void }) {
                   {list.map((it: any) => (
                     <TopicoCard key={it.id} it={it} updateItem={updateItem} deleteItem={deleteItem}/>
                   ))}
+                  {addingArea === area ? (
+                    <Card className="border-dashed">
+                      <CardContent className="p-3 space-y-2">
+                        <div className="text-xs font-semibold">Novo apontamento em "{area}"</div>
+                        <div><Label className="text-xs">Título</Label><Input value={novoTitulo} onChange={e=>setNovoTitulo(e.target.value)} placeholder="Ex.: Controle de banco de horas"/></div>
+                        <div><Label className="text-xs">Descrição (opcional)</Label><Textarea rows={2} value={novaDescricao} onChange={e=>setNovaDescricao(e.target.value)} placeholder="A IA complementa se vazio"/></div>
+                        <div><Label className="text-xs">Ação esperada (opcional)</Label><Textarea rows={2} value={novaAcao} onChange={e=>setNovaAcao(e.target.value)}/></div>
+                        <div className="flex justify-end gap-2">
+                          <Button size="sm" variant="ghost" onClick={()=>{ setAddingArea(null); setNovoTitulo(''); setNovaDescricao(''); setNovaAcao(''); }} disabled={addingIa}>Cancelar</Button>
+                          <Button size="sm" variant="outline" onClick={()=>adicionarApontamento(area, true)} disabled={addingIa}>
+                            {addingIa ? <Loader2 className="w-4 h-4 mr-1 animate-spin"/> : <Sparkles className="w-4 h-4 mr-1"/>}Adicionar com IA
+                          </Button>
+                          <Button size="sm" onClick={()=>adicionarApontamento(area, false)} disabled={addingIa}>
+                            <Plus className="w-4 h-4 mr-1"/>Adicionar
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <Button size="sm" variant="outline" className="w-full border-dashed" onClick={()=>setAddingArea(area)}>
+                      <Plus className="w-4 h-4 mr-1"/>Adicionar apontamento em "{area}"
+                    </Button>
+                  )}
                 </AccordionContent>
               </AccordionItem>
             );
