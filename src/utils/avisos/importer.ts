@@ -72,6 +72,38 @@ export async function processarImportacao(opts: {
         .maybeSingle();
       if (existing) {
         const existingRow = existing as any;
+        // Se não restou nenhum aviso desta importação (todos foram excluídos
+        // pelo admin), liberamos a reimportação removendo o registro antigo e
+        // tentando novamente com o mesmo hash.
+        const { count } = await supabase
+          .from('avisos' as any)
+          .select('id', { count: 'exact', head: true })
+          .eq('import_id', existingRow.id);
+        if (!count || count === 0) {
+          await supabase.from('aviso_imports' as any).delete().eq('id', existingRow.id);
+          const retry = await supabase
+            .from('aviso_imports' as any)
+            .insert({
+              file_name: fileName,
+              file_path: filePath,
+              emission_date: emissionIso,
+              emission_time: parsed.emission_time || null,
+              total_empresas: parsed.empresas.length,
+              total_rows: 0,
+              novos: 0,
+              ignorados: 0,
+              errors_json: [],
+              imported_by: importedBy,
+              file_hash: fileHash || null,
+            } as any)
+            .select()
+            .single();
+          if (!retry.error && retry.data) {
+            (importRow as any) = retry.data;
+          } else {
+            throw new Error(retry.error?.message || 'Falha ao reimportar PDF');
+          }
+        } else {
         return {
           importId: existingRow.id,
           totalEmpresas: existingRow.total_empresas ?? parsed.empresas.length,
@@ -80,9 +112,12 @@ export async function processarImportacao(opts: {
           ignorados: existingRow.total_rows ?? 0,
           errors: [...(existingRow.errors_json || []), { stage: 'duplicate_file', msg: 'Arquivo PDF já importado anteriormente.' }],
         };
+        }
       }
     }
-    throw new Error(impErr?.message || 'Falha ao criar import');
+    if (!importRow) {
+      throw new Error(impErr?.message || 'Falha ao criar import');
+    }
   }
   const importId = (importRow as any).id;
 
