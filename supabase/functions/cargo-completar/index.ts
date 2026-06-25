@@ -1,5 +1,56 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 
+const normalizarTexto = (s: string) => (s || "")
+  .toLowerCase()
+  .normalize("NFD")
+  .replace(/[\u0300-\u036f]/g, "");
+
+function fallbackCargo(atuais: any) {
+  const nome = atuais.nome || "Cargo";
+  const n = normalizarTexto(nome);
+  const isRocadeira = n.includes("rocadeira") || n.includes("rocador") || n.includes("roçadeira");
+  const isOperacional = isRocadeira || n.includes("operador") || n.includes("auxiliar") || n.includes("servente") || n.includes("jardineiro");
+  const area = isRocadeira ? "Operacional / Manutenção de Áreas Verdes" : isOperacional ? "Operacional" : "Administrativo / Operacional";
+  const nivel = isOperacional ? "operacional" : "tecnico";
+  const cbo = isRocadeira ? "622020" : "000000";
+  const descricao = isRocadeira
+    ? "Executar serviços de roçada, capina e manutenção de áreas verdes, utilizando roçadeira costal e ferramentas auxiliares. Preparar, operar e conservar os equipamentos de trabalho, observando normas de segurança, uso correto de EPIs e orientações do encarregado. Apoiar a limpeza, organização e descarte adequado dos resíduos gerados nas frentes de serviço."
+    : `Executar atividades inerentes ao cargo de ${nome}, seguindo procedimentos internos, normas de segurança e orientações da liderança imediata. Apoiar a rotina operacional da área, mantendo organização, qualidade e registro das atividades realizadas.`;
+  const atividades = isRocadeira ? [
+    "Operar roçadeira costal e equipamentos correlatos para manutenção de áreas verdes",
+    "Realizar roçada, capina, limpeza e acabamento em terrenos, jardins e áreas externas",
+    "Preparar o equipamento antes do uso, verificando combustível, lâmina, fio de corte e condições gerais",
+    "Utilizar equipamentos de proteção individual durante toda a execução das atividades",
+    "Isolar e sinalizar a área de trabalho quando necessário para proteção de terceiros",
+    "Recolher e destinar resíduos vegetais conforme orientação da empresa",
+    "Executar limpeza básica e conservação preventiva da roçadeira e ferramentas auxiliares",
+    "Comunicar falhas, riscos, necessidade de manutenção ou reposição de materiais ao responsável",
+    "Apoiar outras atividades de conservação, jardinagem e limpeza externa quando solicitado",
+  ] : [
+    `Executar as rotinas operacionais relacionadas ao cargo de ${nome}`,
+    "Cumprir procedimentos internos e orientações da liderança imediata",
+    "Manter o local de trabalho organizado, limpo e seguro",
+    "Registrar ou comunicar ocorrências, não conformidades e necessidades de apoio",
+    "Utilizar corretamente ferramentas, materiais e equipamentos disponibilizados",
+    "Atender padrões de qualidade, produtividade e segurança da empresa",
+    "Apoiar atividades correlatas sempre que compatíveis com a função",
+    "Zelar pela conservação dos recursos e equipamentos sob sua responsabilidade",
+  ];
+  return {
+    nome,
+    cbo,
+    area,
+    nivel,
+    descricao_sumaria: descricao,
+    atividades,
+    requisitos: {
+      escolaridade: isRocadeira ? "Ensino fundamental, preferencialmente completo." : "Escolaridade compatível com as exigências da função.",
+      experiencia: isRocadeira ? "Experiência prática com roçadeira costal, jardinagem, limpeza externa ou atividades similares." : "Experiência anterior na função ou em atividades correlatas será considerada diferencial.",
+      competencias: isRocadeira ? ["Atenção à segurança", "Responsabilidade", "Disciplina operacional", "Zelo por equipamentos", "Trabalho em equipe", "Organização", "Resistência física"] : ["Responsabilidade", "Organização", "Comunicação", "Atenção a procedimentos", "Trabalho em equipe", "Proatividade"],
+    },
+  };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
@@ -74,8 +125,8 @@ Responda SOMENTE com JSON válido neste formato (sem markdown, sem comentários)
         response_format: { type: "json_object" },
       }),
     });
-    if (r.status === 429) return new Response(JSON.stringify({ error: "Limite de requisições da IA atingido. Tente novamente em instantes." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    if (r.status === 402) return new Response(JSON.stringify({ error: "Créditos de IA esgotados." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (r.status === 429) return new Response(JSON.stringify({ ...fallbackCargo(atuais), campos_vazios: camposParaPreencher, fallback: true, observacao: "A IA atingiu o limite momentâneo; foi aplicado preenchimento técnico automático." }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (r.status === 402 || r.status === 403) return new Response(JSON.stringify({ ...fallbackCargo(atuais), campos_vazios: camposParaPreencher, fallback: true, observacao: "A IA está indisponível por limite de créditos; foi aplicado preenchimento técnico automático." }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     if (!r.ok) {
       const detail = await r.text();
       console.error("cargo-completar AI error", r.status, detail.slice(0, 500));
