@@ -109,6 +109,48 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
     } finally { setBusy(null); }
   };
 
+  const completarComIA = async () => {
+    if (!draft.nome?.trim()) return toast.error('Informe ao menos o nome do cargo.');
+    setBusy('completar');
+    try {
+      const { data, error } = await supabase.functions.invoke('cargo-completar', {
+        body: { cargo: draft, empresa: cliente?.nome },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      const isEmptyStr = (v: any) => !v || (typeof v === 'string' && !v.trim());
+      const isEmptyArr = (v: any) => !Array.isArray(v) || v.length === 0;
+      setDraft((d: any) => {
+        const reqAtual = d.requisitos || {};
+        const reqIA = data?.requisitos || {};
+        let preenchidos = 0;
+        const next: any = { ...d };
+        const tryFillStr = (k: string, val: any) => {
+          if (isEmptyStr(d[k]) && !isEmptyStr(val)) { next[k] = val; preenchidos++; }
+        };
+        const tryFillArr = (k: string, val: any) => {
+          if (isEmptyArr(d[k]) && Array.isArray(val) && val.length) { next[k] = val; preenchidos++; }
+        };
+        tryFillStr('cbo', data?.cbo);
+        tryFillStr('area', data?.area);
+        tryFillStr('nivel', data?.nivel);
+        tryFillStr('descricao_sumaria', data?.descricao_sumaria);
+        tryFillArr('atividades', data?.atividades);
+        const novoReq = { ...reqAtual };
+        if (isEmptyStr(reqAtual.escolaridade) && !isEmptyStr(reqIA.escolaridade)) { novoReq.escolaridade = reqIA.escolaridade; preenchidos++; }
+        if (isEmptyStr(reqAtual.experiencia) && !isEmptyStr(reqIA.experiencia)) { novoReq.experiencia = reqIA.experiencia; preenchidos++; }
+        if (isEmptyArr(reqAtual.competencias) && Array.isArray(reqIA.competencias) && reqIA.competencias.length) { novoReq.competencias = reqIA.competencias; preenchidos++; }
+        next.requisitos = novoReq;
+        setTimeout(() => {
+          if (preenchidos === 0) toast.info('Todos os campos já estavam preenchidos.');
+          else toast.success(`${preenchidos} campo(s) preenchido(s) pela IA.`);
+        }, 0);
+        return next;
+      });
+    } catch (e: any) { toast.error('Falha: ' + e.message); }
+    finally { setBusy(null); }
+  };
+
   const salvar = async () => {
     if (!draft.nome) return toast.error('Informe o nome do cargo.');
     const payload = {
