@@ -238,6 +238,34 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
     });
   };
 
+  const recalcularFaixas = () => {
+    const escala = (estrutura?.escala_evolucao || []) as any[];
+    if (!escala.length) return toast.error('Sem escala de evolução para recalcular.');
+    const faixas = (estrutura?.faixas || []).map((f: any) => {
+      const niveis = (f.niveis || []) as any[];
+      if (niveis.length < 2) return f;
+      const inicial = Number(niveis[0]?.valor) || 0;
+      const pctInicial = Number(escala[0]?.percentual_base) || 0;
+      if (!inicial || !pctInicial) return f;
+      const ref = inicial * (100 / pctInicial);
+      const novos = niveis.map((n: any, j: number) => {
+        if (j === 0) return n;
+        const pct = Number(escala[j]?.percentual_base);
+        if (!pct) return n;
+        return { ...n, valor: Math.round(ref * pct) / 100 };
+      });
+      return { ...f, niveis: novos };
+    });
+    saveEstrutura({
+      faixas,
+      escala_evolucao: estrutura?.escala_evolucao || [],
+      cargos_sugeridos: estrutura?.cargos_sugeridos || [],
+      organograma: estrutura?.organograma || [],
+      criterios_manuais: estrutura?.criterios_manuais || [],
+    });
+    toast.success('Faixas recalculadas pela escala de evolução.');
+  };
+
   const removeSugestao = (idx: number) => {
     const cargos_sugeridos = (estrutura?.cargos_sugeridos || []).filter((_:any,i:number)=> i!==idx);
     saveEstrutura({
