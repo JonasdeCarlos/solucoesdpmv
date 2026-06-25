@@ -191,22 +191,30 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
   const updateNivel = (faixaIdx: number, nivelIdx: number, valor: number) => {
     const faixas = (estrutura?.faixas || []).map((f: any, i: number) => {
       if (i !== faixaIdx) return f;
-      let niveis = (f.niveis || []).map((n: any, j: number) => j === nivelIdx ? { ...n, valor } : n);
-      // Cascata: ao alterar a PRIMEIRA faixa/nível (Inicial), recalcula as seguintes
-      // mantendo a proporção atual entre níveis (ou usando escala_evolucao quando disponível).
+      const original = (f.niveis || []) as any[];
+      const oldInicial = Number(original[0]?.valor) || 0;
+      let niveis = original.map((n: any, j: number) => j === nivelIdx ? { ...n, valor } : n);
+      // Cascata: ao alterar o nível Inicial (idx 0), reaplica a mesma razão
+      // (novoInicial / inicialAnterior) nos demais níveis, preservando a curva atual.
+      // Se não há histórico (inicialAnterior=0), usa escala_evolucao quando disponível.
       if (nivelIdx === 0 && niveis.length > 1 && valor > 0) {
-        const escala = (estrutura?.escala_evolucao || []) as any[];
-        const baseInicialPct = escala[0]?.percentual_base;
-        const ref = valor * (baseInicialPct ? 100 / Number(baseInicialPct) : (niveis[niveis.length-1].valor / Math.max(1, niveis[0].valor)));
-        niveis = niveis.map((n: any, j: number) => {
-          if (j === 0) return { ...n, valor };
-          const pct = escala[j]?.percentual_base;
-          if (pct) return { ...n, valor: Math.round(ref * Number(pct)) / 100 };
-          // fallback proporcional linear entre Inicial(valor) e Referência atual
-          const last = niveis[niveis.length - 1]?.valor || ref;
-          const t = j / (niveis.length - 1);
-          return { ...n, valor: Math.round((valor + (last - valor) * t) * 100) / 100 };
-        });
+        if (oldInicial > 0) {
+          const ratio = valor / oldInicial;
+          niveis = niveis.map((n: any, j: number) =>
+            j === 0 ? n : { ...n, valor: Math.round(Number(n.valor || 0) * ratio * 100) / 100 }
+          );
+        } else {
+          const escala = (estrutura?.escala_evolucao || []) as any[];
+          const baseInicialPct = escala[0]?.percentual_base;
+          if (baseInicialPct) {
+            const ref = valor * (100 / Number(baseInicialPct));
+            niveis = niveis.map((n: any, j: number) => {
+              if (j === 0) return n;
+              const pct = escala[j]?.percentual_base;
+              return pct ? { ...n, valor: Math.round(ref * Number(pct)) / 100 } : n;
+            });
+          }
+        }
       }
       return { ...f, niveis };
     });
@@ -241,10 +249,11 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
     });
   };
 
-  const addCriterio = (texto: string) => {
+  const addCriterio = (texto: string, cargo: string) => {
     const t = (texto || '').trim();
     if (!t) return;
-    const criterios_manuais = [ ...(estrutura?.criterios_manuais || []), { texto: t, created_at: new Date().toISOString() } ];
+    const c = (cargo || '').trim() || 'Geral (todos os cargos)';
+    const criterios_manuais = [ ...(estrutura?.criterios_manuais || []), { cargo: c, texto: t, created_at: new Date().toISOString() } ];
     saveEstrutura({
       faixas: estrutura?.faixas || [],
       escala_evolucao: estrutura?.escala_evolucao || [],
@@ -529,6 +538,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
             ) : null}
             <CriteriosManuaisBlock
               criterios={(estrutura?.criterios_manuais || []) as any[]}
+              cargos={items}
               onAdd={addCriterio}
               onRemove={removeCriterio}
             />
@@ -867,15 +877,36 @@ function OrgChart({ nodes, cadastrados }: { nodes: any[]; cadastrados: string[] 
   );
 }
 
-function CriteriosManuaisBlock({ criterios, onAdd, onRemove }: { criterios: any[]; onAdd: (t: string) => void; onRemove: (i: number) => void }) {
+function CriteriosManuaisBlock({ criterios, cargos, onAdd, onRemove }: { criterios: any[]; cargos: any[]; onAdd: (t: string, cargo: string) => void; onRemove: (i: number) => void }) {
   const [v, setV] = useState('');
+  const [cargoSel, setCargoSel] = useState<string>('__all__');
+  const submit = () => {
+    const cargoNome = cargoSel === '__all__' ? 'Geral (todos os cargos)' : cargoSel;
+    onAdd(v, cargoNome);
+    setV('');
+  };
   return (
     <div className="pt-2 border-t">
       <div className="text-sm font-semibold mb-1">Critérios manuais para evolução salarial</div>
-      <p className="text-[11px] text-muted-foreground mb-2">Adicione critérios complementares aos sugeridos pela IA (ex.: avaliação de desempenho semestral, certificações específicas, tempo mínimo no nível). Serão incluídos no relatório final.</p>
-      <div className="flex gap-2 mb-2">
-        <Input placeholder="Ex.: Tempo mínimo de 12 meses no nível anterior" value={v} onChange={e=>setV(e.target.value)} onKeyDown={e=>{ if(e.key==='Enter'){ onAdd(v); setV(''); } }} />
-        <Button type="button" onClick={()=>{ onAdd(v); setV(''); }}><Plus className="w-4 h-4"/></Button>
+      <p className="text-[11px] text-muted-foreground mb-2">Adicione critérios complementares aos sugeridos pela IA (ex.: avaliação de desempenho semestral, certificações específicas, tempo mínimo no nível). Informe a qual cargo o critério se refere. Serão incluídos no relatório final.</p>
+      <div className="flex flex-wrap gap-2 mb-2 items-end">
+        <div className="min-w-[200px]">
+          <Label className="text-xs">Cargo de referência</Label>
+          <Select value={cargoSel} onValueChange={setCargoSel}>
+            <SelectTrigger><SelectValue/></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Geral (todos os cargos)</SelectItem>
+              {cargos.map((c:any) => (
+                <SelectItem key={c.id} value={c.nome}>{c.nome}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex-1 min-w-[260px]">
+          <Label className="text-xs">Critério</Label>
+          <Input placeholder="Ex.: Tempo mínimo de 12 meses no nível anterior" value={v} onChange={e=>setV(e.target.value)} onKeyDown={e=>{ if(e.key==='Enter') submit(); }} />
+        </div>
+        <Button type="button" onClick={submit}><Plus className="w-4 h-4 mr-1"/>Adicionar</Button>
       </div>
       {criterios.length === 0 ? (
         <p className="text-xs text-muted-foreground">Nenhum critério manual cadastrado.</p>
@@ -883,7 +914,10 @@ function CriteriosManuaisBlock({ criterios, onAdd, onRemove }: { criterios: any[
         <ul className="space-y-1">
           {criterios.map((c: any, i: number) => (
             <li key={i} className="flex items-center justify-between gap-2 text-sm border rounded p-2">
-              <span>{c.texto || c}</span>
+              <span>
+                <Badge variant="outline" className="mr-2">{c.cargo || 'Geral (todos os cargos)'}</Badge>
+                {c.texto || c}
+              </span>
               <Button size="icon" variant="ghost" onClick={()=>onRemove(i)}><X className="w-4 h-4 text-destructive"/></Button>
             </li>
           ))}

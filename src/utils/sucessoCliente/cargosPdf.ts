@@ -134,7 +134,9 @@ export async function generateCargosPdf(params: {
   if (cms.length) {
     section('Critérios Manuais para Evolução Salarial');
     for (const c of cms) {
-      para(`• ${c?.texto || c}`);
+      const cargo = c?.cargo || 'Geral (todos os cargos)';
+      const texto = c?.texto || c;
+      para(`• [${cargo}] ${texto}`);
     }
   }
 
