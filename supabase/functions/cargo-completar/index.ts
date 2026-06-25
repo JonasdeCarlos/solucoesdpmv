@@ -20,25 +20,39 @@ Deno.serve(async (req) => {
       entrevista: cargo?.entrevista || "",
     };
 
+    const isEmptyStr = (v: any) => !v || (typeof v === "string" && !v.trim());
+    const isEmptyArr = (v: any) => !Array.isArray(v) || v.length === 0;
+    const vazios: string[] = [];
+    if (isEmptyStr(atuais.cbo)) vazios.push("cbo");
+    if (isEmptyStr(atuais.area)) vazios.push("area");
+    if (isEmptyStr(atuais.nivel)) vazios.push("nivel");
+    if (isEmptyStr(atuais.descricao_sumaria)) vazios.push("descricao_sumaria");
+    if (isEmptyArr(atuais.atividades)) vazios.push("atividades");
+    if (isEmptyStr(atuais.escolaridade)) vazios.push("requisitos.escolaridade");
+    if (isEmptyStr(atuais.experiencia)) vazios.push("requisitos.experiencia");
+    if (isEmptyArr(atuais.competencias)) vazios.push("requisitos.competencias");
+
     const prompt = `Você é um especialista em descrição de cargos (RH/DP). Empresa: ${empresa || "n/i"}.
-Receberá os campos atuais de um cargo. PRESERVE todos os valores já preenchidos exatamente como estão.
-Preencha SOMENTE os campos vazios, de forma técnica, coerente com o nome do cargo e CBO informados, e consistente entre si.
+Cargo: "${atuais.nome}"${atuais.cbo ? ` (CBO ${atuais.cbo})` : ""}.
 
-Regras:
-- Não sobrescreva valores existentes. Se "atividades" já tem itens, devolva o MESMO array.
-- Se "competencias" já tem itens, devolva o MESMO array.
-- "cbo" deve ter 6 dígitos quando sugerido.
-- "nivel" deve ser um de: operacional, tecnico, especialista, supervisao, coordenacao, gerencia, diretoria.
-- "atividades": mínimo 8 itens, verbo no infinitivo + complemento (só preencha se estiver vazio).
-- "descricao_sumaria": até 5 linhas, linguagem formal (só preencha se estiver vazia).
-- "escolaridade", "experiencia": frases curtas.
-- "competencias": 5 a 10 itens.
+SUA TAREFA: gerar conteúdo técnico e detalhado APENAS para os campos listados abaixo como VAZIOS. Não invente conteúdo para campos preenchidos — para esses, devolva exatamente o valor atual.
 
-CAMPOS ATUAIS (JSON):
+CAMPOS VAZIOS QUE VOCÊ DEVE PREENCHER OBRIGATORIAMENTE: ${vazios.length ? vazios.join(", ") : "(nenhum — devolva os valores atuais)"}.
+
+Regras de conteúdo:
+- "cbo": 6 dígitos plausíveis para o cargo.
+- "area": departamento (ex.: Produção, Operacional, Administrativo, Comercial, RH).
+- "nivel": exatamente um de operacional | tecnico | especialista | supervisao | coordenacao | gerencia | diretoria.
+- "descricao_sumaria": 3 a 5 linhas, linguagem formal.
+- "atividades": array com 8 a 12 itens, cada item começando com verbo no infinitivo.
+- "requisitos.escolaridade" e "requisitos.experiencia": frases curtas, objetivas.
+- "requisitos.competencias": array com 5 a 10 itens (substantivos/skills).
+
+CAMPOS ATUAIS (JSON, fonte da verdade para o que JÁ está preenchido):
 ${JSON.stringify(atuais, null, 2)}
 
-Retorne SOMENTE JSON no formato:
-{"nome":"...","cbo":"...","area":"...","nivel":"...","descricao_sumaria":"...","atividades":["..."],"requisitos":{"escolaridade":"...","experiencia":"...","competencias":["..."]}}`;
+Responda SOMENTE com JSON válido neste formato (sem markdown, sem comentários):
+{"nome":"","cbo":"","area":"","nivel":"","descricao_sumaria":"","atividades":[],"requisitos":{"escolaridade":"","experiencia":"","competencias":[]}}`;
 
     const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
