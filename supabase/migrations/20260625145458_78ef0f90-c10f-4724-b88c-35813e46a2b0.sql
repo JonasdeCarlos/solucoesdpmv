@@ -1,0 +1,1 @@
+ALTER TABLE public.estruturas_salariais ADD COLUMN IF NOT EXISTS criterios_manuais jsonb NOT NULL DEFAULT '[]'::jsonb;

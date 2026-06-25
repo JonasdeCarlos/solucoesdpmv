@@ -2364,6 +2364,7 @@ export type Database = {
           cargos_sugeridos: Json
           client_id: string
           created_at: string
+          criterios_manuais: Json
           escala_evolucao: Json
           faixas: Json
           id: string
@@ -2374,6 +2375,7 @@ export type Database = {
           cargos_sugeridos?: Json
           client_id: string
           created_at?: string
+          criterios_manuais?: Json
           escala_evolucao?: Json
           faixas?: Json
           id?: string
@@ -2384,6 +2386,7 @@ export type Database = {
           cargos_sugeridos?: Json
           client_id?: string
           created_at?: string
+          criterios_manuais?: Json
           escala_evolucao?: Json
           faixas?: Json
           id?: string
