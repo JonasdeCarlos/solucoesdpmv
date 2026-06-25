@@ -403,9 +403,28 @@ export default function CCTTab({ client_id }: { client_id: string }) {
 
       <Dialog open={!!pdfView} onOpenChange={(o)=>{ if(!o && pdfView){ URL.revokeObjectURL(pdfView.url); setPdfView(null); } }}>
         <DialogContent className="max-w-5xl h-[85vh] flex flex-col">
-          <DialogHeader><DialogTitle>{pdfView?.name}</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between gap-2">
+              <span className="truncate">{pdfView?.name}</span>
+              {pdfView && (
+                <a
+                  href={pdfView.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs underline text-primary shrink-0"
+                >
+                  Abrir em nova aba
+                </a>
+              )}
+            </DialogTitle>
+          </DialogHeader>
           {pdfView && (
-            <embed src={`${pdfView.url}#toolbar=1`} type="application/pdf" className="flex-1 w-full rounded border" />
+            <iframe
+              src={`${pdfView.url}#toolbar=1&view=FitH`}
+              title={pdfView.name}
+              className="flex-1 w-full rounded border"
+              style={{ minHeight: '60vh' }}
+            />
           )}
         </DialogContent>
       </Dialog>
