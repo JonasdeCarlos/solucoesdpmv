@@ -104,15 +104,20 @@ const toBase64 = (buf: Uint8Array) => {
   return btoa(bin);
 };
 
-const MOTIVO_ROW_PATTERN = String.raw`(?:CONTRATO\s+(?:DE\s+)?EXPERI[ÊE]NCIA(?:\s+PRORROG[A-ZÀ-ÿ\s.]*)?|EXPERI[ÊE]NCIA(?:\s+PRORROG[A-ZÀ-ÿ\s.]*)?|AVISO\s+PR[ÉE]VIO(?:\s+DE\s+RESCIS[AÃ]O)?|MONITORAMENTO\s+DE\s+SA[ÚU]DE\s*-?\s*(?:ADMISSIONAL|PERI[ÓO]DICO)|VENCIMENTO\s+DE\s+2[ºO]?\s*F[ÉE]RIAS|RETORNO\s+DE\s+AFASTAMENTO\s+DE\s+DOEN[ÇC]A|PROGRAMA[CÇ][AÃ]O\s+DE\s+F[ÉE]RIAS|ENVIO\s+RESCIS[AÃ]O\s+ESOCIAL)`;
+// Cada motivo inclui seus possíveis sufixos completos para que a regex de linha
+// não precise "esticar" o nome do funcionário e acabe atravessando linhas seguintes.
+const MOTIVO_ROW_PATTERN = String.raw`(?:CONTRATO\s+(?:DE\s+)?EXPERI[ÊE]NCIA(?:\s+(?:1[ºO]\s*VENCIMENTO|PRORROG[A-ZÀ-ÿ]*))?|EXPERI[ÊE]NCIA(?:\s+(?:1[ºO]\s*VENCIMENTO|PRORROG[A-ZÀ-ÿ]*))?|AVISO\s+PR[ÉE]VIO(?:\s+DE\s+RESCIS[AÃ]O)?|MONITORAMENTO\s+DE\s+SA[ÚU]DE\s*-?\s*(?:ADMISSIONAL|PERI[ÓO]DICO)|VENCIMENTO\s+DE\s+2[ºO]?\s*F[ÉE]RIAS|RETORNO\s+DE\s+AFASTAMENTO\s+DE\s+DOEN[ÇC]A|PROGRAMA[CÇ][AÃ]O\s+DE\s+F[ÉE]RIAS|ENVIO\s+RESCIS[AÃ]O\s+ESOCIAL)`;
 
 function addRowsFromChunk(company: ParsedPdf['empresas'][number], chunkText: string) {
   const clean = chunkText
     .replace(/\s+/g, ' ')
     .replace(/\b(?:Código|Codigo)\s+Funcion[áa]rio\s+Motivo\s+Vencimento\s+Limite\b/gi, ' ')
     .trim();
+  // O nome do funcionário NÃO pode conter dígitos — isso impede que, quando o motivo
+  // de uma linha não casa, a regex atravesse a linha seguinte e capture o código do
+  // próximo funcionário dentro do nome (causando avisos agrupados / contaminados).
   const rowRegex = new RegExp(
-    String.raw`(?:^|\s)(\d{1,8})\s+(.{3,120}?)\s+(${MOTIVO_ROW_PATTERN})\s+(\d{2}\/\d{2}\/\d{4}(?:\s*-\s*Limite\s*\d{2}\/\d{2}\/\d{4})?)`,
+    String.raw`(?:^|\s)(\d{1,8})\s+([^\d]{3,100}?)\s+(${MOTIVO_ROW_PATTERN})\s+(\d{2}\/\d{2}\/\d{4}(?:\s*-\s*Limite\s*\d{2}\/\d{2}\/\d{4})?)`,
     'giu',
   );
   for (const match of clean.matchAll(rowRegex)) {
