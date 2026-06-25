@@ -3,7 +3,7 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
-    const { cargo, empresa } = await req.json();
+    const { cargo, empresa, campos_vazios } = await req.json();
     const KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!KEY) throw new Error("LOVABLE_API_KEY missing");
 
@@ -20,8 +20,10 @@ Deno.serve(async (req) => {
       entrevista: cargo?.entrevista || "",
     };
 
-    const isEmptyStr = (v: any) => !v || (typeof v === "string" && !v.trim());
-    const isEmptyArr = (v: any) => !Array.isArray(v) || v.length === 0;
+    const isEmptyStr = (v: any) =>
+      v === null || v === undefined ||
+      (typeof v === "string" && ["", "null", "undefined", "—", "-"].includes(v.trim().toLowerCase()));
+    const isEmptyArr = (v: any) => !Array.isArray(v) || v.map((x) => String(x || "").trim()).filter(Boolean).length === 0;
     const vazios: string[] = [];
     if (isEmptyStr(atuais.cbo)) vazios.push("cbo");
     if (isEmptyStr(atuais.area)) vazios.push("area");
@@ -32,12 +34,21 @@ Deno.serve(async (req) => {
     if (isEmptyStr(atuais.experiencia)) vazios.push("requisitos.experiencia");
     if (isEmptyArr(atuais.competencias)) vazios.push("requisitos.competencias");
 
+    const camposVaziosInformados = Array.isArray(campos_vazios) ? campos_vazios.map((c) => String(c || "").trim()).filter(Boolean) : [];
+    const camposParaPreencher = camposVaziosInformados.length ? camposVaziosInformados : vazios;
+
+    if (!camposParaPreencher.length) {
+      return new Response(JSON.stringify({ ...atuais, requisitos: { escolaridade: atuais.escolaridade, experiencia: atuais.experiencia, competencias: atuais.competencias }, campos_vazios: [] }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const prompt = `Você é um especialista em descrição de cargos (RH/DP). Empresa: ${empresa || "n/i"}.
 Cargo: "${atuais.nome}"${atuais.cbo ? ` (CBO ${atuais.cbo})` : ""}.
 
 SUA TAREFA: gerar conteúdo técnico e detalhado APENAS para os campos listados abaixo como VAZIOS. Não invente conteúdo para campos preenchidos — para esses, devolva exatamente o valor atual.
 
-CAMPOS VAZIOS QUE VOCÊ DEVE PREENCHER OBRIGATORIAMENTE: ${vazios.length ? vazios.join(", ") : "(nenhum — devolva os valores atuais)"}.
+CAMPOS VAZIOS QUE VOCÊ DEVE PREENCHER OBRIGATORIAMENTE: ${camposParaPreencher.join(", ")}.
 
 Regras de conteúdo:
 - "cbo": 6 dígitos plausíveis para o cargo.
@@ -56,7 +67,7 @@ Responda SOMENTE com JSON válido neste formato (sem markdown, sem comentários)
 
     const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${KEY}`, "Content-Type": "application/json" },
+      headers: { "Lovable-API-Key": KEY, "X-Lovable-AIG-SDK": "edge-function", "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [{ role: "user", content: prompt }],
@@ -65,9 +76,31 @@ Responda SOMENTE com JSON válido neste formato (sem markdown, sem comentários)
     });
     if (r.status === 429) return new Response(JSON.stringify({ error: "Limite de requisições da IA atingido. Tente novamente em instantes." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     if (r.status === 402) return new Response(JSON.stringify({ error: "Créditos de IA esgotados." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (!r.ok) {
+      const detail = await r.text();
+      console.error("cargo-completar AI error", r.status, detail.slice(0, 500));
+      return new Response(JSON.stringify({ error: "A IA não conseguiu completar o cargo neste momento." }), { status: r.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
     const data = await r.json();
-    const content = data.choices?.[0]?.message?.content || "{}";
-    return new Response(content, { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    const raw = data.choices?.[0]?.message?.content || "{}";
+    const content = raw.replace(/^```(?:json)?\s*/i, "").replace(/```$/i, "").trim() || "{}";
+    let parsed: any = {};
+    try { parsed = JSON.parse(content); } catch { parsed = {}; }
+    const normalized = {
+      nome: atuais.nome,
+      cbo: isEmptyStr(atuais.cbo) ? (parsed.cbo || "") : atuais.cbo,
+      area: isEmptyStr(atuais.area) ? (parsed.area || "") : atuais.area,
+      nivel: isEmptyStr(atuais.nivel) ? (parsed.nivel || "") : atuais.nivel,
+      descricao_sumaria: isEmptyStr(atuais.descricao_sumaria) ? (parsed.descricao_sumaria || "") : atuais.descricao_sumaria,
+      atividades: isEmptyArr(atuais.atividades) && Array.isArray(parsed.atividades) ? parsed.atividades.map((s: any) => String(s || "").trim()).filter(Boolean) : atuais.atividades,
+      requisitos: {
+        escolaridade: isEmptyStr(atuais.escolaridade) ? (parsed.requisitos?.escolaridade || "") : atuais.escolaridade,
+        experiencia: isEmptyStr(atuais.experiencia) ? (parsed.requisitos?.experiencia || "") : atuais.experiencia,
+        competencias: isEmptyArr(atuais.competencias) && Array.isArray(parsed.requisitos?.competencias) ? parsed.requisitos.competencias.map((s: any) => String(s || "").trim()).filter(Boolean) : atuais.competencias,
+      },
+      campos_vazios: camposParaPreencher,
+    };
+    return new Response(JSON.stringify(normalized), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : String(e) }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }

@@ -34,6 +34,42 @@ const emptyDraft = () => ({
   piso_referencia: '',
 });
 
+const sanitizeCargoDraft = (cargo: any = {}) => ({
+  ...emptyDraft(),
+  ...cargo,
+  nome: cargo?.nome || '',
+  cbo: cargo?.cbo || '',
+  area: cargo?.area || '',
+  nivel: cargo?.nivel || '',
+  entrevista: cargo?.entrevista || '',
+  descricao_sumaria: cargo?.descricao_sumaria || '',
+  atividades: Array.isArray(cargo?.atividades) ? cargo.atividades.map((s: any) => String(s || '').trim()).filter(Boolean) : [],
+  requisitos: {
+    escolaridade: cargo?.requisitos?.escolaridade || '',
+    experiencia: cargo?.requisitos?.experiencia || '',
+    competencias: Array.isArray(cargo?.requisitos?.competencias) ? cargo.requisitos.competencias.map((s: any) => String(s || '').trim()).filter(Boolean) : [],
+  },
+  salario_atual: cargo?.salario_atual ?? '',
+  piso_salarial: cargo?.piso_salarial ?? '',
+  piso_referencia: cargo?.piso_referencia || '',
+});
+
+const getCamposVaziosCargo = (cargo: any) => {
+  const req = cargo?.requisitos || {};
+  const isEmptyStr = (v: any) => v === null || v === undefined || (typeof v === 'string' && ['', 'null', 'undefined', '—', '-'].includes(v.trim().toLowerCase()));
+  const isEmptyArr = (v: any) => !Array.isArray(v) || v.map((x) => String(x || '').trim()).filter(Boolean).length === 0;
+  const fields: string[] = [];
+  if (isEmptyStr(cargo?.cbo)) fields.push('cbo');
+  if (isEmptyStr(cargo?.area)) fields.push('area');
+  if (isEmptyStr(cargo?.nivel)) fields.push('nivel');
+  if (isEmptyStr(cargo?.descricao_sumaria)) fields.push('descricao_sumaria');
+  if (isEmptyArr(cargo?.atividades)) fields.push('atividades');
+  if (isEmptyStr(req.escolaridade)) fields.push('requisitos.escolaridade');
+  if (isEmptyStr(req.experiencia)) fields.push('requisitos.experiencia');
+  if (isEmptyArr(req.competencias)) fields.push('requisitos.competencias');
+  return fields;
+};
+
 export default function CargosTab({ client_id, cliente }: { client_id: string; cliente: any }) {
   const { items, save, remove, duplicate } = useCargos(client_id);
   const { estrutura, save: saveEstrutura } = useEstruturaSalarial(client_id);
@@ -53,7 +89,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
   );
 
   const openNew = () => { setDraft(emptyDraft()); setOpen(true); };
-  const openEdit = (c: any) => { setDraft({ ...c, atividades: c.atividades||[], requisitos: c.requisitos||{} }); setOpen(true); };
+  const openEdit = (c: any) => { setDraft(sanitizeCargoDraft(c)); setOpen(true); };
 
   const formalizar = async () => {
     if (!draft.entrevista?.trim()) return toast.error('Informe o texto da entrevista.');
@@ -111,15 +147,17 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
 
   const completarComIA = async () => {
     if (!draft.nome?.trim()) return toast.error('Informe ao menos o nome do cargo.');
+    const camposVazios = getCamposVaziosCargo(draft);
+    if (!camposVazios.length) return toast.info('Todos os campos já estavam preenchidos.');
     setBusy('completar');
     try {
       const { data, error } = await supabase.functions.invoke('cargo-completar', {
-        body: { cargo: draft, empresa: cliente?.nome },
+        body: { cargo: draft, empresa: cliente?.nome, campos_vazios: camposVazios },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      const isEmptyStr = (v: any) => !v || (typeof v === 'string' && !v.trim());
-      const isEmptyArr = (v: any) => !Array.isArray(v) || v.length === 0;
+      const isEmptyStr = (v: any) => v === null || v === undefined || (typeof v === 'string' && ['', 'null', 'undefined', '—', '-'].includes(v.trim().toLowerCase()));
+      const isEmptyArr = (v: any) => !Array.isArray(v) || v.map((x) => String(x || '').trim()).filter(Boolean).length === 0;
       setDraft((d: any) => {
         const reqAtual = d.requisitos || {};
         const reqIA = data?.requisitos || {};
@@ -129,7 +167,8 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
           if (isEmptyStr(d[k]) && !isEmptyStr(val)) { next[k] = val; preenchidos++; }
         };
         const tryFillArr = (k: string, val: any) => {
-          if (isEmptyArr(d[k]) && Array.isArray(val) && val.length) { next[k] = val; preenchidos++; }
+          const clean = Array.isArray(val) ? val.map((s: any) => String(s || '').trim()).filter(Boolean) : [];
+          if (isEmptyArr(d[k]) && clean.length) { next[k] = clean; preenchidos++; }
         };
         tryFillStr('cbo', data?.cbo);
         tryFillStr('area', data?.area);
@@ -139,10 +178,11 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
         const novoReq = { ...reqAtual };
         if (isEmptyStr(reqAtual.escolaridade) && !isEmptyStr(reqIA.escolaridade)) { novoReq.escolaridade = reqIA.escolaridade; preenchidos++; }
         if (isEmptyStr(reqAtual.experiencia) && !isEmptyStr(reqIA.experiencia)) { novoReq.experiencia = reqIA.experiencia; preenchidos++; }
-        if (isEmptyArr(reqAtual.competencias) && Array.isArray(reqIA.competencias) && reqIA.competencias.length) { novoReq.competencias = reqIA.competencias; preenchidos++; }
+        const competenciasIA = Array.isArray(reqIA.competencias) ? reqIA.competencias.map((s: any) => String(s || '').trim()).filter(Boolean) : [];
+        if (isEmptyArr(reqAtual.competencias) && competenciasIA.length) { novoReq.competencias = competenciasIA; preenchidos++; }
         next.requisitos = novoReq;
         setTimeout(() => {
-          if (preenchidos === 0) toast.info('Todos os campos já estavam preenchidos.');
+          if (preenchidos === 0) toast.error('A IA não retornou conteúdo para os campos vazios. Tente novamente em instantes.');
           else toast.success(`${preenchidos} campo(s) preenchido(s) pela IA.`);
         }, 0);
         return next;
