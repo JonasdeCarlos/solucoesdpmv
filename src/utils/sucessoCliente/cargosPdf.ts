@@ -19,7 +19,10 @@ export async function generateCargosPdf(params: {
   incluirOrganograma?: boolean;
   criteriosManuais?: any[];
 }) {
-  const { empresa, consultor, cargos, estrutura, introducao, consideracoes, incluirOrganograma = true, criteriosManuais } = params;
+  const { empresa, consultor, cargos, estrutura, incluirOrganograma = true, criteriosManuais } = params;
+  const replaceManuais = (s?: string) => (s || '').replace(/crit[eé]rios?\s+manuai?s/gi, 'critérios específicos').replace(/manuai?s\s+para\s+evolu/gi, 'específicos para evolu');
+  const introducao = replaceManuais(params.introducao);
+  const consideracoes = replaceManuais(params.consideracoes);
   const branding = await loadBranding();
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
   const W = doc.internal.pageSize.getWidth();
