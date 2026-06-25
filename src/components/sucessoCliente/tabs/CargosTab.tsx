@@ -460,7 +460,12 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
 
       {estrutura && (estrutura.faixas?.length || estrutura.escala_evolucao?.length) ? (
         <Card>
-          <CardHeader><CardTitle className="text-base">Estrutura Salarial</CardTitle></CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-base">Estrutura Salarial</CardTitle>
+            <Button size="sm" variant="outline" onClick={recalcularFaixas}>
+              <Sparkles className="w-4 h-4 mr-1"/>Recalcular faixas
+            </Button>
+          </CardHeader>
           <CardContent className="space-y-4">
             {(() => {
               const faixas = estrutura.faixas || [];
@@ -568,6 +573,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
             <CriteriosManuaisBlock
               criterios={(estrutura?.criterios_manuais || []) as any[]}
               cargos={items}
+              etapas={(estrutura?.escala_evolucao || []).map((e: any) => e.etapa).filter(Boolean)}
               onAdd={addCriterio}
               onRemove={removeCriterio}
             />
