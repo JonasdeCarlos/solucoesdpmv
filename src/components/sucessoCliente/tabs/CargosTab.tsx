@@ -14,6 +14,7 @@ import { useCargos, useEstruturaSalarial } from '@/hooks/useCargos';
 import { useCCTs } from '@/hooks/useSucessoCliente';
 import { generateCargosPdf } from '@/utils/sucessoCliente/cargosPdf';
 import { DebouncedInput } from '@/components/sucessoCliente/DebouncedField';
+import { extractPisosCCT } from '@/utils/sucessoCliente/pisosCCT';
 
 const NIVEIS = [
   { v:'operacional', l:'Operacional' },
@@ -43,97 +44,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
   const [filterNivel, setFilterNivel] = useState('all');
   const [busy, setBusy] = useState<string | null>(null);
 
-  // Pisos evidenciados nas CCTs ativas — extrai cada função específica com seu valor.
-  // Lida com formatos do tipo: "GRUPO I - Garçom (CBO 513405), Barman, Cozinheiro - R$ 1.750,00"
-  // e "Para Cozinheiro, Pizzaiolo, o piso salarial é de R$ 1.910,18".
-  const pisosCCT = useMemo(() => {
-    const out: { label: string; valor: number; ref: string; funcao?: string; grupo?: string }[] = [];
-    const active = (ccts || []).filter((c: any) => !c.deleted_at);
-    const parseV = (raw: string) => Number(raw.replace(/\./g, '').replace(',', '.'));
-    const limpar = (s: string) =>
-      s
-        .replace(/\([^)]*\)/g, ' ')              // remove "(CBO ...)"
-        .replace(/\bCBO\s*[\d.\-]+/gi, ' ')      // remove "CBO 12345"
-        .replace(/\s+/g, ' ')
-        .replace(/^[\s•·\-–—,;.:]+|[\s•·\-–—,;.:]+$/g, '')
-        .trim();
-    const isFuncao = (s: string) =>
-      s.length >= 3 &&
-      s.length <= 70 &&
-      /[A-Za-zÀ-ÿ]{3,}/.test(s) &&
-      !/^(GRUPO|PARA|O PISO|É DE|SERÃO|SERA|SALARIAL|CATEGORIA|TRABALHADORES?|MAIS|R\$)/i.test(s);
-
-    for (const c of active) {
-      const sind = c.sindicato || 'CCT';
-      const dataBase = c.data_base ? ` • data-base ${c.data_base}` : '';
-      const clauses = (c.ai_clauses || []) as any[];
-      for (const cl of clauses) {
-        const tit = String(cl?.titulo || '');
-        const desc = String(cl?.descricao || '');
-        const trecho = String(cl?.trecho_base || '');
-        const blob = `${tit}\n${desc}\n${trecho}`;
-        if (!/piso|salário\s+normativo|salario\s+normativo/i.test(blob)) continue;
-
-        // Extrai grupo (se houver)
-        const mGrupo = blob.match(/GRUPO\s+([IVXLCDM\d]+)/i);
-        const grupo = mGrupo ? `GRUPO ${mGrupo[1].toUpperCase()}` : '';
-
-        // Pega o(s) valor(es) R$
-        const reValor = /R\$\s*([\d.]+,\d{2}|\d+(?:,\d{2})?)/gi;
-        const valores = Array.from(blob.matchAll(reValor));
-        if (valores.length === 0) continue;
-
-        // Usa o trecho mais "limpo" (descricao + trecho_base) para extrair funções
-        const fonte = (desc + ' ' + trecho).replace(/\s+/g, ' ');
-        // Pega o trecho ANTES do primeiro R$ — geralmente a lista de funções
-        const idxRS = fonte.search(/R\$/i);
-        let antes = idxRS > 0 ? fonte.slice(0, idxRS) : fonte;
-        // Remove preâmbulos
-        antes = antes
-          .replace(/^.*?(GRUPO\s+[IVXLCDM\d]+\s*[-–—:]\s*)/i, '')
-          .replace(/^.*?\bPara\b\s*/i, '')
-          .replace(/,?\s*o\s+piso\s+salarial.*$/i, '')
-          .replace(/[-–—]\s*$/, '');
-
-        // Divide por vírgula, "e", ";", "/"
-        const partes = antes
-          .split(/,| e | ou |;|\//gi)
-          .map(limpar)
-          .filter(Boolean)
-          .filter(isFuncao);
-
-        // Valor principal = primeiro R$ encontrado
-        const v = parseV(valores[0][1]);
-        if (!isFinite(v) || v <= 0) continue;
-
-        if (partes.length === 0) {
-          // Fallback: título da cláusula
-          const rotulo = tit || 'Piso';
-          out.push({
-            grupo,
-            valor: v,
-            label: `${grupo ? grupo + ' • ' : ''}${rotulo} — R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (${sind})`,
-            ref: `${sind}${dataBase} — ${grupo || rotulo}`,
-          });
-        } else {
-          for (const funcao of partes) {
-            out.push({
-              funcao,
-              grupo,
-              valor: v,
-              label: `${funcao} — R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}${grupo ? ' • ' + grupo : ''} (${sind})`,
-              ref: `${sind}${dataBase} — ${funcao}${grupo ? ' • ' + grupo : ''}`,
-            });
-          }
-        }
-      }
-    }
-    // dedupe por label
-    const seen = new Set<string>();
-    return out
-      .filter(p => seen.has(p.label) ? false : (seen.add(p.label), true))
-      .sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'));
-  }, [ccts]);
+  const pisosCCT = useMemo(() => extractPisosCCT(ccts as any[]), [ccts]);
 
   const areas = useMemo(() => Array.from(new Set(items.map(i => i.area).filter(Boolean))), [items]);
   const filtered = items.filter(i =>
@@ -260,7 +171,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
         introducao = data?.introducao_metodologia || '';
         consideracoes = data?.consideracoes_finais || '';
       } catch {}
-      await generateCargosPdf({ empresa: cliente?.nome || '—', cargos: items, estrutura, introducao, consideracoes, incluirOrganograma });
+      await generateCargosPdf({ empresa: cliente?.nome || '—', cargos: items, estrutura, introducao, consideracoes, incluirOrganograma, criteriosManuais: (estrutura?.criterios_manuais || []) as any[] });
       toast.success('PDF gerado.');
     } catch (e:any) { toast.error('Falha: '+e.message); }
     finally { setBusy(null); }
@@ -273,13 +184,30 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
       escala_evolucao: estrutura?.escala_evolucao || [],
       cargos_sugeridos: estrutura?.cargos_sugeridos || [],
       organograma: estrutura?.organograma || [],
+      criterios_manuais: estrutura?.criterios_manuais || [],
     });
   };
 
   const updateNivel = (faixaIdx: number, nivelIdx: number, valor: number) => {
     const faixas = (estrutura?.faixas || []).map((f: any, i: number) => {
       if (i !== faixaIdx) return f;
-      const niveis = (f.niveis || []).map((n: any, j: number) => j === nivelIdx ? { ...n, valor } : n);
+      let niveis = (f.niveis || []).map((n: any, j: number) => j === nivelIdx ? { ...n, valor } : n);
+      // Cascata: ao alterar a PRIMEIRA faixa/nível (Inicial), recalcula as seguintes
+      // mantendo a proporção atual entre níveis (ou usando escala_evolucao quando disponível).
+      if (nivelIdx === 0 && niveis.length > 1 && valor > 0) {
+        const escala = (estrutura?.escala_evolucao || []) as any[];
+        const baseInicialPct = escala[0]?.percentual_base;
+        const ref = valor * (baseInicialPct ? 100 / Number(baseInicialPct) : (niveis[niveis.length-1].valor / Math.max(1, niveis[0].valor)));
+        niveis = niveis.map((n: any, j: number) => {
+          if (j === 0) return { ...n, valor };
+          const pct = escala[j]?.percentual_base;
+          if (pct) return { ...n, valor: Math.round(ref * Number(pct)) / 100 };
+          // fallback proporcional linear entre Inicial(valor) e Referência atual
+          const last = niveis[niveis.length - 1]?.valor || ref;
+          const t = j / (niveis.length - 1);
+          return { ...n, valor: Math.round((valor + (last - valor) * t) * 100) / 100 };
+        });
+      }
       return { ...f, niveis };
     });
     saveEstrutura({
@@ -287,6 +215,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
       escala_evolucao: estrutura?.escala_evolucao || [],
       cargos_sugeridos: estrutura?.cargos_sugeridos || [],
       organograma: estrutura?.organograma || [],
+      criterios_manuais: estrutura?.criterios_manuais || [],
     });
   };
 
@@ -297,6 +226,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
       escala_evolucao: estrutura?.escala_evolucao || [],
       cargos_sugeridos: estrutura?.cargos_sugeridos || [],
       organograma: estrutura?.organograma || [],
+      criterios_manuais: estrutura?.criterios_manuais || [],
     });
   };
 
@@ -307,6 +237,30 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
       escala_evolucao: estrutura?.escala_evolucao || [],
       cargos_sugeridos,
       organograma: estrutura?.organograma || [],
+      criterios_manuais: estrutura?.criterios_manuais || [],
+    });
+  };
+
+  const addCriterio = (texto: string) => {
+    const t = (texto || '').trim();
+    if (!t) return;
+    const criterios_manuais = [ ...(estrutura?.criterios_manuais || []), { texto: t, created_at: new Date().toISOString() } ];
+    saveEstrutura({
+      faixas: estrutura?.faixas || [],
+      escala_evolucao: estrutura?.escala_evolucao || [],
+      cargos_sugeridos: estrutura?.cargos_sugeridos || [],
+      organograma: estrutura?.organograma || [],
+      criterios_manuais,
+    });
+  };
+  const removeCriterio = (idx: number) => {
+    const criterios_manuais = (estrutura?.criterios_manuais || []).filter((_:any,i:number)=> i!==idx);
+    saveEstrutura({
+      faixas: estrutura?.faixas || [],
+      escala_evolucao: estrutura?.escala_evolucao || [],
+      cargos_sugeridos: estrutura?.cargos_sugeridos || [],
+      organograma: estrutura?.organograma || [],
+      criterios_manuais,
     });
   };
 
@@ -411,6 +365,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
       escala_evolucao: estrutura?.escala_evolucao || [],
       cargos_sugeridos: estrutura?.cargos_sugeridos || [],
       organograma,
+      criterios_manuais: estrutura?.criterios_manuais || [],
     });
   };
 
@@ -572,6 +527,11 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
                 </div>
               </div>
             ) : null}
+            <CriteriosManuaisBlock
+              criterios={(estrutura?.criterios_manuais || []) as any[]}
+              onAdd={addCriterio}
+              onRemove={removeCriterio}
+            />
           </CardContent>
         </Card>
       ) : null}
@@ -903,6 +863,32 @@ function OrgChart({ nodes, cadastrados }: { nodes: any[]; cadastrados: string[] 
       <div className="flex gap-6 justify-center items-start">
         {roots.map(renderNode)}
       </div>
+    </div>
+  );
+}
+
+function CriteriosManuaisBlock({ criterios, onAdd, onRemove }: { criterios: any[]; onAdd: (t: string) => void; onRemove: (i: number) => void }) {
+  const [v, setV] = useState('');
+  return (
+    <div className="pt-2 border-t">
+      <div className="text-sm font-semibold mb-1">Critérios manuais para evolução salarial</div>
+      <p className="text-[11px] text-muted-foreground mb-2">Adicione critérios complementares aos sugeridos pela IA (ex.: avaliação de desempenho semestral, certificações específicas, tempo mínimo no nível). Serão incluídos no relatório final.</p>
+      <div className="flex gap-2 mb-2">
+        <Input placeholder="Ex.: Tempo mínimo de 12 meses no nível anterior" value={v} onChange={e=>setV(e.target.value)} onKeyDown={e=>{ if(e.key==='Enter'){ onAdd(v); setV(''); } }} />
+        <Button type="button" onClick={()=>{ onAdd(v); setV(''); }}><Plus className="w-4 h-4"/></Button>
+      </div>
+      {criterios.length === 0 ? (
+        <p className="text-xs text-muted-foreground">Nenhum critério manual cadastrado.</p>
+      ) : (
+        <ul className="space-y-1">
+          {criterios.map((c: any, i: number) => (
+            <li key={i} className="flex items-center justify-between gap-2 text-sm border rounded p-2">
+              <span>{c.texto || c}</span>
+              <Button size="icon" variant="ghost" onClick={()=>onRemove(i)}><X className="w-4 h-4 text-destructive"/></Button>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

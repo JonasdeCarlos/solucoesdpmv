@@ -12,6 +12,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import * as pdfjs from 'pdfjs-dist';
 import pdfWorkerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import { extractPisosCCT } from '@/utils/sucessoCliente/pisosCCT';
+import { useMemo } from 'react';
 
 (pdfjs as any).GlobalWorkerOptions.workerSrc = pdfWorkerSrc;
 
@@ -54,6 +56,10 @@ export default function CCTTab({ client_id }: { client_id: string }) {
   const [deleteReason, setDeleteReason] = useState('');
   const [deleteResponsible, setDeleteResponsible] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [pdfView, setPdfView] = useState<{ url: string; name: string } | null>(null);
+  const [notifyBusy, setNotifyBusy] = useState(false);
+
+  const pisosCCT = useMemo(() => extractPisosCCT(items as any[]), [items]);
 
   const errorMessage = (e: any) => {
     const contextError = e?.context?.error;
@@ -189,21 +195,23 @@ export default function CCTTab({ client_id }: { client_id: string }) {
       if (error || !data) throw error || new Error('arquivo não encontrado');
       const blob = new Blob([await data.arrayBuffer()], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
-      const win = window.open('', '_blank', 'noopener,noreferrer');
-      if (!win) {
-        // popup bloqueado — força download
-        const a = document.createElement('a');
-        a.href = url; a.download = c.doc_name || 'cct.pdf'; a.click();
-        setTimeout(() => URL.revokeObjectURL(url), 60_000);
-        toast.message('Popup bloqueado — PDF baixado.');
-        return;
-      }
-      win.document.write(`<!doctype html><title>${c.doc_name || 'CCT'}</title><style>html,body{margin:0;height:100%}</style><embed src="${url}#toolbar=1" type="application/pdf" style="width:100%;height:100%"/>`);
-      win.document.close();
-      setTimeout(() => URL.revokeObjectURL(url), 5 * 60_000);
+      setPdfView({ url, name: c.doc_name || 'CCT' });
     } catch (e: any) {
       toast.error('Erro ao abrir PDF: ' + (e?.message || 'desconhecido'));
     }
+  };
+
+  const notificarVencimentos = async () => {
+    setNotifyBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('cct-aviso-vencimento', { body: { client_id } });
+      if (error) throw error;
+      const r = data as any;
+      if (r?.error) throw new Error(r.error);
+      toast.success(r?.message || `Aviso enviado para ${r?.enviados || 0} destinatário(s).`);
+    } catch (e: any) {
+      toast.error('Falha ao notificar: ' + (e?.message || 'erro'));
+    } finally { setNotifyBusy(false); }
   };
 
   return (
@@ -225,7 +233,42 @@ export default function CCTTab({ client_id }: { client_id: string }) {
         <Button type="button" variant="outline" onClick={openReplicaAll}>
           <Copy className="w-4 h-4 mr-1"/>Usar CCT de outra empresa
         </Button>
+        <Button type="button" variant="outline" onClick={notificarVencimentos} disabled={notifyBusy}>
+          {notifyBusy ? <Loader2 className="w-4 h-4 mr-1 animate-spin"/> : <AlertTriangle className="w-4 h-4 mr-1"/>}
+          Avisar vencimento por e-mail
+        </Button>
       </CardContent></Card>
+
+      {pisosCCT.length > 0 && (
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-2">
+              <div className="font-bold text-sm">Pisos por cargo evidenciados na CCT ({pisosCCT.length})</div>
+              <span className="text-[11px] text-muted-foreground">Reaproveitados automaticamente na aba Cargos &amp; Salários.</span>
+            </div>
+            <div className="overflow-auto">
+              <table className="w-full text-xs border">
+                <thead className="bg-muted"><tr>
+                  <th className="p-2 text-left">Cargo / Função</th>
+                  <th className="p-2 text-left">Grupo</th>
+                  <th className="p-2 text-right">Piso (R$)</th>
+                  <th className="p-2 text-left">Referência</th>
+                </tr></thead>
+                <tbody>
+                  {pisosCCT.map((p, i) => (
+                    <tr key={i} className="border-t">
+                      <td className="p-2 font-medium">{p.funcao || '—'}</td>
+                      <td className="p-2">{p.grupo || '—'}</td>
+                      <td className="p-2 text-right">{p.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                      <td className="p-2 text-muted-foreground">{p.ref}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="space-y-2">
         {items.filter((c: any) => !c.deleted_at).map(c => {
@@ -355,6 +398,15 @@ export default function CCTTab({ client_id }: { client_id: string }) {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!pdfView} onOpenChange={(o)=>{ if(!o && pdfView){ URL.revokeObjectURL(pdfView.url); setPdfView(null); } }}>
+        <DialogContent className="max-w-5xl h-[85vh] flex flex-col">
+          <DialogHeader><DialogTitle>{pdfView?.name}</DialogTitle></DialogHeader>
+          {pdfView && (
+            <embed src={`${pdfView.url}#toolbar=1`} type="application/pdf" className="flex-1 w-full rounded border" />
+          )}
         </DialogContent>
       </Dialog>
     </div>

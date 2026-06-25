@@ -13,12 +13,13 @@ export async function generateCargosPdf(params: {
   empresa: string;
   consultor?: string;
   cargos: any[];
-  estrutura?: { faixas: any[]; escala_evolucao: any[]; cargos_sugeridos?: any[]; organograma?: any[] } | null;
+  estrutura?: { faixas: any[]; escala_evolucao: any[]; cargos_sugeridos?: any[]; organograma?: any[]; criterios_manuais?: any[] } | null;
   introducao?: string;
   consideracoes?: string;
   incluirOrganograma?: boolean;
+  criteriosManuais?: any[];
 }) {
-  const { empresa, consultor, cargos, estrutura, introducao, consideracoes, incluirOrganograma = true } = params;
+  const { empresa, consultor, cargos, estrutura, introducao, consideracoes, incluirOrganograma = true, criteriosManuais } = params;
   const branding = await loadBranding();
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
   const W = doc.internal.pageSize.getWidth();
@@ -127,6 +128,14 @@ export async function generateCargosPdf(params: {
       styles: { fontSize: 8, cellPadding: 3 },
     });
     y = (doc as any).lastAutoTable.finalY + 10;
+  }
+
+  const cms = (criteriosManuais && criteriosManuais.length ? criteriosManuais : (estrutura?.criterios_manuais || [])) as any[];
+  if (cms.length) {
+    section('Critérios Manuais para Evolução Salarial');
+    for (const c of cms) {
+      para(`• ${c?.texto || c}`);
+    }
   }
 
   if (consideracoes) { section('Considerações Finais'); para(consideracoes); }
