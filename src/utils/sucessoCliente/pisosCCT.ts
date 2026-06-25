@@ -29,6 +29,19 @@ export function extractPisosCCT(ccts: any[]): PisoCCT[] {
     /[A-Za-zÀ-ÿ]{3,}/.test(s) &&
     !/^(GRUPO|PARA|O PISO|É DE|SERÃO|SERA|SALARIAL|CATEGORIA|TRABALHADORES?|MAIS|R\$)/i.test(s);
 
+  // Extrai funções de UMA linha tabular do tipo:
+  //   "A    FAXINEIRA ou SERVENTE                  R$ 1.699,60"
+  //   "J    MENSAGEIRO, CAMAREIRA (O) OU COPEIRA (O)  R$ 1.699,60"
+  const splitFuncoesLinha = (txt: string): string[] => {
+    // remove letra de ordenação inicial "A ", "B ", "C-" etc.
+    const semOrdem = txt.replace(/^\s*[A-Z]\s*[-–—)\.]?\s+/, '').trim();
+    return semOrdem
+      .split(/,| e | ou |;|\//gi)
+      .map(limpar)
+      .filter(Boolean)
+      .filter(isFuncao);
+  };
+
   for (const c of active) {
     const sind = c.sindicato || 'CCT';
     const dataBase = c.data_base ? ` • data-base ${c.data_base}` : '';
@@ -40,6 +53,32 @@ export function extractPisosCCT(ccts: any[]): PisoCCT[] {
       const blob = `${tit}\n${desc}\n${trecho}`;
       if (!/piso|salário\s+normativo|salario\s+normativo/i.test(blob)) continue;
 
+      // ---------- Pass 1: formato TABULAR (uma função/linha com seu valor) ----------
+      const linhas = (desc + '\n' + trecho).split(/\r?\n/);
+      const reLinhaTab = /^(.*?)\s+R\$\s*([\d.]+,\d{2}|\d+(?:,\d{2})?)\s*$/;
+      let achouTabular = false;
+      for (const ln of linhas) {
+        const m = ln.trim().match(reLinhaTab);
+        if (!m) continue;
+        const v = parseV(m[2]);
+        if (!isFinite(v) || v <= 0) continue;
+        const funcoes = splitFuncoesLinha(m[1]);
+        if (funcoes.length === 0) continue;
+        achouTabular = true;
+        for (const funcao of funcoes) {
+          out.push({
+            funcao,
+            valor: v,
+            label: `${funcao} — R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (${sind})`,
+            ref: `${sind}${dataBase} — ${funcao}`,
+            sindicato: sind,
+            data_base: c.data_base || '',
+          });
+        }
+      }
+      if (achouTabular) continue;
+
+      // ---------- Pass 2: formato discursivo (legado: "GRUPO X - ... R$ ...") ----------
       const mGrupo = blob.match(/GRUPO\s+([IVXLCDM\d]+)/i);
       const grupo = mGrupo ? `GRUPO ${mGrupo[1].toUpperCase()}` : '';
 
