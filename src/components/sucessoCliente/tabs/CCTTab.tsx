@@ -191,11 +191,14 @@ export default function CCTTab({ client_id }: { client_id: string }) {
   const openPdf = async (c: any) => {
     if (!c.doc_path) { toast.error('Arquivo original não disponível.'); return; }
     try {
-      const { data, error } = await supabase.storage.from('cliente-dp-uploads').download(c.doc_path);
-      if (error || !data) throw error || new Error('arquivo não encontrado');
-      const blob = new Blob([await data.arrayBuffer()], { type: 'application/pdf' });
-      const url = URL.createObjectURL(blob);
-      setPdfView({ url, name: c.doc_name || 'CCT' });
+      const { data, error } = await supabase.storage
+        .from('cliente-dp-uploads')
+        .createSignedUrl(c.doc_path, 600);
+      if (error || !data?.signedUrl) throw error || new Error('arquivo não encontrado');
+      const w = window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+      if (!w) {
+        toast.error('Pop-up bloqueado. Permita pop-ups para este site.');
+      }
     } catch (e: any) {
       toast.error('Erro ao abrir PDF: ' + (e?.message || 'desconhecido'));
     }
