@@ -171,7 +171,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
         introducao = data?.introducao_metodologia || '';
         consideracoes = data?.consideracoes_finais || '';
       } catch {}
-      await generateCargosPdf({ empresa: cliente?.nome || '—', cargos: items, estrutura, introducao, consideracoes, incluirOrganograma });
+      await generateCargosPdf({ empresa: cliente?.nome || '—', cargos: items, estrutura, introducao, consideracoes, incluirOrganograma, criteriosManuais: (estrutura?.criterios_manuais || []) as any[] });
       toast.success('PDF gerado.');
     } catch (e:any) { toast.error('Falha: '+e.message); }
     finally { setBusy(null); }
@@ -365,6 +365,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
       escala_evolucao: estrutura?.escala_evolucao || [],
       cargos_sugeridos: estrutura?.cargos_sugeridos || [],
       organograma,
+      criterios_manuais: estrutura?.criterios_manuais || [],
     });
   };
 
@@ -526,6 +527,11 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
                 </div>
               </div>
             ) : null}
+            <CriteriosManuaisBlock
+              criterios={(estrutura?.criterios_manuais || []) as any[]}
+              onAdd={addCriterio}
+              onRemove={removeCriterio}
+            />
           </CardContent>
         </Card>
       ) : null}
