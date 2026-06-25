@@ -233,7 +233,42 @@ export default function CCTTab({ client_id }: { client_id: string }) {
         <Button type="button" variant="outline" onClick={openReplicaAll}>
           <Copy className="w-4 h-4 mr-1"/>Usar CCT de outra empresa
         </Button>
+        <Button type="button" variant="outline" onClick={notificarVencimentos} disabled={notifyBusy}>
+          {notifyBusy ? <Loader2 className="w-4 h-4 mr-1 animate-spin"/> : <AlertTriangle className="w-4 h-4 mr-1"/>}
+          Avisar vencimento por e-mail
+        </Button>
       </CardContent></Card>
+
+      {pisosCCT.length > 0 && (
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-2">
+              <div className="font-bold text-sm">Pisos por cargo evidenciados na CCT ({pisosCCT.length})</div>
+              <span className="text-[11px] text-muted-foreground">Reaproveitados automaticamente na aba Cargos &amp; Salários.</span>
+            </div>
+            <div className="overflow-auto">
+              <table className="w-full text-xs border">
+                <thead className="bg-muted"><tr>
+                  <th className="p-2 text-left">Cargo / Função</th>
+                  <th className="p-2 text-left">Grupo</th>
+                  <th className="p-2 text-right">Piso (R$)</th>
+                  <th className="p-2 text-left">Referência</th>
+                </tr></thead>
+                <tbody>
+                  {pisosCCT.map((p, i) => (
+                    <tr key={i} className="border-t">
+                      <td className="p-2 font-medium">{p.funcao || '—'}</td>
+                      <td className="p-2">{p.grupo || '—'}</td>
+                      <td className="p-2 text-right">{p.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                      <td className="p-2 text-muted-foreground">{p.ref}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="space-y-2">
         {items.filter((c: any) => !c.deleted_at).map(c => {
@@ -363,6 +398,15 @@ export default function CCTTab({ client_id }: { client_id: string }) {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!pdfView} onOpenChange={(o)=>{ if(!o && pdfView){ URL.revokeObjectURL(pdfView.url); setPdfView(null); } }}>
+        <DialogContent className="max-w-5xl h-[85vh] flex flex-col">
+          <DialogHeader><DialogTitle>{pdfView?.name}</DialogTitle></DialogHeader>
+          {pdfView && (
+            <embed src={`${pdfView.url}#toolbar=1`} type="application/pdf" className="flex-1 w-full rounded border" />
+          )}
         </DialogContent>
       </Dialog>
     </div>
