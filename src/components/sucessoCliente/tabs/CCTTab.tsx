@@ -12,6 +12,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import * as pdfjs from 'pdfjs-dist';
 import pdfWorkerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import { extractPisosCCT } from '@/utils/sucessoCliente/pisosCCT';
+import { useMemo } from 'react';
 
 (pdfjs as any).GlobalWorkerOptions.workerSrc = pdfWorkerSrc;
 
@@ -54,6 +56,10 @@ export default function CCTTab({ client_id }: { client_id: string }) {
   const [deleteReason, setDeleteReason] = useState('');
   const [deleteResponsible, setDeleteResponsible] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [pdfView, setPdfView] = useState<{ url: string; name: string } | null>(null);
+  const [notifyBusy, setNotifyBusy] = useState(false);
+
+  const pisosCCT = useMemo(() => extractPisosCCT(items as any[]), [items]);
 
   const errorMessage = (e: any) => {
     const contextError = e?.context?.error;
