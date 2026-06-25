@@ -199,6 +199,48 @@ const AvisosImportPage = () => {
                   <Button variant="outline" size="sm" onClick={() => setLogOpen(imp)}>
                     <AlertCircle className="w-3 h-3 mr-1" /> Log
                   </Button>
+                  {isAdmin && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" title="Excluir importação e seus avisos">
+                          <Trash2 className="w-3 h-3 mr-1" /> Excluir
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Excluir esta importação?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Remove o registro de importação e TODOS os avisos vinculados a ela. Depois disso o mesmo PDF poderá ser reimportado.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            onClick={async () => {
+                              try {
+                                const { data: avisosIds } = await supabase
+                                  .from('avisos' as any).select('id').eq('import_id', imp.id);
+                                const ids = ((avisosIds || []) as any[]).map((r) => r.id);
+                                if (ids.length) {
+                                  await supabase.from('aviso_contact_attempts' as any).delete().in('aviso_id', ids);
+                                  await supabase.from('avisos' as any).delete().in('id', ids);
+                                }
+                                const { error } = await supabase.from('aviso_imports' as any).delete().eq('id', imp.id);
+                                if (error) throw error;
+                                toast.success('Importação e avisos vinculados removidos.');
+                                await refresh();
+                              } catch (e: any) {
+                                toast.error('Falha ao excluir: ' + (e?.message || 'erro'));
+                              }
+                            }}
+                          >
+                            Excluir
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
                 </div>
               </div>
             ))}
