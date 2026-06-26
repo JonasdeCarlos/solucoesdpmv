@@ -146,7 +146,13 @@ export function usePrizeCriteria(policy_id: string | undefined) {
     return { criterios: (data as any)?.criterios as Array<{ nome: string; descricao: string; peso?: number; essencial?: boolean }> };
   };
 
-  return { items, loading, reload: load, create, createMany, update, remove, suggest };
+  const explainCriterion = async (input: { criterio_nome: string; setor?: string; cargo?: string; objetivo?: string; verba_label?: string; }) => {
+    const { data, error } = await supabase.functions.invoke('premio-criterio-explicar', { body: input });
+    if (error) return { error };
+    return { explicacao: (data as any)?.explicacao as string };
+  };
+
+  return { items, loading, reload: load, create, createMany, update, remove, suggest, explainCriterion };
 }
 
 export function usePrizeEmployees(policy_id: string | undefined) {
