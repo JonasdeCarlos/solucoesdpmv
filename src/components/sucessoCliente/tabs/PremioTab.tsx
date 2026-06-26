@@ -236,12 +236,13 @@ function PolicyCard({ policy, expanded, onToggle, onUpdate, onRemove, cliente }:
 }
 
 function CriteriaSection({ policy, cliente }: { policy: PrizePolicy; cliente: any }) {
-  const { items, create, createMany, update, remove, suggest } = usePrizeCriteria(policy.id);
+  const { items, create, createMany, update, remove, suggest, explainCriterion } = usePrizeCriteria(policy.id);
   const { items: participantes } = usePrizeEmployees(policy.id);
   const [novo, setNovo] = useState({ nome: '', descricao: '', peso: 1, essencial: false });
   const [iaCtx, setIaCtx] = useState({ cargo: '', quantidade: 6 });
   const [generating, setGenerating] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [explainingNovo, setExplainingNovo] = useState(false);
 
   const handleExportPdf = async () => {
     if (items.length === 0) { toast.error('Cadastre ao menos um critério antes de exportar.'); return; }
@@ -289,6 +290,25 @@ function CriteriaSection({ policy, cliente }: { policy: PrizePolicy; cliente: an
     toast.success(`${criterios.length} critérios sugeridos pela IA.`);
   };
 
+  const handleExplainNovo = async () => {
+    if (!novo.nome.trim()) { toast.error('Informe o nome do critério primeiro.'); return; }
+    setExplainingNovo(true);
+    const { explicacao, error } = await explainCriterion({
+      criterio_nome: novo.nome,
+      setor: cliente?.segmento || undefined,
+      cargo: iaCtx.cargo || undefined,
+      objetivo: policy.objetivo || undefined,
+      verba_label: policy.verba_label,
+    });
+    setExplainingNovo(false);
+    if (error) {
+      toast.error('Falha ao gerar explicação: ' + error.message);
+      return;
+    }
+    setNovo({ ...novo, descricao: explicacao || '' });
+    toast.success('Explicação gerada com IA.');
+  };
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between flex-wrap gap-2">
@@ -307,7 +327,15 @@ function CriteriaSection({ policy, cliente }: { policy: PrizePolicy; cliente: an
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-end border rounded-md p-2 bg-muted/30">
         <div className="md:col-span-3"><Label className="text-xs">Critério</Label><Input value={novo.nome} onChange={(e)=>setNovo({...novo, nome: e.target.value})} placeholder="Ex.: Pontualidade"/></div>
-        <div className="md:col-span-5"><Label className="text-xs">Descrição</Label><Input value={novo.descricao} onChange={(e)=>setNovo({...novo, descricao: e.target.value})} placeholder="Como apurar…"/></div>
+        <div className="md:col-span-5">
+          <Label className="text-xs">Descrição</Label>
+          <div className="flex gap-1">
+            <Input value={novo.descricao} onChange={(e)=>setNovo({...novo, descricao: e.target.value})} placeholder="Como apurar…"/>
+            <Button size="icon" variant="outline" className="h-10 w-10 shrink-0" type="button" onClick={handleExplainNovo} disabled={explainingNovo || !novo.nome.trim()} title="Gerar explicação com IA">
+              {explainingNovo ? <Loader2 className="w-4 h-4 animate-spin"/> : <Wand2 className="w-4 h-4"/>}
+            </Button>
+          </div>
+        </div>
         <div className="md:col-span-1"><Label className="text-xs">Peso</Label><Input type="number" min={1} max={5} value={novo.peso} onChange={(e)=>setNovo({...novo, peso: Number(e.target.value)})}/></div>
         <div className="md:col-span-2 flex items-center gap-2"><Switch checked={novo.essencial} onCheckedChange={(v)=>setNovo({...novo, essencial: v})}/><span className="text-xs">Essencial</span></div>
         <div className="md:col-span-1"><Button size="sm" onClick={handleAdd}><Plus className="w-3 h-3"/></Button></div>
@@ -318,7 +346,7 @@ function CriteriaSection({ policy, cliente }: { policy: PrizePolicy; cliente: an
       ) : (
         <div className="space-y-1">
           {items.map(c => (
-            <CriterionRow key={c.id} c={c} onUpdate={(patch)=>update(c.id, patch)} onRemove={()=>remove(c.id)}/>
+            <CriterionRow key={c.id} c={c} policy={policy} cliente={cliente} iaCargo={iaCtx.cargo} onUpdate={(patch)=>update(c.id, patch)} onRemove={()=>remove(c.id)} explainCriterion={explainCriterion}/>
           ))}
         </div>
       )}
@@ -326,9 +354,30 @@ function CriteriaSection({ policy, cliente }: { policy: PrizePolicy; cliente: an
   );
 }
 
-function CriterionRow({ c, onUpdate, onRemove }: { c: any; onUpdate: (patch: any) => Promise<any>; onRemove: () => Promise<any>; }) {
+function CriterionRow({ c, policy, cliente, iaCargo, onUpdate, onRemove, explainCriterion }: { c: any; policy: PrizePolicy; cliente: any; iaCargo?: string; onUpdate: (patch: any) => Promise<any>; onRemove: () => Promise<any>; explainCriterion: any; }) {
   const [edit, setEdit] = useState(false);
   const [f, setF] = useState({ nome: c.nome, descricao: c.descricao || '', peso: c.peso, essencial: c.essencial });
+  const [explaining, setExplaining] = useState(false);
+
+  const handleExplainEdit = async () => {
+    if (!f.nome.trim()) { toast.error('Informe o nome do critério primeiro.'); return; }
+    setExplaining(true);
+    const { explicacao, error } = await explainCriterion({
+      criterio_nome: f.nome,
+      setor: cliente?.segmento || undefined,
+      cargo: iaCargo || undefined,
+      objetivo: policy.objetivo || undefined,
+      verba_label: policy.verba_label,
+    });
+    setExplaining(false);
+    if (error) {
+      toast.error('Falha ao gerar explicação: ' + error.message);
+      return;
+    }
+    setF({ ...f, descricao: explicacao || '' });
+    toast.success('Explicação gerada com IA.');
+  };
+
   if (!edit) {
     return (
       <div className="flex items-start gap-2 border rounded-md p-2 text-sm">
@@ -349,7 +398,14 @@ function CriterionRow({ c, onUpdate, onRemove }: { c: any; onUpdate: (patch: any
   return (
     <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-end border rounded-md p-2 bg-muted/20">
       <div className="md:col-span-3"><Input value={f.nome} onChange={(e)=>setF({...f, nome: e.target.value})}/></div>
-      <div className="md:col-span-5"><Input value={f.descricao} onChange={(e)=>setF({...f, descricao: e.target.value})}/></div>
+      <div className="md:col-span-5">
+        <div className="flex gap-1">
+          <Input value={f.descricao} onChange={(e)=>setF({...f, descricao: e.target.value})}/>
+          <Button size="icon" variant="outline" className="h-10 w-10 shrink-0" type="button" onClick={handleExplainEdit} disabled={explaining || !f.nome.trim()} title="Gerar explicação com IA">
+            {explaining ? <Loader2 className="w-4 h-4 animate-spin"/> : <Wand2 className="w-4 h-4"/>}
+          </Button>
+        </div>
+      </div>
       <div className="md:col-span-1"><Input type="number" min={1} max={5} value={f.peso} onChange={(e)=>setF({...f, peso: Number(e.target.value)})}/></div>
       <div className="md:col-span-2 flex items-center gap-2"><Switch checked={f.essencial} onCheckedChange={(v)=>setF({...f, essencial: v})}/><span className="text-xs">Essencial</span></div>
       <div className="md:col-span-1 flex gap-1">
