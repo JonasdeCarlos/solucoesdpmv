@@ -8,3 +8,5 @@ verify_jwt = false
 
 [functions.premio-criterios-sugerir]
 verify_jwt = true
+[functions.premio-feedback]
+verify_jwt = true
