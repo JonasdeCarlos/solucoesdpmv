@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.feedback-public]
 verify_jwt = false
+
+[functions.premio-criterios-sugerir]
+verify_jwt = true
