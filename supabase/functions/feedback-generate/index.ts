@@ -17,19 +17,41 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { tipo, employee_name, employee_role, pontos_fortes, pontos_melhorar, fato_ocorrido, tom, manager_name, client_id } = body || {};
 
+    let companyName = "";
+    const supa = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    if (client_id) {
+      try {
+        const { data: cl } = await supa
+          .from("clientes")
+          .select("nome, nome_fantasia")
+          .eq("id", client_id)
+          .maybeSingle();
+        if (cl) {
+          companyName = cl.nome_fantasia || cl.nome;
+        }
+      } catch (_) { /* ignore query error and fallback */ }
+    }
+
+    const companyInstruction = companyName 
+      ? `O nome da empresa/estabelecimento é "${companyName}". Use OBRIGATORIAMENTE este nome quando se referir à empresa/estabelecimento (por exemplo, na introdução, no corpo ou no encerramento). NUNCA utilize colchetes ou placeholders genéricos como '[Nome do Restaurante/Estabelecimento]', '[Nome da Empresa]' ou '[Sua Empresa]'. Substitua-os todos por "${companyName}".`
+      : `Não use placeholders genéricos ou colchetes como '[Nome do Restaurante/Estabelecimento]'. Se não souber o nome, use termos gerais de forma natural sem deixar lacunas.`;
+
     let instruction = "";
     if (tipo === "feedback") {
       instruction = `Gere um FEEDBACK estruturado e amigável para o colaborador "${employee_name}"${employee_role ? ` (cargo: ${employee_role})` : ""}.
+${companyInstruction}
 Estrutura sugerida: (1) abertura cordial, (2) reconhecimento dos pontos fortes, (3) pontos a desenvolver apresentados como oportunidades, (4) próximos passos colaborativos, (5) encerramento de apoio.
 Pontos fortes informados pelo gestor: ${pontos_fortes || "—"}
 Pontos a melhorar informados pelo gestor: ${pontos_melhorar || "—"}`;
     } else if (tipo === "cobranca") {
       const tomLabel = tom === "leve" ? "LEVE (lembrete cordial)" : tom === "medio" ? "MÉDIO (alinhamento firme, sem dureza)" : "FORTE (cobrança formal, ainda respeitosa)";
       instruction = `Gere um TEXTO DE ALINHAMENTO/COBRANÇA em tom ${tomLabel} para o colaborador "${employee_name}"${employee_role ? ` (cargo: ${employee_role})` : ""}.
+${companyInstruction}
 Fato ocorrido (descrição do gestor): ${fato_ocorrido || "—"}
 Estrutura: (1) contextualização objetiva do fato, (2) impacto para a equipe/cliente, (3) comportamento esperado daqui em diante, (4) oferta de apoio do gestor, (5) combinado de acompanhamento.`;
     } else if (tipo === "alinhamento") {
       instruction = `Gere um DOCUMENTO DE ALINHAMENTO formal para registro, com tom ${tom || "medio"}, dirigido a "${employee_name}"${employee_role ? ` (cargo: ${employee_role})` : ""}.
+${companyInstruction}
 Fato/situação: ${fato_ocorrido || "—"}
 Pontos fortes: ${pontos_fortes || "—"}
 Pontos a melhorar: ${pontos_melhorar || "—"}

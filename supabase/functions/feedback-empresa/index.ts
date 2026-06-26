@@ -82,13 +82,19 @@ Deno.serve(async (req) => {
       const KEY = Deno.env.get("LOVABLE_API_KEY");
       if (!KEY) throw new Error("LOVABLE_API_KEY missing");
       const { tipo, employee_name, employee_role, pontos_fortes, pontos_melhorar, fato_ocorrido, tom, manager_name } = body.input || {};
+      
+      const companyName = empresa.nome_fantasia || empresa.nome || "";
+      const companyInstruction = companyName 
+        ? `O nome da empresa/estabelecimento é "${companyName}". Use OBRIGATORIAMENTE este nome quando se referir à empresa/estabelecimento (por exemplo, na introdução, no corpo ou no encerramento). NUNCA utilize colchetes ou placeholders genéricos como '[Nome do Restaurante/Estabelecimento]', '[Nome da Empresa]' ou '[Sua Empresa]'. Substitua-os todos por "${companyName}".`
+        : `Não use placeholders genéricos ou colchetes como '[Nome do Restaurante/Estabelecimento]'. Se não souber o nome, use termos gerais de forma natural sem deixar lacunas.`;
+
       const SAFE = `Regras OBRIGATÓRIAS: tom respeitoso e construtivo, foco em fatos e comportamentos, sem ironia/ameaças/comparações/humilhação. Nunca cite punições, demissão, advertência ou salário. Em PT-BR.`;
       let instr = "";
       if (tipo === "feedback") {
-        instr = `FEEDBACK para "${employee_name}"${employee_role ? ` (${employee_role})` : ""}. Pontos fortes: ${pontos_fortes || "—"}. Pontos a melhorar: ${pontos_melhorar || "—"}. Estrutura: abertura cordial, reconhecimento, oportunidades, próximos passos, encerramento de apoio.`;
+        instr = `FEEDBACK para "${employee_name}"${employee_role ? ` (${employee_role})` : ""}. ${companyInstruction}\nPontos fortes: ${pontos_fortes || "—"}. Pontos a melhorar: ${pontos_melhorar || "—"}. Estrutura: abertura cordial, reconhecimento, oportunidades, próximos passos, encerramento de apoio.`;
       } else if (tipo === "cobranca" || tipo === "alinhamento") {
         const tomL = tom === "leve" ? "LEVE" : tom === "cobranca" ? "FORTE (cobrança formal respeitosa)" : "MÉDIO";
-        instr = `${tipo === "cobranca" ? "ALINHAMENTO/COBRANÇA" : "DOCUMENTO DE ALINHAMENTO"} em tom ${tomL} para "${employee_name}"${employee_role ? ` (${employee_role})` : ""}. Fato: ${fato_ocorrido || "—"}. Pontos fortes: ${pontos_fortes || "—"}. Pontos a melhorar: ${pontos_melhorar || "—"}. Estrutura: contexto, impacto, comportamento esperado, apoio do gestor, acompanhamento.`;
+        instr = `${tipo === "cobranca" ? "ALINHAMENTO/COBRANÇA" : "DOCUMENTO DE ALINHAMENTO"} em tom ${tomL} para "${employee_name}"${employee_role ? ` (${employee_role})` : ""}. ${companyInstruction}\nFato: ${fato_ocorrido || "—"}. Pontos fortes: ${pontos_fortes || "—"}. Pontos a melhorar: ${pontos_melhorar || "—"}. Estrutura: contexto, impacto, comportamento esperado, apoio do gestor, acompanhamento.`;
       } else return json({ error: "tipo inválido" }, 400);
 
       const prompt = `${SAFE}\n\n${instr}\n${manager_name ? `Assinatura: ${manager_name}.` : ""}\nRetorne APENAS o texto final.`;
