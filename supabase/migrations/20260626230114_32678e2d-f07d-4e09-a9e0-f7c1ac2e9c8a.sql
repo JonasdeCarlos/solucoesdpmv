@@ -1,0 +1,18 @@
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.prize_policies TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.prize_criteria TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.prize_employees TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.prize_assessments TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.prize_assessment_employees TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.prize_assessment_criterion_results TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.prize_alignment_reports TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.prize_dominio_exports TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.client_prize_links TO authenticated;
+GRANT ALL ON public.prize_policies TO service_role;
+GRANT ALL ON public.prize_criteria TO service_role;
+GRANT ALL ON public.prize_employees TO service_role;
+GRANT ALL ON public.prize_assessments TO service_role;
+GRANT ALL ON public.prize_assessment_employees TO service_role;
+GRANT ALL ON public.prize_assessment_criterion_results TO service_role;
+GRANT ALL ON public.prize_alignment_reports TO service_role;
+GRANT ALL ON public.prize_dominio_exports TO service_role;
+GRANT ALL ON public.client_prize_links TO service_role;
