@@ -1,67 +1,78 @@
-## Módulo "Sucesso do Cliente – DP"
+## Submódulo "Verba Variável – Critérios, Apuração e Alinhamento"
 
-Implementação completa de um guia operacional centralizado por cliente no DP. Escopo grande — proponho entregar em **4 fases sequenciais** para manter qualidade e permitir validação incremental.
+Entrega faseada dentro de **Sucesso do Cliente – DP**. O nome da verba é **configurável por política** (Prêmio, Gratificação, Bonificação, Participação, Incentivo etc.), refletindo em telas, PDFs, feedbacks da IA e exportação Domínio.
 
 ---
 
-### Fase 1 — Fundação (base + perfil + uploads + diário)
+### Nome da verba configurável
 
-**Banco de dados (migration única):**
-- Estender `clientes` com: `codigo_cliente` (único), `nome_fantasia`, `municipio`, `uf`, `segmento`, `contato_nome`, `contato_telefone`, `contato_email`, `status`
-- `client_dp_profile` (1:1 com cliente) — todos os campos de comunicação, ponto, variáveis, prévia, carga horária. Senha do ponto criptografada via `pgcrypto` (`pgp_sym_encrypt` com chave em secret).
-- `client_uploads` (versionado por tipo: holerite_modelo, ponto_modelo, outro)
-- `client_diary_entries` (não-deletável, apenas arquivável, com tags JSONB e audit)
-- `client_audit_log` (genérico: tabela, registro_id, campo, antes, depois, user_id, timestamp)
-- Bucket Storage: `cliente-dp-uploads`
-- RLS: leitura para `authenticated`; escrita/visualização de senha apenas para `admin`/`master` via `has_role`
+- Campo `verba_label` em cada `prize_policies` (default: "Prêmio") com sugestões rápidas: Prêmio / Gratificação / Bonificação / Participação / Incentivo / Outro (texto livre).
+- Campo `verba_label_plural` opcional (default derivado).
+- Toda UI usa `{{verba_label}}`: títulos, botões ("Gerar critérios de {{verba_label}}"), avisos, dashboard.
+- Edge functions de IA recebem `verba_label` e substituem nos prompts e respostas.
+- PDF de alinhamento e arquivo Domínio usam o rótulo escolhido.
+- Configuração global por cliente em "Links" (rótulo default), sobrescrita por política.
+
+---
+
+### Fase 1 — Fundação (DB + Política + Critérios IA + Link público)
+
+**Banco (migration única, com GRANTs e RLS):**
+- `prize_policies` (inclui `verba_label`, `verba_label_plural`, objetivo, período, escopo, tipo, valor base, rubrica, status)
+- `prize_criteria`, `prize_employees`, `prize_assessments`, `prize_assessment_employees`, `prize_assessment_criterion_results`
+- `prize_alignment_reports`, `prize_dominio_exports`
+- `client_prize_links` (token, validade, permissões JSON, `default_verba_label`, log de acesso)
+- Bucket `premio-docs` (privado)
+- RLS: admin/master tudo; authenticated CRUD; rotas públicas via token validado em edge function
+
+**Edge functions:**
+- `premio-criterios-sugerir` — Gemini gera critérios objetivos a partir do objetivo + `verba_label`
+- `premio-publico` — `verify_jwt=false`, valida token e expõe CRUD por permissões
 
 **UI:**
-- Nova rota `/sucesso-cliente` com layout próprio (sidebar: Perfil, CCT, Rubricas, Checklist, Mensagens, Calendário, Riscos, Importar Excel)
-- Tela "Lista de Clientes DP" com busca/filtros (CNPJ, código, nome, possui ponto, prévia, CCT vencendo, risco)
-- Tela "Perfil DP do Cliente" com:
-  - Barra de completude (% campos preenchidos) + alertas
-  - Seções colapsáveis: Comunicação, Ponto/Jornada (campos condicionais), Prévia, Carga Horária, Uploads, Diário
-  - Senha do ponto com toggle mostrar/ocultar (só para autorizados)
-- Importação Excel de clientes (parser SheetJS, prévia novos/atualizar/conflitos, log de erros exportável)
-- Item no menu principal
+- Aba "Verba Variável" no perfil do cliente (rótulo dinâmico se houver política ativa)
+- Tela admin "Links por Cliente" (gerar/copiar/ativar/validade/permissões/default rótulo)
+- Rota pública `/empresa/:token/premio` — cadastro de política (com seletor de rótulo) + objetivo + "Gerar critérios" + aprovar/editar/excluir/reordenar/duplicar/manuais
+- Aviso jurídico fixo em todas as telas
 
-### Fase 2 — CCT + Rubricas
+### Fase 2 — Empregados + Apuração + Cálculo + Feedback IA
 
-- Tabelas `client_ccts` (versionada) e `client_rubrics`
-- Upload de CCT → edge function `ai-resumo-cct` usando `google/gemini-2.5-flash` para extrair sindicato, vigência, data-base, cláusulas-chave
-- Alertas automáticos 30/60/90 dias antes do vencimento
-- Botão "Replicar CCT" — selecionar cliente de origem da mesma base sindical
-- CRUD de rubricas com import/export CSV, marcação "crítica", incidências (INSS/FGTS/IRRF/DSR/eSocial)
+- CRUD `prize_employees` (manual + Excel/CSV, vínculo por política, histórico por competência)
+- Tela "Apuração" — slider 0–100% + input por critério, observação obrigatória <100%, upload de evidências, status
+- Cálculo: média ponderada/simples, valor = base × %, trava por critério essencial, arredondamento e mínimo configuráveis
+- `premio-feedback-gerar` — feedback por critério e geral; mensagens especiais a 100%; respeita `verba_label`
 
-### Fase 3 — Checklist + Mensagens + Calendário + Riscos
+### Fase 3 — PDF de alinhamento + Exportação Domínio
 
-- `closing_checklist_templates` (admin define modelo padrão) e `closing_checklist_runs` (por competência YYYY-MM, status por etapa, responsável, anexos)
-- `client_message_templates` com placeholders `{{cliente_nome}}`, `{{competencia}}`, `{{prazo}}`, `{{responsavel}}` + botões copiar WhatsApp/e-mail; 6 modelos pré-cadastrados
-- `client_calendar_events` (visão mensal + lista; alertas na home do módulo)
-- `client_risk_flags` (rotatividade, afastamentos, ponto, passivo, sem retorno) + notas; badge no topo do perfil
+- `utils/sucessoCliente/premioAlinhamentoPdf.ts` — A4, branding, tabela de critérios, observações, feedback IA, % final, valor, parecer, assinaturas; títulos e textos usam `verba_label`
+- Status: Rascunho / Emitido / Assinado (upload) / Arquivado
+- Exportação Domínio: layout configurável (separador, código rubrica, formato competência, decimais, zerados), prévia + validação, `.txt` + log
 
-### Fase 4 — Relatório PDF + Branding + Auditoria final
+### Fase 4 — Dashboard + Integração
 
-- Reuso do `office_branding` existente (logo, cores, contatos)
-- Geração PDF via `jspdf` + `jspdf-autotable`: capa com logo/cor primária, seções (identificação, comunicação, ponto, prévia, carga, anexos, CCT resumo, rubricas, diário do período, checklist da competência), rodapé com contatos
-- Botão "Emitir Relatório PDF" no perfil com seletor de período (diário) e competência (checklist)
-- Painel de auditoria (filtro por cliente/tabela/usuário/período)
+- Dashboard com filtros, KPIs, ranking, faixas de distribuição, total por setor, critérios fracos
+- Relatórios PDF/CSV/Excel
+- Perfil DP: card com políticas ativas, pendências, total estimado, últimos alinhamentos, última exportação
+- Checklist de fechamento: 7 etapas pré-definidas
+- Rubricas: vínculo política→rubrica + layout Domínio
+- Auditoria via `client_audit_log`
 
 ---
 
 ### Detalhes técnicos
 
-- **Criptografia de senha do ponto:** coluna `timeclock_password_encrypted bytea`, função `set_timeclock_password(client_id, pwd)` e `get_timeclock_password(client_id)` SECURITY DEFINER que checa `has_role(auth.uid(),'admin')` antes de retornar `pgp_sym_decrypt`. Chave simétrica em secret `DP_ENC_KEY`.
-- **Excel:** `xlsx` (SheetJS) já presente? Confirmar; se não, `bun add xlsx`.
-- **PDF AI CCT:** edge function recebe URL do arquivo no Storage, extrai texto (pdfjs no edge via npm), envia ao Gemini com JSON schema.
-- **Multiempresa & permissões:** todas as tabelas com `created_by uuid`; RLS via `has_role`. Perfis: `master`/`admin` veem tudo; `user` vê todos clientes mas não vê senha do ponto.
-- **Audit log:** triggers genéricos em `client_dp_profile`, `client_ccts`, `client_rubrics`, `closing_checklist_runs`.
+- **IA**: `google/gemini-2.5-flash` via Lovable AI Gateway, tracking em `ai_usage_log`
+- **Acesso público**: padrão idêntico ao módulo Feedback (token UUID, sem login)
+- **PDF**: `jspdf` + `jspdf-autotable` com `office_branding`
+- **Excel**: `xlsx` (já presente)
+- **Multiempresa**: RLS via `has_role`; tabelas com `client_id` + `created_by`
+- **Nome interno das tabelas** permanece `prize_*` por simplicidade técnica — usuário nunca vê esse nome.
 
-### Premissas / pontos a confirmar
+### Premissas
 
-1. **Senha do ponto:** OK criptografar com `pgp_sym_encrypt` e expor apenas via RPC para `admin`/`master`? (alternativa: nunca decriptar no servidor, apenas no front com chave do usuário — mais seguro porém mais complexo)
-2. **CCT IA:** usar **Gemini 2.5 Flash** (Lovable AI, sem custo de chave) — OK?
-3. **Importação Excel:** match por **CNPJ primeiro, depois código** quando CNPJ ausente — OK?
-4. **Permissões:** todos os usuários autenticados podem editar perfil DP, mas só `admin`/`master` veem senha do ponto e fazem importação em massa — OK?
+1. Nome da verba configurável por política, com defaults sugeridos e texto livre — OK?
+2. IA: Lovable AI (Gemini Flash) — OK?
+3. Acesso público igual ao Feedback (token UUID, sem login) — OK?
+4. Branding do PDF reusando `office_branding` — OK?
 
-Posso iniciar pela **Fase 1** assim que confirmar essas 4 premissas (ou diga "pode seguir com tudo" e eu adoto os defaults acima).
+Confirme as premissas (ou diga "pode seguir com tudo") e começo pela **Fase 1**.

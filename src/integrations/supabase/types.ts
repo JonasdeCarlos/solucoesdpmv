@@ -1636,6 +1636,56 @@ export type Database = {
           },
         ]
       }
+      client_prize_links: {
+        Row: {
+          ativo: boolean
+          client_id: string
+          created_at: string
+          created_by: string | null
+          default_verba_label: string
+          expira_em: string | null
+          id: string
+          permissions: Json
+          token: string
+          ultimo_acesso: string | null
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          default_verba_label?: string
+          expira_em?: string | null
+          id?: string
+          permissions?: Json
+          token?: string
+          ultimo_acesso?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          default_verba_label?: string
+          expira_em?: string | null
+          id?: string
+          permissions?: Json
+          token?: string
+          ultimo_acesso?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_prize_links_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_risk_flags: {
         Row: {
           client_id: string
@@ -2926,6 +2976,399 @@ export type Database = {
           status?: string
         }
         Relationships: []
+      }
+      prize_alignment_reports: {
+        Row: {
+          assessment_employee_id: string
+          assinado_pdf_path: string | null
+          created_at: string
+          generated_at: string | null
+          id: string
+          pdf_path: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          assessment_employee_id: string
+          assinado_pdf_path?: string | null
+          created_at?: string
+          generated_at?: string | null
+          id?: string
+          pdf_path?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          assessment_employee_id?: string
+          assinado_pdf_path?: string | null
+          created_at?: string
+          generated_at?: string | null
+          id?: string
+          pdf_path?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prize_alignment_reports_assessment_employee_id_fkey"
+            columns: ["assessment_employee_id"]
+            isOneToOne: false
+            referencedRelation: "prize_assessment_employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prize_assessment_criterion_results: {
+        Row: {
+          assessment_employee_id: string
+          created_at: string
+          criterion_id: string
+          evidencia_url: string | null
+          feedback_ia: string | null
+          id: string
+          observacao: string | null
+          percentual: number
+          updated_at: string
+        }
+        Insert: {
+          assessment_employee_id: string
+          created_at?: string
+          criterion_id: string
+          evidencia_url?: string | null
+          feedback_ia?: string | null
+          id?: string
+          observacao?: string | null
+          percentual?: number
+          updated_at?: string
+        }
+        Update: {
+          assessment_employee_id?: string
+          created_at?: string
+          criterion_id?: string
+          evidencia_url?: string | null
+          feedback_ia?: string | null
+          id?: string
+          observacao?: string | null
+          percentual?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prize_assessment_criterion_results_assessment_employee_id_fkey"
+            columns: ["assessment_employee_id"]
+            isOneToOne: false
+            referencedRelation: "prize_assessment_employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prize_assessment_criterion_results_criterion_id_fkey"
+            columns: ["criterion_id"]
+            isOneToOne: false
+            referencedRelation: "prize_criteria"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prize_assessment_employees: {
+        Row: {
+          assessment_id: string
+          created_at: string
+          employee_id: string
+          id: string
+          parecer_geral: string | null
+          percentual_final: number | null
+          status: string
+          updated_at: string
+          valor_final: number | null
+        }
+        Insert: {
+          assessment_id: string
+          created_at?: string
+          employee_id: string
+          id?: string
+          parecer_geral?: string | null
+          percentual_final?: number | null
+          status?: string
+          updated_at?: string
+          valor_final?: number | null
+        }
+        Update: {
+          assessment_id?: string
+          created_at?: string
+          employee_id?: string
+          id?: string
+          parecer_geral?: string | null
+          percentual_final?: number | null
+          status?: string
+          updated_at?: string
+          valor_final?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prize_assessment_employees_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "prize_assessments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prize_assessment_employees_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "prize_employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prize_assessments: {
+        Row: {
+          competencia: string
+          created_at: string
+          created_by: string | null
+          id: string
+          observacao: string | null
+          policy_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          competencia: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          observacao?: string | null
+          policy_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          competencia?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          observacao?: string | null
+          policy_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prize_assessments_policy_id_fkey"
+            columns: ["policy_id"]
+            isOneToOne: false
+            referencedRelation: "prize_policies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prize_criteria: {
+        Row: {
+          created_at: string
+          descricao: string | null
+          essencial: boolean
+          id: string
+          nome: string
+          ordem: number
+          origem: string
+          peso: number
+          policy_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          descricao?: string | null
+          essencial?: boolean
+          id?: string
+          nome: string
+          ordem?: number
+          origem?: string
+          peso?: number
+          policy_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          descricao?: string | null
+          essencial?: boolean
+          id?: string
+          nome?: string
+          ordem?: number
+          origem?: string
+          peso?: number
+          policy_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prize_criteria_policy_id_fkey"
+            columns: ["policy_id"]
+            isOneToOne: false
+            referencedRelation: "prize_policies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prize_dominio_exports: {
+        Row: {
+          arquivo_path: string
+          assessment_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          layout_config: Json | null
+          total_linhas: number
+          total_valor: number
+        }
+        Insert: {
+          arquivo_path: string
+          assessment_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          layout_config?: Json | null
+          total_linhas?: number
+          total_valor?: number
+        }
+        Update: {
+          arquivo_path?: string
+          assessment_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          layout_config?: Json | null
+          total_linhas?: number
+          total_valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prize_dominio_exports_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "prize_assessments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prize_employees: {
+        Row: {
+          ativo: boolean
+          cargo: string | null
+          cpf: string | null
+          created_at: string
+          id: string
+          matricula: string | null
+          nome: string
+          policy_id: string
+          setor: string | null
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          cargo?: string | null
+          cpf?: string | null
+          created_at?: string
+          id?: string
+          matricula?: string | null
+          nome: string
+          policy_id: string
+          setor?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          cargo?: string | null
+          cpf?: string | null
+          created_at?: string
+          id?: string
+          matricula?: string | null
+          nome?: string
+          policy_id?: string
+          setor?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prize_employees_policy_id_fkey"
+            columns: ["policy_id"]
+            isOneToOne: false
+            referencedRelation: "prize_policies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prize_policies: {
+        Row: {
+          arredondamento: string
+          aviso_legal: string | null
+          client_id: string
+          created_at: string
+          created_by: string | null
+          escopo: string
+          id: string
+          nome: string
+          objetivo: string | null
+          periodo_tipo: string
+          rubrica_codigo: string | null
+          rubrica_descricao: string | null
+          status: string
+          tipo_calculo: string
+          updated_at: string
+          valor_base: number
+          valor_minimo: number | null
+          verba_label: string
+          verba_label_plural: string | null
+        }
+        Insert: {
+          arredondamento?: string
+          aviso_legal?: string | null
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          escopo?: string
+          id?: string
+          nome: string
+          objetivo?: string | null
+          periodo_tipo?: string
+          rubrica_codigo?: string | null
+          rubrica_descricao?: string | null
+          status?: string
+          tipo_calculo?: string
+          updated_at?: string
+          valor_base?: number
+          valor_minimo?: number | null
+          verba_label?: string
+          verba_label_plural?: string | null
+        }
+        Update: {
+          arredondamento?: string
+          aviso_legal?: string | null
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          escopo?: string
+          id?: string
+          nome?: string
+          objetivo?: string | null
+          periodo_tipo?: string
+          rubrica_codigo?: string | null
+          rubrica_descricao?: string | null
+          status?: string
+          tipo_calculo?: string
+          updated_at?: string
+          valor_base?: number
+          valor_minimo?: number | null
+          verba_label?: string
+          verba_label_plural?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prize_policies_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       provision_entries: {
         Row: {
