@@ -32,6 +32,17 @@ export type PrizeCriterion = {
   origem: 'manual' | 'ia';
 };
 
+export type PrizeEmployee = {
+  id: string;
+  policy_id: string;
+  nome: string;
+  cpf: string | null;
+  matricula: string | null;
+  cargo: string | null;
+  setor: string | null;
+  ativo: boolean;
+};
+
 export function usePrizePolicies(client_id: string | undefined) {
   const [items, setItems] = useState<PrizePolicy[]>([]);
   const [loading, setLoading] = useState(true);
@@ -134,4 +145,54 @@ export function usePrizeCriteria(policy_id: string | undefined) {
   };
 
   return { items, loading, reload: load, create, createMany, update, remove, suggest };
+}
+
+export function usePrizeEmployees(policy_id: string | undefined) {
+  const [items, setItems] = useState<PrizeEmployee[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    if (!policy_id) { setItems([]); setLoading(false); return; }
+    setLoading(true);
+    const { data } = await supabase
+      .from('prize_employees' as any)
+      .select('*')
+      .eq('policy_id', policy_id)
+      .order('nome', { ascending: true });
+    setItems((data || []) as any);
+    setLoading(false);
+  }, [policy_id]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const create = async (payload: Partial<PrizeEmployee>) => {
+    if (!policy_id) return { error: new Error('no policy') };
+    const { error } = await supabase
+      .from('prize_employees' as any)
+      .insert({ ativo: true, ...payload, policy_id } as any);
+    if (!error) await load();
+    return { error };
+  };
+
+  const createMany = async (rows: Partial<PrizeEmployee>[]) => {
+    if (!policy_id || rows.length === 0) return { error: null };
+    const payload = rows.map(r => ({ ativo: true, ...r, policy_id }));
+    const { error } = await supabase.from('prize_employees' as any).insert(payload as any);
+    if (!error) await load();
+    return { error };
+  };
+
+  const update = async (id: string, patch: Partial<PrizeEmployee>) => {
+    const { error } = await supabase.from('prize_employees' as any).update(patch as any).eq('id', id);
+    if (!error) await load();
+    return { error };
+  };
+
+  const remove = async (id: string) => {
+    const { error } = await supabase.from('prize_employees' as any).delete().eq('id', id);
+    if (!error) await load();
+    return { error };
+  };
+
+  return { items, loading, reload: load, create, createMany, update, remove };
 }

@@ -7,8 +7,9 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Plus, Trash2, Wand2, Save, Pencil, X } from 'lucide-react';
-import { usePrizePolicies, usePrizeCriteria, type PrizePolicy } from '@/hooks/usePrizePolicies';
+import { Loader2, Plus, Trash2, Wand2, Save, Pencil, X, Users, Upload } from 'lucide-react';
+import { usePrizePolicies, usePrizeCriteria, usePrizeEmployees, type PrizePolicy } from '@/hooks/usePrizePolicies';
+import { useEmpregados } from '@/hooks/useEmpregados';
 import { toast } from 'sonner';
 
 const VERBA_PRESETS = ['Prêmio', 'Gratificação', 'Bonificação', 'Bônus', 'PLR', 'Adicional de Desempenho'];
@@ -221,8 +222,9 @@ function PolicyCard({ policy, expanded, onToggle, onUpdate, onRemove, cliente }:
         )}
 
         {expanded && (
-          <div className="border-t pt-3">
+          <div className="border-t pt-3 space-y-4">
             <CriteriaSection policy={policy} cliente={cliente}/>
+            <EmployeesSection policy={policy} cliente={cliente}/>
           </div>
         )}
       </CardContent>
@@ -319,6 +321,146 @@ function CriterionRow({ c, onUpdate, onRemove }: { c: any; onUpdate: (patch: any
       <div className="md:col-span-5"><Input value={f.descricao} onChange={(e)=>setF({...f, descricao: e.target.value})}/></div>
       <div className="md:col-span-1"><Input type="number" min={1} max={5} value={f.peso} onChange={(e)=>setF({...f, peso: Number(e.target.value)})}/></div>
       <div className="md:col-span-2 flex items-center gap-2"><Switch checked={f.essencial} onCheckedChange={(v)=>setF({...f, essencial: v})}/><span className="text-xs">Essencial</span></div>
+      <div className="md:col-span-1 flex gap-1">
+        <Button size="sm" onClick={async ()=>{ await onUpdate(f); setEdit(false); }}><Save className="w-3 h-3"/></Button>
+        <Button size="sm" variant="ghost" onClick={()=>setEdit(false)}><X className="w-3 h-3"/></Button>
+      </div>
+    </div>
+  );
+}
+
+function EmployeesSection({ policy, cliente }: { policy: PrizePolicy; cliente: any }) {
+  const { items, create, createMany, update, remove } = usePrizeEmployees(policy.id);
+  const { empregados } = useEmpregados();
+  const [novo, setNovo] = useState({ nome: '', cpf: '', matricula: '', cargo: '', setor: '' });
+  const [bulk, setBulk] = useState('');
+  const [showBulk, setShowBulk] = useState(false);
+  const [showImport, setShowImport] = useState(false);
+
+  const empresaNome = (cliente?.nome || cliente?.razao_social || '').trim();
+  const empresaEmpregados = empregados.filter(e =>
+    empresaNome && e.empresaNome?.trim().toUpperCase() === empresaNome.toUpperCase()
+    && !items.some(i => (i.cpf || '').replace(/\D/g,'') === (e.cpf || '').replace(/\D/g,'') && i.cpf)
+    && !items.some(i => i.nome.trim().toUpperCase() === e.nome.trim().toUpperCase())
+  );
+
+  const handleAdd = async () => {
+    if (!novo.nome.trim()) { toast.error('Informe o nome do colaborador.'); return; }
+    const { error } = await create(novo);
+    if (error) { toast.error('Erro ao adicionar.'); return; }
+    setNovo({ nome: '', cpf: '', matricula: '', cargo: '', setor: '' });
+    toast.success('Colaborador adicionado.');
+  };
+
+  const handleBulk = async () => {
+    const lines = bulk.split('\n').map(l => l.trim()).filter(Boolean);
+    if (!lines.length) return;
+    const rows = lines.map(l => {
+      const [nome, cpf = '', cargo = '', setor = ''] = l.split(/[;\t,|]/).map(p => p.trim());
+      return { nome, cpf: cpf || null, cargo: cargo || null, setor: setor || null };
+    }).filter(r => r.nome);
+    const { error } = await createMany(rows as any);
+    if (error) { toast.error('Erro ao importar.'); return; }
+    toast.success(`${rows.length} colaborador(es) adicionado(s).`);
+    setBulk(''); setShowBulk(false);
+  };
+
+  const handleImportEmpresa = async (emp: { nome: string; cpf: string; funcao: string }) => {
+    const { error } = await create({ nome: emp.nome, cpf: emp.cpf || null, cargo: emp.funcao || null });
+    if (error) toast.error('Erro ao incluir.');
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <h4 className="text-sm font-semibold flex items-center gap-1"><Users className="w-4 h-4"/>Colaboradores participantes ({items.length})</h4>
+        <div className="flex gap-2">
+          {empresaEmpregados.length > 0 && (
+            <Button size="sm" variant="outline" onClick={()=>setShowImport(s => !s)}>
+              <Users className="w-3 h-3 mr-1"/>Importar da empresa ({empresaEmpregados.length})
+            </Button>
+          )}
+          <Button size="sm" variant="outline" onClick={()=>setShowBulk(s => !s)}>
+            <Upload className="w-3 h-3 mr-1"/>Colar lista
+          </Button>
+        </div>
+      </div>
+
+      {showImport && empresaEmpregados.length > 0 && (
+        <div className="border rounded-md p-2 bg-muted/20 max-h-48 overflow-y-auto space-y-1">
+          <p className="text-[11px] text-muted-foreground">Colaboradores cadastrados em <strong>{empresaNome}</strong> — clique para incluir:</p>
+          {empresaEmpregados.map(e => (
+            <button key={e.id} type="button" onClick={()=>handleImportEmpresa(e)}
+              className="w-full text-left text-xs px-2 py-1 hover:bg-muted rounded flex justify-between gap-2">
+              <span>{e.nome}</span>
+              <span className="text-muted-foreground">{e.funcao}{e.cpf ? ` • ${e.cpf}` : ''}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {showBulk && (
+        <div className="space-y-2 border rounded-md p-2 bg-muted/20">
+          <Label className="text-xs">Um colaborador por linha. Separe campos por <code>;</code> ou tab: <em>Nome;CPF;Cargo;Setor</em></Label>
+          <Textarea rows={4} value={bulk} onChange={(e)=>setBulk(e.target.value)} placeholder={'Maria Silva;111.222.333-44;Garçonete;Salão\nJoão Souza;;Cozinheiro;Cozinha'}/>
+          <div className="flex justify-end gap-2">
+            <Button size="sm" variant="ghost" onClick={()=>{ setShowBulk(false); setBulk(''); }}>Cancelar</Button>
+            <Button size="sm" onClick={handleBulk}>Importar</Button>
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-end border rounded-md p-2 bg-muted/30">
+        <div className="md:col-span-3"><Label className="text-xs">Nome *</Label><Input value={novo.nome} onChange={(e)=>setNovo({...novo, nome: e.target.value})}/></div>
+        <div className="md:col-span-2"><Label className="text-xs">CPF</Label><Input value={novo.cpf} onChange={(e)=>setNovo({...novo, cpf: e.target.value})}/></div>
+        <div className="md:col-span-2"><Label className="text-xs">Matrícula</Label><Input value={novo.matricula} onChange={(e)=>setNovo({...novo, matricula: e.target.value})}/></div>
+        <div className="md:col-span-2"><Label className="text-xs">Cargo</Label><Input value={novo.cargo} onChange={(e)=>setNovo({...novo, cargo: e.target.value})}/></div>
+        <div className="md:col-span-2"><Label className="text-xs">Setor</Label><Input value={novo.setor} onChange={(e)=>setNovo({...novo, setor: e.target.value})}/></div>
+        <div className="md:col-span-1"><Button size="sm" onClick={handleAdd}><Plus className="w-3 h-3"/></Button></div>
+      </div>
+
+      {items.length === 0 ? (
+        <p className="text-xs text-muted-foreground">Nenhum colaborador vinculado a esta política ainda.</p>
+      ) : (
+        <div className="space-y-1">
+          {items.map(e => (
+            <EmployeeRow key={e.id} e={e} onUpdate={(patch)=>update(e.id, patch)} onRemove={()=>remove(e.id)}/>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EmployeeRow({ e, onUpdate, onRemove }: { e: any; onUpdate: (patch: any) => Promise<any>; onRemove: () => Promise<any>; }) {
+  const [edit, setEdit] = useState(false);
+  const [f, setF] = useState({ nome: e.nome, cpf: e.cpf || '', matricula: e.matricula || '', cargo: e.cargo || '', setor: e.setor || '', ativo: e.ativo });
+  if (!edit) {
+    return (
+      <div className="flex items-start gap-2 border rounded-md p-2 text-sm">
+        <div className="flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-medium">{e.nome}</span>
+            {!e.ativo && <Badge variant="secondary" className="text-[10px]">inativo</Badge>}
+            {e.cargo && <Badge variant="outline" className="text-[10px]">{e.cargo}</Badge>}
+            {e.setor && <span className="text-[11px] text-muted-foreground">{e.setor}</span>}
+          </div>
+          <p className="text-[11px] text-muted-foreground mt-0.5">
+            {e.cpf && <>CPF {e.cpf} </>}{e.matricula && <>• Matr. {e.matricula}</>}
+          </p>
+        </div>
+        <Button size="sm" variant="ghost" onClick={()=>setEdit(true)}><Pencil className="w-3 h-3"/></Button>
+        <Button size="sm" variant="ghost" onClick={async ()=>{ if (confirm('Remover colaborador?')) await onRemove(); }}><Trash2 className="w-3 h-3"/></Button>
+      </div>
+    );
+  }
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-end border rounded-md p-2 bg-muted/20">
+      <div className="md:col-span-3"><Input value={f.nome} onChange={(ev)=>setF({...f, nome: ev.target.value})}/></div>
+      <div className="md:col-span-2"><Input value={f.cpf} placeholder="CPF" onChange={(ev)=>setF({...f, cpf: ev.target.value})}/></div>
+      <div className="md:col-span-2"><Input value={f.matricula} placeholder="Matr." onChange={(ev)=>setF({...f, matricula: ev.target.value})}/></div>
+      <div className="md:col-span-2"><Input value={f.cargo} placeholder="Cargo" onChange={(ev)=>setF({...f, cargo: ev.target.value})}/></div>
+      <div className="md:col-span-2"><Input value={f.setor} placeholder="Setor" onChange={(ev)=>setF({...f, setor: ev.target.value})}/></div>
       <div className="md:col-span-1 flex gap-1">
         <Button size="sm" onClick={async ()=>{ await onUpdate(f); setEdit(false); }}><Save className="w-3 h-3"/></Button>
         <Button size="sm" variant="ghost" onClick={()=>setEdit(false)}><X className="w-3 h-3"/></Button>
