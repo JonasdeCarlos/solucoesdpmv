@@ -7,8 +7,9 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Plus, Trash2, Wand2, Save, Pencil, X } from 'lucide-react';
-import { usePrizePolicies, usePrizeCriteria, type PrizePolicy } from '@/hooks/usePrizePolicies';
+import { Loader2, Plus, Trash2, Wand2, Save, Pencil, X, Users, Upload } from 'lucide-react';
+import { usePrizePolicies, usePrizeCriteria, usePrizeEmployees, type PrizePolicy } from '@/hooks/usePrizePolicies';
+import { useEmpregados } from '@/hooks/useEmpregados';
 import { toast } from 'sonner';
 
 const VERBA_PRESETS = ['Prêmio', 'Gratificação', 'Bonificação', 'Bônus', 'PLR', 'Adicional de Desempenho'];
@@ -221,8 +222,9 @@ function PolicyCard({ policy, expanded, onToggle, onUpdate, onRemove, cliente }:
         )}
 
         {expanded && (
-          <div className="border-t pt-3">
+          <div className="border-t pt-3 space-y-4">
             <CriteriaSection policy={policy} cliente={cliente}/>
+            <EmployeesSection policy={policy} cliente={cliente}/>
           </div>
         )}
       </CardContent>
