@@ -3028,6 +3028,7 @@ export type Database = {
           id: string
           observacao: string | null
           percentual: number
+          status: string
           updated_at: string
         }
         Insert: {
@@ -3039,6 +3040,7 @@ export type Database = {
           id?: string
           observacao?: string | null
           percentual?: number
+          status?: string
           updated_at?: string
         }
         Update: {
@@ -3050,6 +3052,7 @@ export type Database = {
           id?: string
           observacao?: string | null
           percentual?: number
+          status?: string
           updated_at?: string
         }
         Relationships: [
@@ -3073,6 +3076,7 @@ export type Database = {
         Row: {
           assessment_id: string
           created_at: string
+          elegibilidade: string
           employee_id: string
           id: string
           parecer_geral: string | null
@@ -3084,6 +3088,7 @@ export type Database = {
         Insert: {
           assessment_id: string
           created_at?: string
+          elegibilidade?: string
           employee_id: string
           id?: string
           parecer_geral?: string | null
@@ -3095,6 +3100,7 @@ export type Database = {
         Update: {
           assessment_id?: string
           created_at?: string
+          elegibilidade?: string
           employee_id?: string
           id?: string
           parecer_geral?: string | null
@@ -3253,8 +3259,10 @@ export type Database = {
         Row: {
           ativo: boolean
           cargo: string | null
+          codigo_folha: string | null
           cpf: string | null
           created_at: string
+          data_admissao: string | null
           id: string
           matricula: string | null
           nome: string
@@ -3265,8 +3273,10 @@ export type Database = {
         Insert: {
           ativo?: boolean
           cargo?: string | null
+          codigo_folha?: string | null
           cpf?: string | null
           created_at?: string
+          data_admissao?: string | null
           id?: string
           matricula?: string | null
           nome: string
@@ -3277,8 +3287,10 @@ export type Database = {
         Update: {
           ativo?: boolean
           cargo?: string | null
+          codigo_folha?: string | null
           cpf?: string | null
           created_at?: string
+          data_admissao?: string | null
           id?: string
           matricula?: string | null
           nome?: string
@@ -3305,6 +3317,7 @@ export type Database = {
           created_by: string | null
           escopo: string
           id: string
+          minimo_essencial: number | null
           nome: string
           objetivo: string | null
           periodo_tipo: string
@@ -3326,6 +3339,7 @@ export type Database = {
           created_by?: string | null
           escopo?: string
           id?: string
+          minimo_essencial?: number | null
           nome: string
           objetivo?: string | null
           periodo_tipo?: string
@@ -3347,6 +3361,7 @@ export type Database = {
           created_by?: string | null
           escopo?: string
           id?: string
+          minimo_essencial?: number | null
           nome?: string
           objetivo?: string | null
           periodo_tipo?: string

@@ -11,6 +11,7 @@ import { Loader2, Plus, Trash2, Wand2, Save, Pencil, X, Users, Upload } from 'lu
 import { usePrizePolicies, usePrizeCriteria, usePrizeEmployees, type PrizePolicy } from '@/hooks/usePrizePolicies';
 import { useEmpregados } from '@/hooks/useEmpregados';
 import { toast } from 'sonner';
+import PremioAplicacaoSection from './PremioAplicacaoSection';
 
 const VERBA_PRESETS = ['Prêmio', 'Gratificação', 'Bonificação', 'Bônus', 'PLR', 'Adicional de Desempenho'];
 
@@ -225,6 +226,7 @@ function PolicyCard({ policy, expanded, onToggle, onUpdate, onRemove, cliente }:
           <div className="border-t pt-3 space-y-4">
             <CriteriaSection policy={policy} cliente={cliente}/>
             <EmployeesSection policy={policy} cliente={cliente}/>
+            <PremioAplicacaoSection policy={policy} cliente={cliente}/>
           </div>
         )}
       </CardContent>
@@ -332,7 +334,7 @@ function CriterionRow({ c, onUpdate, onRemove }: { c: any; onUpdate: (patch: any
 function EmployeesSection({ policy, cliente }: { policy: PrizePolicy; cliente: any }) {
   const { items, create, createMany, update, remove } = usePrizeEmployees(policy.id);
   const { empregados } = useEmpregados();
-  const [novo, setNovo] = useState({ nome: '', cpf: '', matricula: '', cargo: '', setor: '' });
+  const [novo, setNovo] = useState({ nome: '', cpf: '', codigo_folha: '', matricula: '', cargo: '', setor: '', data_admissao: '' });
   const [bulk, setBulk] = useState('');
   const [showBulk, setShowBulk] = useState(false);
   const [showImport, setShowImport] = useState(false);
@@ -346,9 +348,9 @@ function EmployeesSection({ policy, cliente }: { policy: PrizePolicy; cliente: a
 
   const handleAdd = async () => {
     if (!novo.nome.trim()) { toast.error('Informe o nome do colaborador.'); return; }
-    const { error } = await create(novo);
+    const { error } = await create({ ...novo, data_admissao: novo.data_admissao || null } as any);
     if (error) { toast.error('Erro ao adicionar.'); return; }
-    setNovo({ nome: '', cpf: '', matricula: '', cargo: '', setor: '' });
+    setNovo({ nome: '', cpf: '', codigo_folha: '', matricula: '', cargo: '', setor: '', data_admissao: '' });
     toast.success('Colaborador adicionado.');
   };
 
@@ -413,9 +415,10 @@ function EmployeesSection({ policy, cliente }: { policy: PrizePolicy; cliente: a
       <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-end border rounded-md p-2 bg-muted/30">
         <div className="md:col-span-3"><Label className="text-xs">Nome *</Label><Input value={novo.nome} onChange={(e)=>setNovo({...novo, nome: e.target.value})}/></div>
         <div className="md:col-span-2"><Label className="text-xs">CPF</Label><Input value={novo.cpf} onChange={(e)=>setNovo({...novo, cpf: e.target.value})}/></div>
-        <div className="md:col-span-2"><Label className="text-xs">Matrícula</Label><Input value={novo.matricula} onChange={(e)=>setNovo({...novo, matricula: e.target.value})}/></div>
+        <div className="md:col-span-1"><Label className="text-xs">Cód. folha</Label><Input value={novo.codigo_folha} onChange={(e)=>setNovo({...novo, codigo_folha: e.target.value})}/></div>
+        <div className="md:col-span-2"><Label className="text-xs">Admissão</Label><Input type="date" value={novo.data_admissao} onChange={(e)=>setNovo({...novo, data_admissao: e.target.value})}/></div>
         <div className="md:col-span-2"><Label className="text-xs">Cargo</Label><Input value={novo.cargo} onChange={(e)=>setNovo({...novo, cargo: e.target.value})}/></div>
-        <div className="md:col-span-2"><Label className="text-xs">Setor</Label><Input value={novo.setor} onChange={(e)=>setNovo({...novo, setor: e.target.value})}/></div>
+        <div className="md:col-span-1"><Label className="text-xs">Setor</Label><Input value={novo.setor} onChange={(e)=>setNovo({...novo, setor: e.target.value})}/></div>
         <div className="md:col-span-1"><Button size="sm" onClick={handleAdd}><Plus className="w-3 h-3"/></Button></div>
       </div>
 
