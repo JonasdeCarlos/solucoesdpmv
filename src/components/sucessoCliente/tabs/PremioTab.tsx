@@ -7,11 +7,12 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Plus, Trash2, Wand2, Save, Pencil, X, Users, Upload } from 'lucide-react';
+import { Loader2, Plus, Trash2, Wand2, Save, Pencil, X, Users, Upload, FileDown } from 'lucide-react';
 import { usePrizePolicies, usePrizeCriteria, usePrizeEmployees, type PrizePolicy } from '@/hooks/usePrizePolicies';
 import { useEmpregados } from '@/hooks/useEmpregados';
 import { toast } from 'sonner';
 import PremioAplicacaoSection from './PremioAplicacaoSection';
+import { generatePremioPoliticaPdf } from '@/utils/sucessoCliente/premioPoliticaPdf';
 
 const VERBA_PRESETS = ['Prêmio', 'Gratificação', 'Bonificação', 'Bônus', 'PLR', 'Adicional de Desempenho'];
 
@@ -236,9 +237,34 @@ function PolicyCard({ policy, expanded, onToggle, onUpdate, onRemove, cliente }:
 
 function CriteriaSection({ policy, cliente }: { policy: PrizePolicy; cliente: any }) {
   const { items, create, createMany, update, remove, suggest } = usePrizeCriteria(policy.id);
+  const { items: participantes } = usePrizeEmployees(policy.id);
   const [novo, setNovo] = useState({ nome: '', descricao: '', peso: 1, essencial: false });
   const [iaCtx, setIaCtx] = useState({ cargo: '', quantidade: 6 });
   const [generating, setGenerating] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  const handleExportPdf = async () => {
+    if (items.length === 0) { toast.error('Cadastre ao menos um critério antes de exportar.'); return; }
+    setExporting(true);
+    try {
+      await generatePremioPoliticaPdf({
+        empresa: cliente?.razao_social || cliente?.nome_fantasia || 'Empresa',
+        cnpj: cliente?.cnpj || undefined,
+        verba_label: policy.verba_label,
+        politica_nome: policy.nome,
+        objetivo: policy.objetivo,
+        periodo_tipo: policy.periodo_tipo,
+        valor_base: policy.valor_base,
+        criterios: items.map(c => ({ nome: c.nome, descricao: c.descricao, peso: c.peso, essencial: c.essencial })),
+        participantes: (participantes || []).filter(p => p.ativo).map(p => ({ nome: p.nome, cpf: p.cpf, cargo: p.cargo, matricula: p.matricula })),
+      });
+      toast.success('PDF gerado.');
+    } catch (e: any) {
+      toast.error('Erro ao gerar PDF: ' + (e?.message || ''));
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const handleAdd = async () => {
     if (!novo.nome.trim()) { toast.error('Informe o nome do critério.'); return; }
@@ -272,6 +298,9 @@ function CriteriaSection({ policy, cliente }: { policy: PrizePolicy; cliente: an
           <Input type="number" min={3} max={12} value={iaCtx.quantidade} onChange={(e)=>setIaCtx({...iaCtx, quantidade: Number(e.target.value)})} className="h-8 w-16"/>
           <Button size="sm" variant="outline" onClick={handleSuggest} disabled={generating}>
             {generating ? <Loader2 className="w-3 h-3 mr-1 animate-spin"/> : <Wand2 className="w-3 h-3 mr-1"/>}Sugerir com IA
+          </Button>
+          <Button size="sm" variant="default" onClick={handleExportPdf} disabled={exporting}>
+            {exporting ? <Loader2 className="w-3 h-3 mr-1 animate-spin"/> : <FileDown className="w-3 h-3 mr-1"/>}PDF da política
           </Button>
         </div>
       </div>
