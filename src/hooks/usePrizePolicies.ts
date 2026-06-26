@@ -41,6 +41,8 @@ export type PrizeEmployee = {
   cargo: string | null;
   setor: string | null;
   ativo: boolean;
+  codigo_folha?: string | null;
+  data_admissao?: string | null;
 };
 
 export function usePrizePolicies(client_id: string | undefined) {
