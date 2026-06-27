@@ -422,9 +422,21 @@ export default function BhDashboardPage() {
           <CardTitle className="text-base flex items-center gap-2">
             <CalendarRange className="w-4 h-4" />
             Período do Banco de Horas
+            {empresa !== 'all' && (
+              <span className="text-xs font-normal text-muted-foreground ml-2">
+                — {empresaLabelStr}
+              </span>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
+          {empresa === 'all' ? (
+            <div className="rounded border border-dashed p-4 text-sm text-muted-foreground bg-muted/30">
+              Selecione uma <strong>empresa</strong> no filtro acima para cadastrar e gerenciar o período do banco
+              de horas. Cada empresa possui suas próprias datas de início e fim, salvas automaticamente.
+            </div>
+          ) : (
+          <>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
             <div>
               <Label className="text-xs">Data de início</Label>
@@ -475,6 +487,8 @@ export default function BhDashboardPage() {
             <span className="px-2 py-0.5 rounded border bg-red-100 text-red-800 border-red-300">151–180 — Vermelho</span>
             <span className="px-2 py-0.5 rounded border border-red-500 bg-red-50 text-red-700">&gt; 180 — Alerta</span>
           </div>
+          </>
+          )}
         </CardContent>
       </Card>
 
