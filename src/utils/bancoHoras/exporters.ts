@@ -43,6 +43,12 @@ export interface ReportMeta {
   topNeg?: { nome: string; codigo?: string; minutes: number }[];
   logoMonteVerdeDataUrl?: string;
   logoEmpresaDataUrl?: string;
+  periodo?: {
+    inicio: string;
+    fim: string;
+    dias: number;
+    faixa: 'verde' | 'amarelo' | 'laranja' | 'vermelho' | 'alerta';
+  };
 }
 
 async function fetchAsDataUrl(url: string): Promise<string> {
