@@ -259,6 +259,12 @@ export default function BhDashboardPage() {
         saldoConsolidadoMin: saldoConsolidado,
         distFaixa,
       },
+      periodo: periodoDias != null ? {
+        inicio: periodoInicio,
+        fim: periodoFim,
+        dias: periodoDias,
+        faixa: periodoFaixa!,
+      } : undefined,
       evolucao: memoriaEvolucao,
       distMes: distMes.map((d: any) => ({
         competencia: d.competencia,
