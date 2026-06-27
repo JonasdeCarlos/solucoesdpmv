@@ -4,7 +4,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Download, FileText, ImagePlus, X } from 'lucide-react';
+import { Download, FileText, ImagePlus, X, AlertTriangle, CalendarRange } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
   LineChart, Line, CartesianGrid,
@@ -29,6 +29,10 @@ export default function BhDashboardPage() {
   const [empresaLogo, setEmpresaLogo] = useState<string>('');
   const logoInputRef = useRef<HTMLInputElement>(null);
 
+  // Período do banco (data início / fim) — persistido em localStorage por CNPJ
+  const [periodoInicio, setPeriodoInicio] = useState<string>('');
+  const [periodoFim, setPeriodoFim] = useState<string>('');
+
   const empresas = useMemo(() => {
     const map = new Map<string, string>();
     employees.forEach((e) => e.empresa_cnpj && map.set(e.empresa_cnpj, e.empresa_nome || e.empresa_cnpj));
@@ -47,6 +51,37 @@ export default function BhDashboardPage() {
     const k = `bh:logo:${empresa}`;
     setEmpresaLogo(localStorage.getItem(k) || '');
   }, [empresa]);
+
+  useEffect(() => {
+    const scope = empresa === 'all' ? 'all' : empresa;
+    setPeriodoInicio(localStorage.getItem(`bh:periodo-ini:${scope}`) || '');
+    setPeriodoFim(localStorage.getItem(`bh:periodo-fim:${scope}`) || '');
+  }, [empresa]);
+
+  const savePeriodo = (ini: string, fim: string) => {
+    const scope = empresa === 'all' ? 'all' : empresa;
+    if (ini) localStorage.setItem(`bh:periodo-ini:${scope}`, ini);
+    else localStorage.removeItem(`bh:periodo-ini:${scope}`);
+    if (fim) localStorage.setItem(`bh:periodo-fim:${scope}`, fim);
+    else localStorage.removeItem(`bh:periodo-fim:${scope}`);
+  };
+
+  const periodoDias = useMemo(() => {
+    if (!periodoInicio || !periodoFim) return null;
+    const a = new Date(periodoInicio + 'T00:00:00');
+    const b = new Date(periodoFim + 'T00:00:00');
+    if (isNaN(a.getTime()) || isNaN(b.getTime()) || b < a) return null;
+    return Math.floor((b.getTime() - a.getTime()) / 86400000) + 1;
+  }, [periodoInicio, periodoFim]);
+
+  const periodoFaixa = useMemo<'verde'|'amarelo'|'laranja'|'vermelho'|'alerta'|null>(() => {
+    if (periodoDias == null) return null;
+    if (periodoDias > 180) return 'alerta';
+    if (periodoDias >= 151) return 'vermelho';
+    if (periodoDias >= 121) return 'laranja';
+    if (periodoDias >= 101) return 'amarelo';
+    return 'verde';
+  }, [periodoDias]);
 
   const onPickLogo = async (f: File) => {
     const reader = new FileReader();
@@ -224,6 +259,12 @@ export default function BhDashboardPage() {
         saldoConsolidadoMin: saldoConsolidado,
         distFaixa,
       },
+      periodo: periodoDias != null ? {
+        inicio: periodoInicio,
+        fim: periodoFim,
+        dias: periodoDias,
+        faixa: periodoFaixa!,
+      } : undefined,
       evolucao: memoriaEvolucao,
       distMes: distMes.map((d: any) => ({
         competencia: d.competencia,
@@ -374,6 +415,68 @@ export default function BhDashboardPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Período do Banco de Horas */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <CalendarRange className="w-4 h-4" />
+            Período do Banco de Horas
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+            <div>
+              <Label className="text-xs">Data de início</Label>
+              <Input
+                type="date"
+                value={periodoInicio}
+                onChange={(e) => { setPeriodoInicio(e.target.value); savePeriodo(e.target.value, periodoFim); }}
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Data fim</Label>
+              <Input
+                type="date"
+                value={periodoFim}
+                onChange={(e) => { setPeriodoFim(e.target.value); savePeriodo(periodoInicio, e.target.value); }}
+              />
+            </div>
+            <div>
+              {periodoDias != null ? (
+                <div className={`rounded border px-3 py-2 text-sm font-medium ${
+                  periodoFaixa === 'verde' ? 'bg-green-100 text-green-800 border-green-300' :
+                  periodoFaixa === 'amarelo' ? 'bg-yellow-100 text-yellow-900 border-yellow-300' :
+                  periodoFaixa === 'laranja' ? 'bg-orange-100 text-orange-900 border-orange-300' :
+                  'bg-red-100 text-red-800 border-red-300'
+                }`}>
+                  {periodoDias} dia{periodoDias === 1 ? '' : 's'} de banco
+                </div>
+              ) : (
+                <div className="text-xs text-muted-foreground">Informe início e fim para calcular.</div>
+              )}
+            </div>
+          </div>
+
+          {periodoFaixa === 'alerta' && (
+            <div className="flex items-start gap-3 p-3 rounded border-2 border-red-500 bg-red-50">
+              <AlertTriangle className="w-8 h-8 text-yellow-500 fill-yellow-300 flex-shrink-0" strokeWidth={2.5} />
+              <div>
+                <p className="text-sm font-bold text-red-700">Atenção — Banco supera 180 dias</p>
+                <p className="text-sm text-red-700">Banco supera 180 dias, verifique a situação.</p>
+              </div>
+            </div>
+          )}
+
+          <div className="flex flex-wrap gap-2 text-[10px] text-muted-foreground">
+            <span className="px-2 py-0.5 rounded border bg-green-100 text-green-800 border-green-300">Até 100 dias — Verde</span>
+            <span className="px-2 py-0.5 rounded border bg-yellow-100 text-yellow-900 border-yellow-300">101–120 — Amarelo</span>
+            <span className="px-2 py-0.5 rounded border bg-orange-100 text-orange-900 border-orange-300">121–150 — Laranja</span>
+            <span className="px-2 py-0.5 rounded border bg-red-100 text-red-800 border-red-300">151–180 — Vermelho</span>
+            <span className="px-2 py-0.5 rounded border border-red-500 bg-red-50 text-red-700">&gt; 180 — Alerta</span>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
