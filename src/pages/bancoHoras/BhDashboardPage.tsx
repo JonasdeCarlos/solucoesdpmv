@@ -29,6 +29,10 @@ export default function BhDashboardPage() {
   const [empresaLogo, setEmpresaLogo] = useState<string>('');
   const logoInputRef = useRef<HTMLInputElement>(null);
 
+  // Período do banco (data início / fim) — persistido em localStorage por CNPJ
+  const [periodoInicio, setPeriodoInicio] = useState<string>('');
+  const [periodoFim, setPeriodoFim] = useState<string>('');
+
   const empresas = useMemo(() => {
     const map = new Map<string, string>();
     employees.forEach((e) => e.empresa_cnpj && map.set(e.empresa_cnpj, e.empresa_nome || e.empresa_cnpj));
@@ -47,6 +51,37 @@ export default function BhDashboardPage() {
     const k = `bh:logo:${empresa}`;
     setEmpresaLogo(localStorage.getItem(k) || '');
   }, [empresa]);
+
+  useEffect(() => {
+    const scope = empresa === 'all' ? 'all' : empresa;
+    setPeriodoInicio(localStorage.getItem(`bh:periodo-ini:${scope}`) || '');
+    setPeriodoFim(localStorage.getItem(`bh:periodo-fim:${scope}`) || '');
+  }, [empresa]);
+
+  const savePeriodo = (ini: string, fim: string) => {
+    const scope = empresa === 'all' ? 'all' : empresa;
+    if (ini) localStorage.setItem(`bh:periodo-ini:${scope}`, ini);
+    else localStorage.removeItem(`bh:periodo-ini:${scope}`);
+    if (fim) localStorage.setItem(`bh:periodo-fim:${scope}`, fim);
+    else localStorage.removeItem(`bh:periodo-fim:${scope}`);
+  };
+
+  const periodoDias = useMemo(() => {
+    if (!periodoInicio || !periodoFim) return null;
+    const a = new Date(periodoInicio + 'T00:00:00');
+    const b = new Date(periodoFim + 'T00:00:00');
+    if (isNaN(a.getTime()) || isNaN(b.getTime()) || b < a) return null;
+    return Math.floor((b.getTime() - a.getTime()) / 86400000) + 1;
+  }, [periodoInicio, periodoFim]);
+
+  const periodoFaixa = useMemo<'verde'|'amarelo'|'laranja'|'vermelho'|'alerta'|null>(() => {
+    if (periodoDias == null) return null;
+    if (periodoDias > 180) return 'alerta';
+    if (periodoDias >= 151) return 'vermelho';
+    if (periodoDias >= 121) return 'laranja';
+    if (periodoDias >= 101) return 'amarelo';
+    return 'verde';
+  }, [periodoDias]);
 
   const onPickLogo = async (f: File) => {
     const reader = new FileReader();
