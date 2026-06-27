@@ -301,6 +301,54 @@ export async function exportPdf(rows: ReportRow[], meta: ReportMeta, _filename?:
   y += 5;
   doc.setTextColor(0);
 
+  // Período do Banco de Horas
+  if (meta.periodo) {
+    const p = meta.periodo;
+    const colorMap: Record<string, [number, number, number]> = {
+      verde: [34, 197, 94],
+      amarelo: [234, 179, 8],
+      laranja: [249, 115, 22],
+      vermelho: [239, 68, 68],
+      alerta: [220, 38, 38],
+    };
+    const bgMap: Record<string, [number, number, number]> = {
+      verde: [220, 252, 231],
+      amarelo: [254, 249, 195],
+      laranja: [255, 237, 213],
+      vermelho: [254, 226, 226],
+      alerta: [254, 226, 226],
+    };
+    const [br, bg, bb] = bgMap[p.faixa];
+    const [cr, cg, cb] = colorMap[p.faixa];
+    const boxH = p.faixa === 'alerta' ? 22 : 14;
+    doc.setDrawColor(cr, cg, cb); doc.setLineWidth(p.faixa === 'alerta' ? 0.8 : 0.4);
+    doc.setFillColor(br, bg, bb);
+    doc.roundedRect(14, y, pw - 28, boxH, 2, 2, 'FD');
+    const fmtDate = (s: string) => {
+      const [y2, m2, d2] = s.split('-');
+      return `${d2}/${m2}/${y2}`;
+    };
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(cr, cg, cb);
+    doc.text('PERÍODO DO BANCO DE HORAS', 18, y + 5);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(60);
+    doc.text(
+      `Início: ${fmtDate(p.inicio)}   •   Fim: ${fmtDate(p.fim)}   •   Total: ${p.dias} dia${p.dias === 1 ? '' : 's'}`,
+      18, y + 10,
+    );
+    if (p.faixa === 'alerta') {
+      // triângulo amarelo de advertência com !
+      const tx = pw - 32, ty = y + 4;
+      doc.setFillColor(234, 179, 8); doc.setDrawColor(60); doc.setLineWidth(0.4);
+      doc.triangle(tx, ty + 12, tx + 14, ty + 12, tx + 7, ty, 'FD');
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(0);
+      doc.text('!', tx + 7, ty + 10, { align: 'center' });
+      doc.setFontSize(9); doc.setTextColor(cr, cg, cb); doc.setFont('helvetica', 'bold');
+      doc.text('Banco supera 180 dias, verifique a situação.', 18, y + 17);
+    }
+    doc.setTextColor(0); doc.setFont('helvetica', 'normal');
+    y += boxH + 6;
+  }
+
   // Gráficos visuais — Evolução e Distribuição por faixa/mês
   if ((meta.evolucao && meta.evolucao.length > 0) || (meta.distMes && meta.distMes.length > 0)) {
     const chartH = 55;
