@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { HoraDecimalConverter } from '@/components/HoraDecimalConverter';
 
 const NAV_ITEMS = [
   { to: '/', label: 'Calculadora', icon: Calculator, end: true },
@@ -44,15 +45,16 @@ const AppLayout = () => {
             <h1 className="text-lg md:text-2xl font-bold leading-tight">Monte Verde Contabilidade</h1>
             <p className="text-xs md:text-sm text-muted-foreground">Sistema Trabalhista — Cálculo estimativo</p>
           </div>
-          {user && (
-            <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
+            <HoraDecimalConverter />
+            {user && (<>
               <span className="hidden md:inline text-xs text-muted-foreground max-w-[180px] truncate">{user.email}</span>
               <Button variant="outline" size="sm" onClick={handleLogout} title="Sair">
                 <LogOut className="w-4 h-4" />
                 <span className="hidden md:inline ml-1">Sair</span>
               </Button>
-            </div>
-          )}
+            </>)}
+          </div>
         </div>
       </header>
 
