@@ -11,6 +11,9 @@ interface ResultsTableProps {
 
 const ResultsTable = ({ verbas, editable = false, onUpdate }: ResultsTableProps) => {
   const total = calcularTotal(verbas);
+  const totalProventos = verbas.filter(v => v.tipo === 'credito').reduce((s, v) => s + (v.valor || 0), 0);
+  const totalDescontos = verbas.filter(v => v.tipo === 'debito').reduce((s, v) => s + (v.valor || 0), 0);
+  const hasDescontos = totalDescontos > 0;
 
   const handleValueChange = (index: number, newVal: number) => {
     if (!onUpdate) return;
@@ -89,11 +92,31 @@ const ResultsTable = ({ verbas, editable = false, onUpdate }: ResultsTableProps)
               )}
             </tr>
           ))}
-          <tr className="results-table-total font-bold">
-            <td className="p-3" colSpan={editable ? 2 : 2}>TOTAL GERAL</td>
-            <td className="p-3 text-right text-lg">{formatCurrency(total)}</td>
-            {editable && <td />}
-          </tr>
+          {hasDescontos ? (
+            <>
+              <tr className="font-semibold bg-muted/40">
+                <td className="p-3" colSpan={2}>TOTAL PROVENTOS</td>
+                <td className="p-3 text-right">{formatCurrency(totalProventos)}</td>
+                {editable && <td />}
+              </tr>
+              <tr className="font-semibold bg-muted/40">
+                <td className="p-3" colSpan={2}>TOTAL DESCONTOS</td>
+                <td className="p-3 text-right text-destructive">- {formatCurrency(totalDescontos)}</td>
+                {editable && <td />}
+              </tr>
+              <tr className="results-table-total font-bold">
+                <td className="p-3" colSpan={2}>LÍQUIDO A RECEBER</td>
+                <td className="p-3 text-right text-lg">{formatCurrency(total)}</td>
+                {editable && <td />}
+              </tr>
+            </>
+          ) : (
+            <tr className="results-table-total font-bold">
+              <td className="p-3" colSpan={2}>TOTAL GERAL</td>
+              <td className="p-3 text-right text-lg">{formatCurrency(total)}</td>
+              {editable && <td />}
+            </tr>
+          )}
         </tbody>
       </table>
     </div>
