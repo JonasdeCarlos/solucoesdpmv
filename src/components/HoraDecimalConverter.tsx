@@ -36,8 +36,8 @@ function hhmmToDecimal(input: string): string {
 }
 
 export function HoraDecimalConverter() {
-  const [dec, setDec] = useState('');
-  const [hhmm, setHhmm] = useState('');
+  const [decIn, setDecIn] = useState('');
+  const [hhmmIn, setHhmmIn] = useState('');
 
   return (
     <Dialog>
@@ -57,15 +57,15 @@ export function HoraDecimalConverter() {
               <Label className="text-xs">Decimal (ex: 7,5)</Label>
               <Input
                 inputMode="decimal"
-                value={dec}
-                onChange={(e) => { setDec(e.target.value); setHhmm(decimalToHHMM(e.target.value)); }}
+                value={decIn}
+                onChange={(e) => setDecIn(e.target.value)}
                 placeholder="7,5"
               />
             </div>
             <span className="pb-2 text-muted-foreground">→</span>
             <div>
               <Label className="text-xs">Hora:Minuto</Label>
-              <Input value={hhmm} readOnly placeholder="07:30" className="font-mono" />
+              <Input value={decimalToHHMM(decIn)} readOnly placeholder="07:30" className="font-mono" />
             </div>
           </div>
 
@@ -73,8 +73,8 @@ export function HoraDecimalConverter() {
             <div>
               <Label className="text-xs">Hora:Minuto (ex: 7:30)</Label>
               <Input
-                value={hhmm && !dec ? hhmm : ''}
-                onChange={(e) => { const v = e.target.value; setHhmm(v); setDec(hhmmToDecimal(v)); }}
+                value={hhmmIn}
+                onChange={(e) => setHhmmIn(e.target.value)}
                 placeholder="07:30"
                 className="font-mono"
               />
@@ -82,7 +82,7 @@ export function HoraDecimalConverter() {
             <span className="pb-2 text-muted-foreground">→</span>
             <div>
               <Label className="text-xs">Decimal</Label>
-              <Input value={dec} readOnly placeholder="7,5" />
+              <Input value={hhmmToDecimal(hhmmIn)} readOnly placeholder="7,5" />
             </div>
           </div>
 
