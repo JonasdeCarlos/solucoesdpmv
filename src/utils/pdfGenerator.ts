@@ -57,10 +57,27 @@ function buildVerbasTable(verbas: VerbaRescisoria[], total: number) {
       v.tipo === 'debito' ? '' : formatCurrency(v.valor),
       v.tipo === 'debito' ? formatCurrency(v.valor) : '',
     ]);
+    const totalCreditos = verbasNaoZero
+      .filter(v => v.tipo !== 'debito')
+      .reduce((s, v) => s + v.valor, 0);
+    const totalDebitos = verbasNaoZero
+      .filter(v => v.tipo === 'debito')
+      .reduce((s, v) => s + v.valor, 0);
+    const bold = { fontStyle: 'bold' as const };
     body.push([
-      { content: 'TOTAL GERAL', styles: { fontStyle: 'bold' as const } } as any, '',
-      { content: formatCurrency(Math.max(0, total)), styles: { fontStyle: 'bold' as const } } as any,
-      { content: total < 0 ? formatCurrency(Math.abs(total)) : '', styles: { fontStyle: 'bold' as const } } as any,
+      { content: 'TOTAL PROVENTOS', styles: bold } as any, '',
+      { content: formatCurrency(totalCreditos), styles: bold } as any,
+      { content: '', styles: bold } as any,
+    ]);
+    body.push([
+      { content: 'TOTAL DESCONTOS', styles: bold } as any, '',
+      { content: '', styles: bold } as any,
+      { content: formatCurrency(totalDebitos), styles: bold } as any,
+    ]);
+    body.push([
+      { content: 'LÍQUIDO A RECEBER', styles: bold } as any, '',
+      { content: formatCurrency(Math.max(0, total)), styles: bold } as any,
+      { content: total < 0 ? formatCurrency(Math.abs(total)) : '', styles: bold } as any,
     ]);
     return { head: [['VERBA', 'REF', 'CRÉDITO (R$)', 'DÉBITO (R$)']], body, hasDebito };
   } else {
