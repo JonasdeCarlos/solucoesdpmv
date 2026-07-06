@@ -235,7 +235,7 @@ const ReciboPage = () => {
       // First pass: calculate non-manual, non-DSR lines
       let linhas = prev.linhas.map((l) => {
         if (l.tipoCalculo !== 'manual' && !l.isDSR) {
-          const novoValor = calcularValorLinha(l, prev.salarioBase, prev.jornadaMensal, prev.divisorDiario);
+          const novoValor = calcularValorLinha(l, prev.salarioBase, prev.jornadaMensal, prev.divisorDiario, !!prev.horista);
           return { ...l, valor: novoValor };
         }
         return l;
@@ -489,7 +489,7 @@ const ReciboPage = () => {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <Label>Salário Base (R$)</Label>
+              <Label>{recibo.horista ? 'Valor da Hora (R$)' : 'Salário Base (R$)'}</Label>
               <Input
                 type="text"
                 inputMode="decimal"
@@ -506,6 +506,7 @@ const ReciboPage = () => {
               <Select
                 value={String(recibo.jornadaMensal)}
                 onValueChange={(v) => setRecibo((p) => ({ ...p, jornadaMensal: Number(v) }))}
+                disabled={!!recibo.horista}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -523,8 +524,19 @@ const ReciboPage = () => {
                 type="number"
                 value={recibo.divisorDiario}
                 onChange={(e) => setRecibo((p) => ({ ...p, divisorDiario: Number(e.target.value) || 30 }))}
+                disabled={!!recibo.horista}
               />
             </div>
+          </div>
+          <div className="flex items-center gap-2 pt-2">
+            <Switch
+              id="horista"
+              checked={!!recibo.horista}
+              onCheckedChange={(v) => setRecibo((p) => ({ ...p, horista: v }))}
+            />
+            <Label htmlFor="horista" className="cursor-pointer">
+              Funcionário horista (o salário informado é o valor-hora; "Horas Trabalhadas" será multiplicada diretamente pelo valor-hora)
+            </Label>
           </div>
         </CardContent>
       </Card>
