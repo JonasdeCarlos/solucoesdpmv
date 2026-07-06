@@ -24,6 +24,9 @@ const RescisaoStep2Upload: React.FC<Props> = ({ files, onChange, onNext, onBack 
       name: f.name,
       category: 'Outros' as DocCategory,
       sortOrder: files.length + i,
+      viasEmpregado: '1 via',
+      viasEmpregador: '1 via',
+      customLabel: '',
     }));
     onChange([...files, ...newFiles]);
   }, [files, onChange]);
@@ -45,6 +48,10 @@ const RescisaoStep2Upload: React.FC<Props> = ({ files, onChange, onNext, onBack 
 
   const setCategory = (id: string, cat: DocCategory) => {
     onChange(files.map(f => f.id === id ? { ...f, category: cat } : f));
+  };
+
+  const setField = (id: string, patch: Partial<UploadedFile>) => {
+    onChange(files.map(f => f.id === id ? { ...f, ...patch } : f));
   };
 
   const missingEssentials = ESSENTIAL_DOCS.filter(
@@ -82,30 +89,61 @@ const RescisaoStep2Upload: React.FC<Props> = ({ files, onChange, onNext, onBack 
         <div className="space-y-2">
           <Label>Documentos ({files.length})</Label>
           {files.map((f, idx) => (
-            <div key={f.id} className="flex items-center gap-2 p-2 border rounded-md bg-card">
-              <div className="flex flex-col gap-0.5">
-                <button onClick={() => move(idx, -1)} disabled={idx === 0} className="p-0.5 hover:bg-accent rounded disabled:opacity-30">
-                  <ChevronUp className="h-3 w-3" />
-                </button>
-                <button onClick={() => move(idx, 1)} disabled={idx === files.length - 1} className="p-0.5 hover:bg-accent rounded disabled:opacity-30">
-                  <ChevronDown className="h-3 w-3" />
-                </button>
+            <div key={f.id} className="p-2 border rounded-md bg-card space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="flex flex-col gap-0.5">
+                  <button onClick={() => move(idx, -1)} disabled={idx === 0} className="p-0.5 hover:bg-accent rounded disabled:opacity-30">
+                    <ChevronUp className="h-3 w-3" />
+                  </button>
+                  <button onClick={() => move(idx, 1)} disabled={idx === files.length - 1} className="p-0.5 hover:bg-accent rounded disabled:opacity-30">
+                    <ChevronDown className="h-3 w-3" />
+                  </button>
+                </div>
+                <span className="text-xs text-muted-foreground w-6 text-center">{idx + 1}</span>
+                <span className="text-sm truncate flex-1 min-w-0">{f.name}</span>
+                <Select value={f.category} onValueChange={(v) => setCategory(f.id, v as DocCategory)}>
+                  <SelectTrigger className="w-[200px] h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DOC_CATEGORIES.map(c => (
+                      <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => remove(f.id)}>
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
               </div>
-              <span className="text-xs text-muted-foreground w-6 text-center">{idx + 1}</span>
-              <span className="text-sm truncate flex-1 min-w-0">{f.name}</span>
-              <Select value={f.category} onValueChange={(v) => setCategory(f.id, v as DocCategory)}>
-                <SelectTrigger className="w-[200px] h-8 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {DOC_CATEGORIES.map(c => (
-                    <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => remove(f.id)}>
-                <Trash2 className="h-4 w-4 text-destructive" />
-              </Button>
+              <div className="flex items-center gap-2 pl-10 flex-wrap">
+                {f.category === 'Outros' && (
+                  <div className="flex items-center gap-1">
+                    <Label className="text-xs text-muted-foreground">Descrição:</Label>
+                    <Input
+                      value={f.customLabel ?? ''}
+                      onChange={(e) => setField(f.id, { customLabel: e.target.value })}
+                      placeholder="Qual documento é este?"
+                      className="h-7 text-xs w-56"
+                    />
+                  </div>
+                )}
+                <div className="flex items-center gap-1">
+                  <Label className="text-xs text-muted-foreground">Vias empregado:</Label>
+                  <Input
+                    value={f.viasEmpregado ?? '1 via'}
+                    onChange={(e) => setField(f.id, { viasEmpregado: e.target.value })}
+                    className="h-7 text-xs w-20"
+                  />
+                </div>
+                <div className="flex items-center gap-1">
+                  <Label className="text-xs text-muted-foreground">Vias empregador:</Label>
+                  <Input
+                    value={f.viasEmpregador ?? '1 via'}
+                    onChange={(e) => setField(f.id, { viasEmpregador: e.target.value })}
+                    className="h-7 text-xs w-20"
+                  />
+                </div>
+              </div>
             </div>
           ))}
         </div>
