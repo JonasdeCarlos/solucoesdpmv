@@ -33,6 +33,7 @@ export interface ReciboData {
   divisorDiario: number;
   calcularFGTS: boolean;
   aliquotaFGTS: number;
+  horista?: boolean;
   linhas: ReciboLinha[];
 }
 
@@ -55,6 +56,7 @@ export function createEmptyReciboData(): ReciboData {
     divisorDiario: 30,
     calcularFGTS: true,
     aliquotaFGTS: 8,
+    horista: false,
     linhas: [],
   };
 }
@@ -77,7 +79,8 @@ export function calcularValorLinha(
   linha: ReciboLinha,
   salarioBase: number,
   jornadaMensal: number,
-  divisorDiario: number
+  divisorDiario: number,
+  horista: boolean = false
 ): number {
   if (linha.tipoCalculo === 'manual') return linha.valor;
   if (salarioBase <= 0) return linha.valor;
@@ -88,14 +91,18 @@ export function calcularValorLinha(
     case 'dias':
       return round2((salarioBase / divisorDiario) * qtd);
     case 'horas':
+      // Horista: salário informado já é o valor-hora, multiplica direto pelas horas trabalhadas.
+      if (horista) return round2(salarioBase * qtd);
       return round2((salarioBase / jornadaMensal) * qtd);
     case 'hora_extra': {
       const adicional = (linha.adicionalPercent || 50) / 100;
-      return round2(qtd * (salarioBase / jornadaMensal) * (1 + adicional));
+      const valorHora = horista ? salarioBase : (salarioBase / jornadaMensal);
+      return round2(qtd * valorHora * (1 + adicional));
     }
     case 'adicional_noturno': {
       const adicionalNot = (linha.adicionalPercent || 20) / 100;
-      return round2(qtd * (salarioBase / jornadaMensal) * adicionalNot);
+      const valorHora = horista ? salarioBase : (salarioBase / jornadaMensal);
+      return round2(qtd * valorHora * adicionalNot);
     }
     default:
       return linha.valor;
