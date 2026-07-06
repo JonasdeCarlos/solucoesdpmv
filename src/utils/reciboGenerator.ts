@@ -133,6 +133,10 @@ export function generateReciboPDF(recibo: ReciboData) {
   y += 5;
   doc.setFontSize(10);
   doc.text(recibo.recebedorNome || '[NOME DO RECEBEDOR]', PAGE_WIDTH / 2, y, { align: 'center' });
+  if (recibo.recebedorCPF && recibo.recebedorCPF.trim()) {
+    y += 5;
+    doc.text(`CPF: ${recibo.recebedorCPF}`, PAGE_WIDTH / 2, y, { align: 'center' });
+  }
 
   doc.save(`recibo-${recibo.competencia.replace('/', '-')}.pdf`);
 }
@@ -167,6 +171,9 @@ export function generateReciboTexto(recibo: ReciboData): string {
   text += `${recibo.cidadeUF}, ${dataExtenso(recibo.dataEmissao)}.\n\n`;
   text += `______________________________________________\n`;
   text += `${recibo.recebedorNome || '[NOME DO RECEBEDOR]'}\n`;
+  if (recibo.recebedorCPF && recibo.recebedorCPF.trim()) {
+    text += `CPF: ${recibo.recebedorCPF}\n`;
+  }
 
   return text;
 }
