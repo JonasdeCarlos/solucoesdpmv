@@ -148,8 +148,9 @@ const ReciboPage = () => {
     const v = verbasDB.find((vb) => vb.id === verbaId);
     if (!v) return;
     const linhaId = crypto.randomUUID();
+    const percentDefault = v.tipoCalculo === 'hora_extra' ? 50 : v.tipoCalculo === 'adicional_noturno' ? 20 : 0;
     const percentLabel = (v.tipoCalculo === 'hora_extra' || v.tipoCalculo === 'adicional_noturno')
-      ? ` ${v.tipoCalculo === 'hora_extra' ? '50' : '20'}%`
+      ? ` ${percentDefault}%`
       : '';
     const novaLinha: ReciboLinha = {
       id: linhaId,
@@ -160,7 +161,7 @@ const ReciboPage = () => {
       incideFGTS: v.incideFGTS,
       tipoCalculo: v.tipoCalculo,
       quantidade: 0,
-      adicionalPercent: v.tipoCalculo === 'hora_extra' ? 50 : v.tipoCalculo === 'adicional_noturno' ? 20 : 0,
+      adicionalPercent: percentDefault,
     };
     const novasLinhas: ReciboLinha[] = [novaLinha];
 
@@ -209,6 +210,20 @@ const ReciboPage = () => {
           }
           return l;
         });
+      }
+      // Se alterou o percentual (hora extra / adicional noturno), sincronizar descrição do DSR filho
+      if ('adicionalPercent' in updates) {
+        const parent = linhas.find((l) => l.id === id);
+        if (parent && (parent.tipoCalculo === 'hora_extra' || parent.tipoCalculo === 'adicional_noturno')) {
+          const newPct = updates.adicionalPercent ?? 0;
+          linhas = linhas.map((l) => {
+            if (l.isDSR && l.dsrParentId === id) {
+              const baseDesc = l.descricao.replace(/\s\d+(?:[.,]\d+)?%\s*$/, '');
+              return { ...l, descricao: `${baseDesc} ${newPct}%` };
+            }
+            return l;
+          });
+        }
       }
       return { ...prev, linhas };
     });
