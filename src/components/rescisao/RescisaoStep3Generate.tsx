@@ -99,7 +99,14 @@ const RescisaoStep3Generate: React.FC<Props> = ({ capaData, files, onBack, onFin
       // 1. Generate cover
       const capaDoc = await gerarCapaRescisao({
         ...capaData,
-        uploadedDocs: files.map(f => ({ categoria: f.category, nome: f.name })),
+        uploadedDocs: files.map(f => ({
+          categoria: f.category === 'Outros' && f.customLabel?.trim()
+            ? f.customLabel.trim()
+            : f.category,
+          nome: f.name,
+          viasEmpregado: f.viasEmpregado,
+          viasEmpregador: f.viasEmpregador,
+        })),
       });
       const capaBytes = capaDoc.output('arraybuffer');
       const capaPdf = await PDFDocument.load(capaBytes);

@@ -30,6 +30,9 @@ export const DOC_CATEGORIES = [
   'TRCT',
   'Termo de Quitação/Homologação',
   'Aviso Prévio',
+  'Carta Pedido de Demissão',
+  'Ficha de Registro de Empregados',
+  'Analítico Rescisão',
   'Extrato FGTS',
   'GRRF/Guia FGTS',
   'Seguro-Desemprego / Requerimento',
@@ -56,4 +59,7 @@ export interface UploadedFile {
   category: DocCategory;
   sortOrder: number;
   preview?: string;
+  viasEmpregado?: string;
+  viasEmpregador?: string;
+  customLabel?: string;
 }

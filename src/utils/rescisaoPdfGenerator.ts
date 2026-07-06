@@ -11,7 +11,7 @@ interface CapaParams {
   competenceMonth: string;
   checkedBy: string;
   rescisaoTipo?: RescisaoTipoId;
-  uploadedDocs?: { categoria: string; nome: string }[];
+  uploadedDocs?: { categoria: string; nome: string; viasEmpregado?: string; viasEmpregador?: string }[];
 }
 
 /** Carrega logo como base64 a partir do public folder */
@@ -106,8 +106,8 @@ export async function gerarCapaRescisao(params: CapaParams): Promise<jsPDF> {
         );
         return {
           documento: u.categoria,
-          empregado: match?.empregado ?? '1 via',
-          empregador: match?.empregador ?? '1 via',
+          empregado: u.viasEmpregado?.trim() || match?.empregado || '1 via',
+          empregador: u.viasEmpregador?.trim() || match?.empregador || '1 via',
           observacoes: u.nome,
         };
       })
