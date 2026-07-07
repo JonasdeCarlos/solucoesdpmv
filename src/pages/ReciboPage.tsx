@@ -149,9 +149,6 @@ const ReciboPage = () => {
     if (!v) return;
     const linhaId = crypto.randomUUID();
     const percentDefault = v.tipoCalculo === 'hora_extra' ? 50 : v.tipoCalculo === 'adicional_noturno' ? 20 : 0;
-    const percentLabel = (v.tipoCalculo === 'hora_extra' || v.tipoCalculo === 'adicional_noturno')
-      ? ` ${percentDefault}%`
-      : '';
     const novaLinha: ReciboLinha = {
       id: linhaId,
       descricao: v.nome,
@@ -168,7 +165,7 @@ const ReciboPage = () => {
     if (v.calculaDSR) {
       novasLinhas.push({
         id: crypto.randomUUID(),
-        descricao: `DSR ${v.nome}${percentLabel}`,
+        descricao: `DSR ${v.nome}`,
         pd: v.padraoPD,
         ref: '', // will be set in setRecibo with diasNaoUteis
         valor: 0,
@@ -212,19 +209,8 @@ const ReciboPage = () => {
         });
       }
       // Se alterou o percentual (hora extra / adicional noturno), sincronizar descrição do DSR filho
-      if ('adicionalPercent' in updates) {
-        const parent = linhas.find((l) => l.id === id);
-        if (parent && (parent.tipoCalculo === 'hora_extra' || parent.tipoCalculo === 'adicional_noturno')) {
-          const newPct = updates.adicionalPercent ?? 0;
-          linhas = linhas.map((l) => {
-            if (l.isDSR && l.dsrParentId === id) {
-              const baseDesc = l.descricao.replace(/\s\d+(?:[.,]\d+)?%\s*$/, '');
-              return { ...l, descricao: `${baseDesc} ${newPct}%` };
-            }
-            return l;
-          });
-        }
-      }
+      // (Descrição do DSR segue apenas o nome da verba — o percentual já
+      // está embutido no nome quando cadastrado pelo usuário.)
       return { ...prev, linhas };
     });
   };
