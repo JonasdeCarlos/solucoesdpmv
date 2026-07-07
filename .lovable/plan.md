@@ -1,78 +1,113 @@
-## Submódulo "Verba Variável – Critérios, Apuração e Alinhamento"
+# Editar e Comentar PDF — Plano de implementação
 
-Entrega faseada dentro de **Sucesso do Cliente – DP**. O nome da verba é **configurável por política** (Prêmio, Gratificação, Bonificação, Participação, Incentivo etc.), refletindo em telas, PDFs, feedbacks da IA e exportação Domínio.
+## Escopo proposto (MVP funcional)
 
----
+A Central PDF hoje é 100% client-side (nada é enviado a servidores, conforme já informado ao usuário). Vou manter esse mesmo padrão nesta primeira versão, entregando um editor/anotador de PDF completo no navegador. Recursos de multiusuário/permissões/auditoria compartilhada exigem backend e ficam para uma fase 2 opcional.
 
-### Nome da verba configurável
+### O que entra no MVP
 
-- Campo `verba_label` em cada `prize_policies` (default: "Prêmio") com sugestões rápidas: Prêmio / Gratificação / Bonificação / Participação / Incentivo / Outro (texto livre).
-- Campo `verba_label_plural` opcional (default derivado).
-- Toda UI usa `{{verba_label}}`: títulos, botões ("Gerar critérios de {{verba_label}}"), avisos, dashboard.
-- Edge functions de IA recebem `verba_label` e substituem nos prompts e respostas.
-- PDF de alinhamento e arquivo Domínio usam o rótulo escolhido.
-- Configuração global por cliente em "Links" (rótulo default), sobrescrita por política.
+**Novo card na Central PDF:** "Editar e Comentar PDF" — abre o editor em tela cheia dentro da própria página.
 
----
+**Visualização**
+- Upload de 1 PDF (com o mesmo `FileDropZone` das outras ferramentas)
+- Renderização por página via `pdfjs-dist` (já usado no projeto)
+- Miniaturas laterais + navegação
+- Zoom in/out, ajustar à largura, rotação visual
+- Busca por texto (quando o PDF tem camada de texto)
 
-### Fase 1 — Fundação (DB + Política + Critérios IA + Link público)
+**Ferramentas de anotação** (camada Konva sobre o canvas do pdf.js)
+- Comentário (pin com balão de texto, autor local + data/hora)
+- Marca-texto por área retangular (amarelo/verde/rosa/azul/laranja + opacidade)
+- Sublinhado e tachado por área
+- Caixa de texto livre (fonte, tamanho, cor, fundo, borda)
+- Setas, retângulo, círculo, linha (cor, espessura, preenchimento, opacidade)
+- Desenho livre (caneta com cor e espessura)
+- Lupa/zoom de trecho: seleciona área → gera caixa ampliada reposicionável com linha ligando ao original e legenda opcional
+- Carimbos prontos: Conferido, Revisar, Corrigir, Aprovado, Pendente, Urgente, Assinado, Enviado ao cliente + criar carimbos personalizados (salvos em localStorage)
 
-**Banco (migration única, com GRANTs e RLS):**
-- `prize_policies` (inclui `verba_label`, `verba_label_plural`, objetivo, período, escopo, tipo, valor base, rubrica, status)
-- `prize_criteria`, `prize_employees`, `prize_assessments`, `prize_assessment_employees`, `prize_assessment_criterion_results`
-- `prize_alignment_reports`, `prize_dominio_exports`
-- `client_prize_links` (token, validade, permissões JSON, `default_verba_label`, log de acesso)
-- Bucket `premio-docs` (privado)
-- RLS: admin/master tudo; authenticated CRUD; rotas públicas via token validado em edge function
+**Painel lateral "Comentários e Marcações"**
+- Lista com tipo, página, autor, data/hora, conteúdo
+- Filtros por página / tipo / autor
+- Ir para página, editar, excluir
 
-**Edge functions:**
-- `premio-criterios-sugerir` — Gemini gera critérios objetivos a partir do objetivo + `verba_label`
-- `premio-publico` — `verify_jwt=false`, valida token e expõe CRUD por permissões
+**Exportar**
+- "Salvar PDF editado" → aplica todas as anotações como camada visual usando `pdf-lib` e baixa `EDITADO - {nome} - {data}.pdf` (arquivo original nunca é sobrescrito)
+- "Exportar relatório de comentários" em PDF (jsPDF) e CSV
+- Versionamento local: cada exportação vira uma versão salva no histórico
 
-**UI:**
-- Aba "Verba Variável" no perfil do cliente (rótulo dinâmico se houver política ativa)
-- Tela admin "Links por Cliente" (gerar/copiar/ativar/validade/permissões/default rótulo)
-- Rota pública `/empresa/:token/premio` — cadastro de política (com seletor de rótulo) + objetivo + "Gerar critérios" + aprovar/editar/excluir/reordenar/duplicar/manuais
-- Aviso jurídico fixo em todas as telas
+**Histórico local (localStorage)**
+- Lista de sessões: nome do arquivo, data, nº de comentários/marcações, versões
+- Reabrir sessão (as anotações são restauradas; o PDF original precisa ser reanexado, pois arquivos não persistem no navegador entre sessões)
 
-### Fase 2 — Empregados + Apuração + Cálculo + Feedback IA
+**Integração OCR**
+- Detecção automática: se a página não tem texto extraível, banner:
+  "Este PDF parece ser uma imagem/escaneado. Use marcação por área ou aplique OCR antes para selecionar texto."
+- Botão leva à ferramenta OCR existente (hoje `PDF → Word` faz extração; se preferir, adiciono item específico "OCR PDF" depois — hoje não existe com esse nome)
 
-- CRUD `prize_employees` (manual + Excel/CSV, vínculo por política, histórico por competência)
-- Tela "Apuração" — slider 0–100% + input por critério, observação obrigatória <100%, upload de evidências, status
-- Cálculo: média ponderada/simples, valor = base × %, trava por critério essencial, arredondamento e mínimo configuráveis
-- `premio-feedback-gerar` — feedback por critério e geral; mensagens especiais a 100%; respeita `verba_label`
+### O que NÃO entra no MVP (precisa decisão)
 
-### Fase 3 — PDF de alinhamento + Exportação Domínio
+Estes itens do briefing exigem backend, RLS e login — hoje o app tem auth para partes administrativas, mas a Central PDF é pública:
+1. Sessões/versões/anotações salvas no Supabase (tabelas `PdfEditSession`, `PdfAnnotation`, `PdfEditVersion`)
+2. Auditoria multiusuário (quem editou, controle por empresa/usuário)
+3. Permissão "cliente só visualiza vs. edita"
+4. Upload dos PDFs em bucket privado
 
-- `utils/sucessoCliente/premioAlinhamentoPdf.ts` — A4, branding, tabela de critérios, observações, feedback IA, % final, valor, parecer, assinaturas; títulos e textos usam `verba_label`
-- Status: Rascunho / Emitido / Assinado (upload) / Arquivado
-- Exportação Domínio: layout configurável (separador, código rubrica, formato competência, decimais, zerados), prévia + validação, `.txt` + log
+Posso fazer isso em uma segunda entrega, se você confirmar. Nesta primeira o "autor" das anotações usa o `useOperatorName` que já existe no projeto.
 
-### Fase 4 — Dashboard + Integração
+## Detalhes técnicos
 
-- Dashboard com filtros, KPIs, ranking, faixas de distribuição, total por setor, critérios fracos
-- Relatórios PDF/CSV/Excel
-- Perfil DP: card com políticas ativas, pendências, total estimado, últimos alinhamentos, última exportação
-- Checklist de fechamento: 7 etapas pré-definidas
-- Rubricas: vínculo política→rubrica + layout Domínio
-- Auditoria via `client_audit_log`
+**Dependências novas**
+- `react-konva` + `konva` — camada de anotação vetorial sobre cada página
+- (já temos `pdfjs-dist`, `pdf-lib`, `jspdf`, `file-saver`, `docx`)
 
----
+**Arquitetura de arquivos**
+```
+src/components/pdftools/tools/EditAnnotateTool.tsx        # entrypoint
+src/components/pdftools/editor/
+  EditorLayout.tsx          # barra superior + sidebar miniaturas + painel comentários
+  PageCanvas.tsx            # pdf.js render + Konva overlay
+  Toolbar.tsx               # ferramentas ativas
+  AnnotationLayer.tsx       # shapes Konva por tipo
+  CommentsPanel.tsx
+  StampPicker.tsx
+  MagnifierTool.tsx
+src/utils/pdfEditor/
+  annotations.ts            # tipos + reducer
+  renderToPdf.ts            # aplica anotações via pdf-lib
+  ocrDetect.ts              # detecta página escaneada
+  history.ts                # localStorage (sessões e versões — só metadados)
+  reportExport.ts           # PDF/CSV do relatório de comentários
+src/pages/PdfToolsPage.tsx  # + novo item em TOOLS
+```
 
-### Detalhes técnicos
+**Modelo de anotação (client-side)**
+```ts
+type Annotation = {
+  id: string; page: number; type: 'comment'|'highlight'|'underline'|'strike'
+    |'text'|'arrow'|'rect'|'circle'|'line'|'freehand'|'stamp'|'magnifier';
+  coords: number[];          // normalizado 0-1 em relação à página
+  color?: string; opacity?: number; strokeWidth?: number;
+  content?: string;          // texto do comentário / caixa
+  stamp?: string;            // rótulo do carimbo
+  magnifier?: { source: Rect; target: Rect; zoom: number; label?: string };
+  author: string; createdAt: string; updatedAt?: string;
+}
+```
 
-- **IA**: `google/gemini-2.5-flash` via Lovable AI Gateway, tracking em `ai_usage_log`
-- **Acesso público**: padrão idêntico ao módulo Feedback (token UUID, sem login)
-- **PDF**: `jspdf` + `jspdf-autotable` com `office_branding`
-- **Excel**: `xlsx` (já presente)
-- **Multiempresa**: RLS via `has_role`; tabelas com `client_id` + `created_by`
-- **Nome interno das tabelas** permanece `prize_*` por simplicidade técnica — usuário nunca vê esse nome.
+**Renderização final para PDF**
+- Para cada anotação → desenhar no `pdf-lib` no mesmo espaço de coordenadas da página (convertendo do normalizado)
+- Marca-texto/sublinhado/tachado → retângulos com opacidade
+- Formas/setas/desenho livre → linhas e paths
+- Comentários → ícone + texto anexado como texto sobre fundo semi-transparente (não uso `PDFAnnotation` nativo do PDF para manter compatibilidade universal de visualização)
+- Lupa → recorta a região usando `embedPage` do `pdf-lib` e re-desenha ampliada, com linha ligando
+- Carimbos → texto grande com borda e cor característica
 
-### Premissas
+## Estimativa
 
-1. Nome da verba configurável por política, com defaults sugeridos e texto livre — OK?
-2. IA: Lovable AI (Gemini Flash) — OK?
-3. Acesso público igual ao Feedback (token UUID, sem login) — OK?
-4. Branding do PDF reusando `office_branding` — OK?
+Entrega em uma sequência de edits: dependências, tipos/reducer, componentes do editor, renderizador para PDF, histórico e integração no `PdfToolsPage`. Sem migrações de banco nesta fase.
 
-Confirme as premissas (ou diga "pode seguir com tudo") e começo pela **Fase 1**.
+## Confirmações que preciso antes de codar
+
+1. **Backend/auditoria/multiusuário:** OK deixar para uma fase 2? (o MVP fica client-side como o resto da Central PDF)
+2. **Persistência do PDF entre sessões:** o navegador não guarda arquivos grandes entre reloads. No histórico local salvo metadados + JSON das anotações; ao reabrir, o usuário reanexa o PDF original. Ok? (alternativa: guardar em IndexedDB — funciona mas limita tamanho)
+3. **Ferramenta OCR:** hoje não existe um item "OCR PDF" separado — o mais próximo é "PDF → Word". Quer que eu crie um item explícito "OCR PDF" (Tesseract.js no navegador) junto com essa entrega ou só linko para o fluxo existente?

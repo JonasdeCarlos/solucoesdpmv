@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   Combine, Scissors, Minimize2, RotateCw, ArrowLeftRight,
-  Trash2, ImageIcon, FileImage, ArrowLeft, FileText,
+  Trash2, ImageIcon, FileImage, ArrowLeft, FileText, PenSquare,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,10 +15,12 @@ import RemovePagesTool from '@/components/pdftools/tools/RemovePagesTool';
 import ImagesToPdfTool from '@/components/pdftools/tools/ImagesToPdfTool';
 import PdfToImagesTool from '@/components/pdftools/tools/PdfToImagesTool';
 import PdfToWordTool from '@/components/pdftools/tools/PdfToWordTool';
+import EditAnnotateTool from '@/components/pdftools/tools/EditAnnotateTool';
 
 type ToolId =
   | 'merge' | 'split' | 'compress' | 'rotate'
-  | 'reorder' | 'remove' | 'images-to-pdf' | 'pdf-to-images' | 'pdf-to-word';
+  | 'reorder' | 'remove' | 'images-to-pdf' | 'pdf-to-images' | 'pdf-to-word'
+  | 'edit-annotate';
 
 const STORAGE_KEY = 'pdf_tools_active_v1';
 
@@ -40,6 +42,7 @@ const TOOLS: ToolDef[] = [
   { id: 'images-to-pdf', title: 'Imagens → PDF', description: 'Combine JPG/PNG em um PDF.', icon: ImageIcon, Component: ImagesToPdfTool },
   { id: 'pdf-to-images', title: 'PDF → Imagens', description: 'Cada página vira uma imagem JPG.', icon: FileImage, Component: PdfToImagesTool },
   { id: 'pdf-to-word', title: 'PDF → Word', description: 'Extraia o texto para um documento .docx editável.', icon: FileText, Component: PdfToWordTool },
+  { id: 'edit-annotate', title: 'Editar e Comentar PDF', description: 'Adicione comentários, destaques, setas, marcações e observações no PDF.', icon: PenSquare, Component: EditAnnotateTool },
 ];
 
 const PdfToolsPage = () => {
