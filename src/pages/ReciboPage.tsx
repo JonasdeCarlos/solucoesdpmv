@@ -594,8 +594,43 @@ const ReciboPage = () => {
                       <TableCell>
                         <Input
                           value={l.ref}
-                          onChange={(e) => updateLinha(l.id, { ref: e.target.value })}
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            const updates: Partial<ReciboLinha> = { ref: raw };
+                            // Para verbas de horas, converter automaticamente o valor
+                            // digitado na REF para a quantidade (centesimal) usada no cálculo.
+                            if (
+                              l.tipoCalculo === 'horas' ||
+                              l.tipoCalculo === 'hora_extra' ||
+                              l.tipoCalculo === 'adicional_noturno'
+                            ) {
+                              if (raw.includes(':')) {
+                                const [h, m] = raw.split(':');
+                                const hours = Number(h) || 0;
+                                const mins = Number(m) || 0;
+                                updates.quantidade = Math.round((hours + mins / 60) * 100) / 100;
+                                (updates as any)._horaInput = raw;
+                              } else if (raw.trim() !== '') {
+                                const n = Number(raw.replace(',', '.'));
+                                if (!isNaN(n)) {
+                                  updates.quantidade = n;
+                                  (updates as any)._horaInput = raw;
+                                }
+                              }
+                            } else if (l.tipoCalculo === 'dias') {
+                              const n = Number(raw.replace(',', '.'));
+                              if (!isNaN(n)) updates.quantidade = n;
+                            }
+                            updateLinha(l.id, updates);
+                          }}
                           className="h-8 text-sm w-16"
+                          placeholder={
+                            l.tipoCalculo === 'hora_extra' ||
+                            l.tipoCalculo === 'horas' ||
+                            l.tipoCalculo === 'adicional_noturno'
+                              ? '5:30'
+                              : ''
+                          }
                         />
                       </TableCell>
                       <TableCell>
