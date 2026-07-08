@@ -404,6 +404,70 @@ export default function CCTTab({ client_id }: { client_id: string }) {
         </Button>
       </CardContent></Card>
 
+      <Card>
+        <CardContent className="p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-primary" />
+            <span className="font-bold text-sm">Busca inteligente na CCT (IA)</span>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Pergunte por tema. A IA busca menções e correlatos em todas as CCTs ativas deste cliente.
+            Ex.: "plano de saúde" cobre auxílio-saúde, odontológico, convênio médico etc.
+          </p>
+          <div className="flex gap-2 flex-wrap">
+            <Input
+              value={aiQuery}
+              onChange={(e) => setAiQuery(e.target.value)}
+              placeholder='Ex.: plano de saúde, cesta básica, adicional noturno, PLR…'
+              onKeyDown={(e) => { if (e.key === 'Enter' && !aiBusy) runAiSearch(); }}
+              className="flex-1 min-w-[260px]"
+            />
+            <Button type="button" onClick={runAiSearch} disabled={aiBusy}>
+              {aiBusy ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Search className="w-4 h-4 mr-1" />}
+              {aiBusy ? (aiStage || 'Buscando…') : 'Buscar'}
+            </Button>
+            {aiResult && !aiBusy && (
+              <Button type="button" variant="ghost" onClick={() => setAiResult(null)}>Limpar</Button>
+            )}
+          </div>
+          {aiResult && (
+            <div className="space-y-3 pt-2 border-t">
+              {aiResult.resumo_geral && (
+                <div className="text-sm bg-muted/40 rounded p-3">
+                  <div className="font-bold text-xs uppercase text-muted-foreground mb-1">Resumo geral</div>
+                  <p className="whitespace-pre-wrap">{aiResult.resumo_geral}</p>
+                </div>
+              )}
+              {(aiResult.resultados || []).map((r: any, i: number) => (
+                <div key={i} className="border rounded p-3 space-y-2">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="font-medium text-sm">{r.sindicato}</div>
+                    <Badge variant={r.regulamentado ? 'default' : 'secondary'}>
+                      {r.regulamentado ? 'Regulamentado' : 'Sem menção'}
+                    </Badge>
+                  </div>
+                  {r.resumo && <p className="text-xs text-muted-foreground whitespace-pre-wrap">{r.resumo}</p>}
+                  {Array.isArray(r.achados) && r.achados.length > 0 && (
+                    <ul className="space-y-2">
+                      {r.achados.map((a: any, k: number) => (
+                        <li key={k} className="border-l-2 border-primary pl-3 text-sm">
+                          <div className="font-medium">{a.titulo}</div>
+                          <div className="italic text-muted-foreground text-xs mt-0.5">"{a.trecho}"</div>
+                          {a.explicacao && <div className="text-xs mt-1">{a.explicacao}</div>}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              ))}
+              {(aiResult.resultados || []).length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-2">Nenhum resultado.</p>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {pisosCCT.length > 0 && (
         <Card>
           <CardContent className="p-4">
