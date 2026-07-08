@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Upload, FileText, Copy, AlertTriangle, Loader2, Trash2, Eye } from 'lucide-react';
+import { Upload, FileText, Copy, AlertTriangle, Loader2, Trash2, Eye, Sparkles, Search } from 'lucide-react';
 import { useCCTs } from '@/hooks/useSucessoCliente';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -147,6 +147,71 @@ export default function CCTTab({ client_id }: { client_id: string }) {
   const [pdfView, setPdfView] = useState<{ url: string; name: string; data: ArrayBuffer } | null>(null);
   const [pdfLoadingPath, setPdfLoadingPath] = useState<string | null>(null);
   const [notifyBusy, setNotifyBusy] = useState(false);
+
+  // Busca inteligente IA
+  const [aiQuery, setAiQuery] = useState('');
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiStage, setAiStage] = useState('');
+  const [aiResult, setAiResult] = useState<any>(null);
+  const textCacheRef = useRef<Map<string, string>>(new Map());
+
+  const runAiSearch = async () => {
+    const q = aiQuery.trim();
+    if (q.length < 3) { toast.error('Descreva o tema (mín. 3 caracteres).'); return; }
+    const ativos = items.filter((c: any) => !c.deleted_at && c.doc_path);
+    if (ativos.length === 0) { toast.error('Nenhuma CCT disponível para busca.'); return; }
+    setAiBusy(true);
+    setAiResult(null);
+    try {
+      const docs: { id: string; sindicato: string; text: string }[] = [];
+      for (let i = 0; i < ativos.length; i++) {
+        const c: any = ativos[i];
+        setAiStage(`Lendo CCT ${i + 1}/${ativos.length}…`);
+        let text = textCacheRef.current.get(c.id) || '';
+        if (!text) {
+          try {
+            const { data, error } = await supabase.storage.from('cliente-dp-uploads').download(c.doc_path);
+            if (error || !data) throw error || new Error('download falhou');
+            const name = String(c.doc_name || c.doc_path).toLowerCase();
+            if (name.endsWith('.pdf')) {
+              const buf = await data.arrayBuffer();
+              let pdf;
+              try { pdf = await (pdfjs as any).getDocument({ data: buf.slice(0) }).promise; }
+              catch { pdf = await (pdfjs as any).getDocument({ data: buf.slice(0), disableWorker: true }).promise; }
+              let acc = '';
+              for (let p = 1; p <= pdf.numPages; p++) {
+                const page = await pdf.getPage(p);
+                const tc = await page.getTextContent();
+                acc += tc.items.map((it: any) => it.str).join(' ') + '\n';
+              }
+              text = acc;
+            } else {
+              text = await data.text();
+            }
+          } catch (e) {
+            text = '';
+          }
+          // fallback: complementa com resumo + cláusulas já extraídas
+          if (text.trim().length < 200) {
+            const clauses = Array.isArray(c.ai_clauses) ? c.ai_clauses.map((cl: any) => `${cl.titulo}: ${cl.descricao}\nTrecho: ${cl.trecho_base || ''}`).join('\n\n') : '';
+            text = `${text}\n\nRESUMO: ${c.ai_summary || ''}\n\nCLÁUSULAS EXTRAÍDAS:\n${clauses}`;
+          }
+          textCacheRef.current.set(c.id, text);
+        }
+        docs.push({ id: c.id, sindicato: c.sindicato || 'CCT', text });
+      }
+      setAiStage('Analisando com IA…');
+      const { data, error } = await supabase.functions.invoke('ai-buscar-cct', { body: { question: q, docs } });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      setAiResult(data);
+    } catch (e: any) {
+      toast.error('Falha na busca IA: ' + errorMessage(e));
+    } finally {
+      setAiBusy(false);
+      setAiStage('');
+    }
+  };
 
   const pisosCCT = useMemo(() => extractPisosCCT(items as any[]), [items]);
 
@@ -338,6 +403,70 @@ export default function CCTTab({ client_id }: { client_id: string }) {
           Avisar vencimento por e-mail
         </Button>
       </CardContent></Card>
+
+      <Card>
+        <CardContent className="p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-primary" />
+            <span className="font-bold text-sm">Busca inteligente na CCT (IA)</span>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Pergunte por tema. A IA busca menções e correlatos em todas as CCTs ativas deste cliente.
+            Ex.: "plano de saúde" cobre auxílio-saúde, odontológico, convênio médico etc.
+          </p>
+          <div className="flex gap-2 flex-wrap">
+            <Input
+              value={aiQuery}
+              onChange={(e) => setAiQuery(e.target.value)}
+              placeholder='Ex.: plano de saúde, cesta básica, adicional noturno, PLR…'
+              onKeyDown={(e) => { if (e.key === 'Enter' && !aiBusy) runAiSearch(); }}
+              className="flex-1 min-w-[260px]"
+            />
+            <Button type="button" onClick={runAiSearch} disabled={aiBusy}>
+              {aiBusy ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Search className="w-4 h-4 mr-1" />}
+              {aiBusy ? (aiStage || 'Buscando…') : 'Buscar'}
+            </Button>
+            {aiResult && !aiBusy && (
+              <Button type="button" variant="ghost" onClick={() => setAiResult(null)}>Limpar</Button>
+            )}
+          </div>
+          {aiResult && (
+            <div className="space-y-3 pt-2 border-t">
+              {aiResult.resumo_geral && (
+                <div className="text-sm bg-muted/40 rounded p-3">
+                  <div className="font-bold text-xs uppercase text-muted-foreground mb-1">Resumo geral</div>
+                  <p className="whitespace-pre-wrap">{aiResult.resumo_geral}</p>
+                </div>
+              )}
+              {(aiResult.resultados || []).map((r: any, i: number) => (
+                <div key={i} className="border rounded p-3 space-y-2">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="font-medium text-sm">{r.sindicato}</div>
+                    <Badge variant={r.regulamentado ? 'default' : 'secondary'}>
+                      {r.regulamentado ? 'Regulamentado' : 'Sem menção'}
+                    </Badge>
+                  </div>
+                  {r.resumo && <p className="text-xs text-muted-foreground whitespace-pre-wrap">{r.resumo}</p>}
+                  {Array.isArray(r.achados) && r.achados.length > 0 && (
+                    <ul className="space-y-2">
+                      {r.achados.map((a: any, k: number) => (
+                        <li key={k} className="border-l-2 border-primary pl-3 text-sm">
+                          <div className="font-medium">{a.titulo}</div>
+                          <div className="italic text-muted-foreground text-xs mt-0.5">"{a.trecho}"</div>
+                          {a.explicacao && <div className="text-xs mt-1">{a.explicacao}</div>}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              ))}
+              {(aiResult.resultados || []).length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-2">Nenhum resultado.</p>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {pisosCCT.length > 0 && (
         <Card>
