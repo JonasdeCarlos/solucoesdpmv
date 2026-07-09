@@ -79,6 +79,9 @@ export default function PremioAvaliacaoDialog({
   }, [policy, allEmployees, ae?.employee_id]);
 
   const valorBaseEfetivo = hotelariaBase ? hotelariaBase.tetoColab : Number(policy.valor_base || 0);
+  const hotelariaEscala: Array<{ label: string; valor: number }> = hotelariaBase
+    ? (((policy as any).hotelaria_config?.escala as any[]) || [])
+    : [];
 
   const totalPeso = criteria.reduce((s, c) => s + (Number(c.peso) || 1), 0) || 1;
   const { percentualFinal, valorFinal, elegibilidade, essencialFalhou } = useMemo(() => {
@@ -309,6 +312,23 @@ export default function PremioAvaliacaoDialog({
                     onChange={(e)=>setField(c.id, { percentual: Math.min(100, Math.max(0, Number(e.target.value)||0)) })}
                     className="w-20 h-8"/>
                 </div>
+
+                {hotelariaEscala.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {hotelariaEscala.map(opt => (
+                      <Button
+                        key={`${c.id}-${opt.valor}`}
+                        type="button"
+                        size="sm"
+                        variant={Number(l.percentual) === Number(opt.valor) ? 'default' : 'outline'}
+                        className="h-7 text-[11px]"
+                        onClick={()=>setField(c.id, { percentual: Number(opt.valor) })}
+                      >
+                        {opt.label} ({Number(opt.valor).toFixed(0)}%)
+                      </Button>
+                    ))}
+                  </div>
+                )}
 
                 <div>
                   <Label className="text-xs">Observação {l.percentual > 0 && l.percentual < 100 && <span className="text-destructive">*</span>}</Label>
