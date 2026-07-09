@@ -137,8 +137,8 @@ export async function generatePremioPoliticaPdf(d: PoliticaPdfData) {
   }
 
   // Critérios
-  const PESO_X = W - 170;
-  const ESS_X = W - 90;
+  const PESO_X = W - 180;
+  const ESS_X = W - 105;
   y = ensure(40, y);
   doc.setFillColor(pr,pg,pb); doc.rect(40, y, W-80, 18, 'F');
   doc.setTextColor(255,255,255);
