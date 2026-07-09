@@ -15,6 +15,9 @@ export type HotelariaConfig = {
   split_individual: number; // ex.: 20
   criterios: HotelariaCriterio[];
   escala: Array<{ label: string; valor: number }>;
+  // % do pool individual efetivamente distribuído como prêmio máximo
+  // (ex.: pool = faturamento * split_individual%; teto = pool * individual_pct_distribuicao%)
+  individual_pct_distribuicao?: number;
 };
 
 export const HOTELARIA_CONFIG: HotelariaConfig = {
@@ -78,6 +81,7 @@ export const HOTELARIA_CONFIG: HotelariaConfig = {
     { label: 'Regular', valor: 25 },
     { label: 'Insatisfatório', valor: 0 },
   ],
+  individual_pct_distribuicao: 1,
 };
 
 export const HOTELARIA_CRITERIOS_INDIVIDUAIS = [
