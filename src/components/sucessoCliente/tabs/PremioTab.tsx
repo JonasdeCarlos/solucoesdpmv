@@ -565,7 +565,7 @@ function CriterionRow({ c, policy, cliente, iaCargo, onUpdate, onRemove, explain
 function EmployeesSection({ policy, cliente }: { policy: PrizePolicy; cliente: any }) {
   const { items, create, createMany, update, remove } = usePrizeEmployees(policy.id);
   const { empregados } = useEmpregados();
-  const [novo, setNovo] = useState({ nome: '', cpf: '', codigo_folha: '', matricula: '', cargo: '', setor: '', data_admissao: '' });
+  const [novo, setNovo] = useState({ nome: '', cpf: '', codigo_folha: '', matricula: '', cargo: '', setor: '', data_admissao: '', pontos: 0 });
   const [bulk, setBulk] = useState('');
   const [showBulk, setShowBulk] = useState(false);
   const [showImport, setShowImport] = useState(false);
@@ -579,9 +579,9 @@ function EmployeesSection({ policy, cliente }: { policy: PrizePolicy; cliente: a
 
   const handleAdd = async () => {
     if (!novo.nome.trim()) { toast.error('Informe o nome do colaborador.'); return; }
-    const { error } = await create({ ...novo, data_admissao: novo.data_admissao || null } as any);
+    const { error } = await create({ ...novo, pontos: Number(novo.pontos || 0), data_admissao: novo.data_admissao || null } as any);
     if (error) { toast.error('Erro ao adicionar.'); return; }
-    setNovo({ nome: '', cpf: '', codigo_folha: '', matricula: '', cargo: '', setor: '', data_admissao: '' });
+    setNovo({ nome: '', cpf: '', codigo_folha: '', matricula: '', cargo: '', setor: '', data_admissao: '', pontos: 0 });
     toast.success('Colaborador adicionado.');
   };
 
@@ -650,6 +650,7 @@ function EmployeesSection({ policy, cliente }: { policy: PrizePolicy; cliente: a
         <div className="md:col-span-2"><Label className="text-xs">Admissão</Label><Input type="date" value={novo.data_admissao} onChange={(e)=>setNovo({...novo, data_admissao: e.target.value})}/></div>
         <div className="md:col-span-2"><Label className="text-xs">Cargo</Label><Input value={novo.cargo} onChange={(e)=>setNovo({...novo, cargo: e.target.value})}/></div>
         <div className="md:col-span-1"><Label className="text-xs">Setor</Label><Input value={novo.setor} onChange={(e)=>setNovo({...novo, setor: e.target.value})}/></div>
+        <div className="md:col-span-1"><Label className="text-xs">Pontos</Label><Input type="number" min={0} value={novo.pontos} onChange={(e)=>setNovo({...novo, pontos: Number(e.target.value)})}/></div>
         <div className="md:col-span-1"><Button size="sm" onClick={handleAdd}><Plus className="w-3 h-3"/></Button></div>
       </div>
 
