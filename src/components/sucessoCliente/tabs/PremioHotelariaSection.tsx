@@ -390,26 +390,6 @@ export default function PremioHotelariaSection({ policy, cliente, onUpdate, onDr
         {/* METAS MENSAIS */}
         <TabsContent value="metas" className="mt-3">
           <div className="space-y-3">
-            <Card><CardContent className="p-4 space-y-2">
-              <h5 className="text-sm font-semibold">Pontos por colaborador (definidos no cadastro)</h5>
-              <p className="text-[11px] text-muted-foreground">Total de pontos ativos = <strong>{somaPontos}</strong>. Edite os pontos na seção "Colaboradores participantes" desta política.</p>
-              {employees.length === 0 ? (
-                <p className="text-xs text-muted-foreground">Nenhum colaborador cadastrado.</p>
-              ) : (
-                <div className="space-y-1 max-h-56 overflow-y-auto text-xs">
-                  {employees.filter(e=>e.ativo).map(e => {
-                    const p = pontosByEmp(e.id);
-                    const pct = somaPontos > 0 ? (p / somaPontos) * 100 : 0;
-                    return (
-                      <div key={e.id} className="flex items-center justify-between border rounded px-2 py-1">
-                        <span>{e.nome} {e.cargo && <span className="text-muted-foreground">• {e.cargo}</span>}</span>
-                        <span className="font-medium">{p} pts <span className="text-muted-foreground">({pct.toFixed(1)}%)</span></span>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </CardContent></Card>
             <MetasMensaisPanel
             config={config}
             ap={ap}
@@ -430,18 +410,59 @@ export default function PremioHotelariaSection({ policy, cliente, onUpdate, onDr
             onApplyToApuracao={(meta, mes) => {
               const [ano, m] = mes.split('-');
               const dataRef = `${ano}-${m}-${String(new Date().getDate()).padStart(2, '0')}`;
+              setActiveComp(mes);
+              const base = apMap[mes] || { ...APURACAO_DEFAULT };
               const next: ApuracaoState = {
-                ...ap,
+                ...base,
                 meta_0: meta.meta_0,
                 meta_1: meta.meta_1,
                 meta_2: meta.meta_2,
                 data_referencia: dataRef,
+                dias_periodo: new Date(Number(ano), Number(m), 0).getDate() || 30,
               };
-              updateApState(next);
-              saveApuracaoSilent(next);
-              toast.success(`Metas de ${mes} aplicadas à apuração.`);
+              const nextMap = { ...apMap, [mes]: next };
+              setApMap(nextMap);
+              void onUpdate({ hotelaria_apuracoes: nextMap } as any, { silent: true });
+              toast.success(`Competência ${mes} ativada na apuração.`);
             }}
             />
+
+            <Card><CardContent className="p-4 space-y-2">
+              <h5 className="text-sm font-semibold">Colaboradores participantes & pontos</h5>
+              <p className="text-[11px] text-muted-foreground">
+                Os colaboradores abaixo participam desta política. A coluna "pontos" define a proporção da distribuição da parcela coletiva. Total ativo: <strong>{somaPontos} pts</strong>.
+              </p>
+              <EmployeesSection policy={policy} cliente={cliente}/>
+            </CardContent></Card>
+
+            <Card><CardContent className="p-4 space-y-2">
+              <h5 className="text-sm font-semibold">PDF da política do mês</h5>
+              <p className="text-[11px] text-muted-foreground">
+                Gera o documento para assinatura dos colaboradores contendo os critérios coletivos, distribuição por pontos, escala individual e as <strong>metas da competência selecionada</strong>.
+              </p>
+              <div className="flex items-end gap-2 flex-wrap">
+                <div className="min-w-[160px]">
+                  <Label className="text-xs">Competência do PDF</Label>
+                  <Select
+                    value={mesesDisponiveis.includes(activeComp) ? activeComp : (mesesDisponiveis[0] || currentMonth())}
+                    onValueChange={setActiveComp}
+                  >
+                    <SelectTrigger className="h-9"><SelectValue/></SelectTrigger>
+                    <SelectContent>
+                      {mesesDisponiveis.map(m => (
+                        <SelectItem key={m} value={m}>
+                          {labelMes(m)} {(config.metas_mensais || {})[m] ? '' : '(sem metas)'}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button size="sm" onClick={()=>handleExportPdf(activeComp)} disabled={exportingPdf}>
+                  {exportingPdf ? <Loader2 className="w-3 h-3 mr-1 animate-spin"/> : <FileDown className="w-3 h-3 mr-1"/>}
+                  Gerar PDF de {labelMes(activeComp)}
+                </Button>
+              </div>
+            </CardContent></Card>
           </div>
         </TabsContent>
 
