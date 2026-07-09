@@ -34,6 +34,16 @@ export type PoliticaPdfData = {
     escala?: Array<{ label: string; valor: number }>;
     pontos?: Array<{ nome: string; cargo?: string | null; pontos: number }>;
   } | null;
+  metas_mes?: {
+    competencia: string; // YYYY-MM
+    meta_0: number;
+    meta_1: number;
+    meta_2: number;
+    faturamento_previsto?: number;
+    observacoes?: string;
+    vigencia_inicio?: string;
+    vigencia_fim?: string;
+  } | null;
 };
 
 const BRL = (n: number) => `R$ ${Number(n || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
