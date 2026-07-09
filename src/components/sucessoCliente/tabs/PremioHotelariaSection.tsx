@@ -92,11 +92,12 @@ export default function PremioHotelariaSection({ policy, onUpdate }: {
     let atingido: typeof c.faixas[number] = c.faixas[0];
     let mediaCanal = 0;
     if (c.metrica === 'faturamento_direto') {
-      // Faixas por faturamento total contra Meta 0/1/2 informadas
+      // Faixas por VENDAS DIRETAS (reserva direta) contra Meta 0/1/2 informadas.
+      // A BC do critério continua sendo faturamento_total × peso_pct.
       const metas = [ap.meta_0, ap.meta_1, ap.meta_2];
       const nivelValues: Array<'meta_0' | 'meta_1' | 'meta_2'> = ['meta_0', 'meta_1', 'meta_2'];
       for (let i = 2; i >= 0; i--) {
-        if (metas[i] > 0 && ap.faturamento_total >= metas[i]) {
+        if (metas[i] > 0 && ap.vendas_diretas >= metas[i]) {
           const f = c.faixas.find(x => x.nivel === nivelValues[i]);
           if (f) { atingido = f; break; }
         }
@@ -284,12 +285,12 @@ export default function PremioHotelariaSection({ policy, onUpdate }: {
               {criteriosCalc.map(({ criterio, bc, atingido, valor, mediaCanal }) => (
                 <div key={criterio.id} className="grid grid-cols-12 gap-2 border rounded p-2">
                   <div className="col-span-4 font-medium">{criterio.nome}</div>
-                  <div className="col-span-2 text-muted-foreground">BC: {BRL(bc)}</div>
+                  <div className="col-span-2 text-muted-foreground">BC ({criterio.peso_pct}%): {BRL(bc)}</div>
                   <div className="col-span-2"><Badge variant="outline">{atingido.nivel.replace('_',' ')} • {atingido.pct}%</Badge></div>
                   <div className="col-span-2 text-muted-foreground">
                     {criterio.metrica === 'nota_media' && `Média: ${mediaCanal.toFixed(2)}`}
                     {criterio.metrica === 'pct_avaliacoes' && `${pctAvaliacoes.toFixed(1)}%`}
-                    {criterio.metrica === 'faturamento_direto' && BRL(ap.faturamento_total)}
+                    {criterio.metrica === 'faturamento_direto' && `Diretas: ${BRL(ap.vendas_diretas)}`}
                   </div>
                   <div className="col-span-2 text-right font-semibold">{BRL(valor)}</div>
                 </div>
