@@ -3321,8 +3321,15 @@ export type Database = {
           nome: string
           objetivo: string | null
           periodo_tipo: string
+          remuneracao_variavel: boolean
           rubrica_codigo: string | null
           rubrica_descricao: string | null
+          rv_base: string
+          rv_base_label: string | null
+          rv_observacoes: string | null
+          rv_pct_igualitario: number
+          rv_pct_individual: number
+          rv_tiers: Json
           status: string
           tipo_calculo: string
           updated_at: string
@@ -3343,8 +3350,15 @@ export type Database = {
           nome: string
           objetivo?: string | null
           periodo_tipo?: string
+          remuneracao_variavel?: boolean
           rubrica_codigo?: string | null
           rubrica_descricao?: string | null
+          rv_base?: string
+          rv_base_label?: string | null
+          rv_observacoes?: string | null
+          rv_pct_igualitario?: number
+          rv_pct_individual?: number
+          rv_tiers?: Json
           status?: string
           tipo_calculo?: string
           updated_at?: string
@@ -3365,8 +3379,15 @@ export type Database = {
           nome?: string
           objetivo?: string | null
           periodo_tipo?: string
+          remuneracao_variavel?: boolean
           rubrica_codigo?: string | null
           rubrica_descricao?: string | null
+          rv_base?: string
+          rv_base_label?: string | null
+          rv_observacoes?: string | null
+          rv_pct_igualitario?: number
+          rv_pct_individual?: number
+          rv_tiers?: Json
           status?: string
           tipo_calculo?: string
           updated_at?: string
