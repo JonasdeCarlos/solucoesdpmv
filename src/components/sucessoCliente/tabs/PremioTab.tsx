@@ -369,14 +369,17 @@ function PolicyCard({ policy, expanded, onToggle, onUpdate, onRemove, cliente }:
             {isHotelaria ? (
               <PremioHotelariaSection
                 policy={effectivePolicy}
+                cliente={cliente}
                 onUpdate={onUpdate}
                 onDraftChange={(patch)=>setHotelariaDraft(prev => ({ ...prev, ...patch }))}
               />
             ) : (
-              <PremioRemuneracaoVariavelSection policy={policy} onUpdate={onUpdate}/>
+              <>
+                <PremioRemuneracaoVariavelSection policy={policy} onUpdate={onUpdate}/>
+                <CriteriaSection policy={effectivePolicy} cliente={cliente}/>
+                <EmployeesSection policy={effectivePolicy} cliente={cliente}/>
+              </>
             )}
-            <CriteriaSection policy={effectivePolicy} cliente={cliente}/>
-            <EmployeesSection policy={effectivePolicy} cliente={cliente}/>
             <PremioAplicacaoSection policy={effectivePolicy} cliente={cliente}/>
           </div>
         )}
@@ -616,7 +619,7 @@ function CriterionRow({ c, policy, cliente, iaCargo, onUpdate, onRemove, explain
   );
 }
 
-function EmployeesSection({ policy, cliente }: { policy: PrizePolicy; cliente: any }) {
+export function EmployeesSection({ policy, cliente }: { policy: PrizePolicy; cliente: any }) {
   const { items, create, createMany, update, remove } = usePrizeEmployees(policy.id);
   const { empregados } = useEmpregados();
   const [novo, setNovo] = useState({ nome: '', cpf: '', codigo_folha: '', matricula: '', cargo: '', setor: '', data_admissao: '', pontos: 0 });
