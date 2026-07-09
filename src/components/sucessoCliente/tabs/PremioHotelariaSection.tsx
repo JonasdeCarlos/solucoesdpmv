@@ -516,3 +516,106 @@ export default function PremioHotelariaSection({ policy, onUpdate, onDraftChange
     </div>
   );
 }
+
+function MetasMensaisPanel({
+  config, ap, onSaveMeta, onRemoveMeta, onApplyToApuracao,
+}: {
+  config: HotelariaConfig;
+  ap: ApuracaoState;
+  onSaveMeta: (mes: string, meta: MetaMensal) => Promise<void>;
+  onRemoveMeta: (mes: string) => Promise<void>;
+  onApplyToApuracao: (meta: MetaMensal, mes: string) => void;
+}) {
+  const currentMes = new Date().toISOString().slice(0, 7);
+  const [mes, setMes] = useState<string>(currentMes);
+  const existentes = config.metas_mensais || {};
+  const atual = existentes[mes];
+  const [form, setForm] = useState<MetaMensal>(atual || {
+    meta_0: ap.meta_0 || 0,
+    meta_1: ap.meta_1 || 0,
+    meta_2: ap.meta_2 || 0,
+    faturamento_previsto: 0,
+    observacoes: '',
+    vigencia_inicio: `${mes}-01`,
+    vigencia_fim: '',
+  });
+
+  useEffect(() => {
+    const ex = (config.metas_mensais || {})[mes];
+    setForm(ex || {
+      meta_0: 0, meta_1: 0, meta_2: 0, faturamento_previsto: 0,
+      observacoes: '', vigencia_inicio: `${mes}-01`, vigencia_fim: '',
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mes, config.metas_mensais]);
+
+  const meses = Object.keys(existentes).sort().reverse();
+
+  return (
+    <div className="space-y-3">
+      <Card><CardContent className="p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <CalendarDays className="w-4 h-4 text-primary"/>
+          <h5 className="text-sm font-semibold">Metas por competência</h5>
+        </div>
+        <p className="text-[11px] text-muted-foreground">
+          Cadastre as metas de faturamento (Meta 0/1/2) para cada mês. As metas ficam vinculadas à política e aparecem no <strong>PDF da política do mês</strong>, para assinatura da equipe. Use "Aplicar à apuração" para trazer os valores para a apuração corrente.
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 items-end">
+          <div>
+            <Label className="text-xs">Competência</Label>
+            <Input type="month" value={mes} onChange={(e)=>setMes(e.target.value || currentMes)}/>
+          </div>
+          <div><Label className="text-xs">Vigência início</Label><Input type="date" value={form.vigencia_inicio || ''} onChange={(e)=>setForm({...form, vigencia_inicio: e.target.value})}/></div>
+          <div><Label className="text-xs">Vigência fim</Label><Input type="date" value={form.vigencia_fim || ''} onChange={(e)=>setForm({...form, vigencia_fim: e.target.value})}/></div>
+          <div><Label className="text-xs">Faturamento previsto (R$)</Label><Input type="number" value={form.faturamento_previsto ?? 0} onChange={(e)=>setForm({...form, faturamento_previsto: Number(e.target.value)})}/></div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+          <div><Label className="text-xs">Meta 0 (R$/dia)</Label><Input type="number" value={form.meta_0} onChange={(e)=>setForm({...form, meta_0: Number(e.target.value)})}/></div>
+          <div><Label className="text-xs">Meta 1 (R$/dia)</Label><Input type="number" value={form.meta_1} onChange={(e)=>setForm({...form, meta_1: Number(e.target.value)})}/></div>
+          <div><Label className="text-xs">Meta 2 (R$/dia)</Label><Input type="number" value={form.meta_2} onChange={(e)=>setForm({...form, meta_2: Number(e.target.value)})}/></div>
+        </div>
+
+        <div>
+          <Label className="text-xs">Observações (opcional — sai no PDF)</Label>
+          <Textarea rows={2} value={form.observacoes || ''} onChange={(e)=>setForm({...form, observacoes: e.target.value})} placeholder="Ex.: mês com evento sazonal; metas revisadas em reunião de 01/07."/>
+        </div>
+
+        <div className="flex justify-end gap-2">
+          <Button size="sm" variant="outline" onClick={()=>onApplyToApuracao(form, mes)}>
+            <ArrowRightCircle className="w-3 h-3 mr-1"/>Aplicar à apuração
+          </Button>
+          <Button size="sm" onClick={()=>onSaveMeta(mes, form)}><Save className="w-3 h-3 mr-1"/>Salvar metas do mês</Button>
+        </div>
+      </CardContent></Card>
+
+      <Card><CardContent className="p-4 space-y-2">
+        <h5 className="text-sm font-semibold">Histórico de metas ({meses.length})</h5>
+        {meses.length === 0 ? (
+          <p className="text-[11px] text-muted-foreground">Nenhuma competência cadastrada ainda.</p>
+        ) : (
+          <div className="space-y-1 text-xs">
+            {meses.map(m => {
+              const it = existentes[m];
+              return (
+                <div key={m} className="grid grid-cols-12 gap-2 items-center border rounded p-2">
+                  <div className="col-span-2 font-semibold">{m}</div>
+                  <div className="col-span-2">M0: {BRL(it.meta_0)}</div>
+                  <div className="col-span-2">M1: {BRL(it.meta_1)}</div>
+                  <div className="col-span-2">M2: {BRL(it.meta_2)}</div>
+                  <div className="col-span-2 text-muted-foreground truncate">{it.observacoes || '—'}</div>
+                  <div className="col-span-2 flex justify-end gap-1">
+                    <Button size="sm" variant="ghost" onClick={()=>setMes(m)} title="Editar">Editar</Button>
+                    <Button size="sm" variant="ghost" onClick={async ()=>{ if (confirm(`Remover metas de ${m}?`)) await onRemoveMeta(m); }}><Trash2 className="w-3 h-3"/></Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </CardContent></Card>
+    </div>
+  );
+}
