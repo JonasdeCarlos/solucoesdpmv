@@ -101,23 +101,23 @@ export async function generatePremioRelatorioFinalPdf(d: RelatorioFinalData) {
     doc.setFont('helvetica','bold'); doc.setFontSize(9);
     doc.setFillColor(235,235,235); doc.rect(40, y, W-80, 14, 'F');
     doc.text('CRITÉRIO', 46, y+10);
-    doc.text('PESO', W-290, y+10);
-    doc.text('BC', W-240, y+10);
-    doc.text('NÍVEL', W-170, y+10);
-    doc.text('REFERÊNCIA', W-120, y+10);
-    doc.text('VALOR', W-50, y+10, { align: 'right' } as any);
+    doc.text('PESO', W-330, y+10);
+    doc.text('BC', W-285, y+10);
+    doc.text('NÍVEL', W-215, y+10);
+    doc.text('REFERÊNCIA', W-155, y+10);
+    doc.text('VALOR', W-46, y+10, { align: 'right' } as any);
     y += 14;
     doc.setFont('helvetica','normal');
 
     for (const l of d.coletivo.linhas) {
       ensure(14);
       doc.setDrawColor(230,230,230); doc.line(40, y, W-40, y);
-      doc.text(String(l.nome).slice(0, 32), 46, y+10);
-      doc.text(`${l.peso_pct}%`, W-290, y+10);
-      doc.text(BRL(l.bc), W-240, y+10);
-      doc.text(`${l.nivel.replace('_',' ')} ${l.pct}%`, W-170, y+10);
-      doc.text(String(l.referencia).slice(0, 24), W-120, y+10);
-      doc.text(BRL(l.valor), W-50, y+10, { align: 'right' } as any);
+      doc.text(String(l.nome).slice(0, 28), 46, y+10);
+      doc.text(`${l.peso_pct}%`, W-330, y+10);
+      doc.text(BRL(l.bc), W-285, y+10);
+      doc.text(`${l.nivel.replace('_',' ')} ${l.pct}%`, W-215, y+10);
+      doc.text(String(l.referencia).slice(0, 18), W-155, y+10);
+      doc.text(BRL(l.valor), W-46, y+10, { align: 'right' } as any);
       y += 14;
     }
     doc.setDrawColor(180,180,180); doc.line(40, y, W-40, y); y += 4;
