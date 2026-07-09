@@ -589,6 +589,10 @@ export default function PremioHotelariaSection({ policy, cliente, onUpdate, onDr
               <Button size="sm" onClick={saveApuracao}><Save className="w-3 h-3 mr-1"/>Salvar apuração</Button>
             </div>
           </CardContent></Card>
+
+          <div className="mt-3">
+            <PremioAplicacaoSection policy={policy} cliente={cliente}/>
+          </div>
         </TabsContent>
 
         {/* EVOLUCAO */}
