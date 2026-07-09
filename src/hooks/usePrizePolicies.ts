@@ -26,6 +26,10 @@ export type PrizePolicy = {
   rv_pct_individual?: number;
   rv_pct_igualitario?: number;
   rv_observacoes?: string | null;
+  modelo_template?: string | null;
+  hotelaria_config?: any;
+  hotelaria_pontos?: Record<string, number>;
+  hotelaria_apuracao?: any;
 };
 
 export type PrizeCriterion = {
