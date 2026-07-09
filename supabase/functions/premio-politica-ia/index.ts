@@ -22,7 +22,8 @@ Deno.serve(async (req) => {
       try {
         const bin = Uint8Array.from(atob(f.data_base64), (c) => c.charCodeAt(0));
         if (mime.includes("word") || mime.includes("officedocument.wordprocessingml") || /\.docx$/i.test(f.name || "")) {
-          const res = await mammoth.extractRawText({ buffer: bin });
+          const ab = bin.buffer.slice(bin.byteOffset, bin.byteOffset + bin.byteLength);
+          const res = await mammoth.extractRawText({ arrayBuffer: ab });
           extraText += `\n\n---- ${f.name} ----\n${(res.value || "").slice(0, 30000)}`;
         } else if (mime === "application/pdf" || /\.pdf$/i.test(f.name || "")) {
           const pdf = await getDocumentProxy(bin);
