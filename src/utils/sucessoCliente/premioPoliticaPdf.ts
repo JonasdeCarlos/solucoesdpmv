@@ -11,6 +11,16 @@ export type PoliticaPdfData = {
   valor_base: number;
   criterios: Array<{ nome: string; descricao?: string | null; peso: number; essencial: boolean }>;
   participantes: Array<{ nome: string; cpf?: string | null; cargo?: string | null; matricula?: string | null }>;
+  remuneracao_variavel?: {
+    ativo: boolean;
+    base?: string | null;
+    base_label?: string | null;
+    tiers?: Array<{ ate: number; percentual: number }> | null;
+    pct_individual?: number | null;
+    pct_igualitario?: number | null;
+    observacoes?: string | null;
+    criterios_individuais?: Array<{ nome: string; peso: number }>;
+  } | null;
 };
 
 const BRL = (n: number) => `R$ ${Number(n || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -105,6 +115,97 @@ export async function generatePremioPoliticaPdf(d: PoliticaPdfData) {
   doc.setFontSize(8); doc.setTextColor(120,120,120);
   doc.text('Os percentuais indicam o peso relativo de cada critério no total da apuração. Critérios essenciais zerados impedem o pagamento da verba.', 46, y, { maxWidth: W-80 });
   y += 18; doc.setTextColor(0,0,0);
+
+  // Remuneração Variável
+  const rv = d.remuneracao_variavel;
+  if (rv && rv.ativo) {
+    y = ensure(60, y);
+    doc.setFont('helvetica','bold'); doc.setFontSize(10);
+    doc.setFillColor(pr,pg,pb); doc.setTextColor(255,255,255);
+    doc.rect(40, y, W-80, 16, 'F');
+    doc.text('REMUNERAÇÃO VARIÁVEL — FAIXAS E DISTRIBUIÇÃO', 46, y+11);
+    y += 20;
+    doc.setTextColor(0,0,0); doc.setFont('helvetica','normal'); doc.setFontSize(9);
+
+    const baseLabel = rv.base_label || rv.base || 'faturamento';
+    const intro = `Esta política adota modelo de remuneração variável. O valor total a ser distribuído a título de ${d.verba_label} será apurado sobre a base "${baseLabel}", conforme faixas de atingimento definidas abaixo. Sobre o montante apurado, aplica-se a divisão entre a parcela vinculada a critérios individuais (pontualidade, assiduidade, desempenho e demais critérios listados nesta política) e a parcela igualitária (distribuída em partes iguais entre os participantes elegíveis).`;
+    const iw = doc.splitTextToSize(intro, W-80);
+    for (const w of iw) { y = ensure(12, y); doc.text(w, 46, y); y += 12; }
+    y += 4;
+
+    // Tabela de faixas
+    const tiers = (rv.tiers || []).slice().sort((a,b) => (a.ate||0) - (b.ate||0));
+    if (tiers.length > 0) {
+      y = ensure(30, y);
+      doc.setFont('helvetica','bold'); doc.setFillColor(240,240,240);
+      doc.rect(40, y, W-80, 14, 'F');
+      doc.text(`FAIXA DE ${baseLabel.toUpperCase()} (ATÉ)`, 46, y+10);
+      doc.text('% DESTINADO À VERBA', W-200, y+10);
+      y += 14;
+      doc.setFont('helvetica','normal');
+      let prev = 0;
+      for (const t of tiers) {
+        y = ensure(14, y);
+        doc.setDrawColor(230,230,230); doc.rect(40, y, W-80, 14);
+        const faixa = prev > 0 ? `de ${BRL(prev)} até ${BRL(t.ate)}` : `até ${BRL(t.ate)}`;
+        doc.text(faixa, 46, y+10);
+        doc.text(`${Number(t.percentual || 0).toFixed(2)}%`, W-200, y+10);
+        y += 14;
+        prev = t.ate;
+      }
+      y += 6;
+    }
+
+    // Distribuição individual vs igualitária
+    const ind = Number(rv.pct_individual || 0);
+    const igu = Number(rv.pct_igualitario || 0);
+    y = ensure(30, y);
+    doc.setFont('helvetica','bold');
+    doc.text('DIVISÃO DO MONTANTE APURADO', 46, y); y += 12;
+    doc.setFont('helvetica','normal');
+    const distLines = [
+      `• ${ind.toFixed(2)}% será distribuído com base em CRITÉRIOS INDIVIDUAIS de desempenho (avaliados pelos critérios listados nesta política, incluindo pontualidade, assiduidade e demais indicadores).`,
+      `• ${igu.toFixed(2)}% será distribuído de forma IGUALITÁRIA entre os participantes elegíveis no período.`,
+    ];
+    for (const l of distLines) {
+      const w = doc.splitTextToSize(l, W-80);
+      for (const ln of w) { y = ensure(12, y); doc.text(ln, 46, y); y += 12; }
+    }
+    y += 4;
+
+    // Critérios individuais (referência)
+    if (rv.criterios_individuais && rv.criterios_individuais.length > 0) {
+      y = ensure(20, y);
+      doc.setFont('helvetica','bold');
+      doc.text('Critérios individuais considerados na parcela individual:', 46, y); y += 12;
+      doc.setFont('helvetica','normal');
+      const totalP = rv.criterios_individuais.reduce((s,c)=>s+(c.peso||0),0) || 1;
+      for (const c of rv.criterios_individuais) {
+        const pct = ((c.peso||0)/totalP*100).toFixed(0);
+        y = ensure(12, y);
+        doc.text(`• ${c.nome} — peso ${c.peso} (${pct}%)`, 52, y); y += 12;
+      }
+      y += 4;
+    }
+
+    // Observações
+    if (rv.observacoes && rv.observacoes.trim()) {
+      y = ensure(20, y);
+      doc.setFont('helvetica','bold');
+      doc.text('Observações / regras adicionais:', 46, y); y += 12;
+      doc.setFont('helvetica','normal');
+      const ow = doc.splitTextToSize(rv.observacoes, W-80);
+      for (const w of ow) { y = ensure(12, y); doc.text(w, 46, y); y += 12; }
+      y += 4;
+    }
+
+    doc.setFontSize(8); doc.setTextColor(120,120,120);
+    const nota = 'A remuneração variável tem natureza condicional, não integra a remuneração para fins de habitualidade e depende do atingimento das faixas e do cumprimento dos critérios estabelecidos. O empregador reserva-se o direito de revisar, suspender ou alterar as faixas e percentuais mediante comunicação prévia.';
+    const nw = doc.splitTextToSize(nota, W-80);
+    for (const w of nw) { y = ensure(11, y); doc.text(w, 46, y); y += 11; }
+    doc.setTextColor(0,0,0); doc.setFontSize(9);
+    y += 8;
+  }
 
   // Termo de ciência
   y = ensure(60, y);
