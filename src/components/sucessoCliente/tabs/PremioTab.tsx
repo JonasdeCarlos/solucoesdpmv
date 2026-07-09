@@ -378,9 +378,9 @@ function PolicyCard({ policy, expanded, onToggle, onUpdate, onRemove, cliente }:
                 <PremioRemuneracaoVariavelSection policy={policy} onUpdate={onUpdate}/>
                 <CriteriaSection policy={effectivePolicy} cliente={cliente}/>
                 <EmployeesSection policy={effectivePolicy} cliente={cliente}/>
+                <PremioAplicacaoSection policy={effectivePolicy} cliente={cliente}/>
               </>
             )}
-            <PremioAplicacaoSection policy={effectivePolicy} cliente={cliente}/>
           </div>
         )}
       </CardContent>
