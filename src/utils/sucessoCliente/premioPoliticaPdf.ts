@@ -21,6 +21,19 @@ export type PoliticaPdfData = {
     observacoes?: string | null;
     criterios_individuais?: Array<{ nome: string; peso: number }>;
   } | null;
+  hotelaria?: {
+    split_coletivo: number;
+    split_individual: number;
+    criterios: Array<{
+      nome: string;
+      peso_pct: number;
+      metrica: string;
+      canal?: string | null;
+      faixas: Array<{ nivel: string; pct: number; alvo: number | null }>;
+    }>;
+    escala?: Array<{ label: string; valor: number }>;
+    pontos?: Array<{ nome: string; cargo?: string | null; pontos: number }>;
+  } | null;
 };
 
 const BRL = (n: number) => `R$ ${Number(n || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
