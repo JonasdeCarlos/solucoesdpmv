@@ -268,7 +268,16 @@ export default function PremioAvaliacaoDialog({
             <div>Pool individual ({hotelariaBase.splitInd}%): <strong>R$ {hotelariaBase.poolIndividual.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></div>
             <div>Teto de distribuição ({hotelariaBase.pctDist}%): <strong>R$ {hotelariaBase.tetoDistribuicao.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></div>
             <div>Pontos do colaborador: <strong>{hotelariaBase.pontosColab}</strong> de <strong>{hotelariaBase.somaPontos}</strong> — teto pessoal: <strong>R$ {hotelariaBase.tetoColab.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></div>
-            <div className="text-muted-foreground">O valor final = teto pessoal × % de desempenho apurado abaixo.</div>
+            <div className="text-muted-foreground">Prêmio = teto pessoal × % de desempenho: <strong>R$ {hotelariaBase.tetoColab.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong> × <strong>{percentualFinal.toFixed(0)}%</strong> = <strong className="text-primary">R$ {valorFinal.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></div>
+            {hotelariaBase.tetoColab === 0 && (
+              <div className="mt-1 rounded border border-destructive/40 bg-destructive/10 p-2 text-destructive text-[11px] space-y-0.5">
+                <div className="font-semibold">⚠ Teto pessoal R$ 0,00 — o prêmio ficará zerado. Verifique:</div>
+                {hotelariaBase.fat === 0 && <div>• Faturamento total = 0. Preencha na aba <strong>Apuração</strong> da política e salve.</div>}
+                {hotelariaBase.pctDist === 0 && <div>• % de distribuição do pool individual = 0. Ajuste na Configuração (ex.: 1%).</div>}
+                {hotelariaBase.somaPontos === 0 && <div>• Nenhum colaborador ativo tem pontos. Cadastre pontos na seção "Colaboradores participantes".</div>}
+                {hotelariaBase.somaPontos > 0 && hotelariaBase.pontosColab === 0 && <div>• Este colaborador está com <strong>0 pontos</strong>. Edite o cadastro dele nesta política.</div>}
+              </div>
+            )}
           </div>
         )}
 
