@@ -39,32 +39,83 @@ export async function generatePremioPoliticaPdf(d: PoliticaPdfData) {
     return y;
   };
 
-  // Header
-  const HEADER_H = 120;
-  const LOGO_SIZE = 90;
+  // Reset charSpace to evitar sobreposição de glifos (bug conhecido do jsPDF)
+  (doc as any).setCharSpace?.(0);
+
+  // Header — carrega a logo preservando aspecto
+  const HEADER_H = 130;
   doc.setFillColor(pr,pg,pb); doc.rect(0,0,W,HEADER_H,'F');
-  // faixa clara sob a logo para dar destaque
-  doc.setFillColor(255,255,255);
-  doc.roundedRect(20, 15, LOGO_SIZE + 12, LOGO_SIZE + 12, 6, 6, 'F');
+
+  // Card branco para a logo (dimensionado depois de conhecer o aspecto)
+  const LOGO_BOX_H = 100;
+  const LOGO_BOX_MAX_W = 170;
+  const LOGO_BOX_Y = (HEADER_H - LOGO_BOX_H) / 2;
+  let logoBoxW = LOGO_BOX_MAX_W;
+
   if (branding?.logo_url) {
     try {
-      const img = await fetch(branding.logo_url).then(r => r.blob()).then(b => new Promise<string>((res) => {
+      const dataUrl = await fetch(branding.logo_url).then(r => r.blob()).then(b => new Promise<string>((res) => {
         const fr = new FileReader(); fr.onload = () => res(fr.result as string); fr.readAsDataURL(b);
       }));
-      doc.addImage(img, 'PNG', 26, 21, LOGO_SIZE, LOGO_SIZE);
-    } catch {}
+      // Medir dimensões naturais da imagem para preservar aspecto
+      const dims = await new Promise<{ w: number; h: number; fmt: string }>((resolve) => {
+        const im = new Image();
+        im.onload = () => resolve({ w: im.naturalWidth, h: im.naturalHeight, fmt: dataUrl.startsWith('data:image/jpeg') ? 'JPEG' : 'PNG' });
+        im.onerror = () => resolve({ w: 1, h: 1, fmt: 'PNG' });
+        im.src = dataUrl;
+      });
+      const aspect = dims.w / dims.h;
+      // ajusta o box para caber a logo com padding
+      const PADDING = 10;
+      const innerH = LOGO_BOX_H - PADDING * 2;
+      let innerW = innerH * aspect;
+      const maxInnerW = LOGO_BOX_MAX_W - PADDING * 2;
+      if (innerW > maxInnerW) innerW = maxInnerW;
+      const finalH = Math.min(innerH, innerW / aspect);
+      const finalW = finalH * aspect;
+      logoBoxW = finalW + PADDING * 2;
+      // fundo branco
+      doc.setFillColor(255,255,255);
+      doc.roundedRect(24, LOGO_BOX_Y, logoBoxW, LOGO_BOX_H, 8, 8, 'F');
+      const imgX = 24 + (logoBoxW - finalW) / 2;
+      const imgY = LOGO_BOX_Y + (LOGO_BOX_H - finalH) / 2;
+      doc.addImage(dataUrl, dims.fmt, imgX, imgY, finalW, finalH, undefined, 'FAST');
+    } catch {
+      logoBoxW = 0;
+    }
+  } else {
+    logoBoxW = 0;
   }
-  const TX = 20 + LOGO_SIZE + 24;
-  doc.setTextColor(255,255,255); doc.setFontSize(17); doc.setFont('helvetica','bold');
-  doc.text(`POLÍTICA DE ${d.verba_label.toUpperCase()}`, TX, 46);
-  doc.setFont('helvetica','normal'); doc.setFontSize(10);
-  doc.text(`${d.empresa}${d.cnpj ? ` — CNPJ ${d.cnpj}` : ''}`, TX, 72, { maxWidth: W - TX - 20 });
-  doc.setFontSize(9);
-  doc.text(`Emitido em ${new Date().toLocaleDateString('pt-BR')}`, TX, 92);
-  if (branding?.office_name) doc.text(branding.office_name, TX, 106);
 
-  let y = HEADER_H + 20;
+  const TX = 24 + (logoBoxW > 0 ? logoBoxW + 22 : 0);
+  doc.setTextColor(255,255,255);
+  // Título em Helvetica normal maior + charSpace positivo para não colar glifos
+  (doc as any).setCharSpace?.(0.6);
+  doc.setFont('helvetica','bold'); doc.setFontSize(18);
+  doc.text(`POLÍTICA DE ${d.verba_label.toUpperCase()}`, TX, LOGO_BOX_Y + 26);
+  (doc as any).setCharSpace?.(0);
+  doc.setFont('helvetica','normal'); doc.setFontSize(10.5);
+  doc.text(`${d.empresa}${d.cnpj ? ` — CNPJ ${d.cnpj}` : ''}`, TX, LOGO_BOX_Y + 52, { maxWidth: W - TX - 24 });
+  doc.setFontSize(9);
+  doc.text(`Emitido em ${new Date().toLocaleDateString('pt-BR')}`, TX, LOGO_BOX_Y + 72);
+  if (branding?.office_name) doc.text(branding.office_name, TX, LOGO_BOX_Y + 88);
+
+  let y = HEADER_H + 22;
   doc.setTextColor(0,0,0);
+
+  // helper para header de seção (evita overlap de glifos no bold)
+  const bandTitle = (text: string, bg: [number,number,number], fg: [number,number,number] = [0,0,0]) => {
+    y = ensure(30, y);
+    doc.setFillColor(bg[0], bg[1], bg[2]);
+    doc.rect(40, y, W-80, 18, 'F');
+    doc.setTextColor(fg[0], fg[1], fg[2]);
+    (doc as any).setCharSpace?.(0.4);
+    doc.setFont('helvetica','bold'); doc.setFontSize(10.5);
+    doc.text(text, 46, y+12);
+    (doc as any).setCharSpace?.(0);
+    doc.setTextColor(0,0,0);
+    y += 24;
+  };
 
   // Identificação
   doc.setFont('helvetica','bold'); doc.setFontSize(10);
