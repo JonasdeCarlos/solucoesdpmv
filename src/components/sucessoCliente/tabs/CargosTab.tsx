@@ -32,6 +32,13 @@ const emptyDraft = () => ({
   salario_atual: '' as any,
   piso_salarial: '' as any,
   piso_referencia: '',
+  adequacao: null as null | {
+    profissao_regulamentada: boolean;
+    base_legal: string;
+    conselho_registro: { obrigatorio: boolean; sigla: string; descricao: string };
+    observacoes_regulamentacao: string;
+    titulo_cbo?: string;
+  },
 });
 
 const sanitizeCargoDraft = (cargo: any = {}) => ({
@@ -146,6 +153,48 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
   };
 
   const completarComIA = async () => {
+    void 0;
+    return _completarComIA();
+  };
+
+  const adequarCargo = async () => {
+    if (!draft.nome?.trim()) return toast.error('Informe o nome do cargo.');
+    setBusy('adequar');
+    try {
+      const { data, error } = await supabase.functions.invoke('cargo-adequar', {
+        body: { nome: draft.nome, empresa: cliente?.nome, setor: cliente?.segmento || cliente?.cnae || '' },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setDraft((d: any) => ({
+        ...d,
+        cbo: d.cbo || data.cbo || '',
+        area: d.area || data.area || '',
+        nivel: d.nivel || data.nivel || d.nivel,
+        descricao_sumaria: d.descricao_sumaria || data.descricao_sumaria || '',
+        atividades: (Array.isArray(d.atividades) && d.atividades.length) ? d.atividades : (data.atividades || []),
+        requisitos: {
+          escolaridade: d.requisitos?.escolaridade || data.requisitos?.escolaridade || '',
+          experiencia: d.requisitos?.experiencia || data.requisitos?.experiencia || '',
+          competencias: (d.requisitos?.competencias?.length ? d.requisitos.competencias : (data.requisitos?.competencias || [])),
+        },
+        adequacao: {
+          profissao_regulamentada: !!data.profissao_regulamentada,
+          base_legal: data.base_legal || '',
+          conselho_registro: data.conselho_registro || { obrigatorio: false, sigla: '', descricao: '' },
+          observacoes_regulamentacao: data.observacoes_regulamentacao || '',
+          titulo_cbo: data.titulo_cbo || '',
+        },
+      }));
+      toast.success(data.profissao_regulamentada
+        ? `Cargo adequado. Atenção: profissão regulamentada${data.conselho_registro?.sigla ? ` (${data.conselho_registro.sigla})` : ''}.`
+        : 'Cargo adequado pela IA.');
+    } catch (e: any) {
+      toast.error('Falha: ' + e.message);
+    } finally { setBusy(null); }
+  };
+
+  const _completarComIA = async () => {
     if (!draft.nome?.trim()) return toast.error('Informe ao menos o nome do cargo.');
     const camposVazios = getCamposVaziosCargo(draft);
     if (!camposVazios.length) return toast.info('Todos os campos já estavam preenchidos.');
@@ -666,12 +715,47 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-auto">
           <DialogHeader><DialogTitle>{draft.id ? 'Editar cargo' : 'Novo cargo'}</DialogTitle></DialogHeader>
-          <div className="flex justify-end mb-1">
+          <div className="flex justify-end gap-2 mb-1 flex-wrap">
+            <Button type="button" size="sm" variant="default" onClick={adequarCargo} disabled={busy==='adequar' || !draft.nome?.trim()} title="Sugere CBO, descrição, atividades, regulamentação e conselho a partir do nome do cargo.">
+              {busy==='adequar' ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <Sparkles className="w-4 h-4 mr-2"/>}
+              Adequar cargo (IA)
+            </Button>
             <Button type="button" size="sm" variant="secondary" onClick={completarComIA} disabled={busy==='completar'}>
               {busy==='completar' ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <Sparkles className="w-4 h-4 mr-2"/>}
               Preencher campos vazios com IA
             </Button>
           </div>
+          {draft.adequacao && (
+            <div className={`border rounded-md p-3 mb-2 text-sm ${draft.adequacao.profissao_regulamentada ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/20' : 'bg-muted/40'}`}>
+              <div className="flex items-center gap-2 mb-1">
+                {draft.adequacao.profissao_regulamentada
+                  ? <AlertTriangle className="w-4 h-4 text-amber-600"/>
+                  : <Sparkles className="w-4 h-4 text-primary"/>}
+                <strong>
+                  {draft.adequacao.profissao_regulamentada ? 'Profissão regulamentada' : 'Profissão não regulamentada'}
+                </strong>
+                {draft.adequacao.titulo_cbo && (
+                  <Badge variant="outline" className="ml-auto">CBO: {draft.adequacao.titulo_cbo}</Badge>
+                )}
+              </div>
+              {draft.adequacao.base_legal && (
+                <div className="text-xs"><strong>Base legal:</strong> {draft.adequacao.base_legal}</div>
+              )}
+              {draft.adequacao.conselho_registro?.obrigatorio && (
+                <div className="text-xs mt-1">
+                  <strong>Registro em conselho obrigatório:</strong> {draft.adequacao.conselho_registro.sigla}
+                  {draft.adequacao.conselho_registro.descricao ? ` — ${draft.adequacao.conselho_registro.descricao}` : ''}
+                </div>
+              )}
+              {!draft.adequacao.conselho_registro?.obrigatorio && draft.adequacao.conselho_registro?.descricao && (
+                <div className="text-xs mt-1"><strong>Conselho:</strong> {draft.adequacao.conselho_registro.descricao}</div>
+              )}
+              {draft.adequacao.observacoes_regulamentacao && (
+                <div className="text-xs mt-1"><strong>Observações:</strong> {draft.adequacao.observacoes_regulamentacao}</div>
+              )}
+              <div className="text-[10px] text-muted-foreground mt-2">Sugestão gerada por IA — confirme com a legislação vigente e a CCT aplicável.</div>
+            </div>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             <div><Label className="text-xs">Nome do cargo</Label><Input value={draft.nome} onChange={e=>setDraft({...draft,nome:e.target.value})}/></div>
             <div><Label className="text-xs">CBO</Label><Input value={draft.cbo} onChange={e=>setDraft({...draft,cbo:e.target.value})}/></div>
