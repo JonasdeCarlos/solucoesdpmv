@@ -62,6 +62,9 @@ export default function PremioHotelariaSection({ policy, onUpdate, onDraftChange
 
   const saveConfig = async () => { await onUpdate({ hotelaria_config: config } as any); toast.success('Configuração salva.'); };
   const saveApuracao = async () => { await onUpdate({ hotelaria_apuracao: ap } as any); toast.success('Apuração salva.'); };
+  const saveApuracaoSilent = (next: ApuracaoState) => {
+    void onUpdate({ hotelaria_apuracao: next } as any, { silent: true });
+  };
 
   // Pontos vêm do cadastro (prize_employees.pontos); fallback para mapa legado.
   const pontosByEmp = (eid: string) => {
@@ -297,17 +300,17 @@ export default function PremioHotelariaSection({ policy, onUpdate, onDraftChange
           <Card><CardContent className="p-4 space-y-3">
             <h5 className="text-sm font-semibold">Apuração do período</h5>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-              <div><Label className="text-xs">Faturamento total</Label><Input type="number" value={ap.faturamento_total} onChange={(e)=>updateApState({...ap, faturamento_total: Number(e.target.value)}, true)}/></div>
+              <div><Label className="text-xs">Faturamento total</Label><Input type="number" value={ap.faturamento_total} onChange={(e)=>updateApState({...ap, faturamento_total: Number(e.target.value)})} onBlur={(e)=>{ const next = {...ap, faturamento_total: Number(e.currentTarget.value)}; updateApState(next); saveApuracaoSilent(next); }}/></div>
               <div>
                 <Label className="text-xs">Ref./dia (auto = fat÷dia)</Label>
                 <Input type="text" readOnly value={BRL(valorReferenciaDia)} className="bg-muted"/>
               </div>
-              <div><Label className="text-xs">Qtd de reservas</Label><Input type="number" value={ap.qtd_reservas} onChange={(e)=>updateApState({...ap, qtd_reservas: Number(e.target.value)}, true)}/></div>
-              <div><Label className="text-xs">Meta 0 (R$)</Label><Input type="number" value={ap.meta_0} onChange={(e)=>updateApState({...ap, meta_0: Number(e.target.value)}, true)}/></div>
-              <div><Label className="text-xs">Meta 1 (R$)</Label><Input type="number" value={ap.meta_1} onChange={(e)=>updateApState({...ap, meta_1: Number(e.target.value)}, true)}/></div>
-              <div><Label className="text-xs">Meta 2 (R$)</Label><Input type="number" value={ap.meta_2} onChange={(e)=>updateApState({...ap, meta_2: Number(e.target.value)}, true)}/></div>
-              <div><Label className="text-xs">Data referência</Label><Input type="date" value={ap.data_referencia || ''} onChange={(e)=>updateApState({...ap, data_referencia: e.target.value}, true)}/></div>
-              <div><Label className="text-xs">Dias do período</Label><Input type="number" min={1} value={ap.dias_periodo || 30} onChange={(e)=>updateApState({...ap, dias_periodo: Number(e.target.value)}, true)}/></div>
+              <div><Label className="text-xs">Qtd de reservas</Label><Input type="number" value={ap.qtd_reservas} onChange={(e)=>updateApState({...ap, qtd_reservas: Number(e.target.value)})} onBlur={(e)=>{ const next = {...ap, qtd_reservas: Number(e.currentTarget.value)}; updateApState(next); saveApuracaoSilent(next); }}/></div>
+              <div><Label className="text-xs">Meta 0 (R$)</Label><Input type="number" value={ap.meta_0} onChange={(e)=>updateApState({...ap, meta_0: Number(e.target.value)})} onBlur={(e)=>{ const next = {...ap, meta_0: Number(e.currentTarget.value)}; updateApState(next); saveApuracaoSilent(next); }}/></div>
+              <div><Label className="text-xs">Meta 1 (R$)</Label><Input type="number" value={ap.meta_1} onChange={(e)=>updateApState({...ap, meta_1: Number(e.target.value)})} onBlur={(e)=>{ const next = {...ap, meta_1: Number(e.currentTarget.value)}; updateApState(next); saveApuracaoSilent(next); }}/></div>
+              <div><Label className="text-xs">Meta 2 (R$)</Label><Input type="number" value={ap.meta_2} onChange={(e)=>updateApState({...ap, meta_2: Number(e.target.value)})} onBlur={(e)=>{ const next = {...ap, meta_2: Number(e.currentTarget.value)}; updateApState(next); saveApuracaoSilent(next); }}/></div>
+              <div><Label className="text-xs">Data referência</Label><Input type="date" value={ap.data_referencia || ''} onChange={(e)=>updateApState({...ap, data_referencia: e.target.value})} onBlur={(e)=>{ const next = {...ap, data_referencia: e.currentTarget.value}; updateApState(next); saveApuracaoSilent(next); }}/></div>
+              <div><Label className="text-xs">Dias do período</Label><Input type="number" min={1} value={ap.dias_periodo || 30} onChange={(e)=>updateApState({...ap, dias_periodo: Number(e.target.value)})} onBlur={(e)=>{ const next = {...ap, dias_periodo: Number(e.currentTarget.value)}; updateApState(next); saveApuracaoSilent(next); }}/></div>
             </div>
 
             <div className="space-y-2">
