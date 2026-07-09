@@ -6,10 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Plus, Trash2, Save, Building2, Settings, ClipboardList, LineChart, CalendarDays, ArrowRightCircle } from 'lucide-react';
+import { Plus, Trash2, Save, Building2, Settings, ClipboardList, LineChart, CalendarDays, ArrowRightCircle, FileDown, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { usePrizeEmployees, type PrizePolicy } from '@/hooks/usePrizePolicies';
-import { HOTELARIA_CONFIG, HOTELARIA_ESCALA_TEXTO, type HotelariaConfig, type HotelariaCriterio, type MetaMensal } from '@/utils/sucessoCliente/premioTemplates';
+import { usePrizeEmployees, usePrizeCriteria, type PrizePolicy } from '@/hooks/usePrizePolicies';
+import { HOTELARIA_CONFIG, HOTELARIA_ESCALA_TEXTO, HOTELARIA_CRITERIOS_INDIVIDUAIS, type HotelariaConfig, type HotelariaCriterio, type MetaMensal } from '@/utils/sucessoCliente/premioTemplates';
+import { generatePremioPoliticaPdf } from '@/utils/sucessoCliente/premioPoliticaPdf';
+import { EmployeesSection } from './PremioTab';
 import { Textarea } from '@/components/ui/textarea';
 
 const BRL = (n: number) => `R$ ${Number(n || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -35,36 +37,145 @@ const APURACAO_DEFAULT: ApuracaoState = {
   dias_periodo: 30,
 };
 
-export default function PremioHotelariaSection({ policy, onUpdate, onDraftChange }: {
+export default function PremioHotelariaSection({ policy, cliente, onUpdate, onDraftChange }: {
   policy: PrizePolicy;
+  cliente: any;
   onUpdate: (patch: Partial<PrizePolicy>, options?: { silent?: boolean }) => Promise<void>;
   onDraftChange?: (patch: Partial<PrizePolicy>) => void;
 }) {
   const { items: employees } = usePrizeEmployees(policy.id);
+  const { items: criteriosPolicy } = usePrizeCriteria(policy.id);
   const legacyPontos: Record<string, number> = ((policy as any).hotelaria_pontos as any) || {};
 
   const [config, setConfig] = useState<HotelariaConfig>(((policy as any).hotelaria_config as HotelariaConfig) || HOTELARIA_CONFIG);
-  const [ap, setAp] = useState<ApuracaoState>({ ...APURACAO_DEFAULT, ...(((policy as any).hotelaria_apuracao as any) || {}) });
+
+  // Apurações por competência. Formato: { 'YYYY-MM': ApuracaoState }.
+  // Compatibilidade: se a política tem `hotelaria_apuracao` legado (objeto único),
+  // migra para o mês corrente na primeira leitura.
+  const currentMonth = () => new Date().toISOString().slice(0, 7);
+  const buildInitialMap = (): Record<string, ApuracaoState> => {
+    const mapa = ((policy as any).hotelaria_apuracoes as Record<string, ApuracaoState>) || {};
+    if (Object.keys(mapa).length > 0) return mapa;
+    const legacy = (policy as any).hotelaria_apuracao;
+    if (legacy && typeof legacy === 'object' && ('faturamento_total' in legacy || 'meta_0' in legacy)) {
+      return { [currentMonth()]: { ...APURACAO_DEFAULT, ...legacy } };
+    }
+    return {};
+  };
+  const [apMap, setApMap] = useState<Record<string, ApuracaoState>>(buildInitialMap);
+
+  // Competência ativa nas abas Apuração/Evolução
+  const cfgMeses = Object.keys(((policy as any).hotelaria_config as HotelariaConfig)?.metas_mensais || {});
+  const [activeComp, setActiveComp] = useState<string>(() => {
+    const keys = [...Object.keys(buildInitialMap()), ...cfgMeses].sort().reverse();
+    return keys[0] || currentMonth();
+  });
 
   useEffect(() => {
     setConfig(((policy as any).hotelaria_config as HotelariaConfig) || HOTELARIA_CONFIG);
-    setAp({ ...APURACAO_DEFAULT, ...(((policy as any).hotelaria_apuracao as any) || {}) });
+    setApMap(buildInitialMap());
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [policy.id]);
+
+  // ap atual (com fallback: se a competência tem meta cadastrada e ainda não tem apuração, usa metas)
+  const metaDaComp = (config.metas_mensais || {})[activeComp];
+  const ap: ApuracaoState = apMap[activeComp] || {
+    ...APURACAO_DEFAULT,
+    meta_0: metaDaComp?.meta_0 || 0,
+    meta_1: metaDaComp?.meta_1 || 0,
+    meta_2: metaDaComp?.meta_2 || 0,
+    data_referencia: `${activeComp}-${String(Math.min(new Date().getDate(), 28)).padStart(2,'0')}`,
+    dias_periodo: new Date(Number(activeComp.split('-')[0]), Number(activeComp.split('-')[1]), 0).getDate() || 30,
+  };
 
   const updateConfigState = (next: HotelariaConfig) => {
     setConfig(next);
     onDraftChange?.({ hotelaria_config: next } as any);
   };
   const updateApState = (next: ApuracaoState, autosave = false) => {
-    setAp(next);
-    onDraftChange?.({ hotelaria_apuracao: next } as any);
-    if (autosave) void onUpdate({ hotelaria_apuracao: next } as any, { silent: true });
+    const nextMap = { ...apMap, [activeComp]: next };
+    setApMap(nextMap);
+    onDraftChange?.({ hotelaria_apuracoes: nextMap } as any);
+    if (autosave) void onUpdate({ hotelaria_apuracoes: nextMap } as any, { silent: true });
   };
 
   const saveConfig = async () => { await onUpdate({ hotelaria_config: config } as any); toast.success('Configuração salva.'); };
-  const saveApuracao = async () => { await onUpdate({ hotelaria_apuracao: ap } as any); toast.success('Apuração salva.'); };
+  const saveApuracao = async () => {
+    const nextMap = { ...apMap, [activeComp]: ap };
+    setApMap(nextMap);
+    await onUpdate({ hotelaria_apuracoes: nextMap } as any);
+    toast.success('Apuração salva.');
+  };
   const saveApuracaoSilent = (next: ApuracaoState) => {
-    void onUpdate({ hotelaria_apuracao: next } as any, { silent: true });
+    const nextMap = { ...apMap, [activeComp]: next };
+    void onUpdate({ hotelaria_apuracoes: nextMap } as any, { silent: true });
+  };
+
+  // Lista de competências disponíveis (metas + apurações + mês corrente)
+  const mesesDisponiveis = useMemo(() => {
+    const set = new Set<string>([
+      ...Object.keys(config.metas_mensais || {}),
+      ...Object.keys(apMap),
+      currentMonth(),
+    ]);
+    return Array.from(set).sort().reverse();
+  }, [config.metas_mensais, apMap]);
+
+  useEffect(() => {
+    if (!mesesDisponiveis.includes(activeComp) && mesesDisponiveis[0]) setActiveComp(mesesDisponiveis[0]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mesesDisponiveis.join('|')]);
+
+  const labelMes = (m: string) => {
+    const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    const [a, mm] = m.split('-');
+    return `${MESES[Number(mm)-1] || mm}/${a}`;
+  };
+
+  // PDF da política do mês
+  const [exportingPdf, setExportingPdf] = useState(false);
+  const handleExportPdf = async (mes: string) => {
+    const metasMap = config.metas_mensais || {};
+    if (!metasMap[mes]) {
+      toast.error('Cadastre e salve as metas desta competência antes de gerar o PDF.');
+      return;
+    }
+    setExportingPdf(true);
+    try {
+      const legacy: Record<string, number> = ((policy as any).hotelaria_pontos as any) || {};
+      const participantes = (employees || []).filter(p => p.ativo);
+      const criteriosBase = criteriosPolicy.length > 0
+        ? criteriosPolicy.map(c => ({ nome: c.nome, descricao: c.descricao, peso: c.peso, essencial: c.essencial }))
+        : HOTELARIA_CRITERIOS_INDIVIDUAIS.map(c => ({ nome: c.nome, descricao: c.descricao, peso: c.peso, essencial: false }));
+      await generatePremioPoliticaPdf({
+        empresa: cliente?.razao_social || cliente?.nome_fantasia || cliente?.nome || 'Empresa',
+        cnpj: cliente?.cnpj || undefined,
+        verba_label: policy.verba_label,
+        politica_nome: policy.nome,
+        objetivo: policy.objetivo,
+        periodo_tipo: policy.periodo_tipo,
+        valor_base: policy.valor_base,
+        criterios: criteriosBase,
+        participantes: participantes.map(p => ({ nome: p.nome, cpf: p.cpf, cargo: p.cargo, matricula: p.matricula })),
+        remuneracao_variavel: null,
+        hotelaria: {
+          split_coletivo: config.split_coletivo,
+          split_individual: config.split_individual,
+          criterios: config.criterios,
+          escala: config.escala,
+          pontos: participantes.map(p => ({
+            nome: p.nome, cargo: p.cargo,
+            pontos: Number((p as any).pontos ?? legacy[p.id] ?? 0),
+          })),
+        },
+        metas_mes: { competencia: mes, ...metasMap[mes] },
+      });
+      toast.success(`PDF da política de ${labelMes(mes)} gerado.`);
+    } catch (e: any) {
+      toast.error('Erro ao gerar PDF: ' + (e?.message || ''));
+    } finally {
+      setExportingPdf(false);
+    }
   };
 
   // Pontos vêm do cadastro (prize_employees.pontos); fallback para mapa legado.
