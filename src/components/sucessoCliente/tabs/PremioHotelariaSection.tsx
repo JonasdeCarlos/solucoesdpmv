@@ -201,6 +201,20 @@ export default function PremioHotelariaSection({ policy, onUpdate }: {
               <div><Label className="text-xs">% Individual</Label><Input type="number" value={config.split_individual} onChange={(e)=>setConfig({...config, split_individual: Number(e.target.value), split_coletivo: 100 - Number(e.target.value)})}/></div>
             </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
+              <div>
+                <Label className="text-xs">% de distribuição do pool individual (teto do prêmio)</Label>
+                <Input type="number" step="0.1" value={config.individual_pct_distribuicao ?? 1}
+                  onChange={(e)=>setConfig({...config, individual_pct_distribuicao: Number(e.target.value)})}/>
+              </div>
+              <div className="text-[11px] text-muted-foreground border rounded p-2 bg-muted/30">
+                Fórmula: pool individual = <strong>faturamento × {config.split_individual}%</strong>.
+                Teto de prêmios = pool × <strong>{config.individual_pct_distribuicao ?? 1}%</strong>.
+                Teto por colaborador = teto × (pontos do colaborador ÷ soma de pontos).
+                Prêmio = teto × % de desempenho da avaliação.
+              </div>
+            </div>
+
             <div className="space-y-2">
               <h5 className="text-xs font-semibold uppercase text-muted-foreground">Critérios coletivos ({config.split_coletivo}% da meta)</h5>
               {config.criterios.map((c, ci) => (
