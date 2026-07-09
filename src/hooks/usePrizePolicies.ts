@@ -30,6 +30,7 @@ export type PrizePolicy = {
   hotelaria_config?: any;
   hotelaria_pontos?: Record<string, number>;
   hotelaria_apuracao?: any;
+  hotelaria_apuracoes?: Record<string, any>;
 };
 
 export type PrizeCriterion = {
