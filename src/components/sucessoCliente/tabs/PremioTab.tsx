@@ -393,6 +393,14 @@ function CriteriaSection({ policy, cliente }: { policy: PrizePolicy; cliente: an
   const [generating, setGenerating] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [explainingNovo, setExplainingNovo] = useState(false);
+  const isHotelaria = (policy as any).modelo_template === 'hotelaria';
+  const metasMap: Record<string, any> = (((policy as any).hotelaria_config as any)?.metas_mensais) || {};
+  const mesesDisponiveis = Object.keys(metasMap).sort().reverse();
+  const [mesPdf, setMesPdf] = useState<string>(() => mesesDisponiveis[0] || new Date().toISOString().slice(0,7));
+  useEffect(() => {
+    if (mesesDisponiveis.length && !metasMap[mesPdf]) setMesPdf(mesesDisponiveis[0]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mesesDisponiveis.join('|')]);
 
   const handleExportPdf = async () => {
     if (items.length === 0) { toast.error('Cadastre ao menos um critério antes de exportar.'); return; }
@@ -434,6 +442,7 @@ function CriteriaSection({ policy, cliente }: { policy: PrizePolicy; cliente: an
             pontos,
           };
         })() : null,
+        metas_mes: isHotelaria && metasMap[mesPdf] ? { competencia: mesPdf, ...metasMap[mesPdf] } : null,
       });
       toast.success('PDF gerado.');
     } catch (e: any) {
@@ -490,6 +499,21 @@ function CriteriaSection({ policy, cliente }: { policy: PrizePolicy; cliente: an
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h4 className="text-sm font-semibold">Critérios de apuração — {policy.verba_label}</h4>
         <div className="flex gap-2 items-center flex-wrap">
+          {isHotelaria && (
+            <div className="flex items-center gap-1">
+              <Label className="text-[10px] text-muted-foreground">Mês PDF</Label>
+              {mesesDisponiveis.length > 0 ? (
+                <Select value={mesPdf} onValueChange={setMesPdf}>
+                  <SelectTrigger className="h-8 w-32"><SelectValue/></SelectTrigger>
+                  <SelectContent>
+                    {mesesDisponiveis.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <span className="text-[10px] text-muted-foreground italic">cadastre em "Metas mensais"</span>
+              )}
+            </div>
+          )}
           <Input placeholder="Cargo/função (contexto IA)" value={iaCtx.cargo} onChange={(e)=>setIaCtx({...iaCtx, cargo: e.target.value})} className="h-8 w-44"/>
           <Input type="number" min={3} max={12} value={iaCtx.quantidade} onChange={(e)=>setIaCtx({...iaCtx, quantidade: Number(e.target.value)})} className="h-8 w-16"/>
           <Button size="sm" variant="outline" onClick={handleSuggest} disabled={generating}>

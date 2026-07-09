@@ -18,6 +18,18 @@ export type HotelariaConfig = {
   // % do pool individual efetivamente distribuído como prêmio máximo
   // (ex.: pool = faturamento * split_individual%; teto = pool * individual_pct_distribuicao%)
   individual_pct_distribuicao?: number;
+  // Metas por competência (chave "YYYY-MM"). Usadas para assinar a política do mês.
+  metas_mensais?: Record<string, MetaMensal>;
+};
+
+export type MetaMensal = {
+  meta_0: number;
+  meta_1: number;
+  meta_2: number;
+  faturamento_previsto?: number;
+  observacoes?: string;
+  vigencia_inicio?: string; // YYYY-MM-DD
+  vigencia_fim?: string;    // YYYY-MM-DD
 };
 
 export const HOTELARIA_CONFIG: HotelariaConfig = {

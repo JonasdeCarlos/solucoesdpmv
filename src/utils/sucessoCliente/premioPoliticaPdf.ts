@@ -34,6 +34,16 @@ export type PoliticaPdfData = {
     escala?: Array<{ label: string; valor: number }>;
     pontos?: Array<{ nome: string; cargo?: string | null; pontos: number }>;
   } | null;
+  metas_mes?: {
+    competencia: string; // YYYY-MM
+    meta_0: number;
+    meta_1: number;
+    meta_2: number;
+    faturamento_previsto?: number;
+    observacoes?: string;
+    vigencia_inicio?: string;
+    vigencia_fim?: string;
+  } | null;
 };
 
 const BRL = (n: number) => `R$ ${Number(n || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -374,6 +384,61 @@ export async function generatePremioPoliticaPdf(d: PoliticaPdfData) {
     for (const w of nwHt) { y = ensure(11, y); doc.text(w, 46, y); y += 11; }
     doc.setTextColor(0,0,0); doc.setFontSize(9);
     y += 8;
+  }
+
+  // Metas do mês (para assinatura da política do mês)
+  if (d.metas_mes) {
+    const mm = d.metas_mes;
+    const [ano, mes] = (mm.competencia || '').split('-');
+    const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    const nomeMes = mes ? `${MESES[Number(mes)-1] || mes}/${ano}` : (mm.competencia || '');
+    bandTitle(`METAS DO MÊS — ${nomeMes.toUpperCase()}`, [pr,pg,pb], [255,255,255]);
+    doc.setFont('helvetica','normal'); doc.setFontSize(9);
+    const introM = `As metas abaixo são específicas da competência ${nomeMes} e vigoram durante o período indicado. Servem como referência diária (valor de faturamento por dia) para o enquadramento dos critérios coletivos desta política.`;
+    const iwM = doc.splitTextToSize(introM, W-80);
+    for (const w of iwM) { y = ensure(12, y); doc.text(w, 46, y); y += 12; }
+    y += 4;
+
+    if (mm.vigencia_inicio || mm.vigencia_fim) {
+      const fmt = (s?: string) => s ? new Date(s + 'T00:00:00').toLocaleDateString('pt-BR') : '—';
+      y = ensure(12, y);
+      doc.text(`Vigência: ${fmt(mm.vigencia_inicio)} a ${fmt(mm.vigencia_fim)}`, 46, y); y += 14;
+    }
+
+    y = ensure(14, y);
+    doc.setFillColor(240,240,240); doc.rect(40, y, W-80, 14, 'F');
+    doc.text('META', 46, y+10);
+    doc.text('VALOR DE REFERÊNCIA (R$/dia)', W-260, y+10);
+    y += 14;
+    const rows: Array<[string, number]> = [
+      ['Meta 0', mm.meta_0],
+      ['Meta 1', mm.meta_1],
+      ['Meta 2', mm.meta_2],
+    ];
+    for (const [label, v] of rows) {
+      y = ensure(14, y);
+      doc.setDrawColor(235,235,235); doc.rect(40, y, W-80, 14);
+      doc.text(label, 46, y+10);
+      doc.text(BRL(v), W-260, y+10);
+      y += 14;
+    }
+    if (mm.faturamento_previsto && mm.faturamento_previsto > 0) {
+      y = ensure(14, y);
+      doc.setDrawColor(235,235,235); doc.rect(40, y, W-80, 14);
+      doc.text('Faturamento previsto no mês', 46, y+10);
+      doc.text(BRL(mm.faturamento_previsto), W-260, y+10);
+      y += 14;
+    }
+    y += 6;
+
+    if (mm.observacoes && mm.observacoes.trim()) {
+      y = ensure(20, y);
+      doc.setFont('helvetica','normal');
+      doc.text('Observações do mês:', 46, y); y += 12;
+      const ow = doc.splitTextToSize(mm.observacoes, W-80);
+      for (const w of ow) { y = ensure(12, y); doc.text(w, 46, y); y += 12; }
+      y += 4;
+    }
   }
 
   // Termo de ciência
