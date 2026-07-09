@@ -307,7 +307,7 @@ export default function PremioHotelariaSection({ policy, cliente, onUpdate, onDr
             <Badge variant="secondary">Coletivo {config.split_coletivo}% • Individual {config.split_individual}%</Badge>
           </div>
           <p className="text-[11px] text-muted-foreground">
-            Metas coletivas por faixas (Piso / Meta 0 / Meta 1 / Meta 2). Os <strong>pontos são definidos no cadastro de cada colaborador</strong> (seção "Colaboradores participantes"). Apenas colaboradores ativos entram na base de cálculo. {HOTELARIA_ESCALA_TEXTO}
+            Estrutura da política (perene): divisão coletivo/individual, critérios coletivos e faixas de atingimento. Os <strong>colaboradores participantes, os pontos e as metas do mês</strong> são configurados na aba <strong>Metas mensais</strong>. A <strong>Apuração</strong> e a <strong>Evolução diária</strong> são feitas por competência. {HOTELARIA_ESCALA_TEXTO}
           </p>
         </CardContent>
       </Card>
