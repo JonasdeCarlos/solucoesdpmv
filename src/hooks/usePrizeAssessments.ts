@@ -112,7 +112,15 @@ export function useAssessmentEmployees(assessment_id: string | undefined) {
     return { error };
   };
 
-  return { items, loading, reload: load, updateOne };
+  const removeOne = async (id: string) => {
+    // remove resultados de critérios antes (evita órfãos)
+    await supabase.from('prize_assessment_criterion_results' as any).delete().eq('assessment_employee_id', id);
+    const { error } = await supabase.from('prize_assessment_employees' as any).delete().eq('id', id);
+    if (!error) await load();
+    return { error };
+  };
+
+  return { items, loading, reload: load, updateOne, removeOne };
 }
 
 export function useCriterionResults(assessment_employee_id: string | undefined) {
