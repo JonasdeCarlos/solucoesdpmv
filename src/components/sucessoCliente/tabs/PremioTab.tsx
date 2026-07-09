@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -270,6 +270,7 @@ function PolicyCard({ policy, expanded, onToggle, onUpdate, onRemove, cliente }:
   onRemove: () => Promise<void>; cliente: any;
 }) {
   const [editing, setEditing] = useState(false);
+  const [hotelariaDraft, setHotelariaDraft] = useState<{ hotelaria_config?: any; hotelaria_apuracao?: any }>({});
   const [form, setForm] = useState({
     verba_label: policy.verba_label,
     nome: policy.nome,
@@ -278,6 +279,15 @@ function PolicyCard({ policy, expanded, onToggle, onUpdate, onRemove, cliente }:
     valor_base: policy.valor_base,
     status: policy.status,
   });
+  const isHotelaria = (policy as any).modelo_template === 'hotelaria';
+  const effectivePolicy = isHotelaria ? ({ ...policy, ...hotelariaDraft } as PrizePolicy) : policy;
+
+  useEffect(() => {
+    setHotelariaDraft({
+      hotelaria_config: (policy as any).hotelaria_config,
+      hotelaria_apuracao: (policy as any).hotelaria_apuracao,
+    });
+  }, [policy.id, (policy as any).hotelaria_config, (policy as any).hotelaria_apuracao]);
 
   const saveEdit = async () => {
     if (!form.verba_label.trim() || !form.nome.trim()) { toast.error('Nome da verba e da política são obrigatórios.'); return; }
@@ -356,14 +366,18 @@ function PolicyCard({ policy, expanded, onToggle, onUpdate, onRemove, cliente }:
 
         {expanded && (
           <div className="border-t pt-3 space-y-4">
-            {(policy as any).modelo_template === 'hotelaria' ? (
-              <PremioHotelariaSection policy={policy} onUpdate={onUpdate}/>
+            {isHotelaria ? (
+              <PremioHotelariaSection
+                policy={effectivePolicy}
+                onUpdate={onUpdate}
+                onDraftChange={(patch)=>setHotelariaDraft(prev => ({ ...prev, ...patch }))}
+              />
             ) : (
               <PremioRemuneracaoVariavelSection policy={policy} onUpdate={onUpdate}/>
             )}
-            <CriteriaSection policy={policy} cliente={cliente}/>
-            <EmployeesSection policy={policy} cliente={cliente}/>
-            <PremioAplicacaoSection policy={policy} cliente={cliente}/>
+            <CriteriaSection policy={effectivePolicy} cliente={cliente}/>
+            <EmployeesSection policy={effectivePolicy} cliente={cliente}/>
+            <PremioAplicacaoSection policy={effectivePolicy} cliente={cliente}/>
           </div>
         )}
       </CardContent>
