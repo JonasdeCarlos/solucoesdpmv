@@ -1,105 +1,63 @@
-## Objetivo
 
-Adicionar suporte a uma política de prêmio mais complexa (modelo "Prêmio para Hotelaria"), com:
+# Reorganização da política Hotelaria
 
-- Divisão **80% coletivo / 20% individual**
-- Múltiplos critérios coletivos, cada um com **peso próprio sobre o faturamento** e **faixas Piso / Meta 0 / Meta 1 / Meta 2** com métrica-alvo específica
-- **Distribuição por pontos** entre colaboradores (proporcional aos pontos atribuídos)
-- Critérios individuais com escala 0 / 25 / 50 / 75 / 100 (Insatisfatório → Excelente)
-- Salvar como **modelo pré-existente** disponível ao criar nova política
+Objetivo: separar claramente o que é **estrutura da política** (perene) do que é **execução por mês** (competência). Hoje as abas misturam configuração, participantes e apuração em um único fluxo, e o botão de PDF vive numa seção genérica que exibe "Mês PDF" mesmo na configuração.
 
-## Modelagem de dados (migração)
+## Nova organização de abas (dentro da política Hotelaria)
 
-Estender `prize_policies` (JSONB, sem quebrar o que já existe):
-
-- `modelo_template text` — ex.: `hotelaria`
-- `rv_split_coletivo numeric` (default 80) / `rv_split_individual numeric` (default 20)
-- `rv_criterios_coletivos jsonb` — lista de critérios coletivos:
-  ```
-  [{
-    id, nome,                         // ex.: "Notas Booking"
-    peso_pct: 10,                     // % sobre faturamento base
-    metrica: "faturamento_direto" | "nota_media" | "pct_avaliacoes",
-    canal: "booking"|"google"|"tripadvisor"|null,
-    faixas: [
-      { nivel:"piso",   pct:1.0, alvo:null },
-      { nivel:"meta_0", pct:1.5, alvo:9.1 },
-      { nivel:"meta_1", pct:2.0, alvo:9.2 },
-      { nivel:"meta_2", pct:2.5, alvo:9.3 }
-    ]
-  }]
-  ```
-- `rv_distribuicao text` — `"pontos"` (novo) além de `individual`/`igualitario` já existentes
-- `escala_avaliacao jsonb` — `[{label:"Excelente", valor:100}, ...]`
-
-Nova tabela `prize_employee_points`:
+```text
+[ Configuração ]   [ Metas mensais ]   [ Apuração ]   [ Evolução diária ]
+      |                   |                 |                  |
+   estrutura         mês + pontos      por competência    por competência
+   (perene)          + participantes   (seletor no topo)  (seletor no topo)
+                     + PDF da política
 ```
-id, policy_id, employee_id, pontos int, updated_at
-```
-+ GRANT authenticated + RLS por policy → client_id.
 
-## Backend (edge function)
+### 1. Aba Configuração — só estrutura perene
+- Mantém: split coletivo/individual, % distribuição do pool individual, critérios coletivos (nome, peso, métrica, faixas com %).
+- **Remove daqui**: qualquer menção a competência, participantes, pontos e o botão "PDF da política".
+- A seção `CriteriaSection` (critérios genéricos + botão PDF + seletor Mês PDF) e `EmployeesSection` (participantes) **não aparecem mais** quando o modelo é Hotelaria — elas seguem existindo só para políticas não-Hotelaria.
 
-`premio-politica-seed-hotelaria` (opcional) ou seed direto no create:
-Ao clicar em **"Usar modelo Prêmio para Hotelaria"** no diálogo de criação, o front:
-1. Cria `prize_policies` com todos os campos pré-preenchidos (splits, critérios coletivos, escala, `modelo_template='hotelaria'`).
-2. Insere os 4 critérios individuais (Postura, Eficiência, Pontualidade, Gestão Comercial) em `prize_criteria` com peso 5 cada e `descricao` contendo a lista de itens avaliados.
+### 2. Aba Metas mensais — competência é o centro
+Fica com tudo que é específico de um mês assinado:
+- Seletor de competência (input `month`) + vigência + faturamento previsto.
+- Meta 0/1/2 e observações do mês.
+- Histórico de competências.
+- **Colaboradores participantes** (a `EmployeesSection` inteira: adicionar manual, importar da empresa, colar lista, editar pontos) — porque pontos e participantes valem para a competência assinada.
+- **Ao final da aba**: botão único **"Gerar PDF da política do mês {AAAA-MM}"**. O PDF sempre inclui a competência selecionada no topo (título) e na seção "Metas do mês". Sem PDF quando nenhuma competência foi cadastrada.
 
-Sem chamada de IA — é um template determinístico salvo em `src/utils/sucessoCliente/premioTemplates.ts`.
+### 3. Aba Apuração — por competência
+- **Seletor de competência no topo** (lista os meses já cadastrados em Metas mensais + "Novo…" para criar).
+- Ao trocar a competência: carrega/salva `hotelaria_apuracao[competencia]` (o campo passa a ser um mapa `{ 'AAAA-MM': ApuracaoState }` em vez de um objeto único).
+- Meta 0/1/2 vêm pré-preenchidas da competência selecionada (ainda editáveis).
+- Cálculos e distribuição por colaborador exatamente como hoje, mas escopados ao mês.
 
-## UI
+### 4. Aba Evolução diária — por competência
+- Mesmo seletor de competência (sincronizado com Apuração).
+- Usa a `ApuracaoState` daquela competência.
+- Data referência e dias do período respeitam o mês selecionado (defaults: dia atual se mês corrente; senão último dia do mês / dias do mês).
 
-**`PremioTab.tsx` — Diálogo "Nova Política"**
-Adicionar botão "Usar modelo: Prêmio para Hotelaria" que preenche todos os campos e cria a política num clique.
+## Detalhes técnicos
 
-**`PremioRemuneracaoVariavelSection.tsx`** (extensão)
-Quando `modelo_template === 'hotelaria'` (ou split coletivo/individual habilitado), renderizar:
-- Sliders 80/20 (coletivo/individual)
-- Editor de critérios coletivos: nome, peso %, métrica, canal, tabela editável Piso/Meta0/Meta1/Meta2 (pct + alvo)
-- Aba "Pontos por colaborador" (nova) — grid de colaboradores × input de pontos
+- `HotelariaConfig` já tem `metas_mensais: Record<string, MetaMensal>` — reaproveita como fonte da lista de competências.
+- Novo campo `hotelaria_apuracoes: Record<string, ApuracaoState>` em `PrizePolicy` (JSONB, sem migração de schema — já usa colunas JSON existentes). Migração leve em runtime: se só existir `hotelaria_apuracao` (objeto único legado), migra para a competência atual na primeira leitura.
+- `PremioTab.tsx` (`PolicyCard`): quando `isHotelaria`, **não renderiza** `CriteriaSection` nem `EmployeesSection` (elas passam a viver dentro da aba Metas mensais). Continua renderizando `PremioAplicacaoSection` (avaliações individuais) abaixo — ou movemos também? Proposta: manter `PremioAplicacaoSection` fora das abas, pois ela é o fluxo de avaliação individual do prêmio já apurado.
+- Botão PDF migra para o rodapé de `MetasMensaisPanel`, recebendo `onExportPdf(mes)` do pai; toda a lógica de montagem do payload (participantes + pontos + hotelaria + metas_mes) fica no pai, que já tem acesso a `cliente` e `items` de critérios (nesse modelo, os "critérios" no PDF vêm de `HOTELARIA_CRITERIOS_INDIVIDUAIS` — não precisa mais depender de `prize_criteria`).
+- PDF (`premioPoliticaPdf.ts`): já mostra a competência na seção "METAS DO MÊS". Adiciono também no **título** ("POLÍTICA DE PRÊMIO — COMPETÊNCIA MM/AAAA") quando `metas_mes` estiver presente, e no nome do arquivo (`politica-Premio-hotelaria-2026-07.pdf`).
 
-**`PremioAplicacaoSection.tsx` — apuração**
-Bloco de inputs manuais:
-- Faturamento total, Meta 0/1/2 (valores globais)
-- Vendas diretas do mês
-- Avaliações por canal (lista com canal, nota, data → média calculada)
-- Qtd de reservas (para % de avaliações)
+## Arquivos afetados
 
-Cálculo por critério coletivo:
-```
-BC_criterio = faturamento_total × peso_pct
-nivel_atingido = maior faixa cuja métrica é atingida (ou piso)
-valor_criterio = BC_criterio × faixa.pct
-```
-Distribuição individual (dentro de cada critério coletivo):
-```
-valor_colab = valor_criterio × (pontos_colab / soma_pontos)
-```
-Somar entre critérios para total coletivo por colaborador.
-Parcela individual (20%) usa os critérios avaliados com escala 0/25/50/75/100.
+- `src/components/sucessoCliente/tabs/PremioHotelariaSection.tsx` — reorganizar abas, adicionar seletor de competência em Apuração/Evolução, embutir participantes + botão PDF em Metas mensais, migrar estrutura `hotelaria_apuracoes`.
+- `src/components/sucessoCliente/tabs/PremioTab.tsx` — esconder `CriteriaSection`/`EmployeesSection` quando Hotelaria; expor callback de export de PDF para a seção Hotelaria.
+- `src/utils/sucessoCliente/premioPoliticaPdf.ts` — competência no header/título e no nome do arquivo.
+- `src/utils/sucessoCliente/premioTemplates.ts` — tipar `hotelaria_apuracoes` (documentação).
 
-## PDF da política
+## Fora de escopo
 
-Estender `premioPoliticaPdf.ts` para renderizar:
-- Bloco "Divisão Coletivo/Individual"
-- Tabela por critério coletivo com faixas e alvos
-- Escala de avaliação
-- Tabela de pontos por colaborador (se preenchida)
+- Não mexer em políticas não-Hotelaria (fluxo antigo intacto).
+- Não migrar dados no banco — migração em runtime é suficiente (mapa vazio ⇒ usa `hotelaria_apuracao` legado como competência atual).
+- Não alterar cálculos de prêmio (já validados).
 
-## Arquivos
-
-**Novos:**
-- `supabase/migrations/…_prize_hotelaria.sql`
-- `src/utils/sucessoCliente/premioTemplates.ts`
-
-**Editar:**
-- `src/hooks/usePrizePolicies.ts` (tipos + novo hook `useEmployeePoints`)
-- `src/components/sucessoCliente/tabs/PremioTab.tsx` (botão modelo)
-- `src/components/sucessoCliente/tabs/PremioRemuneracaoVariavelSection.tsx` (editor coletivos + pontos)
-- `src/components/sucessoCliente/tabs/PremioAplicacaoSection.tsx` (apuração hotelaria)
-- `src/utils/sucessoCliente/premioPoliticaPdf.ts` (novas seções)
-
-## Fora do escopo (confirmar depois)
-
-- Integração automática com Booking/Google/TripAdvisor APIs (por ora entrada manual das notas)
-- Histórico de apurações com versionamento das metas
+Confirma que a divisão faz sentido? Em especial:
+1. **Participantes** ficam mesmo dentro de "Metas mensais" (assumindo que a lista pode variar mês a mês) — ou preferes uma aba separada "Participantes"?
+2. `PremioAplicacaoSection` (avaliações individuais dos colaboradores para pagar o prêmio) — mantenho abaixo das abas ou movo para dentro de "Apuração" filtrada por competência?
