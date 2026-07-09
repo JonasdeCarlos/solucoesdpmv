@@ -3316,8 +3316,12 @@ export type Database = {
           created_at: string
           created_by: string | null
           escopo: string
+          hotelaria_apuracao: Json | null
+          hotelaria_config: Json | null
+          hotelaria_pontos: Json | null
           id: string
           minimo_essencial: number | null
+          modelo_template: string | null
           nome: string
           objetivo: string | null
           periodo_tipo: string
@@ -3345,8 +3349,12 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           escopo?: string
+          hotelaria_apuracao?: Json | null
+          hotelaria_config?: Json | null
+          hotelaria_pontos?: Json | null
           id?: string
           minimo_essencial?: number | null
+          modelo_template?: string | null
           nome: string
           objetivo?: string | null
           periodo_tipo?: string
@@ -3374,8 +3382,12 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           escopo?: string
+          hotelaria_apuracao?: Json | null
+          hotelaria_config?: Json | null
+          hotelaria_pontos?: Json | null
           id?: string
           minimo_essencial?: number | null
+          modelo_template?: string | null
           nome?: string
           objetivo?: string | null
           periodo_tipo?: string
