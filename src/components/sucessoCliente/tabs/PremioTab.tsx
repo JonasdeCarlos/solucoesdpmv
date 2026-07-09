@@ -356,7 +356,11 @@ function PolicyCard({ policy, expanded, onToggle, onUpdate, onRemove, cliente }:
 
         {expanded && (
           <div className="border-t pt-3 space-y-4">
-            <PremioRemuneracaoVariavelSection policy={policy} onUpdate={onUpdate}/>
+            {(policy as any).modelo_template === 'hotelaria' ? (
+              <PremioHotelariaSection policy={policy} onUpdate={onUpdate}/>
+            ) : (
+              <PremioRemuneracaoVariavelSection policy={policy} onUpdate={onUpdate}/>
+            )}
             <CriteriaSection policy={policy} cliente={cliente}/>
             <EmployeesSection policy={policy} cliente={cliente}/>
             <PremioAplicacaoSection policy={policy} cliente={cliente}/>
