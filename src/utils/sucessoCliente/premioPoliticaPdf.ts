@@ -91,7 +91,7 @@ export async function generatePremioPoliticaPdf(d: PoliticaPdfData) {
   doc.setTextColor(255,255,255);
   // Título em Helvetica normal maior + charSpace positivo para não colar glifos
   (doc as any).setCharSpace?.(0.6);
-  doc.setFont('helvetica','bold'); doc.setFontSize(18);
+  doc.setFont('helvetica','normal'); doc.setFontSize(18);
   doc.text(`POLÍTICA DE ${d.verba_label.toUpperCase()}`, TX, LOGO_BOX_Y + 26);
   (doc as any).setCharSpace?.(0);
   doc.setFont('helvetica','normal'); doc.setFontSize(10.5);
@@ -110,7 +110,7 @@ export async function generatePremioPoliticaPdf(d: PoliticaPdfData) {
     doc.rect(40, y, W-80, 18, 'F');
     doc.setTextColor(fg[0], fg[1], fg[2]);
     (doc as any).setCharSpace?.(0.4);
-    doc.setFont('helvetica','bold'); doc.setFontSize(10.5);
+    doc.setFont('helvetica','normal'); doc.setFontSize(10.5);
     doc.text(text, 46, y+12);
     (doc as any).setCharSpace?.(0);
     doc.setTextColor(0,0,0);
@@ -143,7 +143,7 @@ export async function generatePremioPoliticaPdf(d: PoliticaPdfData) {
   doc.setFillColor(pr,pg,pb); doc.rect(40, y, W-80, 18, 'F');
   doc.setTextColor(255,255,255);
   (doc as any).setCharSpace?.(0.4);
-  doc.setFont('helvetica','bold'); doc.setFontSize(10.5);
+  doc.setFont('helvetica','normal'); doc.setFontSize(10.5);
   doc.text('CRITÉRIO', 46, y+12);
   doc.text('PESO', PESO_X, y+12);
   doc.text('ESSENCIAL', ESS_X, y+12);
@@ -161,7 +161,7 @@ export async function generatePremioPoliticaPdf(d: PoliticaPdfData) {
     y = ensure(rowH + 4, y);
     doc.setDrawColor(230,230,230); doc.line(40, y, W-40, y);
     let yy = y + 12;
-    doc.setFont('helvetica','bold');
+    doc.setFont('helvetica','normal');
     for (const ln of nameLines) { doc.text(ln, 46, yy); yy += 12; }
     doc.setFont('helvetica','normal'); doc.setTextColor(80,80,80); doc.setFontSize(8);
     for (const ln of descLines) { doc.text(ln, 46, yy); yy += 11; }
@@ -191,7 +191,7 @@ export async function generatePremioPoliticaPdf(d: PoliticaPdfData) {
     const tiers = (rv.tiers || []).slice().sort((a,b) => (a.ate||0) - (b.ate||0));
     if (tiers.length > 0) {
       y = ensure(30, y);
-      doc.setFont('helvetica','bold'); doc.setFillColor(240,240,240);
+      doc.setFont('helvetica','normal'); doc.setFillColor(240,240,240);
       doc.rect(40, y, W-80, 14, 'F');
       doc.text(`FAIXA DE ${baseLabel.toUpperCase()} (ATÉ)`, 46, y+10);
       doc.text('% DESTINADO À VERBA', W-200, y+10);
@@ -215,7 +215,7 @@ export async function generatePremioPoliticaPdf(d: PoliticaPdfData) {
     const igu = Number(rv.pct_igualitario || 0);
     y = ensure(30, y);
     (doc as any).setCharSpace?.(0.3);
-    doc.setFont('helvetica','bold'); doc.setFontSize(10);
+    doc.setFont('helvetica','normal'); doc.setFontSize(10);
     doc.text('DIVISÃO DO MONTANTE APURADO', 46, y);
     (doc as any).setCharSpace?.(0);
     y += 14;
@@ -234,7 +234,7 @@ export async function generatePremioPoliticaPdf(d: PoliticaPdfData) {
     // Critérios individuais (referência)
     if (rv.criterios_individuais && rv.criterios_individuais.length > 0) {
       y = ensure(20, y);
-      doc.setFont('helvetica','bold');
+      doc.setFont('helvetica','normal');
       doc.text('Critérios individuais considerados na parcela individual:', 46, y); y += 12;
       doc.setFont('helvetica','normal');
       const totalP = rv.criterios_individuais.reduce((s,c)=>s+(c.peso||0),0) || 1;
@@ -249,7 +249,7 @@ export async function generatePremioPoliticaPdf(d: PoliticaPdfData) {
     // Observações
     if (rv.observacoes && rv.observacoes.trim()) {
       y = ensure(20, y);
-      doc.setFont('helvetica','bold');
+      doc.setFont('helvetica','normal');
       doc.text('Observações / regras adicionais:', 46, y); y += 12;
       doc.setFont('helvetica','normal');
       const ow = doc.splitTextToSize(rv.observacoes, W-80);
@@ -280,7 +280,7 @@ export async function generatePremioPoliticaPdf(d: PoliticaPdfData) {
   // Header columns
   doc.setFillColor(245,245,245); doc.rect(40, y, W-80, 14, 'F');
   (doc as any).setCharSpace?.(0.3);
-  doc.setFont('helvetica','bold');
+  doc.setFont('helvetica','normal');
   doc.text('NOME / CPF / CARGO', 46, y+10);
   doc.text('ASSINATURA', W-260, y+10);
   doc.text('DATA', W-90, y+10);
@@ -298,7 +298,7 @@ export async function generatePremioPoliticaPdf(d: PoliticaPdfData) {
     // left cell
     doc.setFontSize(9);
     if (p.nome) {
-      doc.setFont('helvetica','bold'); doc.text(p.nome, 46, y+14, { maxWidth: W-330 });
+      doc.setFont('helvetica','normal'); doc.text(p.nome, 46, y+14, { maxWidth: W-330 });
       doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(80,80,80);
       const info = [
         p.cpf ? `CPF: ${p.cpf}` : null,
