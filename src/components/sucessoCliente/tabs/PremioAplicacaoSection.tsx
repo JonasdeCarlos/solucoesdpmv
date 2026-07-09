@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar, Play, Plus, Trash2, ClipboardCheck, History, UserMinus, Lock, Unlock, FileDown, Loader2 } from 'lucide-react';
-import { usePrizeAssessments, useAssessmentEmployees, useCriterionResults, fetchEmployeeHistory } from '@/hooks/usePrizeAssessments';
+import { usePrizeAssessments, useAssessmentEmployees, fetchEmployeeHistory } from '@/hooks/usePrizeAssessments';
 import { usePrizeCriteria, type PrizePolicy } from '@/hooks/usePrizePolicies';
 import PremioAvaliacaoDialog from './PremioAvaliacaoDialog';
 import { toast } from 'sonner';
