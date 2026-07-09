@@ -404,6 +404,22 @@ function CriteriaSection({ policy, cliente }: { policy: PrizePolicy; cliente: an
           observacoes: (policy as any).rv_observacoes,
           criterios_individuais: items.map(c => ({ nome: c.nome, peso: c.peso })),
         } : null,
+        hotelaria: (policy as any).modelo_template === 'hotelaria' ? (() => {
+          const cfg = (policy as any).hotelaria_config || HOTELARIA_CONFIG;
+          const legacy: Record<string, number> = ((policy as any).hotelaria_pontos as any) || {};
+          const pontos = (participantes || []).filter(p => p.ativo).map(p => ({
+            nome: p.nome,
+            cargo: p.cargo,
+            pontos: Number((p as any).pontos ?? legacy[p.id] ?? 0),
+          }));
+          return {
+            split_coletivo: cfg.split_coletivo,
+            split_individual: cfg.split_individual,
+            criterios: cfg.criterios,
+            escala: cfg.escala,
+            pontos,
+          };
+        })() : null,
       });
       toast.success('PDF gerado.');
     } catch (e: any) {
