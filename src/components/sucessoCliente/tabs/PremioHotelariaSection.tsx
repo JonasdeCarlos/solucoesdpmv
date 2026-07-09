@@ -6,10 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Plus, Trash2, Save, Building2, Settings, ClipboardList, LineChart } from 'lucide-react';
+import { Plus, Trash2, Save, Building2, Settings, ClipboardList, LineChart, CalendarDays, ArrowRightCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePrizeEmployees, type PrizePolicy } from '@/hooks/usePrizePolicies';
-import { HOTELARIA_CONFIG, HOTELARIA_ESCALA_TEXTO, type HotelariaConfig, type HotelariaCriterio } from '@/utils/sucessoCliente/premioTemplates';
+import { HOTELARIA_CONFIG, HOTELARIA_ESCALA_TEXTO, type HotelariaConfig, type HotelariaCriterio, type MetaMensal } from '@/utils/sucessoCliente/premioTemplates';
+import { Textarea } from '@/components/ui/textarea';
 
 const BRL = (n: number) => `R$ ${Number(n || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -201,8 +202,9 @@ export default function PremioHotelariaSection({ policy, onUpdate, onDraftChange
       </Card>
 
       <Tabs defaultValue="config" className="w-full">
-        <TabsList className="grid grid-cols-3 w-full">
+        <TabsList className="grid grid-cols-4 w-full">
           <TabsTrigger value="config"><Settings className="w-3 h-3 mr-1"/>Configuração</TabsTrigger>
+          <TabsTrigger value="metas"><CalendarDays className="w-3 h-3 mr-1"/>Metas mensais</TabsTrigger>
           <TabsTrigger value="apuracao"><ClipboardList className="w-3 h-3 mr-1"/>Apuração</TabsTrigger>
           <TabsTrigger value="evolucao"><LineChart className="w-3 h-3 mr-1"/>Evolução diária</TabsTrigger>
         </TabsList>
