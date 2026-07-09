@@ -119,7 +119,20 @@ export default function PremioAplicacaoSection({ policy, cliente }: { policy: Pr
       )}
 
       {current && (
-        <AssessmentEmployeeList key={`${current.id}-${refreshTick}`} assessment={current} policy={policy} cliente={cliente} onOpenHistory={setHistoryEmp}/>
+        <AssessmentEmployeeList
+          key={`${current.id}-${refreshTick}`}
+          assessment={current}
+          policy={policy}
+          cliente={cliente}
+          onOpenHistory={setHistoryEmp}
+          onToggleFechada={async () => {
+            const novoStatus = current.status === 'fechada' ? 'ativo' : 'fechada';
+            const { error } = await update(current.id, { status: novoStatus } as any);
+            if (error) { toast.error('Erro ao alterar status.'); return; }
+            toast.success(novoStatus === 'fechada' ? 'Apuração fechada. Relatórios finais liberados.' : 'Apuração reaberta.');
+            await reload();
+          }}
+        />
       )}
 
       {historyEmp && (
@@ -129,10 +142,14 @@ export default function PremioAplicacaoSection({ policy, cliente }: { policy: Pr
   );
 }
 
-function AssessmentEmployeeList({ assessment, policy, cliente, onOpenHistory }: {
+function AssessmentEmployeeList({ assessment, policy, cliente, onOpenHistory, onToggleFechada }: {
   assessment: any; policy: PrizePolicy; cliente: any; onOpenHistory: (id: string) => void;
+  onToggleFechada: () => Promise<void>;
 }) {
   const { items, reload, removeOne } = useAssessmentEmployees(assessment.id);
+  const { items: criteria } = usePrizeCriteria(policy.id);
+  const fechada = assessment.status === 'fechada';
+  const [reportingId, setReportingId] = useState<string | null>(null);
   const [openAe, setOpenAe] = useState<any | null>(null);
 
   const totalCalc = items.reduce((s, i) => s + Number(i.valor_final || 0), 0);
