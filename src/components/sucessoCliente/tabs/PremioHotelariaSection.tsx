@@ -15,6 +15,7 @@ import { EmployeesSection } from './PremioTab';
 import PremioAplicacaoSection from './PremioAplicacaoSection';
 import { Textarea } from '@/components/ui/textarea';
 import { buildExternalAppLink } from '@/utils/publicLinks';
+import { copyToClipboard } from '@/utils/clipboard';
 import { Link2 } from 'lucide-react';
 
 const BRL = (n: number) => `R$ ${Number(n || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -466,8 +467,9 @@ export default function PremioHotelariaSection({ policy, cliente, onUpdate, onDr
                 </Button>
                 <Button size="sm" variant="outline" onClick={async ()=>{
                   const link = buildExternalAppLink(`/politica-hotelaria/${policy.id}`);
-                  try { await navigator.clipboard.writeText(link); toast.success('Link público copiado.'); }
-                  catch { toast.info(link); }
+                  const ok = await copyToClipboard(link);
+                  if (ok) toast.success('Link público copiado.');
+                  else toast.info(link, { description: 'Copie manualmente o link acima.' });
                 }}>
                   <Link2 className="w-3 h-3 mr-1"/>Copiar link público
                 </Button>
