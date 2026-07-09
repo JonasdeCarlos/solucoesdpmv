@@ -4,11 +4,13 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, Play, Plus, Trash2, ClipboardCheck, History, UserMinus } from 'lucide-react';
-import { usePrizeAssessments, useAssessmentEmployees, fetchEmployeeHistory } from '@/hooks/usePrizeAssessments';
-import { type PrizePolicy } from '@/hooks/usePrizePolicies';
+import { Calendar, Play, Plus, Trash2, ClipboardCheck, History, UserMinus, Lock, Unlock, FileDown, Loader2 } from 'lucide-react';
+import { usePrizeAssessments, useAssessmentEmployees, useCriterionResults, fetchEmployeeHistory } from '@/hooks/usePrizeAssessments';
+import { usePrizeCriteria, type PrizePolicy } from '@/hooks/usePrizePolicies';
 import PremioAvaliacaoDialog from './PremioAvaliacaoDialog';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { generatePremioRelatorioFinalPdf } from '@/utils/sucessoCliente/premioRelatorioFinalPdf';
 
 function competenciaAtual() {
   const d = new Date();
