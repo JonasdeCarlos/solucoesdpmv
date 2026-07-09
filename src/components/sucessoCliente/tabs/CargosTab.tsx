@@ -146,6 +146,48 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
   };
 
   const completarComIA = async () => {
+    void 0;
+    return _completarComIA();
+  };
+
+  const adequarCargo = async () => {
+    if (!draft.nome?.trim()) return toast.error('Informe o nome do cargo.');
+    setBusy('adequar');
+    try {
+      const { data, error } = await supabase.functions.invoke('cargo-adequar', {
+        body: { nome: draft.nome, empresa: cliente?.nome, setor: cliente?.segmento || cliente?.cnae || '' },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setDraft((d: any) => ({
+        ...d,
+        cbo: d.cbo || data.cbo || '',
+        area: d.area || data.area || '',
+        nivel: d.nivel || data.nivel || d.nivel,
+        descricao_sumaria: d.descricao_sumaria || data.descricao_sumaria || '',
+        atividades: (Array.isArray(d.atividades) && d.atividades.length) ? d.atividades : (data.atividades || []),
+        requisitos: {
+          escolaridade: d.requisitos?.escolaridade || data.requisitos?.escolaridade || '',
+          experiencia: d.requisitos?.experiencia || data.requisitos?.experiencia || '',
+          competencias: (d.requisitos?.competencias?.length ? d.requisitos.competencias : (data.requisitos?.competencias || [])),
+        },
+        adequacao: {
+          profissao_regulamentada: !!data.profissao_regulamentada,
+          base_legal: data.base_legal || '',
+          conselho_registro: data.conselho_registro || { obrigatorio: false, sigla: '', descricao: '' },
+          observacoes_regulamentacao: data.observacoes_regulamentacao || '',
+          titulo_cbo: data.titulo_cbo || '',
+        },
+      }));
+      toast.success(data.profissao_regulamentada
+        ? `Cargo adequado. Atenção: profissão regulamentada${data.conselho_registro?.sigla ? ` (${data.conselho_registro.sigla})` : ''}.`
+        : 'Cargo adequado pela IA.');
+    } catch (e: any) {
+      toast.error('Falha: ' + e.message);
+    } finally { setBusy(null); }
+  };
+
+  const _completarComIA = async () => {
     if (!draft.nome?.trim()) return toast.error('Informe ao menos o nome do cargo.');
     const camposVazios = getCamposVaziosCargo(draft);
     if (!camposVazios.length) return toast.info('Todos os campos já estavam preenchidos.');
