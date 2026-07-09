@@ -3267,6 +3267,7 @@ export type Database = {
           matricula: string | null
           nome: string
           policy_id: string
+          pontos: number
           setor: string | null
           updated_at: string
         }
@@ -3281,6 +3282,7 @@ export type Database = {
           matricula?: string | null
           nome: string
           policy_id: string
+          pontos?: number
           setor?: string | null
           updated_at?: string
         }
@@ -3295,6 +3297,7 @@ export type Database = {
           matricula?: string | null
           nome?: string
           policy_id?: string
+          pontos?: number
           setor?: string | null
           updated_at?: string
         }

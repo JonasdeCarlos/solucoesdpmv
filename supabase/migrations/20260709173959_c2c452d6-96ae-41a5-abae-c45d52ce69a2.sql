@@ -1,0 +1,1 @@
+ALTER TABLE public.prize_employees ADD COLUMN IF NOT EXISTS pontos numeric NOT NULL DEFAULT 0;
