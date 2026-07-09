@@ -12,6 +12,7 @@ import { usePrizeEmployees, usePrizeCriteria, type PrizePolicy } from '@/hooks/u
 import { HOTELARIA_CONFIG, HOTELARIA_ESCALA_TEXTO, HOTELARIA_CRITERIOS_INDIVIDUAIS, type HotelariaConfig, type HotelariaCriterio, type MetaMensal } from '@/utils/sucessoCliente/premioTemplates';
 import { generatePremioPoliticaPdf } from '@/utils/sucessoCliente/premioPoliticaPdf';
 import { EmployeesSection } from './PremioTab';
+import PremioAplicacaoSection from './PremioAplicacaoSection';
 import { Textarea } from '@/components/ui/textarea';
 import { buildExternalAppLink } from '@/utils/publicLinks';
 import { Link2 } from 'lucide-react';
