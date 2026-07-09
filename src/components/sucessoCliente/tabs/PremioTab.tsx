@@ -369,14 +369,17 @@ function PolicyCard({ policy, expanded, onToggle, onUpdate, onRemove, cliente }:
             {isHotelaria ? (
               <PremioHotelariaSection
                 policy={effectivePolicy}
+                cliente={cliente}
                 onUpdate={onUpdate}
                 onDraftChange={(patch)=>setHotelariaDraft(prev => ({ ...prev, ...patch }))}
               />
             ) : (
-              <PremioRemuneracaoVariavelSection policy={policy} onUpdate={onUpdate}/>
+              <>
+                <PremioRemuneracaoVariavelSection policy={policy} onUpdate={onUpdate}/>
+                <CriteriaSection policy={effectivePolicy} cliente={cliente}/>
+                <EmployeesSection policy={effectivePolicy} cliente={cliente}/>
+              </>
             )}
-            <CriteriaSection policy={effectivePolicy} cliente={cliente}/>
-            <EmployeesSection policy={effectivePolicy} cliente={cliente}/>
             <PremioAplicacaoSection policy={effectivePolicy} cliente={cliente}/>
           </div>
         )}
