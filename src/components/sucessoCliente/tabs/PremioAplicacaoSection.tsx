@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, Play, Plus, Trash2, ClipboardCheck, History } from 'lucide-react';
+import { Calendar, Play, Plus, Trash2, ClipboardCheck, History, UserMinus } from 'lucide-react';
 import { usePrizeAssessments, useAssessmentEmployees, fetchEmployeeHistory } from '@/hooks/usePrizeAssessments';
 import { type PrizePolicy } from '@/hooks/usePrizePolicies';
 import PremioAvaliacaoDialog from './PremioAvaliacaoDialog';
@@ -130,7 +130,7 @@ export default function PremioAplicacaoSection({ policy, cliente }: { policy: Pr
 function AssessmentEmployeeList({ assessment, policy, cliente, onOpenHistory }: {
   assessment: any; policy: PrizePolicy; cliente: any; onOpenHistory: (id: string) => void;
 }) {
-  const { items, reload } = useAssessmentEmployees(assessment.id);
+  const { items, reload, removeOne } = useAssessmentEmployees(assessment.id);
   const [openAe, setOpenAe] = useState<any | null>(null);
 
   const totalCalc = items.reduce((s, i) => s + Number(i.valor_final || 0), 0);
@@ -167,6 +167,16 @@ function AssessmentEmployeeList({ assessment, policy, cliente, onOpenHistory }: 
             <div className="flex gap-1">
               <Button size="sm" variant="ghost" onClick={()=>onOpenHistory(ae.employee_id)}><History className="w-3 h-3"/></Button>
               <Button size="sm" onClick={()=>setOpenAe(ae)}><Play className="w-3 h-3 mr-1"/>Avaliar</Button>
+              <Button size="sm" variant="ghost"
+                title="Remover colaborador desta apuração"
+                onClick={async ()=>{
+                  if (!confirm(`Remover ${ae.employee?.nome} desta apuração? Os lançamentos de critérios deste colaborador serão apagados.`)) return;
+                  const { error } = await removeOne(ae.id);
+                  if (error) { toast.error('Erro ao remover.'); return; }
+                  toast.success('Colaborador removido da apuração.');
+                }}>
+                <UserMinus className="w-3 h-3"/>
+              </Button>
             </div>
           </div>
         ))}
