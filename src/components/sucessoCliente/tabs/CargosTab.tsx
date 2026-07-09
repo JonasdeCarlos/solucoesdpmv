@@ -32,6 +32,13 @@ const emptyDraft = () => ({
   salario_atual: '' as any,
   piso_salarial: '' as any,
   piso_referencia: '',
+  adequacao: null as null | {
+    profissao_regulamentada: boolean;
+    base_legal: string;
+    conselho_registro: { obrigatorio: boolean; sigla: string; descricao: string };
+    observacoes_regulamentacao: string;
+    titulo_cbo?: string;
+  },
 });
 
 const sanitizeCargoDraft = (cargo: any = {}) => ({
