@@ -19,6 +19,13 @@ export type PrizePolicy = {
   status: string;
   aviso_legal: string | null;
   created_at: string;
+  remuneracao_variavel?: boolean;
+  rv_base?: string;
+  rv_base_label?: string | null;
+  rv_tiers?: Array<{ ate: number | null; percentual: number }>;
+  rv_pct_individual?: number;
+  rv_pct_igualitario?: number;
+  rv_observacoes?: string | null;
 };
 
 export type PrizeCriterion = {

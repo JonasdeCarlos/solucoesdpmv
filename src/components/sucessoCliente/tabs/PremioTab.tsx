@@ -12,6 +12,7 @@ import { usePrizePolicies, usePrizeCriteria, usePrizeEmployees, type PrizePolicy
 import { useEmpregados } from '@/hooks/useEmpregados';
 import { toast } from 'sonner';
 import PremioAplicacaoSection from './PremioAplicacaoSection';
+import PremioRemuneracaoVariavelSection from './PremioRemuneracaoVariavelSection';
 import { generatePremioPoliticaPdf } from '@/utils/sucessoCliente/premioPoliticaPdf';
 
 const VERBA_PRESETS = ['Prêmio', 'Gratificação', 'Bonificação', 'Bônus', 'PLR', 'Adicional de Desempenho'];
@@ -225,6 +226,7 @@ function PolicyCard({ policy, expanded, onToggle, onUpdate, onRemove, cliente }:
 
         {expanded && (
           <div className="border-t pt-3 space-y-4">
+            <PremioRemuneracaoVariavelSection policy={policy} onUpdate={onUpdate}/>
             <CriteriaSection policy={policy} cliente={cliente}/>
             <EmployeesSection policy={policy} cliente={cliente}/>
             <PremioAplicacaoSection policy={policy} cliente={cliente}/>
