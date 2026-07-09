@@ -13,6 +13,8 @@ import { HOTELARIA_CONFIG, HOTELARIA_ESCALA_TEXTO, HOTELARIA_CRITERIOS_INDIVIDUA
 import { generatePremioPoliticaPdf } from '@/utils/sucessoCliente/premioPoliticaPdf';
 import { EmployeesSection } from './PremioTab';
 import { Textarea } from '@/components/ui/textarea';
+import { buildExternalAppLink } from '@/utils/publicLinks';
+import { Link2 } from 'lucide-react';
 
 const BRL = (n: number) => `R$ ${Number(n || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
