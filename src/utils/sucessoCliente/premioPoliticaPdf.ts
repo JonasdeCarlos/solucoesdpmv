@@ -268,6 +268,114 @@ export async function generatePremioPoliticaPdf(d: PoliticaPdfData) {
     y += 8;
   }
 
+  // Modelo Hotelaria — Critérios coletivos + distribuição por pontos
+  const ht = d.hotelaria;
+  if (ht && ht.criterios && ht.criterios.length > 0) {
+    bandTitle('MODELO HOTELARIA — CRITÉRIOS COLETIVOS E DISTRIBUIÇÃO', [pr,pg,pb], [255,255,255]);
+    doc.setFont('helvetica','normal'); doc.setFontSize(9);
+    const introHt =
+      `Este modelo aplica divisão ${ht.split_coletivo}% coletiva / ${ht.split_individual}% individual. A parcela coletiva é composta pelos critérios abaixo, cada um com peso próprio sobre o faturamento e faixas de atingimento (Piso / Meta 0 / Meta 1 / Meta 2). O valor apurado em cada critério é distribuído entre os colaboradores participantes de forma proporcional aos pontos atribuídos no cadastro. A parcela individual segue a escala de avaliação abaixo.`;
+    const iw2 = doc.splitTextToSize(introHt, W-80);
+    for (const w of iw2) { y = ensure(12, y); doc.text(w, 46, y); y += 12; }
+    y += 6;
+
+    // Tabela de critérios coletivos
+    const metricaLabel = (m: string) => m === 'faturamento_direto' ? 'Faturamento (Meta 0/1/2)'
+      : m === 'nota_media' ? 'Nota média do canal'
+      : m === 'pct_avaliacoes' ? '% avaliações / reservas' : m;
+
+    for (const c of ht.criterios) {
+      const faixas = c.faixas || [];
+      const rowH = 14 + 12 + 4 + (faixas.length * 12) + 6;
+      y = ensure(rowH + 6, y);
+      // header do critério
+      doc.setFillColor(240,240,240); doc.rect(40, y, W-80, 14, 'F');
+      doc.setFont('helvetica','normal'); doc.setFontSize(9.5);
+      doc.text(c.nome, 46, y+10);
+      doc.setFontSize(8); doc.setTextColor(80,80,80);
+      doc.text(`peso ${c.peso_pct}% do faturamento`, W-180, y+10);
+      doc.setTextColor(0,0,0);
+      y += 14;
+      doc.setFontSize(8); doc.setTextColor(80,80,80);
+      doc.text(`Métrica: ${metricaLabel(c.metrica)}${c.canal ? ` • Canal: ${c.canal}` : ''}`, 46, y+10);
+      doc.setTextColor(0,0,0);
+      y += 14;
+      // faixas
+      doc.setFontSize(8);
+      doc.setFillColor(250,250,250); doc.rect(40, y, W-80, 12, 'F');
+      doc.text('FAIXA', 46, y+9);
+      doc.text('ALVO', 220, y+9);
+      doc.text('% DA VERBA', W-140, y+9);
+      y += 12;
+      for (const f of faixas) {
+        y = ensure(12, y);
+        doc.setDrawColor(235,235,235); doc.rect(40, y, W-80, 12);
+        doc.text(f.nivel.replace('_',' ').toUpperCase(), 46, y+9);
+        const alvo = f.alvo === null || f.alvo === undefined
+          ? '—'
+          : c.metrica === 'faturamento_direto' ? BRL(f.alvo)
+          : c.metrica === 'pct_avaliacoes' ? `${f.alvo}%`
+          : `${f.alvo}`;
+        doc.text(alvo, 220, y+9);
+        doc.text(`${Number(f.pct).toFixed(2)}%`, W-140, y+9);
+        y += 12;
+      }
+      y += 8;
+    }
+
+    // Escala individual
+    if (ht.escala && ht.escala.length > 0) {
+      y = ensure(30, y);
+      doc.setFont('helvetica','normal'); doc.setFontSize(9.5);
+      doc.text(`Escala da parcela individual (${ht.split_individual}%)`, 46, y); y += 12;
+      doc.setFontSize(8);
+      for (const e of ht.escala) {
+        y = ensure(11, y);
+        doc.text(`• ${e.label} — ${e.valor}%`, 52, y); y += 11;
+      }
+      y += 6;
+    }
+
+    // Pontos por colaborador
+    if (ht.pontos && ht.pontos.length > 0) {
+      const somaP = ht.pontos.reduce((s,p)=>s+(p.pontos||0),0) || 0;
+      y = ensure(30, y);
+      doc.setFont('helvetica','normal'); doc.setFontSize(9.5);
+      doc.text('Distribuição por pontos (parcela coletiva)', 46, y); y += 12;
+      doc.setFontSize(8); doc.setTextColor(80,80,80);
+      const notaP = `Cada critério coletivo é distribuído proporcionalmente aos pontos abaixo. Fórmula: valor_colab = valor_critério × (pontos_colab ÷ soma_pontos). Soma atual de pontos: ${somaP}.`;
+      const nwp = doc.splitTextToSize(notaP, W-80);
+      for (const w of nwp) { y = ensure(11, y); doc.text(w, 46, y); y += 11; }
+      doc.setTextColor(0,0,0);
+      y += 4;
+      // header
+      doc.setFillColor(240,240,240); doc.rect(40, y, W-80, 12, 'F');
+      doc.text('COLABORADOR', 46, y+9);
+      doc.text('CARGO', 260, y+9);
+      doc.text('PONTOS', W-160, y+9);
+      doc.text('% DA COLETIVA', W-90, y+9);
+      y += 12;
+      for (const p of ht.pontos) {
+        y = ensure(12, y);
+        doc.setDrawColor(235,235,235); doc.rect(40, y, W-80, 12);
+        doc.text(p.nome, 46, y+9, { maxWidth: 210 });
+        doc.text(p.cargo || '—', 260, y+9, { maxWidth: 170 });
+        doc.text(String(p.pontos || 0), W-160, y+9);
+        const pct = somaP > 0 ? ((p.pontos||0)/somaP*100).toFixed(1) : '0.0';
+        doc.text(`${pct}%`, W-90, y+9);
+        y += 12;
+      }
+      y += 10;
+    }
+
+    doc.setFontSize(8); doc.setTextColor(120,120,120);
+    const notaHt = 'As faixas e pesos podem ser revistos periodicamente. A apuração dos critérios com métrica "faturamento" utiliza o valor de referência diário (faturamento total ÷ dia de referência) para determinar a faixa atingida.';
+    const nwHt = doc.splitTextToSize(notaHt, W-80);
+    for (const w of nwHt) { y = ensure(11, y); doc.text(w, 46, y); y += 11; }
+    doc.setTextColor(0,0,0); doc.setFontSize(9);
+    y += 8;
+  }
+
   // Termo de ciência
   bandTitle('TERMO DE CIÊNCIA E CONCORDÂNCIA', [245,245,245]);
   doc.setFont('helvetica','normal'); doc.setFontSize(9);
