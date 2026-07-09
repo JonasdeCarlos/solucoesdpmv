@@ -297,6 +297,42 @@ export default function PremioHotelariaSection({ policy, onUpdate, onDraftChange
           </CardContent></Card>
         </TabsContent>
 
+        {/* METAS MENSAIS */}
+        <TabsContent value="metas" className="mt-3">
+          <MetasMensaisPanel
+            config={config}
+            ap={ap}
+            onSaveMeta={async (mes, meta) => {
+              const next = { ...config, metas_mensais: { ...(config.metas_mensais || {}), [mes]: meta } };
+              updateConfigState(next);
+              await onUpdate({ hotelaria_config: next } as any);
+              toast.success(`Metas de ${mes} salvas.`);
+            }}
+            onRemoveMeta={async (mes) => {
+              const nextMap = { ...(config.metas_mensais || {}) };
+              delete nextMap[mes];
+              const next = { ...config, metas_mensais: nextMap };
+              updateConfigState(next);
+              await onUpdate({ hotelaria_config: next } as any);
+              toast.success(`Metas de ${mes} removidas.`);
+            }}
+            onApplyToApuracao={(meta, mes) => {
+              const [ano, m] = mes.split('-');
+              const dataRef = `${ano}-${m}-${String(new Date().getDate()).padStart(2, '0')}`;
+              const next: ApuracaoState = {
+                ...ap,
+                meta_0: meta.meta_0,
+                meta_1: meta.meta_1,
+                meta_2: meta.meta_2,
+                data_referencia: dataRef,
+              };
+              updateApState(next);
+              saveApuracaoSilent(next);
+              toast.success(`Metas de ${mes} aplicadas à apuração.`);
+            }}
+          />
+        </TabsContent>
+
         {/* APURACAO */}
         <TabsContent value="apuracao" className="mt-3">
           <Card><CardContent className="p-4 space-y-3">
