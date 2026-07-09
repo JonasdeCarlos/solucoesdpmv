@@ -12,6 +12,7 @@ import { usePrizeEmployees, usePrizeCriteria, type PrizePolicy } from '@/hooks/u
 import { HOTELARIA_CONFIG, HOTELARIA_ESCALA_TEXTO, HOTELARIA_CRITERIOS_INDIVIDUAIS, type HotelariaConfig, type HotelariaCriterio, type MetaMensal } from '@/utils/sucessoCliente/premioTemplates';
 import { generatePremioPoliticaPdf } from '@/utils/sucessoCliente/premioPoliticaPdf';
 import { EmployeesSection } from './PremioTab';
+import PremioAplicacaoSection from './PremioAplicacaoSection';
 import { Textarea } from '@/components/ui/textarea';
 import { buildExternalAppLink } from '@/utils/publicLinks';
 import { Link2 } from 'lucide-react';
@@ -588,6 +589,10 @@ export default function PremioHotelariaSection({ policy, cliente, onUpdate, onDr
               <Button size="sm" onClick={saveApuracao}><Save className="w-3 h-3 mr-1"/>Salvar apuração</Button>
             </div>
           </CardContent></Card>
+
+          <div className="mt-3">
+            <PremioAplicacaoSection policy={policy} cliente={cliente}/>
+          </div>
         </TabsContent>
 
         {/* EVOLUCAO */}
