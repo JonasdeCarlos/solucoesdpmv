@@ -616,7 +616,7 @@ function CriterionRow({ c, policy, cliente, iaCargo, onUpdate, onRemove, explain
   );
 }
 
-function EmployeesSection({ policy, cliente }: { policy: PrizePolicy; cliente: any }) {
+export function EmployeesSection({ policy, cliente }: { policy: PrizePolicy; cliente: any }) {
   const { items, create, createMany, update, remove } = usePrizeEmployees(policy.id);
   const { empregados } = useEmpregados();
   const [novo, setNovo] = useState({ nome: '', cpf: '', codigo_folha: '', matricula: '', cargo: '', setor: '', data_admissao: '', pontos: 0 });
