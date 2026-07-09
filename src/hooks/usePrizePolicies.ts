@@ -54,6 +54,7 @@ export type PrizeEmployee = {
   ativo: boolean;
   codigo_folha?: string | null;
   data_admissao?: string | null;
+  pontos?: number;
 };
 
 export function usePrizePolicies(client_id: string | undefined) {
