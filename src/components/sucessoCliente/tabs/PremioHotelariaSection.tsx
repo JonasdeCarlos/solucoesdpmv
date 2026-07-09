@@ -469,7 +469,21 @@ export default function PremioHotelariaSection({ policy, cliente, onUpdate, onDr
         {/* APURACAO */}
         <TabsContent value="apuracao" className="mt-3">
           <Card><CardContent className="p-4 space-y-3">
-            <h5 className="text-sm font-semibold">Apuração do período</h5>
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <h5 className="text-sm font-semibold">Apuração do período</h5>
+              <div className="flex items-center gap-2">
+                <Label className="text-xs text-muted-foreground">Competência</Label>
+                <Select value={activeComp} onValueChange={setActiveComp}>
+                  <SelectTrigger className="h-8 w-40"><SelectValue/></SelectTrigger>
+                  <SelectContent>
+                    {mesesDisponiveis.map(m => <SelectItem key={m} value={m}>{labelMes(m)}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            {!(config.metas_mensais || {})[activeComp] && (
+              <p className="text-[11px] text-amber-600">Sem metas cadastradas para {labelMes(activeComp)}. Cadastre em <strong>Metas mensais</strong> ou preencha Meta 0/1/2 abaixo.</p>
+            )}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
               <div><Label className="text-xs">Faturamento total</Label><Input type="number" value={ap.faturamento_total} onChange={(e)=>updateApState({...ap, faturamento_total: Number(e.target.value)})} onBlur={(e)=>{ const next = {...ap, faturamento_total: Number(e.currentTarget.value)}; updateApState(next); saveApuracaoSilent(next); }}/></div>
               <div>
@@ -569,7 +583,16 @@ export default function PremioHotelariaSection({ policy, cliente, onUpdate, onDr
           <Card><CardContent className="p-4 space-y-3">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <h5 className="text-sm font-semibold">Painel de evolução diária</h5>
-              <Badge variant="outline">Dia {diaAtual} de {diasPeriodo}</Badge>
+              <div className="flex items-center gap-2">
+                <Label className="text-xs text-muted-foreground">Competência</Label>
+                <Select value={activeComp} onValueChange={setActiveComp}>
+                  <SelectTrigger className="h-8 w-40"><SelectValue/></SelectTrigger>
+                  <SelectContent>
+                    {mesesDisponiveis.map(m => <SelectItem key={m} value={m}>{labelMes(m)}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Badge variant="outline">Dia {diaAtual} de {diasPeriodo}</Badge>
+              </div>
             </div>
             <p className="text-[11px] text-muted-foreground">
               O valor de cada faixa é diário. Ritmo diário = valor acumulado ÷ dia atual. Projeção do período = ritmo × dias do período.
