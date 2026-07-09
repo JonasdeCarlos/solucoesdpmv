@@ -279,10 +279,12 @@ export async function generatePremioPoliticaPdf(d: PoliticaPdfData) {
 
   // Header columns
   doc.setFillColor(245,245,245); doc.rect(40, y, W-80, 14, 'F');
+  (doc as any).setCharSpace?.(0.3);
   doc.setFont('helvetica','bold');
   doc.text('NOME / CPF / CARGO', 46, y+10);
   doc.text('ASSINATURA', W-260, y+10);
   doc.text('DATA', W-90, y+10);
+  (doc as any).setCharSpace?.(0);
   y += 14;
   doc.setFont('helvetica','normal');
 
