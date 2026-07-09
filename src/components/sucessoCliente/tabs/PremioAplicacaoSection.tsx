@@ -18,7 +18,7 @@ function competenciaAtual() {
 }
 
 export default function PremioAplicacaoSection({ policy, cliente }: { policy: PrizePolicy; cliente: any }) {
-  const { items: assessments, create, remove, enroll, reload } = usePrizeAssessments(policy.id);
+  const { items: assessments, create, update, remove, enroll, reload } = usePrizeAssessments(policy.id);
   const [competencia, setCompetencia] = useState(competenciaAtual());
   const [selectedAssessment, setSelectedAssessment] = useState<string | null>(null);
   const [historyEmp, setHistoryEmp] = useState<string | null>(null);
