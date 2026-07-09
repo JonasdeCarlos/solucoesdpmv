@@ -715,12 +715,47 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-auto">
           <DialogHeader><DialogTitle>{draft.id ? 'Editar cargo' : 'Novo cargo'}</DialogTitle></DialogHeader>
-          <div className="flex justify-end mb-1">
+          <div className="flex justify-end gap-2 mb-1 flex-wrap">
+            <Button type="button" size="sm" variant="default" onClick={adequarCargo} disabled={busy==='adequar' || !draft.nome?.trim()} title="Sugere CBO, descrição, atividades, regulamentação e conselho a partir do nome do cargo.">
+              {busy==='adequar' ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <Sparkles className="w-4 h-4 mr-2"/>}
+              Adequar cargo (IA)
+            </Button>
             <Button type="button" size="sm" variant="secondary" onClick={completarComIA} disabled={busy==='completar'}>
               {busy==='completar' ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <Sparkles className="w-4 h-4 mr-2"/>}
               Preencher campos vazios com IA
             </Button>
           </div>
+          {draft.adequacao && (
+            <div className={`border rounded-md p-3 mb-2 text-sm ${draft.adequacao.profissao_regulamentada ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/20' : 'bg-muted/40'}`}>
+              <div className="flex items-center gap-2 mb-1">
+                {draft.adequacao.profissao_regulamentada
+                  ? <AlertTriangle className="w-4 h-4 text-amber-600"/>
+                  : <Sparkles className="w-4 h-4 text-primary"/>}
+                <strong>
+                  {draft.adequacao.profissao_regulamentada ? 'Profissão regulamentada' : 'Profissão não regulamentada'}
+                </strong>
+                {draft.adequacao.titulo_cbo && (
+                  <Badge variant="outline" className="ml-auto">CBO: {draft.adequacao.titulo_cbo}</Badge>
+                )}
+              </div>
+              {draft.adequacao.base_legal && (
+                <div className="text-xs"><strong>Base legal:</strong> {draft.adequacao.base_legal}</div>
+              )}
+              {draft.adequacao.conselho_registro?.obrigatorio && (
+                <div className="text-xs mt-1">
+                  <strong>Registro em conselho obrigatório:</strong> {draft.adequacao.conselho_registro.sigla}
+                  {draft.adequacao.conselho_registro.descricao ? ` — ${draft.adequacao.conselho_registro.descricao}` : ''}
+                </div>
+              )}
+              {!draft.adequacao.conselho_registro?.obrigatorio && draft.adequacao.conselho_registro?.descricao && (
+                <div className="text-xs mt-1"><strong>Conselho:</strong> {draft.adequacao.conselho_registro.descricao}</div>
+              )}
+              {draft.adequacao.observacoes_regulamentacao && (
+                <div className="text-xs mt-1"><strong>Observações:</strong> {draft.adequacao.observacoes_regulamentacao}</div>
+              )}
+              <div className="text-[10px] text-muted-foreground mt-2">Sugestão gerada por IA — confirme com a legislação vigente e a CCT aplicável.</div>
+            </div>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             <div><Label className="text-xs">Nome do cargo</Label><Input value={draft.nome} onChange={e=>setDraft({...draft,nome:e.target.value})}/></div>
             <div><Label className="text-xs">CBO</Label><Input value={draft.cbo} onChange={e=>setDraft({...draft,cbo:e.target.value})}/></div>
