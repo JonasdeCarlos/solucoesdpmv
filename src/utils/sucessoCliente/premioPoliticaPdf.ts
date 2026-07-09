@@ -104,7 +104,13 @@ export async function generatePremioPoliticaPdf(d: PoliticaPdfData) {
   const TITLE_MAX_W = W - TX - 24;
   doc.setTextColor(255,255,255);
   doc.setFont('helvetica','bold'); doc.setFontSize(16);
-  const titleLines = doc.splitTextToSize(`POLÍTICA DE ${d.verba_label.toUpperCase()}`, TITLE_MAX_W);
+  const MESES_ABR = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  let compSufixo = '';
+  if (d.metas_mes?.competencia) {
+    const [a, m] = d.metas_mes.competencia.split('-');
+    compSufixo = m ? ` — COMPETÊNCIA ${(MESES_ABR[Number(m)-1] || m).toUpperCase()}/${a}` : ` — ${d.metas_mes.competencia}`;
+  }
+  const titleLines = doc.splitTextToSize(`POLÍTICA DE ${d.verba_label.toUpperCase()}${compSufixo}`, TITLE_MAX_W);
   let ty = LOGO_BOX_Y + 24;
   for (const l of titleLines) { doc.text(l, TX, ty); ty += 18; }
   doc.setFont('helvetica','normal'); doc.setFontSize(10);
@@ -516,7 +522,8 @@ export async function generatePremioPoliticaPdf(d: PoliticaPdfData) {
     doc.text(`${branding?.office_name || 'Sucesso do Cliente — DP'} • ${new Date().toLocaleString('pt-BR')}   Página ${i}/${totalPages}`, 40, H - 20);
   }
 
-  const fileName = `politica-${d.verba_label}-${d.politica_nome.replace(/\s+/g,'_')}.pdf`;
+  const compFile = d.metas_mes?.competencia ? `-${d.metas_mes.competencia}` : '';
+  const fileName = `politica-${d.verba_label}-${d.politica_nome.replace(/\s+/g,'_')}${compFile}.pdf`;
   doc.save(fileName);
   return fileName;
 }
