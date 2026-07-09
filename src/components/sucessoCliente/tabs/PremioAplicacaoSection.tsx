@@ -99,7 +99,7 @@ export default function PremioAplicacaoSection({ policy, cliente }: { policy: Pr
         </div>
       </div>
 
-      {current && rv && (
+      {current && rv && (policy as any).modelo_template !== 'hotelaria' && (
         <div className="border rounded-md p-3 bg-primary/5 grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
           <div className="md:col-span-4">
             <Label className="text-xs">Faturamento previsto ({rv.base_label || rv.base}) — competência {current.competencia}</Label>
