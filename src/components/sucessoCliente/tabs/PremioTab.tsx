@@ -255,7 +255,7 @@ export default function PremioTab({ client_id, cliente }: { client_id: string; c
             cliente={cliente}
             expanded={selectedId === p.id}
             onToggle={()=>setSelectedId(selectedId === p.id ? null : p.id)}
-            onUpdate={async (patch)=>{ const { error } = await update(p.id, patch); if (error) toast.error('Erro ao salvar.'); else toast.success('Atualizado.'); }}
+            onUpdate={async (patch, options)=>{ const { error } = await update(p.id, patch); if (error) toast.error('Erro ao salvar.'); else if (!options?.silent) toast.success('Atualizado.'); }}
             onRemove={async ()=>{ if (!confirm(`Excluir política "${p.nome}"?`)) return; const { error } = await remove(p.id); if (error) toast.error('Erro ao excluir.'); else { toast.success('Excluído.'); if (selectedId === p.id) setSelectedId(null); } }}
           />
         ))}
@@ -266,7 +266,7 @@ export default function PremioTab({ client_id, cliente }: { client_id: string; c
 
 function PolicyCard({ policy, expanded, onToggle, onUpdate, onRemove, cliente }: {
   policy: PrizePolicy; expanded: boolean; onToggle: () => void;
-  onUpdate: (patch: Partial<PrizePolicy>) => Promise<void>;
+  onUpdate: (patch: Partial<PrizePolicy>, options?: { silent?: boolean }) => Promise<void>;
   onRemove: () => Promise<void>; cliente: any;
 }) {
   const [editing, setEditing] = useState(false);
