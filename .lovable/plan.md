@@ -1,113 +1,105 @@
-# Editar e Comentar PDF — Plano de implementação
+## Objetivo
 
-## Escopo proposto (MVP funcional)
+Adicionar suporte a uma política de prêmio mais complexa (modelo "Prêmio para Hotelaria"), com:
 
-A Central PDF hoje é 100% client-side (nada é enviado a servidores, conforme já informado ao usuário). Vou manter esse mesmo padrão nesta primeira versão, entregando um editor/anotador de PDF completo no navegador. Recursos de multiusuário/permissões/auditoria compartilhada exigem backend e ficam para uma fase 2 opcional.
+- Divisão **80% coletivo / 20% individual**
+- Múltiplos critérios coletivos, cada um com **peso próprio sobre o faturamento** e **faixas Piso / Meta 0 / Meta 1 / Meta 2** com métrica-alvo específica
+- **Distribuição por pontos** entre colaboradores (proporcional aos pontos atribuídos)
+- Critérios individuais com escala 0 / 25 / 50 / 75 / 100 (Insatisfatório → Excelente)
+- Salvar como **modelo pré-existente** disponível ao criar nova política
 
-### O que entra no MVP
+## Modelagem de dados (migração)
 
-**Novo card na Central PDF:** "Editar e Comentar PDF" — abre o editor em tela cheia dentro da própria página.
+Estender `prize_policies` (JSONB, sem quebrar o que já existe):
 
-**Visualização**
-- Upload de 1 PDF (com o mesmo `FileDropZone` das outras ferramentas)
-- Renderização por página via `pdfjs-dist` (já usado no projeto)
-- Miniaturas laterais + navegação
-- Zoom in/out, ajustar à largura, rotação visual
-- Busca por texto (quando o PDF tem camada de texto)
+- `modelo_template text` — ex.: `hotelaria`
+- `rv_split_coletivo numeric` (default 80) / `rv_split_individual numeric` (default 20)
+- `rv_criterios_coletivos jsonb` — lista de critérios coletivos:
+  ```
+  [{
+    id, nome,                         // ex.: "Notas Booking"
+    peso_pct: 10,                     // % sobre faturamento base
+    metrica: "faturamento_direto" | "nota_media" | "pct_avaliacoes",
+    canal: "booking"|"google"|"tripadvisor"|null,
+    faixas: [
+      { nivel:"piso",   pct:1.0, alvo:null },
+      { nivel:"meta_0", pct:1.5, alvo:9.1 },
+      { nivel:"meta_1", pct:2.0, alvo:9.2 },
+      { nivel:"meta_2", pct:2.5, alvo:9.3 }
+    ]
+  }]
+  ```
+- `rv_distribuicao text` — `"pontos"` (novo) além de `individual`/`igualitario` já existentes
+- `escala_avaliacao jsonb` — `[{label:"Excelente", valor:100}, ...]`
 
-**Ferramentas de anotação** (camada Konva sobre o canvas do pdf.js)
-- Comentário (pin com balão de texto, autor local + data/hora)
-- Marca-texto por área retangular (amarelo/verde/rosa/azul/laranja + opacidade)
-- Sublinhado e tachado por área
-- Caixa de texto livre (fonte, tamanho, cor, fundo, borda)
-- Setas, retângulo, círculo, linha (cor, espessura, preenchimento, opacidade)
-- Desenho livre (caneta com cor e espessura)
-- Lupa/zoom de trecho: seleciona área → gera caixa ampliada reposicionável com linha ligando ao original e legenda opcional
-- Carimbos prontos: Conferido, Revisar, Corrigir, Aprovado, Pendente, Urgente, Assinado, Enviado ao cliente + criar carimbos personalizados (salvos em localStorage)
-
-**Painel lateral "Comentários e Marcações"**
-- Lista com tipo, página, autor, data/hora, conteúdo
-- Filtros por página / tipo / autor
-- Ir para página, editar, excluir
-
-**Exportar**
-- "Salvar PDF editado" → aplica todas as anotações como camada visual usando `pdf-lib` e baixa `EDITADO - {nome} - {data}.pdf` (arquivo original nunca é sobrescrito)
-- "Exportar relatório de comentários" em PDF (jsPDF) e CSV
-- Versionamento local: cada exportação vira uma versão salva no histórico
-
-**Histórico local (localStorage)**
-- Lista de sessões: nome do arquivo, data, nº de comentários/marcações, versões
-- Reabrir sessão (as anotações são restauradas; o PDF original precisa ser reanexado, pois arquivos não persistem no navegador entre sessões)
-
-**Integração OCR**
-- Detecção automática: se a página não tem texto extraível, banner:
-  "Este PDF parece ser uma imagem/escaneado. Use marcação por área ou aplique OCR antes para selecionar texto."
-- Botão leva à ferramenta OCR existente (hoje `PDF → Word` faz extração; se preferir, adiciono item específico "OCR PDF" depois — hoje não existe com esse nome)
-
-### O que NÃO entra no MVP (precisa decisão)
-
-Estes itens do briefing exigem backend, RLS e login — hoje o app tem auth para partes administrativas, mas a Central PDF é pública:
-1. Sessões/versões/anotações salvas no Supabase (tabelas `PdfEditSession`, `PdfAnnotation`, `PdfEditVersion`)
-2. Auditoria multiusuário (quem editou, controle por empresa/usuário)
-3. Permissão "cliente só visualiza vs. edita"
-4. Upload dos PDFs em bucket privado
-
-Posso fazer isso em uma segunda entrega, se você confirmar. Nesta primeira o "autor" das anotações usa o `useOperatorName` que já existe no projeto.
-
-## Detalhes técnicos
-
-**Dependências novas**
-- `react-konva` + `konva` — camada de anotação vetorial sobre cada página
-- (já temos `pdfjs-dist`, `pdf-lib`, `jspdf`, `file-saver`, `docx`)
-
-**Arquitetura de arquivos**
+Nova tabela `prize_employee_points`:
 ```
-src/components/pdftools/tools/EditAnnotateTool.tsx        # entrypoint
-src/components/pdftools/editor/
-  EditorLayout.tsx          # barra superior + sidebar miniaturas + painel comentários
-  PageCanvas.tsx            # pdf.js render + Konva overlay
-  Toolbar.tsx               # ferramentas ativas
-  AnnotationLayer.tsx       # shapes Konva por tipo
-  CommentsPanel.tsx
-  StampPicker.tsx
-  MagnifierTool.tsx
-src/utils/pdfEditor/
-  annotations.ts            # tipos + reducer
-  renderToPdf.ts            # aplica anotações via pdf-lib
-  ocrDetect.ts              # detecta página escaneada
-  history.ts                # localStorage (sessões e versões — só metadados)
-  reportExport.ts           # PDF/CSV do relatório de comentários
-src/pages/PdfToolsPage.tsx  # + novo item em TOOLS
+id, policy_id, employee_id, pontos int, updated_at
 ```
++ GRANT authenticated + RLS por policy → client_id.
 
-**Modelo de anotação (client-side)**
-```ts
-type Annotation = {
-  id: string; page: number; type: 'comment'|'highlight'|'underline'|'strike'
-    |'text'|'arrow'|'rect'|'circle'|'line'|'freehand'|'stamp'|'magnifier';
-  coords: number[];          // normalizado 0-1 em relação à página
-  color?: string; opacity?: number; strokeWidth?: number;
-  content?: string;          // texto do comentário / caixa
-  stamp?: string;            // rótulo do carimbo
-  magnifier?: { source: Rect; target: Rect; zoom: number; label?: string };
-  author: string; createdAt: string; updatedAt?: string;
-}
+## Backend (edge function)
+
+`premio-politica-seed-hotelaria` (opcional) ou seed direto no create:
+Ao clicar em **"Usar modelo Prêmio para Hotelaria"** no diálogo de criação, o front:
+1. Cria `prize_policies` com todos os campos pré-preenchidos (splits, critérios coletivos, escala, `modelo_template='hotelaria'`).
+2. Insere os 4 critérios individuais (Postura, Eficiência, Pontualidade, Gestão Comercial) em `prize_criteria` com peso 5 cada e `descricao` contendo a lista de itens avaliados.
+
+Sem chamada de IA — é um template determinístico salvo em `src/utils/sucessoCliente/premioTemplates.ts`.
+
+## UI
+
+**`PremioTab.tsx` — Diálogo "Nova Política"**
+Adicionar botão "Usar modelo: Prêmio para Hotelaria" que preenche todos os campos e cria a política num clique.
+
+**`PremioRemuneracaoVariavelSection.tsx`** (extensão)
+Quando `modelo_template === 'hotelaria'` (ou split coletivo/individual habilitado), renderizar:
+- Sliders 80/20 (coletivo/individual)
+- Editor de critérios coletivos: nome, peso %, métrica, canal, tabela editável Piso/Meta0/Meta1/Meta2 (pct + alvo)
+- Aba "Pontos por colaborador" (nova) — grid de colaboradores × input de pontos
+
+**`PremioAplicacaoSection.tsx` — apuração**
+Bloco de inputs manuais:
+- Faturamento total, Meta 0/1/2 (valores globais)
+- Vendas diretas do mês
+- Avaliações por canal (lista com canal, nota, data → média calculada)
+- Qtd de reservas (para % de avaliações)
+
+Cálculo por critério coletivo:
 ```
+BC_criterio = faturamento_total × peso_pct
+nivel_atingido = maior faixa cuja métrica é atingida (ou piso)
+valor_criterio = BC_criterio × faixa.pct
+```
+Distribuição individual (dentro de cada critério coletivo):
+```
+valor_colab = valor_criterio × (pontos_colab / soma_pontos)
+```
+Somar entre critérios para total coletivo por colaborador.
+Parcela individual (20%) usa os critérios avaliados com escala 0/25/50/75/100.
 
-**Renderização final para PDF**
-- Para cada anotação → desenhar no `pdf-lib` no mesmo espaço de coordenadas da página (convertendo do normalizado)
-- Marca-texto/sublinhado/tachado → retângulos com opacidade
-- Formas/setas/desenho livre → linhas e paths
-- Comentários → ícone + texto anexado como texto sobre fundo semi-transparente (não uso `PDFAnnotation` nativo do PDF para manter compatibilidade universal de visualização)
-- Lupa → recorta a região usando `embedPage` do `pdf-lib` e re-desenha ampliada, com linha ligando
-- Carimbos → texto grande com borda e cor característica
+## PDF da política
 
-## Estimativa
+Estender `premioPoliticaPdf.ts` para renderizar:
+- Bloco "Divisão Coletivo/Individual"
+- Tabela por critério coletivo com faixas e alvos
+- Escala de avaliação
+- Tabela de pontos por colaborador (se preenchida)
 
-Entrega em uma sequência de edits: dependências, tipos/reducer, componentes do editor, renderizador para PDF, histórico e integração no `PdfToolsPage`. Sem migrações de banco nesta fase.
+## Arquivos
 
-## Confirmações que preciso antes de codar
+**Novos:**
+- `supabase/migrations/…_prize_hotelaria.sql`
+- `src/utils/sucessoCliente/premioTemplates.ts`
 
-1. **Backend/auditoria/multiusuário:** OK deixar para uma fase 2? (o MVP fica client-side como o resto da Central PDF)
-2. **Persistência do PDF entre sessões:** o navegador não guarda arquivos grandes entre reloads. No histórico local salvo metadados + JSON das anotações; ao reabrir, o usuário reanexa o PDF original. Ok? (alternativa: guardar em IndexedDB — funciona mas limita tamanho)
-3. **Ferramenta OCR:** hoje não existe um item "OCR PDF" separado — o mais próximo é "PDF → Word". Quer que eu crie um item explícito "OCR PDF" (Tesseract.js no navegador) junto com essa entrega ou só linko para o fluxo existente?
+**Editar:**
+- `src/hooks/usePrizePolicies.ts` (tipos + novo hook `useEmployeePoints`)
+- `src/components/sucessoCliente/tabs/PremioTab.tsx` (botão modelo)
+- `src/components/sucessoCliente/tabs/PremioRemuneracaoVariavelSection.tsx` (editor coletivos + pontos)
+- `src/components/sucessoCliente/tabs/PremioAplicacaoSection.tsx` (apuração hotelaria)
+- `src/utils/sucessoCliente/premioPoliticaPdf.ts` (novas seções)
+
+## Fora do escopo (confirmar depois)
+
+- Integração automática com Booking/Google/TripAdvisor APIs (por ora entrada manual das notas)
+- Histórico de apurações com versionamento das metas

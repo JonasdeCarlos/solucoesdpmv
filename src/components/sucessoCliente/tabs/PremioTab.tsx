@@ -13,8 +13,10 @@ import { useEmpregados } from '@/hooks/useEmpregados';
 import { toast } from 'sonner';
 import PremioAplicacaoSection from './PremioAplicacaoSection';
 import PremioRemuneracaoVariavelSection from './PremioRemuneracaoVariavelSection';
+import PremioHotelariaSection from './PremioHotelariaSection';
 import { generatePremioPoliticaPdf } from '@/utils/sucessoCliente/premioPoliticaPdf';
 import { supabase } from '@/integrations/supabase/client';
+import { HOTELARIA_CONFIG, HOTELARIA_CRITERIOS_INDIVIDUAIS } from '@/utils/sucessoCliente/premioTemplates';
 
 const VERBA_PRESETS = ['Prêmio', 'Gratificação', 'Bonificação', 'Bônus', 'PLR', 'Adicional de Desempenho'];
 
@@ -52,6 +54,38 @@ export default function PremioTab({ client_id, cliente }: { client_id: string; c
     setCreating(false);
     setNewForm({ verba_label: 'Prêmio', verba_label_custom: '', nome: '', objetivo: '', periodo_tipo: 'mensal', valor_base: 0 });
     if (data?.id) setSelectedId(data.id);
+  };
+
+  const handleCreateHotelaria = async () => {
+    const { data, error } = await create({
+      verba_label: 'Prêmio',
+      nome: 'Prêmio para Hotelaria',
+      objetivo: 'Modelo pré-configurado para hotelaria: 80% coletivo (Faturamento, Notas Booking/Google/TripAdvisor e Quantidade de Avaliações) e 20% individual (Postura, Eficiência, Pontualidade e Gestão Comercial). Distribuição coletiva por pontos.',
+      periodo_tipo: 'mensal',
+      valor_base: 0,
+      remuneracao_variavel: true,
+      rv_base: 'faturamento',
+      rv_base_label: 'faturamento total',
+      rv_pct_individual: 20,
+      rv_pct_igualitario: 0,
+      rv_observacoes: 'Distribuição coletiva (80%) por pontos entre colaboradores. Parcela individual (20%) segue os critérios cadastrados.',
+      modelo_template: 'hotelaria',
+      hotelaria_config: HOTELARIA_CONFIG,
+      hotelaria_pontos: {},
+      hotelaria_apuracao: {},
+    } as any);
+    if (error) { toast.error('Erro ao criar política.'); return; }
+    const policyId = (data as any)?.id;
+    if (policyId) {
+      const rows = HOTELARIA_CRITERIOS_INDIVIDUAIS.map((c, i) => ({
+        policy_id: policyId, nome: c.nome, descricao: c.descricao,
+        peso: c.peso, essencial: false, ordem: i, origem: 'manual',
+      }));
+      await supabase.from('prize_criteria' as any).insert(rows as any);
+      setSelectedId(policyId);
+    }
+    toast.success('Política "Prêmio para Hotelaria" criada com critérios pré-configurados.');
+    setCreating(false);
   };
 
   const fileToBase64 = (f: File) => new Promise<string>((res, rej) => {
@@ -206,6 +240,7 @@ export default function PremioTab({ client_id, cliente }: { client_id: string; c
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={()=>setCreating(false)}>Cancelar</Button>
+            <Button variant="secondary" onClick={handleCreateHotelaria}>Usar modelo: Hotelaria</Button>
             <Button onClick={handleCreate}>Criar política</Button>
           </div>
         </CardContent></Card>
@@ -321,7 +356,11 @@ function PolicyCard({ policy, expanded, onToggle, onUpdate, onRemove, cliente }:
 
         {expanded && (
           <div className="border-t pt-3 space-y-4">
-            <PremioRemuneracaoVariavelSection policy={policy} onUpdate={onUpdate}/>
+            {(policy as any).modelo_template === 'hotelaria' ? (
+              <PremioHotelariaSection policy={policy} onUpdate={onUpdate}/>
+            ) : (
+              <PremioRemuneracaoVariavelSection policy={policy} onUpdate={onUpdate}/>
+            )}
             <CriteriaSection policy={policy} cliente={cliente}/>
             <EmployeesSection policy={policy} cliente={cliente}/>
             <PremioAplicacaoSection policy={policy} cliente={cliente}/>
