@@ -284,7 +284,7 @@ export async function generatePremioPoliticaPdf(d: PoliticaPdfData) {
     bandTitle('MODELO HOTELARIA — CRITÉRIOS COLETIVOS E DISTRIBUIÇÃO', [pr,pg,pb], [255,255,255]);
     doc.setFont('helvetica','normal'); doc.setFontSize(9);
     const introHt =
-      `Este modelo aplica divisão ${ht.split_coletivo}% coletiva / ${ht.split_individual}% individual. A parcela coletiva é composta pelos critérios abaixo, cada um com peso próprio sobre o faturamento e faixas de atingimento (Piso / Meta 0 / Meta 1 / Meta 2). O valor apurado em cada critério é distribuído entre os colaboradores participantes de forma proporcional aos pontos atribuídos no cadastro. A parcela individual segue a escala de avaliação abaixo.`;
+      `Este modelo aplica divisão ${ht.split_coletivo}% coletiva / ${ht.split_individual}% individual. IMPORTANTE: para fins desta política, considera-se como "faturamento" exclusivamente o FATURAMENTO DE VENDAS DIRETAS (reservas fechadas diretamente com o hotel/pousada, sem intermediação de OTAs/canais terceiros). A parcela coletiva é composta pelos critérios abaixo, cada um com peso próprio sobre o faturamento de vendas diretas e faixas de atingimento (Piso / Meta 0 / Meta 1 / Meta 2). O valor apurado em cada critério é distribuído entre os colaboradores participantes de forma proporcional aos pontos atribuídos no cadastro. A parcela individual segue a escala de avaliação abaixo.`;
     const iw2 = doc.splitTextToSize(introHt, W-80);
     for (const w of iw2) { y = ensure(12, y); doc.text(w, 46, y); y += 12; }
     y += 6;
@@ -379,7 +379,7 @@ export async function generatePremioPoliticaPdf(d: PoliticaPdfData) {
     }
 
     doc.setFontSize(8); doc.setTextColor(120,120,120);
-    const notaHt = 'As faixas e pesos podem ser revistos periodicamente. A apuração dos critérios com métrica "faturamento" utiliza o valor de referência diário (faturamento total ÷ dia de referência) para determinar a faixa atingida.';
+    const notaHt = 'As faixas e pesos podem ser revistos periodicamente. A apuração dos critérios com métrica "faturamento" utiliza o valor de referência diário do faturamento de VENDAS DIRETAS (faturamento total de vendas diretas ÷ dia de referência) para determinar a faixa atingida. Vendas por intermediação de OTAs/canais terceiros não integram a base desta política.';
     const nwHt = doc.splitTextToSize(notaHt, W-80);
     for (const w of nwHt) { y = ensure(11, y); doc.text(w, 46, y); y += 11; }
     doc.setTextColor(0,0,0); doc.setFontSize(9);
@@ -394,7 +394,7 @@ export async function generatePremioPoliticaPdf(d: PoliticaPdfData) {
     const nomeMes = mes ? `${MESES[Number(mes)-1] || mes}/${ano}` : (mm.competencia || '');
     bandTitle(`METAS DO MÊS — ${nomeMes.toUpperCase()}`, [pr,pg,pb], [255,255,255]);
     doc.setFont('helvetica','normal'); doc.setFontSize(9);
-    const introM = `As metas abaixo são específicas da competência ${nomeMes} e vigoram durante o período indicado. Servem como referência diária (valor de faturamento por dia) para o enquadramento dos critérios coletivos desta política.`;
+    const introM = `As metas abaixo são específicas da competência ${nomeMes} e vigoram durante o período indicado. Servem como referência diária (valor de FATURAMENTO DE VENDAS DIRETAS por dia) para o enquadramento dos critérios coletivos desta política.`;
     const iwM = doc.splitTextToSize(introM, W-80);
     for (const w of iwM) { y = ensure(12, y); doc.text(w, 46, y); y += 12; }
     y += 4;
