@@ -15,6 +15,7 @@ import { EmployeesSection } from './PremioTab';
 import PremioAplicacaoSection from './PremioAplicacaoSection';
 import { Textarea } from '@/components/ui/textarea';
 import { buildExternalAppLink } from '@/utils/publicLinks';
+import { copyToClipboard } from '@/utils/clipboard';
 import { Link2 } from 'lucide-react';
 
 const BRL = (n: number) => `R$ ${Number(n || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
