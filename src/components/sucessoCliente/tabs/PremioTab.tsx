@@ -669,7 +669,7 @@ function EmployeesSection({ policy, cliente }: { policy: PrizePolicy; cliente: a
 
 function EmployeeRow({ e, onUpdate, onRemove }: { e: any; onUpdate: (patch: any) => Promise<any>; onRemove: () => Promise<any>; }) {
   const [edit, setEdit] = useState(false);
-  const [f, setF] = useState({ nome: e.nome, cpf: e.cpf || '', matricula: e.matricula || '', cargo: e.cargo || '', setor: e.setor || '', ativo: e.ativo });
+  const [f, setF] = useState({ nome: e.nome, cpf: e.cpf || '', matricula: e.matricula || '', cargo: e.cargo || '', setor: e.setor || '', ativo: e.ativo, pontos: Number(e.pontos || 0) });
   if (!edit) {
     return (
       <div className="flex items-start gap-2 border rounded-md p-2 text-sm">
@@ -679,6 +679,7 @@ function EmployeeRow({ e, onUpdate, onRemove }: { e: any; onUpdate: (patch: any)
             {!e.ativo && <Badge variant="secondary" className="text-[10px]">inativo</Badge>}
             {e.cargo && <Badge variant="outline" className="text-[10px]">{e.cargo}</Badge>}
             {e.setor && <span className="text-[11px] text-muted-foreground">{e.setor}</span>}
+            <Badge variant="secondary" className="text-[10px]">{Number(e.pontos || 0)} pts</Badge>
           </div>
           <p className="text-[11px] text-muted-foreground mt-0.5">
             {e.cpf && <>CPF {e.cpf} </>}{e.matricula && <>• Matr. {e.matricula}</>}
@@ -693,9 +694,10 @@ function EmployeeRow({ e, onUpdate, onRemove }: { e: any; onUpdate: (patch: any)
     <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-end border rounded-md p-2 bg-muted/20">
       <div className="md:col-span-3"><Input value={f.nome} onChange={(ev)=>setF({...f, nome: ev.target.value})}/></div>
       <div className="md:col-span-2"><Input value={f.cpf} placeholder="CPF" onChange={(ev)=>setF({...f, cpf: ev.target.value})}/></div>
-      <div className="md:col-span-2"><Input value={f.matricula} placeholder="Matr." onChange={(ev)=>setF({...f, matricula: ev.target.value})}/></div>
+      <div className="md:col-span-1"><Input value={f.matricula} placeholder="Matr." onChange={(ev)=>setF({...f, matricula: ev.target.value})}/></div>
       <div className="md:col-span-2"><Input value={f.cargo} placeholder="Cargo" onChange={(ev)=>setF({...f, cargo: ev.target.value})}/></div>
-      <div className="md:col-span-2"><Input value={f.setor} placeholder="Setor" onChange={(ev)=>setF({...f, setor: ev.target.value})}/></div>
+      <div className="md:col-span-1"><Input value={f.setor} placeholder="Setor" onChange={(ev)=>setF({...f, setor: ev.target.value})}/></div>
+      <div className="md:col-span-2"><Input type="number" min={0} value={f.pontos} placeholder="Pontos" onChange={(ev)=>setF({...f, pontos: Number(ev.target.value)})}/></div>
       <div className="md:col-span-1 flex gap-1">
         <Button size="sm" onClick={async ()=>{ await onUpdate(f); setEdit(false); }}><Save className="w-3 h-3"/></Button>
         <Button size="sm" variant="ghost" onClick={()=>setEdit(false)}><X className="w-3 h-3"/></Button>
