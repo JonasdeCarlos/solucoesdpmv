@@ -274,32 +274,32 @@ export default function PremioHotelariaSection({ policy, onUpdate, onDraftChange
               <Button size="sm" onClick={saveConfig}><Save className="w-3 h-3 mr-1"/>Salvar configuração</Button>
             </div>
           </CardContent></Card>
-
-          <Card><CardContent className="p-4 space-y-2">
-            <h5 className="text-sm font-semibold">Pontos por colaborador (definidos no cadastro)</h5>
-            <p className="text-[11px] text-muted-foreground">Total de pontos ativos = <strong>{somaPontos}</strong>. Edite os pontos na seção "Colaboradores participantes" desta política.</p>
-            {employees.length === 0 ? (
-              <p className="text-xs text-muted-foreground">Nenhum colaborador cadastrado.</p>
-            ) : (
-              <div className="space-y-1 max-h-56 overflow-y-auto text-xs">
-                {employees.filter(e=>e.ativo).map(e => {
-                  const p = pontosByEmp(e.id);
-                  const pct = somaPontos > 0 ? (p / somaPontos) * 100 : 0;
-                  return (
-                    <div key={e.id} className="flex items-center justify-between border rounded px-2 py-1">
-                      <span>{e.nome} {e.cargo && <span className="text-muted-foreground">• {e.cargo}</span>}</span>
-                      <span className="font-medium">{p} pts <span className="text-muted-foreground">({pct.toFixed(1)}%)</span></span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent></Card>
         </TabsContent>
 
         {/* METAS MENSAIS */}
         <TabsContent value="metas" className="mt-3">
-          <MetasMensaisPanel
+          <div className="space-y-3">
+            <Card><CardContent className="p-4 space-y-2">
+              <h5 className="text-sm font-semibold">Pontos por colaborador (definidos no cadastro)</h5>
+              <p className="text-[11px] text-muted-foreground">Total de pontos ativos = <strong>{somaPontos}</strong>. Edite os pontos na seção "Colaboradores participantes" desta política.</p>
+              {employees.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Nenhum colaborador cadastrado.</p>
+              ) : (
+                <div className="space-y-1 max-h-56 overflow-y-auto text-xs">
+                  {employees.filter(e=>e.ativo).map(e => {
+                    const p = pontosByEmp(e.id);
+                    const pct = somaPontos > 0 ? (p / somaPontos) * 100 : 0;
+                    return (
+                      <div key={e.id} className="flex items-center justify-between border rounded px-2 py-1">
+                        <span>{e.nome} {e.cargo && <span className="text-muted-foreground">• {e.cargo}</span>}</span>
+                        <span className="font-medium">{p} pts <span className="text-muted-foreground">({pct.toFixed(1)}%)</span></span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent></Card>
+            <MetasMensaisPanel
             config={config}
             ap={ap}
             onSaveMeta={async (mes, meta) => {
@@ -330,7 +330,8 @@ export default function PremioHotelariaSection({ policy, onUpdate, onDraftChange
               saveApuracaoSilent(next);
               toast.success(`Metas de ${mes} aplicadas à apuração.`);
             }}
-          />
+            />
+          </div>
         </TabsContent>
 
         {/* APURACAO */}
