@@ -50,6 +50,7 @@ import SucessoClienteReportsPage from "./pages/sucessoCliente/SucessoClienteRepo
 import GestaoCctPage from "./pages/sucessoCliente/GestaoCctPage";
 import FeedbackPublicPage from "./pages/sucessoCliente/FeedbackPublicPage";
 import EmpresaFeedbackPage from "./pages/sucessoCliente/EmpresaFeedbackPage";
+import PoliticaHotelariaPublicPage from "./pages/sucessoCliente/PoliticaHotelariaPublicPage";
 
 const queryClient = new QueryClient();
 
@@ -70,6 +71,8 @@ const App = () => (
             <Route path="/feedback/:token" element={<FeedbackPublicPage />} />
             {/* Ferramenta de Feedback — link público por empresa */}
             <Route path="/empresa/:token/feedback" element={<EmpresaFeedbackPage />} />
+            {/* Política de Hotelaria — link público para usuário da pousada */}
+            <Route path="/politica-hotelaria/:policyId" element={<PoliticaHotelariaPublicPage />} />
             {/* Admissão — escritório (senha) */}
             <Route path="/admissao/escritorio/login" element={<EscritorioLoginPage />} />
             <Route element={<OfficeGuard />}>

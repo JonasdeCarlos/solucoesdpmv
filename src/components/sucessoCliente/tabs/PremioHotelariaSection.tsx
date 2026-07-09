@@ -13,6 +13,8 @@ import { HOTELARIA_CONFIG, HOTELARIA_ESCALA_TEXTO, HOTELARIA_CRITERIOS_INDIVIDUA
 import { generatePremioPoliticaPdf } from '@/utils/sucessoCliente/premioPoliticaPdf';
 import { EmployeesSection } from './PremioTab';
 import { Textarea } from '@/components/ui/textarea';
+import { buildExternalAppLink } from '@/utils/publicLinks';
+import { Link2 } from 'lucide-react';
 
 const BRL = (n: number) => `R$ ${Number(n || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -461,7 +463,17 @@ export default function PremioHotelariaSection({ policy, cliente, onUpdate, onDr
                   {exportingPdf ? <Loader2 className="w-3 h-3 mr-1 animate-spin"/> : <FileDown className="w-3 h-3 mr-1"/>}
                   Gerar PDF de {labelMes(activeComp)}
                 </Button>
+                <Button size="sm" variant="outline" onClick={async ()=>{
+                  const link = buildExternalAppLink(`/politica-hotelaria/${policy.id}`);
+                  try { await navigator.clipboard.writeText(link); toast.success('Link público copiado.'); }
+                  catch { toast.info(link); }
+                }}>
+                  <Link2 className="w-3 h-3 mr-1"/>Copiar link público
+                </Button>
               </div>
+              <p className="text-[10px] text-muted-foreground">
+                Link público (sem login) para a equipe da pousada consultar a política e baixar o PDF de cada competência.
+              </p>
             </CardContent></Card>
           </div>
         </TabsContent>

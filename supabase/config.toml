@@ -10,3 +10,6 @@ verify_jwt = false
 verify_jwt = true
 [functions.premio-feedback]
 verify_jwt = true
+
+[functions.premio-hotelaria-public]
+verify_jwt = false
