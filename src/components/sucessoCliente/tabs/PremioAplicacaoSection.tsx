@@ -155,11 +155,163 @@ function AssessmentEmployeeList({ assessment, policy, cliente, onOpenHistory, on
   const totalCalc = items.reduce((s, i) => s + Number(i.valor_final || 0), 0);
   const concluidos = items.filter(i => i.status === 'concluida' || i.status === 'alinhamento_gerado').length;
 
+  // Calcula demonstrativo coletivo (Hotelaria) para a competência da apuração
+  const coletivoData = useMemo(() => {
+    if ((policy as any).modelo_template !== 'hotelaria') return null;
+    const [mm, aaaa] = String(assessment.competencia || '').split('/');
+    if (!mm || !aaaa) return null;
+    const compKey = `${aaaa}-${mm}`;
+    const cfg: any = (policy as any).hotelaria_config || {};
+    const apMap: Record<string, any> = ((policy as any).hotelaria_apuracoes as any) || {};
+    const ap = apMap[compKey] || (policy as any).hotelaria_apuracao || null;
+    if (!ap) return null;
+    const dataRef = ap.data_referencia || new Date().toISOString().slice(0, 10);
+    const dia = Math.max(1, new Date(dataRef).getDate());
+    const dias = Math.max(1, Number(ap.dias_periodo || 30));
+    const fat = Number(ap.faturamento_total || 0);
+    const refDia = fat / dia;
+    const notas: Record<string, number[]> = {};
+    for (const a of (ap.avaliacoes || [])) {
+      const c = String(a.canal || '').toLowerCase(); if (!c) continue;
+      notas[c] = notas[c] || []; if (!isNaN(Number(a.nota))) notas[c].push(Number(a.nota));
+    }
+    const media: Record<string, number> = {};
+    for (const [k, arr] of Object.entries(notas)) media[k] = arr.reduce((s, n) => s + n, 0) / arr.length;
+    const totalAv = (ap.avaliacoes || []).length;
+    const pctAv = ap.qtd_reservas > 0 ? (totalAv / ap.qtd_reservas) * 100 : 0;
+
+    const linhas = (cfg.criterios || []).map((c: any) => {
+      const bc = fat * (Number(c.peso_pct || 0) / 100);
+      let atingido: any = c.faixas?.[0] || { nivel: 'piso', pct: 0 };
+      let referencia = '';
+      if (c.metrica === 'faturamento_direto') {
+        const metas = [ap.meta_0, ap.meta_1, ap.meta_2].map(Number);
+        const nivels = ['meta_0','meta_1','meta_2'] as const;
+        for (let i = 2; i >= 0; i--) {
+          if (metas[i] > 0 && refDia >= metas[i]) {
+            const f = c.faixas?.find((x: any) => x.nivel === nivels[i]);
+            if (f) { atingido = f; break; }
+          }
+        }
+        referencia = `Ref/dia ${refDia.toFixed(0)}`;
+      } else if (c.metrica === 'nota_media') {
+        const m = media[String(c.canal || '').toLowerCase()] || 0;
+        const ord = (c.faixas || []).filter((f: any) => f.nivel !== 'piso').slice().sort((a: any, b: any) => (b.alvo || 0) - (a.alvo || 0));
+        for (const f of ord) if (m >= (f.alvo || 0)) { atingido = f; break; }
+        referencia = `Média ${m.toFixed(2)}`;
+      } else if (c.metrica === 'pct_avaliacoes') {
+        const ord = (c.faixas || []).filter((f: any) => f.nivel !== 'piso').slice().sort((a: any, b: any) => (b.alvo || 0) - (a.alvo || 0));
+        for (const f of ord) if (pctAv >= (f.alvo || 0)) { atingido = f; break; }
+        referencia = `${pctAv.toFixed(1)}%`;
+      }
+      return {
+        nome: c.nome, peso_pct: Number(c.peso_pct || 0), bc,
+        nivel: atingido.nivel, pct: Number(atingido.pct || 0),
+        referencia, valor: bc * (Number(atingido.pct || 0) / 100),
+      };
+    });
+    const totalColetivo = linhas.reduce((s: number, l: any) => s + l.valor, 0);
+    const legacyPontos: Record<string, number> = ((policy as any).hotelaria_pontos as any) || {};
+    const pontosOf = (eid: string) => {
+      const emp = items.find(i => i.employee_id === eid)?.employee;
+      const v = Number(emp?.pontos ?? 0);
+      return v > 0 ? v : Number(legacyPontos[eid] || 0);
+    };
+    const soma_pontos = items.reduce((s, i) => s + pontosOf(i.employee_id), 0);
+    return {
+      faturamento_total: fat, dia_referencia: dia, dias_periodo: dias,
+      valor_referencia_dia: refDia,
+      meta_0: Number(ap.meta_0 || 0), meta_1: Number(ap.meta_1 || 0), meta_2: Number(ap.meta_2 || 0),
+      split_coletivo: Number(cfg.split_coletivo || 0),
+      linhas, total_coletivo: totalColetivo, soma_pontos, pontosOf,
+    };
+  }, [policy, assessment.competencia, items]);
+
+  const handleRelatorioFinal = async (ae: any) => {
+    setReportingId(ae.id);
+    try {
+      // Busca resultados dos critérios individuais deste colaborador
+      const { data: res } = await supabase
+        .from('prize_assessment_criterion_results' as any)
+        .select('*').eq('assessment_employee_id', ae.id);
+      const resMap: Record<string, any> = {};
+      for (const r of (res || []) as any[]) resMap[r.criterion_id] = r;
+
+      const pontosColab = coletivoData ? coletivoData.pontosOf(ae.employee_id) : 0;
+      const shareColab = coletivoData && coletivoData.soma_pontos > 0
+        ? coletivoData.total_coletivo * (pontosColab / coletivoData.soma_pontos) : 0;
+      const individualValor = Number(ae.valor_final || 0);
+      const cfg: any = (policy as any).hotelaria_config || {};
+      const splitInd = Number(cfg.split_individual ?? 20);
+      const pctDist = Number(cfg.individual_pct_distribuicao ?? 1);
+      const fatTotal = coletivoData?.faturamento_total || 0;
+      const poolInd = fatTotal * (splitInd / 100);
+      const tetoDist = poolInd * (pctDist / 100);
+      const tetoColab = (coletivoData && coletivoData.soma_pontos > 0)
+        ? tetoDist * (pontosColab / coletivoData.soma_pontos) : Number(policy.valor_base || 0);
+
+      await generatePremioRelatorioFinalPdf({
+        empresa: cliente?.nome || cliente?.razao_social || '',
+        cnpj: cliente?.cnpj || cliente?.documento || '',
+        verba_label: policy.verba_label,
+        politica_nome: policy.nome,
+        competencia: assessment.competencia,
+        colaborador: {
+          nome: ae.employee?.nome,
+          cpf: ae.employee?.cpf,
+          codigo_folha: ae.employee?.codigo_folha,
+          data_admissao: ae.employee?.data_admissao,
+          cargo: ae.employee?.cargo,
+        },
+        individual: {
+          valor_base_teto: tetoColab,
+          percentual_final: Number(ae.percentual_final || 0),
+          valor_final: individualValor,
+          elegibilidade: ae.elegibilidade || 'pendente',
+          parecer_geral: ae.parecer_geral,
+          criterios: criteria.map(c => ({
+            nome: c.nome, peso: Number(c.peso) || 1, essencial: !!c.essencial,
+            percentual: Number(resMap[c.id]?.percentual || 0),
+            observacao: resMap[c.id]?.observacao,
+            feedback: resMap[c.id]?.feedback_ia,
+          })),
+        },
+        coletivo: coletivoData ? {
+          faturamento_total: coletivoData.faturamento_total,
+          dia_referencia: coletivoData.dia_referencia,
+          dias_periodo: coletivoData.dias_periodo,
+          valor_referencia_dia: coletivoData.valor_referencia_dia,
+          meta_0: coletivoData.meta_0, meta_1: coletivoData.meta_1, meta_2: coletivoData.meta_2,
+          split_coletivo: coletivoData.split_coletivo,
+          linhas: coletivoData.linhas,
+          total_coletivo: coletivoData.total_coletivo,
+          pontos_colab: pontosColab, soma_pontos: coletivoData.soma_pontos,
+          share_colab: shareColab,
+        } : null,
+        total_geral: shareColab + individualValor,
+      });
+      toast.success('Relatório final gerado.');
+    } catch (e: any) {
+      toast.error('Erro ao gerar relatório: ' + (e?.message || ''));
+    } finally {
+      setReportingId(null);
+    }
+  };
+
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <span><Calendar className="w-3 h-3 inline mr-1"/>{assessment.competencia} • {items.length} colaborador(es) • {concluidos} concluído(s)</span>
-        <span><strong>Total apurado:</strong> R$ {totalCalc.toFixed(2)}</span>
+      <div className="flex items-center justify-between flex-wrap gap-2 text-xs text-muted-foreground">
+        <span>
+          <Calendar className="w-3 h-3 inline mr-1"/>{assessment.competencia} • {items.length} colaborador(es) • {concluidos} concluído(s)
+          {fechada && <Badge variant="default" className="ml-2 text-[10px]">apuração fechada</Badge>}
+        </span>
+        <div className="flex items-center gap-2">
+          <span><strong>Total apurado:</strong> R$ {totalCalc.toFixed(2)}</span>
+          <Button size="sm" variant={fechada ? 'outline' : 'default'} onClick={onToggleFechada}
+            title={fechada ? 'Reabrir para novas edições' : 'Congelar valores e liberar relatórios finais'}>
+            {fechada ? <><Unlock className="w-3 h-3 mr-1"/>Reabrir apuração</> : <><Lock className="w-3 h-3 mr-1"/>Fechar apuração</>}
+          </Button>
+        </div>
       </div>
       {items.length === 0 && <p className="text-xs text-muted-foreground">Nenhum colaborador vinculado. Cadastre na seção acima e clique em "Sincronizar colaboradores".</p>}
       <div className="space-y-1">
@@ -186,6 +338,13 @@ function AssessmentEmployeeList({ assessment, policy, cliente, onOpenHistory, on
             <div className="flex gap-1">
               <Button size="sm" variant="ghost" onClick={()=>onOpenHistory(ae.employee_id)}><History className="w-3 h-3"/></Button>
               <Button size="sm" onClick={()=>setOpenAe(ae)}><Play className="w-3 h-3 mr-1"/>Avaliar</Button>
+              <Button size="sm" variant="secondary"
+                disabled={!fechada || reportingId === ae.id}
+                title={fechada ? 'Gerar relatório final consolidado (individual + coletivo)' : 'Feche a apuração para liberar o relatório final'}
+                onClick={()=>handleRelatorioFinal(ae)}>
+                {reportingId === ae.id ? <Loader2 className="w-3 h-3 mr-1 animate-spin"/> : <FileDown className="w-3 h-3 mr-1"/>}
+                Relatório final
+              </Button>
               <Button size="sm" variant="ghost"
                 title="Remover colaborador desta apuração"
                 onClick={async ()=>{
