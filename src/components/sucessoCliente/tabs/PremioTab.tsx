@@ -260,6 +260,16 @@ function CriteriaSection({ policy, cliente }: { policy: PrizePolicy; cliente: an
         valor_base: policy.valor_base,
         criterios: items.map(c => ({ nome: c.nome, descricao: c.descricao, peso: c.peso, essencial: c.essencial })),
         participantes: (participantes || []).filter(p => p.ativo).map(p => ({ nome: p.nome, cpf: p.cpf, cargo: p.cargo, matricula: p.matricula })),
+        remuneracao_variavel: policy.remuneracao_variavel ? {
+          ativo: !!policy.remuneracao_variavel,
+          base: (policy as any).rv_base,
+          base_label: (policy as any).rv_base_label,
+          tiers: (policy as any).rv_tiers || [],
+          pct_individual: (policy as any).rv_pct_individual,
+          pct_igualitario: (policy as any).rv_pct_igualitario,
+          observacoes: (policy as any).rv_observacoes,
+          criterios_individuais: items.map(c => ({ nome: c.nome, peso: c.peso })),
+        } : null,
       });
       toast.success('PDF gerado.');
     } catch (e: any) {
