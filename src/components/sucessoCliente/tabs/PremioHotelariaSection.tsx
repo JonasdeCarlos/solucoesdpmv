@@ -36,7 +36,8 @@ const APURACAO_DEFAULT: ApuracaoState = {
 
 export default function PremioHotelariaSection({ policy, onUpdate }: {
   policy: PrizePolicy;
-  onUpdate: (patch: Partial<PrizePolicy>) => Promise<void>;
+  onUpdate: (patch: Partial<PrizePolicy>, options?: { silent?: boolean }) => Promise<void>;
+  onDraftChange?: (patch: Partial<PrizePolicy>) => void;
 }) {
   const { items: employees } = usePrizeEmployees(policy.id);
   const legacyPontos: Record<string, number> = ((policy as any).hotelaria_pontos as any) || {};
@@ -48,6 +49,16 @@ export default function PremioHotelariaSection({ policy, onUpdate }: {
     setConfig(((policy as any).hotelaria_config as HotelariaConfig) || HOTELARIA_CONFIG);
     setAp({ ...APURACAO_DEFAULT, ...(((policy as any).hotelaria_apuracao as any) || {}) });
   }, [policy.id]);
+
+  const updateConfigState = (next: HotelariaConfig) => {
+    setConfig(next);
+    onDraftChange?.({ hotelaria_config: next } as any);
+  };
+  const updateApState = (next: ApuracaoState, autosave = false) => {
+    setAp(next);
+    onDraftChange?.({ hotelaria_apuracao: next } as any);
+    if (autosave) void onUpdate({ hotelaria_apuracao: next } as any, { silent: true });
+  };
 
   const saveConfig = async () => { await onUpdate({ hotelaria_config: config } as any); toast.success('Configuração salva.'); };
   const saveApuracao = async () => { await onUpdate({ hotelaria_apuracao: ap } as any); toast.success('Apuração salva.'); };
@@ -159,17 +170,17 @@ export default function PremioHotelariaSection({ policy, onUpdate }: {
   }, [ap, config, diaAtual, diasPeriodo, notasPorCanal, pctAvaliacoes]);
 
   const updateCriterio = (idx: number, patch: Partial<HotelariaCriterio>) => {
-    const list = [...config.criterios]; list[idx] = { ...list[idx], ...patch }; setConfig({ ...config, criterios: list });
+    const list = [...config.criterios]; list[idx] = { ...list[idx], ...patch }; updateConfigState({ ...config, criterios: list });
   };
   const updateFaixa = (ci: number, fi: number, patch: Partial<HotelariaCriterio['faixas'][number]>) => {
     const list = [...config.criterios]; const faixas = [...list[ci].faixas];
     faixas[fi] = { ...faixas[fi], ...patch }; list[ci] = { ...list[ci], faixas };
-    setConfig({ ...config, criterios: list });
+    updateConfigState({ ...config, criterios: list });
   };
 
-  const addAvaliacao = () => setAp({ ...ap, avaliacoes: [...ap.avaliacoes, { id: crypto.randomUUID(), canal: 'booking', nota: 0, data: new Date().toISOString().slice(0, 10) }] });
-  const rmAvaliacao = (id: string) => setAp({ ...ap, avaliacoes: ap.avaliacoes.filter(a => a.id !== id) });
-  const updAvaliacao = (id: string, patch: Partial<Avaliacao>) => setAp({ ...ap, avaliacoes: ap.avaliacoes.map(a => a.id === id ? { ...a, ...patch } : a) });
+  const addAvaliacao = () => updateApState({ ...ap, avaliacoes: [...ap.avaliacoes, { id: crypto.randomUUID(), canal: 'booking', nota: 0, data: new Date().toISOString().slice(0, 10) }] });
+  const rmAvaliacao = (id: string) => updateApState({ ...ap, avaliacoes: ap.avaliacoes.filter(a => a.id !== id) });
+  const updAvaliacao = (id: string, patch: Partial<Avaliacao>) => updateApState({ ...ap, avaliacoes: ap.avaliacoes.map(a => a.id === id ? { ...a, ...patch } : a) });
 
   return (
     <div className="space-y-4">
