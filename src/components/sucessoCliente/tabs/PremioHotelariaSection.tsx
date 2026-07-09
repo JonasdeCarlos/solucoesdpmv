@@ -34,7 +34,7 @@ const APURACAO_DEFAULT: ApuracaoState = {
   dias_periodo: 30,
 };
 
-export default function PremioHotelariaSection({ policy, onUpdate }: {
+export default function PremioHotelariaSection({ policy, onUpdate, onDraftChange }: {
   policy: PrizePolicy;
   onUpdate: (patch: Partial<PrizePolicy>, options?: { silent?: boolean }) => Promise<void>;
   onDraftChange?: (patch: Partial<PrizePolicy>) => void;
@@ -208,15 +208,15 @@ export default function PremioHotelariaSection({ policy, onUpdate }: {
         <TabsContent value="config" className="mt-3 space-y-3">
           <Card><CardContent className="p-4 space-y-3">
             <div className="grid grid-cols-2 gap-3">
-              <div><Label className="text-xs">% Coletivo</Label><Input type="number" value={config.split_coletivo} onChange={(e)=>setConfig({...config, split_coletivo: Number(e.target.value), split_individual: 100 - Number(e.target.value)})}/></div>
-              <div><Label className="text-xs">% Individual</Label><Input type="number" value={config.split_individual} onChange={(e)=>setConfig({...config, split_individual: Number(e.target.value), split_coletivo: 100 - Number(e.target.value)})}/></div>
+              <div><Label className="text-xs">% Coletivo</Label><Input type="number" value={config.split_coletivo} onChange={(e)=>updateConfigState({...config, split_coletivo: Number(e.target.value), split_individual: 100 - Number(e.target.value)})}/></div>
+              <div><Label className="text-xs">% Individual</Label><Input type="number" value={config.split_individual} onChange={(e)=>updateConfigState({...config, split_individual: Number(e.target.value), split_coletivo: 100 - Number(e.target.value)})}/></div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
               <div>
                 <Label className="text-xs">% de distribuição do pool individual (teto do prêmio)</Label>
                 <Input type="number" step="0.1" value={config.individual_pct_distribuicao ?? 1}
-                  onChange={(e)=>setConfig({...config, individual_pct_distribuicao: Number(e.target.value)})}/>
+                  onChange={(e)=>updateConfigState({...config, individual_pct_distribuicao: Number(e.target.value)})}/>
               </div>
               <div className="text-[11px] text-muted-foreground border rounded p-2 bg-muted/30">
                 Fórmula: pool individual = <strong>faturamento × {config.split_individual}%</strong>.
@@ -297,17 +297,17 @@ export default function PremioHotelariaSection({ policy, onUpdate }: {
           <Card><CardContent className="p-4 space-y-3">
             <h5 className="text-sm font-semibold">Apuração do período</h5>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-              <div><Label className="text-xs">Faturamento total</Label><Input type="number" value={ap.faturamento_total} onChange={(e)=>setAp({...ap, faturamento_total: Number(e.target.value)})}/></div>
+              <div><Label className="text-xs">Faturamento total</Label><Input type="number" value={ap.faturamento_total} onChange={(e)=>updateApState({...ap, faturamento_total: Number(e.target.value)}, true)}/></div>
               <div>
                 <Label className="text-xs">Ref./dia (auto = fat÷dia)</Label>
                 <Input type="text" readOnly value={BRL(valorReferenciaDia)} className="bg-muted"/>
               </div>
-              <div><Label className="text-xs">Qtd de reservas</Label><Input type="number" value={ap.qtd_reservas} onChange={(e)=>setAp({...ap, qtd_reservas: Number(e.target.value)})}/></div>
-              <div><Label className="text-xs">Meta 0 (R$)</Label><Input type="number" value={ap.meta_0} onChange={(e)=>setAp({...ap, meta_0: Number(e.target.value)})}/></div>
-              <div><Label className="text-xs">Meta 1 (R$)</Label><Input type="number" value={ap.meta_1} onChange={(e)=>setAp({...ap, meta_1: Number(e.target.value)})}/></div>
-              <div><Label className="text-xs">Meta 2 (R$)</Label><Input type="number" value={ap.meta_2} onChange={(e)=>setAp({...ap, meta_2: Number(e.target.value)})}/></div>
-              <div><Label className="text-xs">Data referência</Label><Input type="date" value={ap.data_referencia || ''} onChange={(e)=>setAp({...ap, data_referencia: e.target.value})}/></div>
-              <div><Label className="text-xs">Dias do período</Label><Input type="number" min={1} value={ap.dias_periodo || 30} onChange={(e)=>setAp({...ap, dias_periodo: Number(e.target.value)})}/></div>
+              <div><Label className="text-xs">Qtd de reservas</Label><Input type="number" value={ap.qtd_reservas} onChange={(e)=>updateApState({...ap, qtd_reservas: Number(e.target.value)}, true)}/></div>
+              <div><Label className="text-xs">Meta 0 (R$)</Label><Input type="number" value={ap.meta_0} onChange={(e)=>updateApState({...ap, meta_0: Number(e.target.value)}, true)}/></div>
+              <div><Label className="text-xs">Meta 1 (R$)</Label><Input type="number" value={ap.meta_1} onChange={(e)=>updateApState({...ap, meta_1: Number(e.target.value)}, true)}/></div>
+              <div><Label className="text-xs">Meta 2 (R$)</Label><Input type="number" value={ap.meta_2} onChange={(e)=>updateApState({...ap, meta_2: Number(e.target.value)}, true)}/></div>
+              <div><Label className="text-xs">Data referência</Label><Input type="date" value={ap.data_referencia || ''} onChange={(e)=>updateApState({...ap, data_referencia: e.target.value}, true)}/></div>
+              <div><Label className="text-xs">Dias do período</Label><Input type="number" min={1} value={ap.dias_periodo || 30} onChange={(e)=>updateApState({...ap, dias_periodo: Number(e.target.value)}, true)}/></div>
             </div>
 
             <div className="space-y-2">
