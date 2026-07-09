@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -20,6 +20,8 @@ export default function PremioAplicacaoSection({ policy, cliente }: { policy: Pr
   const [competencia, setCompetencia] = useState(competenciaAtual());
   const [selectedAssessment, setSelectedAssessment] = useState<string | null>(null);
   const [historyEmp, setHistoryEmp] = useState<string | null>(null);
+  const [refreshTick, setRefreshTick] = useState(0);
+  const [faturamentoPrevisto, setFaturamentoPrevisto] = useState<number>(0);
 
   useEffect(() => {
     if (!selectedAssessment && assessments[0]) setSelectedAssessment(assessments[0].id);
@@ -37,14 +39,33 @@ export default function PremioAplicacaoSection({ policy, cliente }: { policy: Pr
     toast.success(`Apuração ${competencia} criada${r.count ? ` (${r.count} colaboradores)` : ''}.`);
     setSelectedAssessment(data.id);
     await reload();
+    setRefreshTick(t => t + 1);
   };
 
   const handleReenroll = async () => {
     if (!current) return;
     const r = await enroll(current.id);
     if (r.error) { toast.error('Erro.'); return; }
-    toast.success('Lista de colaboradores sincronizada.');
+    toast.success(`Lista de colaboradores sincronizada${r.count ? ` (${r.count})` : ''}.`);
+    setRefreshTick(t => t + 1);
   };
+
+  // Simulação de bolo com faturamento previsto (quando RV ativa)
+  const rv = policy.remuneracao_variavel ? {
+    ativo: true,
+    tiers: (policy as any).rv_tiers || [],
+    pct_individual: Number((policy as any).rv_pct_individual ?? 0),
+    pct_igualitario: Number((policy as any).rv_pct_igualitario ?? 0),
+    base: (policy as any).rv_base || 'faturamento',
+    base_label: (policy as any).rv_base_label,
+  } : null;
+
+  const poolPrevisto = useMemo(() => {
+    if (!rv || !faturamentoPrevisto) return 0;
+    const ordered = [...(rv.tiers || [])].sort((a: any, b: any) => (a.ate ?? Infinity) - (b.ate ?? Infinity));
+    const match = ordered.find((t: any) => t.ate == null || faturamentoPrevisto <= t.ate);
+    return match ? faturamentoPrevisto * (Number(match.percentual) / 100) : 0;
+  }, [rv, faturamentoPrevisto]);
 
   return (
     <div className="space-y-3">
@@ -78,8 +99,25 @@ export default function PremioAplicacaoSection({ policy, cliente }: { policy: Pr
         </div>
       </div>
 
+      {current && rv && (
+        <div className="border rounded-md p-3 bg-primary/5 grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+          <div className="md:col-span-4">
+            <Label className="text-xs">Faturamento previsto ({rv.base_label || rv.base}) — competência {current.competencia}</Label>
+            <Input type="number" step="0.01" value={faturamentoPrevisto}
+              onChange={(e)=>setFaturamentoPrevisto(Number(e.target.value)||0)}
+              placeholder="Ex.: 250000,00"/>
+          </div>
+          <div className="md:col-span-8 text-xs space-y-1">
+            <div>Bolo previsto do <strong>{policy.verba_label}</strong>: <strong>R$ {poolPrevisto.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></div>
+            <div>→ Parcela por critérios individuais ({rv.pct_individual}%): <strong>R$ {(poolPrevisto*rv.pct_individual/100).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></div>
+            <div>→ Parcela igualitária ({rv.pct_igualitario}%): <strong>R$ {(poolPrevisto*rv.pct_igualitario/100).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></div>
+            <div className="text-[10px] text-muted-foreground">Simulação para orientar a apuração — os valores finais dependem do faturamento efetivo e do desempenho individual apurado abaixo.</div>
+          </div>
+        </div>
+      )}
+
       {current && (
-        <AssessmentEmployeeList assessment={current} policy={policy} cliente={cliente} onOpenHistory={setHistoryEmp}/>
+        <AssessmentEmployeeList key={`${current.id}-${refreshTick}`} assessment={current} policy={policy} cliente={cliente} onOpenHistory={setHistoryEmp}/>
       )}
 
       {historyEmp && (

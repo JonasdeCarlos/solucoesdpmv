@@ -40,22 +40,30 @@ export async function generatePremioPoliticaPdf(d: PoliticaPdfData) {
   };
 
   // Header
-  doc.setFillColor(pr,pg,pb); doc.rect(0,0,W,80,'F');
+  const HEADER_H = 120;
+  const LOGO_SIZE = 90;
+  doc.setFillColor(pr,pg,pb); doc.rect(0,0,W,HEADER_H,'F');
+  // faixa clara sob a logo para dar destaque
+  doc.setFillColor(255,255,255);
+  doc.roundedRect(20, 15, LOGO_SIZE + 12, LOGO_SIZE + 12, 6, 6, 'F');
   if (branding?.logo_url) {
     try {
       const img = await fetch(branding.logo_url).then(r => r.blob()).then(b => new Promise<string>((res) => {
         const fr = new FileReader(); fr.onload = () => res(fr.result as string); fr.readAsDataURL(b);
       }));
-      doc.addImage(img, 'PNG', 20, 15, 50, 50);
+      doc.addImage(img, 'PNG', 26, 21, LOGO_SIZE, LOGO_SIZE);
     } catch {}
   }
-  doc.setTextColor(255,255,255); doc.setFontSize(15);
-  doc.text(`POLÍTICA DE ${d.verba_label.toUpperCase()}`, 80, 36);
-  doc.setFontSize(10);
-  doc.text(`${d.empresa}${d.cnpj ? ` — CNPJ ${d.cnpj}` : ''}`, 80, 54);
-  doc.text(`Emitido em ${new Date().toLocaleDateString('pt-BR')}`, 80, 68);
+  const TX = 20 + LOGO_SIZE + 24;
+  doc.setTextColor(255,255,255); doc.setFontSize(17); doc.setFont('helvetica','bold');
+  doc.text(`POLÍTICA DE ${d.verba_label.toUpperCase()}`, TX, 46);
+  doc.setFont('helvetica','normal'); doc.setFontSize(10);
+  doc.text(`${d.empresa}${d.cnpj ? ` — CNPJ ${d.cnpj}` : ''}`, TX, 72, { maxWidth: W - TX - 20 });
+  doc.setFontSize(9);
+  doc.text(`Emitido em ${new Date().toLocaleDateString('pt-BR')}`, TX, 92);
+  if (branding?.office_name) doc.text(branding.office_name, TX, 106);
 
-  let y = 100;
+  let y = HEADER_H + 20;
   doc.setTextColor(0,0,0);
 
   // Identificação
@@ -86,29 +94,31 @@ export async function generatePremioPoliticaPdf(d: PoliticaPdfData) {
   doc.setFont('helvetica','bold'); doc.setFontSize(10);
   doc.setFillColor(pr,pg,pb); doc.setTextColor(255,255,255);
   doc.rect(40, y, W-80, 16, 'F');
-  doc.text('CRITÉRIOS E PESOS', 46, y+11);
-  doc.text('PESO', W-150, y+11);
-  doc.text('ESSENCIAL', W-100, y+11);
+  const PESO_X = W - 170;
+  const ESS_X = W - 90;
+  doc.text('CRITÉRIO', 46, y+11);
+  doc.text('PESO', PESO_X, y+11);
+  doc.text('ESSENCIAL', ESS_X, y+11);
   y += 16;
   doc.setTextColor(0,0,0); doc.setFont('helvetica','normal'); doc.setFontSize(9);
 
   const totalPeso = d.criterios.reduce((s, c) => s + (c.peso || 0), 0) || 1;
+  const nameW = PESO_X - 46 - 8;
   for (const c of d.criterios) {
-    const nameW = W - 220;
     const nameLines = doc.splitTextToSize(c.nome, nameW);
     const descLines = c.descricao ? doc.splitTextToSize(c.descricao, nameW) : [];
     const pct = ((c.peso || 0) / totalPeso * 100).toFixed(0);
-    const rowH = 12 * nameLines.length + 11 * descLines.length + 6;
+    const rowH = Math.max(28, 12 * nameLines.length + 11 * descLines.length + 8);
     y = ensure(rowH + 4, y);
     doc.setDrawColor(230,230,230); doc.line(40, y, W-40, y);
-    let yy = y + 11;
+    let yy = y + 12;
     doc.setFont('helvetica','bold');
     for (const ln of nameLines) { doc.text(ln, 46, yy); yy += 12; }
     doc.setFont('helvetica','normal'); doc.setTextColor(80,80,80); doc.setFontSize(8);
     for (const ln of descLines) { doc.text(ln, 46, yy); yy += 11; }
     doc.setTextColor(0,0,0); doc.setFontSize(9);
-    doc.text(`${c.peso}  (${pct}%)`, W-150, y+11);
-    doc.text(c.essencial ? 'Sim' : 'Não', W-100, y+11);
+    doc.text(`${c.peso} (${pct}%)`, PESO_X, y+14);
+    doc.text(c.essencial ? 'Sim' : 'Não', ESS_X, y+14);
     y += rowH;
   }
   doc.setDrawColor(200,200,200); doc.line(40, y, W-40, y); y += 8;
