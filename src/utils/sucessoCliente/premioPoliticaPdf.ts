@@ -118,39 +118,37 @@ export async function generatePremioPoliticaPdf(d: PoliticaPdfData) {
   };
 
   // Identificação
-  doc.setFont('helvetica','bold'); doc.setFontSize(10);
-  doc.setFillColor(245,245,245); doc.rect(40, y, W-80, 14, 'F');
-  doc.text('IDENTIFICAÇÃO DA POLÍTICA', 46, y+10); y += 20;
+  bandTitle('IDENTIFICAÇÃO DA POLÍTICA', [245,245,245]);
   doc.setFont('helvetica','normal'); doc.setFontSize(9);
   const idLines = [
     `Nome da política: ${d.politica_nome}`,
     `Verba: ${d.verba_label}   Periodicidade: ${d.periodo_tipo}   Valor base: ${BRL(d.valor_base)}`,
   ];
   for (const l of idLines) { doc.text(l, 46, y); y += 12; }
-  y += 4;
+  y += 8;
 
   // Objetivo
   if (d.objetivo) {
-    y = ensure(40, y);
-    doc.setFont('helvetica','bold'); doc.setFillColor(245,245,245); doc.rect(40, y, W-80, 14, 'F');
-    doc.text('OBJETIVO', 46, y+10); y += 20;
-    doc.setFont('helvetica','normal');
+    bandTitle('OBJETIVO', [245,245,245]);
+    doc.setFont('helvetica','normal'); doc.setFontSize(9);
     const wrap = doc.splitTextToSize(d.objetivo, W-80);
     for (const w of wrap) { y = ensure(12, y); doc.text(w, 46, y); y += 12; }
-    y += 4;
+    y += 8;
   }
 
   // Critérios
-  y = ensure(40, y);
-  doc.setFont('helvetica','bold'); doc.setFontSize(10);
-  doc.setFillColor(pr,pg,pb); doc.setTextColor(255,255,255);
-  doc.rect(40, y, W-80, 16, 'F');
   const PESO_X = W - 170;
   const ESS_X = W - 90;
-  doc.text('CRITÉRIO', 46, y+11);
-  doc.text('PESO', PESO_X, y+11);
-  doc.text('ESSENCIAL', ESS_X, y+11);
-  y += 16;
+  y = ensure(40, y);
+  doc.setFillColor(pr,pg,pb); doc.rect(40, y, W-80, 18, 'F');
+  doc.setTextColor(255,255,255);
+  (doc as any).setCharSpace?.(0.4);
+  doc.setFont('helvetica','bold'); doc.setFontSize(10.5);
+  doc.text('CRITÉRIO', 46, y+12);
+  doc.text('PESO', PESO_X, y+12);
+  doc.text('ESSENCIAL', ESS_X, y+12);
+  (doc as any).setCharSpace?.(0);
+  y += 18;
   doc.setTextColor(0,0,0); doc.setFont('helvetica','normal'); doc.setFontSize(9);
 
   const totalPeso = d.criterios.reduce((s, c) => s + (c.peso || 0), 0) || 1;
@@ -175,18 +173,13 @@ export async function generatePremioPoliticaPdf(d: PoliticaPdfData) {
   doc.setDrawColor(200,200,200); doc.line(40, y, W-40, y); y += 8;
   doc.setFontSize(8); doc.setTextColor(120,120,120);
   doc.text('Os percentuais indicam o peso relativo de cada critério no total da apuração. Critérios essenciais zerados impedem o pagamento da verba.', 46, y, { maxWidth: W-80 });
-  y += 18; doc.setTextColor(0,0,0);
+  y += 22; doc.setTextColor(0,0,0);
 
   // Remuneração Variável
   const rv = d.remuneracao_variavel;
   if (rv && rv.ativo) {
-    y = ensure(60, y);
-    doc.setFont('helvetica','bold'); doc.setFontSize(10);
-    doc.setFillColor(pr,pg,pb); doc.setTextColor(255,255,255);
-    doc.rect(40, y, W-80, 16, 'F');
-    doc.text('REMUNERAÇÃO VARIÁVEL — FAIXAS E DISTRIBUIÇÃO', 46, y+11);
-    y += 20;
-    doc.setTextColor(0,0,0); doc.setFont('helvetica','normal'); doc.setFontSize(9);
+    bandTitle('REMUNERAÇÃO VARIÁVEL — FAIXAS E DISTRIBUIÇÃO', [pr,pg,pb], [255,255,255]);
+    doc.setFont('helvetica','normal'); doc.setFontSize(9);
 
     const baseLabel = rv.base_label || rv.base || 'faturamento';
     const intro = `Esta política adota modelo de remuneração variável. O valor total a ser distribuído a título de ${d.verba_label} será apurado sobre a base "${baseLabel}", conforme faixas de atingimento definidas abaixo. Sobre o montante apurado, aplica-se a divisão entre a parcela vinculada a critérios individuais (pontualidade, assiduidade, desempenho e demais critérios listados nesta política) e a parcela igualitária (distribuída em partes iguais entre os participantes elegíveis).`;
@@ -214,16 +207,20 @@ export async function generatePremioPoliticaPdf(d: PoliticaPdfData) {
         y += 14;
         prev = t.ate;
       }
-      y += 6;
+      y += 16;
     }
 
     // Distribuição individual vs igualitária
     const ind = Number(rv.pct_individual || 0);
     const igu = Number(rv.pct_igualitario || 0);
     y = ensure(30, y);
-    doc.setFont('helvetica','bold');
-    doc.text('DIVISÃO DO MONTANTE APURADO', 46, y); y += 12;
+    (doc as any).setCharSpace?.(0.3);
+    doc.setFont('helvetica','bold'); doc.setFontSize(10);
+    doc.text('DIVISÃO DO MONTANTE APURADO', 46, y);
+    (doc as any).setCharSpace?.(0);
+    y += 14;
     doc.setFont('helvetica','normal');
+    doc.setFontSize(9);
     const distLines = [
       `• ${ind.toFixed(2)}% será distribuído com base em CRITÉRIOS INDIVIDUAIS de desempenho (avaliados pelos critérios listados nesta política, incluindo pontualidade, assiduidade e demais indicadores).`,
       `• ${igu.toFixed(2)}% será distribuído de forma IGUALITÁRIA entre os participantes elegíveis no período.`,
@@ -269,10 +266,7 @@ export async function generatePremioPoliticaPdf(d: PoliticaPdfData) {
   }
 
   // Termo de ciência
-  y = ensure(60, y);
-  doc.setFont('helvetica','bold'); doc.setFontSize(10);
-  doc.setFillColor(245,245,245); doc.rect(40, y, W-80, 14, 'F');
-  doc.text('TERMO DE CIÊNCIA E CONCORDÂNCIA', 46, y+10); y += 20;
+  bandTitle('TERMO DE CIÊNCIA E CONCORDÂNCIA', [245,245,245]);
   doc.setFont('helvetica','normal'); doc.setFontSize(9);
   const termo = `Declaro estar ciente e de acordo com a política de ${d.verba_label} acima descrita, compreendendo seus objetivos, critérios de apuração, pesos atribuídos e regras de elegibilidade. Reconheço que a verba é variável, condicionada ao atingimento dos critérios, não integra a remuneração para fins de habitualidade e poderá ser revista, suspensa ou alterada pelo empregador a qualquer tempo, mediante comunicação prévia.`;
   const tw = doc.splitTextToSize(termo, W-80);
@@ -280,13 +274,8 @@ export async function generatePremioPoliticaPdf(d: PoliticaPdfData) {
   y += 8;
 
   // Assinaturas dos colaboradores
-  y = ensure(40, y);
-  doc.setFont('helvetica','bold'); doc.setFontSize(10);
-  doc.setFillColor(pr,pg,pb); doc.setTextColor(255,255,255);
-  doc.rect(40, y, W-80, 16, 'F');
-  doc.text('COLABORADORES PARTICIPANTES — ASSINATURAS', 46, y+11);
-  y += 16;
-  doc.setTextColor(0,0,0); doc.setFont('helvetica','normal'); doc.setFontSize(8);
+  bandTitle('COLABORADORES PARTICIPANTES — ASSINATURAS', [pr,pg,pb], [255,255,255]);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8);
 
   // Header columns
   doc.setFillColor(245,245,245); doc.rect(40, y, W-80, 14, 'F');
