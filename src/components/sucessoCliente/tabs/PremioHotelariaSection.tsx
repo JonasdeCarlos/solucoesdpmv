@@ -17,6 +17,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { buildExternalAppLink } from '@/utils/publicLinks';
 import { copyToClipboard } from '@/utils/clipboard';
 import { Link2 } from 'lucide-react';
+import { usePrizePublicApi } from '@/hooks/prizePublicContext';
 
 const BRL = (n: number) => `R$ ${Number(n || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -47,6 +48,7 @@ export default function PremioHotelariaSection({ policy, cliente, onUpdate, onDr
   onUpdate: (patch: Partial<PrizePolicy>, options?: { silent?: boolean }) => Promise<void>;
   onDraftChange?: (patch: Partial<PrizePolicy>) => void;
 }) {
+  const publicApi = usePrizePublicApi();
   const { items: employees } = usePrizeEmployees(policy.id);
   const { items: criteriosPolicy } = usePrizeCriteria(policy.id);
   const legacyPontos: Record<string, number> = ((policy as any).hotelaria_pontos as any) || {};
@@ -465,14 +467,16 @@ export default function PremioHotelariaSection({ policy, cliente, onUpdate, onDr
                   {exportingPdf ? <Loader2 className="w-3 h-3 mr-1 animate-spin"/> : <FileDown className="w-3 h-3 mr-1"/>}
                   Gerar PDF de {labelMes(activeComp)}
                 </Button>
-                <Button size="sm" variant="outline" onClick={async ()=>{
-                  const link = buildExternalAppLink(`/politica-hotelaria/${policy.id}`);
-                  const ok = await copyToClipboard(link);
-                  if (ok) toast.success('Link público copiado.');
-                  else toast.info(link, { description: 'Copie manualmente o link acima.' });
-                }}>
-                  <Link2 className="w-3 h-3 mr-1"/>Copiar link público
-                </Button>
+                {!publicApi && (
+                  <Button size="sm" variant="outline" onClick={async ()=>{
+                    const link = buildExternalAppLink(`/politica-hotelaria/${policy.id}`);
+                    const ok = await copyToClipboard(link);
+                    if (ok) toast.success('Link público copiado.');
+                    else toast.info(link, { description: 'Copie manualmente o link acima.' });
+                  }}>
+                    <Link2 className="w-3 h-3 mr-1"/>Copiar link público
+                  </Button>
+                )}
               </div>
               <p className="text-[10px] text-muted-foreground">
                 Link público (sem login) para a equipe da pousada consultar a política e baixar o PDF de cada competência.
