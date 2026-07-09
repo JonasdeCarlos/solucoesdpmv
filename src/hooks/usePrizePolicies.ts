@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { usePrizePublicApi } from '@/hooks/prizePublicContext';
 
 export type PrizePolicy = {
   id: string;
@@ -105,24 +106,33 @@ export function usePrizePolicies(client_id: string | undefined) {
 export function usePrizeCriteria(policy_id: string | undefined) {
   const [items, setItems] = useState<PrizeCriterion[]>([]);
   const [loading, setLoading] = useState(true);
+  const pub = usePrizePublicApi();
 
   const load = useCallback(async () => {
     if (!policy_id) { setItems([]); setLoading(false); return; }
     setLoading(true);
-    const { data } = await supabase
-      .from('prize_criteria' as any)
-      .select('*')
-      .eq('policy_id', policy_id)
-      .order('ordem', { ascending: true });
-    setItems((data || []) as any);
+    if (pub) {
+      setItems(await pub.listCriteria());
+    } else {
+      const { data } = await supabase
+        .from('prize_criteria' as any)
+        .select('*')
+        .eq('policy_id', policy_id)
+        .order('ordem', { ascending: true });
+      setItems((data || []) as any);
+    }
     setLoading(false);
-  }, [policy_id]);
+  }, [policy_id, pub]);
 
   useEffect(() => { load(); }, [load]);
 
   const create = async (payload: Partial<PrizeCriterion>) => {
     if (!policy_id) return { error: new Error('no policy') };
     const ordem = (items[items.length - 1]?.ordem ?? -1) + 1;
+    if (pub) {
+      try { await pub.createCriterion({ ordem, peso: 1, essencial: false, origem: 'manual', ...payload }); await load(); return { error: null as any }; }
+      catch (error) { return { error }; }
+    }
     const { error } = await supabase
       .from('prize_criteria' as any)
       .insert({ ordem, peso: 1, essencial: false, origem: 'manual', ...payload, policy_id } as any);
@@ -136,30 +146,44 @@ export function usePrizeCriteria(policy_id: string | undefined) {
     const payload = rows.map((r, i) => ({
       peso: 1, essencial: false, origem: 'ia', ordem: baseOrdem + i, ...r, policy_id,
     }));
+    if (pub) {
+      try { await pub.createCriteriaMany(payload as any); await load(); return { error: null as any }; }
+      catch (error) { return { error }; }
+    }
     const { error } = await supabase.from('prize_criteria' as any).insert(payload as any);
     if (!error) await load();
     return { error };
   };
 
   const update = async (id: string, patch: Partial<PrizeCriterion>) => {
+    if (pub) {
+      try { await pub.updateCriterion(id, patch); await load(); return { error: null as any }; }
+      catch (error) { return { error }; }
+    }
     const { error } = await supabase.from('prize_criteria' as any).update(patch as any).eq('id', id);
     if (!error) await load();
     return { error };
   };
 
   const remove = async (id: string) => {
+    if (pub) {
+      try { await pub.deleteCriterion(id); await load(); return { error: null as any }; }
+      catch (error) { return { error }; }
+    }
     const { error } = await supabase.from('prize_criteria' as any).delete().eq('id', id);
     if (!error) await load();
     return { error };
   };
 
   const suggest = async (input: { setor?: string; cargo?: string; objetivo?: string; verba_label?: string; quantidade?: number; }) => {
+    if (pub) return { error: new Error('IA de sugestão indisponível no link público') };
     const { data, error } = await supabase.functions.invoke('premio-criterios-sugerir', { body: input });
     if (error) return { error };
     return { criterios: (data as any)?.criterios as Array<{ nome: string; descricao: string; peso?: number; essencial?: boolean }> };
   };
 
   const explainCriterion = async (input: { criterio_nome: string; setor?: string; cargo?: string; objetivo?: string; verba_label?: string; }) => {
+    if (pub) return { error: new Error('IA de explicação indisponível no link público') };
     const { data, error } = await supabase.functions.invoke('premio-criterio-explicar', { body: input });
     if (error) return { error };
     return { explicacao: (data as any)?.explicacao as string };
@@ -171,23 +195,32 @@ export function usePrizeCriteria(policy_id: string | undefined) {
 export function usePrizeEmployees(policy_id: string | undefined) {
   const [items, setItems] = useState<PrizeEmployee[]>([]);
   const [loading, setLoading] = useState(true);
+  const pub = usePrizePublicApi();
 
   const load = useCallback(async () => {
     if (!policy_id) { setItems([]); setLoading(false); return; }
     setLoading(true);
-    const { data } = await supabase
-      .from('prize_employees' as any)
-      .select('*')
-      .eq('policy_id', policy_id)
-      .order('nome', { ascending: true });
-    setItems((data || []) as any);
+    if (pub) {
+      setItems(await pub.listEmployees());
+    } else {
+      const { data } = await supabase
+        .from('prize_employees' as any)
+        .select('*')
+        .eq('policy_id', policy_id)
+        .order('nome', { ascending: true });
+      setItems((data || []) as any);
+    }
     setLoading(false);
-  }, [policy_id]);
+  }, [policy_id, pub]);
 
   useEffect(() => { load(); }, [load]);
 
   const create = async (payload: Partial<PrizeEmployee>) => {
     if (!policy_id) return { error: new Error('no policy') };
+    if (pub) {
+      try { await pub.createEmployee(payload); await load(); return { error: null as any }; }
+      catch (error) { return { error }; }
+    }
     const { error } = await supabase
       .from('prize_employees' as any)
       .insert({ ativo: true, ...payload, policy_id } as any);
@@ -197,6 +230,10 @@ export function usePrizeEmployees(policy_id: string | undefined) {
 
   const createMany = async (rows: Partial<PrizeEmployee>[]) => {
     if (!policy_id || rows.length === 0) return { error: null };
+    if (pub) {
+      try { await pub.createEmployeesMany(rows); await load(); return { error: null as any }; }
+      catch (error) { return { error }; }
+    }
     const payload = rows.map(r => ({ ativo: true, ...r, policy_id }));
     const { error } = await supabase.from('prize_employees' as any).insert(payload as any);
     if (!error) await load();
@@ -204,12 +241,20 @@ export function usePrizeEmployees(policy_id: string | undefined) {
   };
 
   const update = async (id: string, patch: Partial<PrizeEmployee>) => {
+    if (pub) {
+      try { await pub.updateEmployee(id, patch); await load(); return { error: null as any }; }
+      catch (error) { return { error }; }
+    }
     const { error } = await supabase.from('prize_employees' as any).update(patch as any).eq('id', id);
     if (!error) await load();
     return { error };
   };
 
   const remove = async (id: string) => {
+    if (pub) {
+      try { await pub.deleteEmployee(id); await load(); return { error: null as any }; }
+      catch (error) { return { error }; }
+    }
     const { error } = await supabase.from('prize_employees' as any).delete().eq('id', id);
     if (!error) await load();
     return { error };
