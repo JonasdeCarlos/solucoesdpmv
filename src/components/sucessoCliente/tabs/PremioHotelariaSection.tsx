@@ -63,6 +63,10 @@ export default function PremioHotelariaSection({ policy, onUpdate }: {
   const diaAtual = Math.max(1, new Date(dataRef).getDate());
   const diasPeriodo = Math.max(1, Number(ap.dias_periodo || 30));
 
+  // Valor de referência diário: faturamento total dividido pelo dia de referência.
+  // Ex.: 81.413 / 8 (08/07) = 10.176,63 — é este valor que é comparado às metas.
+  const valorReferenciaDia = ap.faturamento_total / diaAtual;
+
   const notasPorCanal = useMemo(() => {
     const map: Record<string, number[]> = {};
     for (const a of ap.avaliacoes) {
@@ -95,7 +99,7 @@ export default function PremioHotelariaSection({ policy, onUpdate }: {
       const metas = [ap.meta_0, ap.meta_1, ap.meta_2];
       const nivelValues: Array<'meta_0' | 'meta_1' | 'meta_2'> = ['meta_0', 'meta_1', 'meta_2'];
       for (let i = 2; i >= 0; i--) {
-        if (metas[i] > 0 && ap.vendas_diretas >= metas[i]) {
+        if (metas[i] > 0 && valorReferenciaDia >= metas[i]) {
           const f = c.faixas.find(x => x.nivel === nivelValues[i]);
           if (f) { atingido = f; break; }
         }
@@ -117,9 +121,10 @@ export default function PremioHotelariaSection({ policy, onUpdate }: {
 
   const evolucao = useMemo(() => {
     const fatDia = ap.faturamento_total / diaAtual;
-    const vendasDia = ap.vendas_diretas / diaAtual;
     const fatProj = fatDia * diasPeriodo;
-    const vendasProj = vendasDia * diasPeriodo;
+    // Vendas diretas passam a ser derivadas do faturamento/dia (mesma base de referência das metas).
+    const vendasDia = fatDia;
+    const vendasProj = fatProj;
     const linhas = config.criterios.map(c => {
       const bcDia = fatDia * (c.peso_pct / 100);
       let atingido: typeof c.faixas[number] = c.faixas[0];
@@ -128,12 +133,12 @@ export default function PremioHotelariaSection({ policy, onUpdate }: {
         const metas = [ap.meta_0, ap.meta_1, ap.meta_2];
         const nivelValues: Array<'meta_0' | 'meta_1' | 'meta_2'> = ['meta_0', 'meta_1', 'meta_2'];
         for (let i = 2; i >= 0; i--) {
-          if (metas[i] > 0 && vendasProj >= metas[i]) {
+          if (metas[i] > 0 && fatDia >= metas[i]) {
             const f = c.faixas.find(x => x.nivel === nivelValues[i]);
             if (f) { atingido = f; break; }
           }
         }
-        referencia = `Diretas/dia: ${BRL(vendasDia)} • Proj.: ${BRL(vendasProj)}`;
+        referencia = `Ref/dia: ${BRL(fatDia)} (fat÷${diaAtual})`;
       } else if (c.metrica === 'nota_media') {
         const media = notasPorCanal.media[(c.canal || '').toLowerCase()] || 0;
         const ordered = c.faixas.filter(f => f.nivel !== 'piso').slice().sort((a, b) => (b.alvo || 0) - (a.alvo || 0));
