@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
 import { Loader2, Wand2, Upload, FileText, Save, FileDown } from 'lucide-react';
-import { usePrizeCriteria, type PrizePolicy } from '@/hooks/usePrizePolicies';
+import { usePrizeCriteria, usePrizeEmployees, type PrizePolicy } from '@/hooks/usePrizePolicies';
 import { useCriterionResults, uploadEvidencia, signedEvidenciaUrl, generateFeedback, useAssessmentEmployees } from '@/hooks/usePrizeAssessments';
 import { generatePremioAlinhamentoPdf } from '@/utils/sucessoCliente/premioAlinhamentoPdf';
 import { toast } from 'sonner';
@@ -26,6 +26,7 @@ export default function PremioAvaliacaoDialog({
   const { items: criteria } = usePrizeCriteria(policy.id);
   const { items: results, upsert } = useCriterionResults(ae?.id);
   const { updateOne } = useAssessmentEmployees(ae?.assessment_id);
+  const { items: allEmployees } = usePrizeEmployees(policy.id);
 
   // estado local por critério para edição fluida
   const [local, setLocal] = useState<Record<string, { percentual: number; observacao: string; status: string; feedback_ia: string | null; evidencia_url: string | null }>>({});
@@ -52,6 +53,33 @@ export default function PremioAvaliacaoDialog({
     setParecer(ae?.parecer_geral || '');
   }, [open, criteria, results, ae?.parecer_geral]);
 
+  // Cálculo do teto individual para o modelo Hotelaria:
+  // pool individual = faturamento_total * split_individual%
+  // teto de prêmios = pool * individual_pct_distribuicao%
+  // teto por colaborador = teto * (pontos do colaborador / soma de pontos)
+  const hotelariaBase = useMemo(() => {
+    if ((policy as any).modelo_template !== 'hotelaria') return null;
+    const cfg: any = (policy as any).hotelaria_config || {};
+    const ap: any = (policy as any).hotelaria_apuracao || {};
+    const legacy: Record<string, number> = ((policy as any).hotelaria_pontos as any) || {};
+    const pontosOf = (eid: string) => {
+      const e = allEmployees.find(x => x.id === eid);
+      const v = Number((e as any)?.pontos ?? 0);
+      return v > 0 ? v : Number(legacy[eid] || 0);
+    };
+    const splitInd = Number(cfg.split_individual ?? 20);
+    const pctDist = Number(cfg.individual_pct_distribuicao ?? 1);
+    const fat = Number(ap.faturamento_total ?? 0);
+    const poolIndividual = fat * (splitInd / 100);
+    const tetoDistribuicao = poolIndividual * (pctDist / 100);
+    const somaPontos = allEmployees.filter(e => e.ativo).reduce((s, e) => s + pontosOf(e.id), 0);
+    const pontosColab = pontosOf(ae?.employee_id || '');
+    const tetoColab = somaPontos > 0 ? tetoDistribuicao * (pontosColab / somaPontos) : 0;
+    return { splitInd, pctDist, fat, poolIndividual, tetoDistribuicao, somaPontos, pontosColab, tetoColab };
+  }, [policy, allEmployees, ae?.employee_id]);
+
+  const valorBaseEfetivo = hotelariaBase ? hotelariaBase.tetoColab : Number(policy.valor_base || 0);
+
   const totalPeso = criteria.reduce((s, c) => s + (Number(c.peso) || 1), 0) || 1;
   const { percentualFinal, valorFinal, elegibilidade, essencialFalhou } = useMemo(() => {
     const soma = criteria.reduce((acc, c) => {
@@ -61,13 +89,13 @@ export default function PremioAvaliacaoDialog({
     const pct = soma / totalPeso;
     const minEss = Number((policy as any).minimo_essencial ?? 0);
     const essFalhou = criteria.some(c => c.essencial && Number(local[c.id]?.percentual ?? 0) < minEss);
-    const valor = Number(policy.valor_base || 0) * (pct / 100);
+    const valor = valorBaseEfetivo * (pct / 100);
     let eleg = 'pendente';
     if (essFalhou) eleg = 'nao_elegivel';
     else if (pct >= 70) eleg = 'elegivel';
     else if (pct > 0) eleg = 'parcial';
     return { percentualFinal: pct, valorFinal: valor, elegibilidade: eleg, essencialFalhou: essFalhou };
-  }, [criteria, local, totalPeso, policy]);
+  }, [criteria, local, totalPeso, policy, valorBaseEfetivo]);
 
   if (!ae) return null;
 
@@ -232,6 +260,17 @@ export default function PremioAvaliacaoDialog({
           {ae.employee?.cargo && <div><strong>Cargo:</strong> {ae.employee.cargo}</div>}
           {ae.employee?.cpf && <div><strong>CPF:</strong> {ae.employee.cpf}</div>}
         </div>
+
+        {hotelariaBase && (
+          <div className="text-[11px] border rounded-md p-2 bg-primary/5 mt-2 space-y-0.5">
+            <div className="font-semibold text-xs mb-1">Teto individual (modelo Hotelaria)</div>
+            <div>Faturamento apurado: <strong>R$ {hotelariaBase.fat.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></div>
+            <div>Pool individual ({hotelariaBase.splitInd}%): <strong>R$ {hotelariaBase.poolIndividual.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></div>
+            <div>Teto de distribuição ({hotelariaBase.pctDist}%): <strong>R$ {hotelariaBase.tetoDistribuicao.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></div>
+            <div>Pontos do colaborador: <strong>{hotelariaBase.pontosColab}</strong> de <strong>{hotelariaBase.somaPontos}</strong> — teto pessoal: <strong>R$ {hotelariaBase.tetoColab.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong></div>
+            <div className="text-muted-foreground">O valor final = teto pessoal × % de desempenho apurado abaixo.</div>
+          </div>
+        )}
 
         <div className="space-y-3 mt-2">
           {criteria.length === 0 && <p className="text-xs text-muted-foreground">Esta política ainda não possui critérios. Cadastre-os primeiro.</p>}
