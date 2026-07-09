@@ -7,13 +7,14 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Plus, Trash2, Wand2, Save, Pencil, X, Users, Upload, FileDown } from 'lucide-react';
+import { Loader2, Plus, Trash2, Wand2, Save, Pencil, X, Users, Upload, FileDown, Sparkles } from 'lucide-react';
 import { usePrizePolicies, usePrizeCriteria, usePrizeEmployees, type PrizePolicy } from '@/hooks/usePrizePolicies';
 import { useEmpregados } from '@/hooks/useEmpregados';
 import { toast } from 'sonner';
 import PremioAplicacaoSection from './PremioAplicacaoSection';
 import PremioRemuneracaoVariavelSection from './PremioRemuneracaoVariavelSection';
 import { generatePremioPoliticaPdf } from '@/utils/sucessoCliente/premioPoliticaPdf';
+import { supabase } from '@/integrations/supabase/client';
 
 const VERBA_PRESETS = ['Prêmio', 'Gratificação', 'Bonificação', 'Bônus', 'PLR', 'Adicional de Desempenho'];
 
@@ -29,6 +30,9 @@ export default function PremioTab({ client_id, cliente }: { client_id: string; c
     valor_base: 0,
   });
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [aiFiles, setAiFiles] = useState<File[]>([]);
+  const [aiContexto, setAiContexto] = useState('');
+  const [aiRunning, setAiRunning] = useState(false);
 
   const selected = useMemo(() => items.find(i => i.id === selectedId) || null, [items, selectedId]);
 
@@ -48,6 +52,70 @@ export default function PremioTab({ client_id, cliente }: { client_id: string; c
     setCreating(false);
     setNewForm({ verba_label: 'Prêmio', verba_label_custom: '', nome: '', objetivo: '', periodo_tipo: 'mensal', valor_base: 0 });
     if (data?.id) setSelectedId(data.id);
+  };
+
+  const fileToBase64 = (f: File) => new Promise<string>((res, rej) => {
+    const fr = new FileReader();
+    fr.onload = () => {
+      const r = String(fr.result || '');
+      const idx = r.indexOf('base64,');
+      res(idx >= 0 ? r.slice(idx + 7) : r);
+    };
+    fr.onerror = () => rej(fr.error);
+    fr.readAsDataURL(f);
+  });
+
+  const handleGerarIA = async () => {
+    const label = (newForm.verba_label === '__custom__' ? newForm.verba_label_custom : newForm.verba_label).trim() || 'Prêmio';
+    if (aiFiles.length === 0 && !aiContexto.trim()) {
+      toast.error('Anexe ao menos um documento ou descreva o contexto.');
+      return;
+    }
+    setAiRunning(true);
+    try {
+      const files = await Promise.all(aiFiles.map(async (f) => ({
+        name: f.name, mime: f.type || 'application/octet-stream', data_base64: await fileToBase64(f),
+      })));
+      const { data, error } = await supabase.functions.invoke('premio-politica-ia', {
+        body: { verba_label: label, contexto: aiContexto, files },
+      });
+      if (error) throw error;
+      const p = (data as any)?.politica;
+      if (!p) throw new Error('Resposta vazia da IA.');
+
+      const { data: created, error: e1 } = await create({
+        verba_label: label,
+        nome: p.nome || newForm.nome || `Política de ${label}`,
+        objetivo: p.objetivo || null,
+        periodo_tipo: p.periodo_tipo || 'mensal',
+        valor_base: Number(p.valor_base || 0),
+        remuneracao_variavel: !!p.remuneracao_variavel,
+        rv_base: p.rv_base,
+        rv_base_label: p.rv_base_label,
+        rv_tiers: p.rv_tiers,
+        rv_pct_individual: Number(p.rv_pct_individual || 60),
+        rv_pct_igualitario: Number(p.rv_pct_igualitario || 40),
+        rv_observacoes: p.rv_observacoes,
+      } as any);
+      if (e1) throw e1;
+      const policyId = (created as any)?.id;
+      if (policyId && Array.isArray(p.criterios) && p.criterios.length > 0) {
+        const rows = p.criterios.map((c: any, i: number) => ({
+          policy_id: policyId, nome: c.nome, descricao: c.descricao || null,
+          peso: Number(c.peso || 1), essencial: !!c.essencial, ordem: i, origem: 'ia',
+        }));
+        await supabase.from('prize_criteria' as any).insert(rows as any);
+      }
+      toast.success('Política gerada pela IA a partir dos documentos.');
+      setCreating(false);
+      setAiFiles([]); setAiContexto('');
+      setNewForm({ verba_label: 'Prêmio', verba_label_custom: '', nome: '', objetivo: '', periodo_tipo: 'mensal', valor_base: 0 });
+      if (policyId) setSelectedId(policyId);
+    } catch (e: any) {
+      toast.error('Erro na geração por IA: ' + (e?.message || ''));
+    } finally {
+      setAiRunning(false);
+    }
   };
 
   return (
@@ -107,6 +175,33 @@ export default function PremioTab({ client_id, cliente }: { client_id: string; c
             <div className="md:col-span-2">
               <Label>Objetivo (opcional)</Label>
               <Textarea rows={2} value={newForm.objetivo} onChange={(e)=>setNewForm({...newForm, objetivo: e.target.value})} placeholder="Ex.: estimular pontualidade e qualidade do atendimento ao cliente."/>
+            </div>
+          </div>
+          <div className="border-t pt-3 space-y-2 bg-primary/5 rounded-md p-3">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-primary"/>
+              <span className="text-sm font-semibold">Gerar política com IA a partir de documentos (opcional)</span>
+            </div>
+            <p className="text-[11px] text-muted-foreground">Anexe regulamentos, minutas ou fotos (Word, PDF, imagem). A IA lê os documentos e sugere faixas de remuneração variável, distribuição individual/igualitária e critérios.</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs">Documentos</Label>
+                <Input type="file" multiple accept=".pdf,.doc,.docx,image/*"
+                  onChange={(e)=>setAiFiles(Array.from(e.target.files || []))}/>
+                {aiFiles.length > 0 && (
+                  <p className="text-[10px] text-muted-foreground mt-1">{aiFiles.length} arquivo(s) anexado(s).</p>
+                )}
+              </div>
+              <div>
+                <Label className="text-xs">Contexto adicional (opcional)</Label>
+                <Textarea rows={2} value={aiContexto} onChange={(e)=>setAiContexto(e.target.value)} placeholder="Ex.: comércio varejista com 8 colaboradores; foco em vendas e atendimento."/>
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <Button size="sm" variant="secondary" onClick={handleGerarIA} disabled={aiRunning}>
+                {aiRunning ? <Loader2 className="w-3 h-3 mr-1 animate-spin"/> : <Sparkles className="w-3 h-3 mr-1"/>}
+                Gerar com IA
+              </Button>
             </div>
           </div>
           <div className="flex justify-end gap-2">
