@@ -5,7 +5,7 @@ Deno.serve(async (req) => {
   try {
     const KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!KEY) throw new Error("LOVABLE_API_KEY missing");
-    const { nome, empresa, setor } = await req.json().catch(() => ({}));
+    const { nome, empresa, setor, cbo, descricao_sumaria, atividades } = await req.json().catch(() => ({}));
     const nomeCargo = String(nome || "").trim();
     if (!nomeCargo) {
       return new Response(JSON.stringify({ error: "Informe o nome do cargo." }), {
@@ -13,9 +13,22 @@ Deno.serve(async (req) => {
       });
     }
 
+    const contexto = [
+      cbo ? `CBO informado: ${String(cbo).replace(/\D/g, "")}` : "",
+      descricao_sumaria ? `Descrição sumária: ${String(descricao_sumaria).slice(0, 800)}` : "",
+      Array.isArray(atividades) && atividades.length ? `Atividades: ${atividades.slice(0, 12).map((a: any) => String(a)).join(" | ").slice(0, 1000)}` : "",
+    ].filter(Boolean).join("\n");
+
     const prompt = `Você é um especialista em descrição de cargos, CBO e legislação trabalhista brasileira.
 Empresa: ${empresa || "n/i"}. Setor: ${setor || "n/i"}.
 Cargo informado pelo usuário: "${nomeCargo}".
+${contexto ? `\nContexto adicional do cargo já cadastrado (use como âncora — NÃO troque a profissão):\n${contexto}\n` : ""}
+
+REGRAS DURAS PARA CONSELHO DE CLASSE:
+- Marque "profissao_regulamentada": true SOMENTE quando existir lei federal específica exigindo formação e registro em conselho profissional para EXERCER o cargo descrito (ex.: Contador→CRC, Advogado→OAB, Engenheiro→CREA, Arquiteto→CAU, Médico→CRM, Enfermeiro→COREN, Odontólogo→CRO, Farmacêutico→CRF, Psicólogo→CRP, Assistente Social→CRESS, Nutricionista→CRN, Fisioterapeuta→CREFITO, Educador Físico→CREF, Técnico em Segurança do Trabalho→registro MTE, Corretor→CRECI, Administrador→CFA/CRA, Economista→CORECON, Técnico em Contabilidade→CRC, Biomédico→CRBM).
+- Se o cargo for auxiliar/assistente/estagiário/técnico de apoio SEM formação regulamentada exigida por lei, defina "profissao_regulamentada": false e "conselho_registro.obrigatorio": false.
+- NUNCA invente um conselho por semelhança de nome. Se houver dúvida, retorne obrigatorio=false, sigla="" e explique na "conselho_mensagem".
+- "conselho_mensagem": frase curta pronta para relatório PDF, sempre preenchida, começando por "Este cargo EXIGE inscrição em..." ou "Este cargo NÃO exige inscrição em conselho de classe...". Inclua a base legal quando exigir, e uma justificativa objetiva quando não exigir.
 
 SUA TAREFA: sugerir a adequação técnica e legal deste cargo, retornando obrigatoriamente:
 - "cbo": código CBO oficial (6 dígitos, sem hífen) mais adequado ao cargo. Se houver ambiguidade escolha o mais praticado no Brasil.
@@ -29,9 +42,10 @@ SUA TAREFA: sugerir a adequação técnica e legal deste cargo, retornando obrig
 - "base_legal": string com a lei/decreto de regulamentação quando existir (ex.: "Lei 5.194/1966 — Engenharia"), ou "" quando não houver.
 - "conselho_registro": { "obrigatorio": true/false, "sigla": "CREA/CRC/COREN/OAB/CRM/CRO/CFA/CFC/CRA/etc.", "descricao": "explicação curta" } — sigla vazia quando não houver conselho.
 - "observacoes_regulamentacao": string curta com riscos, exigências adicionais (NR aplicável, certificações obrigatórias, CNH, treinamentos legais como NR-11, NR-35, NR-10, etc.), ou "" quando nada aplicável.
+- "conselho_mensagem": ver regras acima. NUNCA vazio.
 
 Responda SOMENTE com JSON válido no formato exato:
-{"cbo":"","titulo_cbo":"","area":"","nivel":"","descricao_sumaria":"","atividades":[],"requisitos":{"escolaridade":"","experiencia":"","competencias":[]},"profissao_regulamentada":false,"base_legal":"","conselho_registro":{"obrigatorio":false,"sigla":"","descricao":""},"observacoes_regulamentacao":""}`;
+{"cbo":"","titulo_cbo":"","area":"","nivel":"","descricao_sumaria":"","atividades":[],"requisitos":{"escolaridade":"","experiencia":"","competencias":[]},"profissao_regulamentada":false,"base_legal":"","conselho_registro":{"obrigatorio":false,"sigla":"","descricao":""},"observacoes_regulamentacao":"","conselho_mensagem":""}`;
 
     const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -77,6 +91,9 @@ Responda SOMENTE com JSON válido no formato exato:
         descricao: String(parsed.conselho_registro?.descricao || ""),
       },
       observacoes_regulamentacao: String(parsed.observacoes_regulamentacao || ""),
+      conselho_mensagem: String(parsed.conselho_mensagem || (parsed.conselho_registro?.obrigatorio
+        ? `Este cargo EXIGE inscrição em ${parsed.conselho_registro?.sigla || 'conselho de classe'}${parsed.base_legal ? ' (' + parsed.base_legal + ')' : ''}.`
+        : 'Este cargo NÃO exige inscrição em conselho de classe.')),
     };
     return json(out);
   } catch (e) {

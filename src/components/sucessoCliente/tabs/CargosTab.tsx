@@ -200,7 +200,14 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
     setBusy('conselho');
     try {
       const { data, error } = await supabase.functions.invoke('cargo-adequar', {
-        body: { nome: draft.nome, empresa: cliente?.nome, setor: cliente?.segmento || cliente?.cnae || '' },
+        body: {
+          nome: draft.nome,
+          empresa: cliente?.nome,
+          setor: cliente?.segmento || cliente?.cnae || '',
+          cbo: draft.cbo || '',
+          descricao_sumaria: draft.descricao_sumaria || '',
+          atividades: draft.atividades || [],
+        },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -212,16 +219,14 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
           conselho_registro: data.conselho_registro || { obrigatorio: false, sigla: '', descricao: '' },
           observacoes_regulamentacao: data.observacoes_regulamentacao || d.adequacao?.observacoes_regulamentacao || '',
           titulo_cbo: data.titulo_cbo || d.adequacao?.titulo_cbo || '',
+          conselho_mensagem: data.conselho_mensagem || '',
         },
       }));
-      const cr = data.conselho_registro || {};
-      if (cr.obrigatorio) {
-        toast.success(`Exige inscrição em conselho: ${cr.sigla || '—'}${cr.descricao ? ' — ' + cr.descricao : ''}`);
-      } else if (cr.sigla || cr.descricao) {
-        toast.info(`Conselho relacionado (não obrigatório): ${cr.sigla || cr.descricao}`);
-      } else {
-        toast.info('Cargo não exige inscrição em conselho de classe.');
-      }
+      const msg = data.conselho_mensagem || (data.conselho_registro?.obrigatorio
+        ? `Exige inscrição em ${data.conselho_registro?.sigla || 'conselho'}.`
+        : 'Não exige inscrição em conselho de classe.');
+      if (data.conselho_registro?.obrigatorio) toast.success(msg);
+      else toast.info(msg);
     } catch (e: any) {
       toast.error('Falha: ' + e.message);
     } finally { setBusy(null); }
@@ -795,6 +800,11 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
               )}
               {draft.adequacao.observacoes_regulamentacao && (
                 <div className="text-xs mt-1"><strong>Observações:</strong> {draft.adequacao.observacoes_regulamentacao}</div>
+              )}
+              {draft.adequacao.conselho_mensagem && (
+                <div className="text-xs mt-1 p-2 rounded bg-background/60 border">
+                  <strong>Inscrição em conselho de classe:</strong> {draft.adequacao.conselho_mensagem}
+                </div>
               )}
               <div className="text-[10px] text-muted-foreground mt-2">Sugestão gerada por IA — confirme com a legislação vigente e a CCT aplicável.</div>
             </div>

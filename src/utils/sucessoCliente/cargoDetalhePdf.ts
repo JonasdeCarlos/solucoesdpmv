@@ -104,6 +104,15 @@ export async function generateCargoDetalhePdf(params: { cargo: any; empresa?: st
     }
     kv('Observações', ad.observacoes_regulamentacao);
     kv('Título CBO oficial', ad.titulo_cbo);
+    const msg = ad.conselho_mensagem
+      || (ad.conselho_registro?.obrigatorio
+        ? `Este cargo EXIGE inscrição em ${ad.conselho_registro?.sigla || 'conselho de classe'}${ad.base_legal ? ' (' + ad.base_legal + ')' : ''}.`
+        : 'Este cargo NÃO exige inscrição em conselho de classe.');
+    ensure(20);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Inscrição em conselho de classe:', 26, y); y += 12;
+    doc.setFont('helvetica', 'normal');
+    para(String(msg));
   }
 
   // Footer
