@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { supabase } from '@/integrations/supabase/client';
+import { drawBrandLogo } from '@/utils/pdfBrandLogo';
 
 export async function generatePerfilPdf(params: {
   cliente: any;
@@ -14,7 +15,7 @@ export async function generatePerfilPdf(params: {
   branding?: { logo_url?: string; primary_color?: string; secondary_color?: string; office_name?: string; phone?: string; email?: string; site?: string };
 }) {
   const { cliente, profile, ccts, rubrics, diary, uploads, checklist, risks, branding } = params;
-  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+  const doc = new jsPDF({ unit: 'pt', format: 'a4', compress: true });
   const W = doc.internal.pageSize.getWidth();
   const primary = branding?.primary_color || '#628E3F';
   const secondary = branding?.secondary_color || '#393421';
@@ -27,17 +28,15 @@ export async function generatePerfilPdf(params: {
 
   let y = 40;
   // Header
-  doc.setFillColor(pr,pg,pb); doc.rect(0,0,W,80,'F');
-  if (branding?.logo_url) {
-    try {
-      const img = await fetch(branding.logo_url).then(r => r.blob()).then(b => new Promise<string>((res) => { const fr = new FileReader(); fr.onload = () => res(fr.result as string); fr.readAsDataURL(b); }));
-      doc.addImage(img, 'PNG', 20, 15, 50, 50);
-    } catch {}
-  }
-  doc.setTextColor(255,255,255); doc.setFontSize(16); doc.text(branding?.office_name || 'Sucesso do Cliente — DP', 80, 35);
-  doc.setFontSize(10); doc.text(`Cliente: ${cliente.nome}`, 80, 55);
-  doc.text(`Emitido em ${new Date().toLocaleDateString('pt-BR')}`, 80, 70);
-  y = 100;
+  doc.setFillColor(pr,pg,pb); doc.rect(0,0,W,95,'F');
+  await drawBrandLogo(doc, branding?.logo_url, 20, 12, 85, 70, { centerY: true });
+  doc.setTextColor(255,255,255);
+  doc.setFont('helvetica','bold'); doc.setFontSize(15);
+  doc.text(branding?.office_name || 'Sucesso do Cliente — DP', 120, 38);
+  doc.setFont('helvetica','normal'); doc.setFontSize(10);
+  doc.text(`Cliente: ${cliente.nome}`, 120, 58);
+  doc.text(`Emitido em ${new Date().toLocaleDateString('pt-BR')}`, 120, 74);
+  y = 115;
 
   const section = (title: string) => {
     doc.setFillColor(pr,pg,pb); doc.rect(20, y, W-40, 18, 'F');
