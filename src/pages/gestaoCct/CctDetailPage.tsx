@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ChevronLeft, FileText, Download, MessageSquare, Sparkles, Loader2, Paperclip, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchCctAnalysis, logCctAudit, type CctAnalysis } from '@/hooks/cct/useCctAnalyses';
+import { CctClientLinksCard } from '@/components/gestaoCct/CctClientLinksCard';
 
 const BLOCK_TITLES: Record<string, string> = {
   identification: 'A) Identificação',
@@ -262,6 +263,8 @@ export default function CctDetailPage() {
       {a.ai_summary && (
         <Card><CardHeader><CardTitle>Resumo IA</CardTitle></CardHeader><CardContent><p className="text-sm whitespace-pre-wrap">{a.ai_summary}</p></CardContent></Card>
       )}
+
+      <CctClientLinksCard analysis={a} />
 
       {Object.entries(BLOCK_TITLES).map(([key, label]) => (
         <Card key={key}>
