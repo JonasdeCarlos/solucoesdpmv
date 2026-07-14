@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import { loadBranding } from './perfilPdf';
+import { drawBrandLogo } from '@/utils/pdfBrandLogo';
 
 export type PoliticaPdfData = {
   empresa: string;
@@ -75,30 +76,8 @@ export async function generatePremioPoliticaPdf(d: PoliticaPdfData) {
   let logoBoxW = 0;
   let logoDrawn = false;
 
-  if (branding?.logo_url) {
-    try {
-      const dataUrl = await fetch(branding.logo_url).then(r => r.blob()).then(b => new Promise<string>((res) => {
-        const fr = new FileReader(); fr.onload = () => res(fr.result as string); fr.readAsDataURL(b);
-      }));
-      const dims = await new Promise<{ w: number; h: number; fmt: string }>((resolve) => {
-        const im = new Image();
-        im.onload = () => resolve({ w: im.naturalWidth, h: im.naturalHeight, fmt: dataUrl.startsWith('data:image/jpeg') ? 'JPEG' : 'PNG' });
-        im.onerror = () => resolve({ w: 1, h: 1, fmt: 'PNG' });
-        im.src = dataUrl;
-      });
-      const aspect = dims.w / dims.h;
-      let finalH = LOGO_BOX_H;
-      let finalW = finalH * aspect;
-      if (finalW > LOGO_BOX_MAX_W) { finalW = LOGO_BOX_MAX_W; finalH = finalW / aspect; }
-      const imgX = 30;
-      const imgY = LOGO_BOX_Y + (LOGO_BOX_H - finalH) / 2;
-      doc.addImage(dataUrl, dims.fmt, imgX, imgY, finalW, finalH, undefined, 'FAST');
-      logoBoxW = finalW;
-      logoDrawn = true;
-    } catch {
-      logoBoxW = 0;
-    }
-  }
+  const drawn = await drawBrandLogo(doc, branding?.logo_url, 30, LOGO_BOX_Y, LOGO_BOX_MAX_W, LOGO_BOX_H, { centerY: true });
+  if (drawn.w > 0) { logoBoxW = drawn.w; logoDrawn = true; }
 
   const TX = 30 + (logoDrawn ? logoBoxW + 26 : 0);
   const TITLE_MAX_W = W - TX - 24;
