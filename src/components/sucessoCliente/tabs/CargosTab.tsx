@@ -759,6 +759,10 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
               {busy==='adequar' ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <Sparkles className="w-4 h-4 mr-2"/>}
               Adequar cargo (IA)
             </Button>
+            <Button type="button" size="sm" variant="outline" onClick={verificarConselho} disabled={busy==='conselho' || !draft.nome?.trim()} title="Verifica se o cargo exige inscrição em conselho de classe (CRC, OAB, CAU, CREA, COREN, CRM etc.).">
+              {busy==='conselho' ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <AlertTriangle className="w-4 h-4 mr-2"/>}
+              Exige conselho? (CRC/OAB/CAU…)
+            </Button>
             <Button type="button" size="sm" variant="secondary" onClick={completarComIA} disabled={busy==='completar'}>
               {busy==='completar' ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <Sparkles className="w-4 h-4 mr-2"/>}
               Preencher campos vazios com IA
