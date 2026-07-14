@@ -85,6 +85,7 @@ Deno.serve(async (req) => {
     // Executa análise em background para evitar timeout de 150s
     const runAnalysis = async () => {
       try {
+        console.log('[cct-analyze] bg start', { analysis_id, files: fileList.length });
         const parts: any[] = [];
         parts.push({ type: 'text', text: `Analise ${fileList.length} arquivo(s) desta CCT (principal + aditivos, se houver) e devolva o Raio-X em JSON estrito seguindo exatamente este schema:\n\n${RAIO_X_SCHEMA_HINT}\n\nRegras: nunca invente; aditivos sobrescrevem a CCT anterior; use "Não identificado no documento" quando ausente.` });
 
@@ -101,6 +102,7 @@ Deno.serve(async (req) => {
           }
         }
 
+        console.log('[cct-analyze] chamando gateway com', parts.length, 'parts');
         const aiResp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Lovable-API-Key': LOVABLE_API_KEY },
@@ -113,6 +115,7 @@ Deno.serve(async (req) => {
             response_format: { type: 'json_object' },
           }),
         });
+        console.log('[cct-analyze] gateway respondeu', aiResp.status);
 
         if (!aiResp.ok) {
           const errTxt = await aiResp.text();
@@ -185,10 +188,19 @@ Deno.serve(async (req) => {
         console.error('bg analysis error', bgErr);
         await supabase.from('cct_analyses').update({ status: 'erro', ai_summary: 'Erro na análise: ' + (bgErr?.message || 'desconhecido') }).eq('id', analysis_id);
       }
+      console.log('[cct-analyze] bg done', analysis_id);
     };
 
+    // Mantém o isolate vivo enquanto a análise roda
+    const bgPromise = runAnalysis();
     // @ts-ignore EdgeRuntime global no Supabase Edge Functions
-    EdgeRuntime.waitUntil(runAnalysis());
+    if (typeof EdgeRuntime !== 'undefined' && typeof EdgeRuntime.waitUntil === 'function') {
+      // @ts-ignore
+      EdgeRuntime.waitUntil(bgPromise);
+      console.log('[cct-analyze] EdgeRuntime.waitUntil registrado');
+    } else {
+      console.warn('[cct-analyze] EdgeRuntime.waitUntil indisponível — promessa solta');
+    }
 
     return new Response(JSON.stringify({ ok: true, status: 'processing', message: 'Análise iniciada em segundo plano. Acompanhe pelo status da CCT.' }), {
       status: 202,
