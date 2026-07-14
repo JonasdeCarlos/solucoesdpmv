@@ -82,26 +82,20 @@ Deno.serve(async (req) => {
     // Marca como em processamento
     await supabase.from('cct_analyses').update({ status: 'em_analise', ai_model: 'google/gemini-2.5-pro', ai_version: 'raio-x-v1' }).eq('id', analysis_id);
 
-    // Baixa arquivos e converte para base64 data URL
+    // Passa URLs assinadas direto ao gateway (sem carregar em memória)
     const parts: any[] = [];
     parts.push({ type: 'text', text: `Analise ${fileList.length} arquivo(s) desta CCT (principal + aditivos, se houver) e devolva o Raio-X em JSON estrito seguindo exatamente este schema:\n\n${RAIO_X_SCHEMA_HINT}\n\nRegras: nunca invente; aditivos sobrescrevem a CCT anterior; use "Não identificado no documento" quando ausente.` });
 
     for (const f of fileList) {
-      const { data: signed, error: sErr } = await supabase.storage.from('cct-docs').createSignedUrl(f.file_path, 900);
+      const { data: signed, error: sErr } = await supabase.storage.from('cct-docs').createSignedUrl(f.file_path, 3600);
       if (sErr || !signed?.signedUrl) continue;
-      const resp = await fetch(signed.signedUrl);
-      if (!resp.ok) continue;
-      const buf = new Uint8Array(await resp.arrayBuffer());
-      // base64 encode
-      let bin = '';
-      for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
-      const b64 = btoa(bin);
-      const mime = f.mime_type || (f.file_name?.toLowerCase().endsWith('.pdf') ? 'application/pdf' : (f.file_name?.toLowerCase().match(/\.(png|jpe?g|webp|heic)$/i) ? `image/${f.file_name.split('.').pop()?.toLowerCase()}` : 'application/octet-stream'));
+      const lower = (f.file_name || '').toLowerCase();
+      const mime = f.mime_type || (lower.endsWith('.pdf') ? 'application/pdf' : (lower.match(/\.(png|jpe?g|webp|heic)$/) ? `image/${lower.split('.').pop()}` : 'application/octet-stream'));
       parts.push({ type: 'text', text: `\n--- Arquivo: ${f.file_name} (${f.file_kind}) ---` });
       if (mime.startsWith('image/')) {
-        parts.push({ type: 'image_url', image_url: { url: `data:${mime};base64,${b64}` } });
+        parts.push({ type: 'image_url', image_url: { url: signed.signedUrl } });
       } else {
-        parts.push({ type: 'file', file: { filename: f.file_name, file_data: `data:${mime};base64,${b64}` } });
+        parts.push({ type: 'file', file: { filename: f.file_name, file_data: signed.signedUrl } });
       }
     }
 
