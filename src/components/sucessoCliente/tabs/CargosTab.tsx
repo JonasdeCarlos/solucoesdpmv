@@ -786,6 +786,24 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
                   ))}
                 </SelectContent>
               </Select>
+              {pisosCCT.length > 0 && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="mt-1 w-full"
+                  onClick={() => {
+                    const norm = (s: string) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                    const n = norm(draft.nome);
+                    if (!n) return toast.error('Informe o nome do cargo antes.');
+                    const match = pisosCCT.find(p => p.funcao && norm(p.funcao).includes(n))
+                      || pisosCCT.find(p => p.funcao && n.includes(norm(p.funcao)));
+                    if (!match) return toast.info('Nenhum piso da CCT correspondente ao nome do cargo. Selecione manualmente.');
+                    setDraft({ ...draft, piso_salarial: match.valor, piso_referencia: match.ref });
+                    toast.success(`Piso trazido da CCT: R$ ${Number(match.valor).toLocaleString('pt-BR',{minimumFractionDigits:2})}`);
+                  }}
+                ><Sparkles className="w-3 h-3 mr-1"/>Sugerir piso pela CCT</Button>
+              )}
             </div>
             <div>
               <Label className="text-xs">Valor do piso (R$)</Label>
