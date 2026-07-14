@@ -27,9 +27,9 @@ export async function generateFeedbackPdf(params: {
   const titulo = tipo === 'feedback' ? 'FEEDBACK AO COLABORADOR'
     : tipo === 'cobranca' ? 'ALINHAMENTO E COBRANÇA'
     : 'DOCUMENTO DE ALINHAMENTO';
-  doc.text(titulo, 80, 40);
-  doc.setFontSize(10); doc.text(`Empresa: ${empresa}`, 80, 60);
-  doc.text(`Emitido em ${new Date().toLocaleDateString('pt-BR')}`, 80, 73);
+  doc.text(titulo, 120, 42);
+  doc.setFontSize(10); doc.text(`Empresa: ${empresa}`, 120, 64);
+  doc.text(`Emitido em ${new Date().toLocaleDateString('pt-BR')}`, 120, 80);
 
   y = 110;
   doc.setTextColor(0,0,0);
