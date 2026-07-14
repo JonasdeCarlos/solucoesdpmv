@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import type { Holiday, OfficeBranding } from './types';
 import { TIPO_LABELS, TIPO_COLORS, type HolidayTipo } from './types';
+import { drawBrandLogo } from '@/utils/pdfBrandLogo';
 
 function hexToRgb(hex: string): [number, number, number] {
   const m = hex.replace('#', '');
