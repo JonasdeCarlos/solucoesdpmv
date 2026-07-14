@@ -801,6 +801,11 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
               {draft.adequacao.observacoes_regulamentacao && (
                 <div className="text-xs mt-1"><strong>Observações:</strong> {draft.adequacao.observacoes_regulamentacao}</div>
               )}
+              {draft.adequacao.conselho_mensagem && (
+                <div className="text-xs mt-1 p-2 rounded bg-background/60 border">
+                  <strong>Inscrição em conselho de classe:</strong> {draft.adequacao.conselho_mensagem}
+                </div>
+              )}
               <div className="text-[10px] text-muted-foreground mt-2">Sugestão gerada por IA — confirme com a legislação vigente e a CCT aplicável.</div>
             </div>
           )}
