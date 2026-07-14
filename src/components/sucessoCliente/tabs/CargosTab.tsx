@@ -836,6 +836,11 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={()=>setOpen(false)}>Cancelar</Button>
+            {draft.id && (
+              <Button variant="outline" onClick={async()=>{ try { await generateCargoDetalhePdf({ cargo: draft, empresa: cliente?.nome }); toast.success('PDF do cargo gerado.'); } catch(e:any){ toast.error('Falha: '+e.message); } }}>
+                <FileDown className="w-4 h-4 mr-1"/>PDF do cargo
+              </Button>
+            )}
             <Button onClick={salvar}>Salvar</Button>
           </DialogFooter>
         </DialogContent>
