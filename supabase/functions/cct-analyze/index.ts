@@ -82,109 +82,116 @@ Deno.serve(async (req) => {
     // Marca como em processamento
     await supabase.from('cct_analyses').update({ status: 'em_analise', ai_model: 'google/gemini-2.5-pro', ai_version: 'raio-x-v1' }).eq('id', analysis_id);
 
-    // Passa URLs assinadas direto ao gateway (sem carregar em memória)
-    const parts: any[] = [];
-    parts.push({ type: 'text', text: `Analise ${fileList.length} arquivo(s) desta CCT (principal + aditivos, se houver) e devolva o Raio-X em JSON estrito seguindo exatamente este schema:\n\n${RAIO_X_SCHEMA_HINT}\n\nRegras: nunca invente; aditivos sobrescrevem a CCT anterior; use "Não identificado no documento" quando ausente.` });
+    // Executa análise em background para evitar timeout de 150s
+    const runAnalysis = async () => {
+      try {
+        const parts: any[] = [];
+        parts.push({ type: 'text', text: `Analise ${fileList.length} arquivo(s) desta CCT (principal + aditivos, se houver) e devolva o Raio-X em JSON estrito seguindo exatamente este schema:\n\n${RAIO_X_SCHEMA_HINT}\n\nRegras: nunca invente; aditivos sobrescrevem a CCT anterior; use "Não identificado no documento" quando ausente.` });
 
-    for (const f of fileList) {
-      const { data: signed, error: sErr } = await supabase.storage.from('cct-docs').createSignedUrl(f.file_path, 3600);
-      if (sErr || !signed?.signedUrl) continue;
-      const lower = (f.file_name || '').toLowerCase();
-      const mime = f.mime_type || (lower.endsWith('.pdf') ? 'application/pdf' : (lower.match(/\.(png|jpe?g|webp|heic)$/) ? `image/${lower.split('.').pop()}` : 'application/octet-stream'));
-      parts.push({ type: 'text', text: `\n--- Arquivo: ${f.file_name} (${f.file_kind}) ---` });
-      if (mime.startsWith('image/')) {
-        parts.push({ type: 'image_url', image_url: { url: signed.signedUrl } });
-      } else {
-        parts.push({ type: 'file', file: { filename: f.file_name, file_data: signed.signedUrl } });
+        for (const f of fileList) {
+          const { data: signed, error: sErr } = await supabase.storage.from('cct-docs').createSignedUrl(f.file_path, 3600);
+          if (sErr || !signed?.signedUrl) continue;
+          const lower = (f.file_name || '').toLowerCase();
+          const mime = f.mime_type || (lower.endsWith('.pdf') ? 'application/pdf' : (lower.match(/\.(png|jpe?g|webp|heic)$/) ? `image/${lower.split('.').pop()}` : 'application/octet-stream'));
+          parts.push({ type: 'text', text: `\n--- Arquivo: ${f.file_name} (${f.file_kind}) ---` });
+          if (mime.startsWith('image/')) {
+            parts.push({ type: 'image_url', image_url: { url: signed.signedUrl } });
+          } else {
+            parts.push({ type: 'file', file: { filename: f.file_name, file_data: signed.signedUrl } });
+          }
+        }
+
+        const aiResp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Lovable-API-Key': LOVABLE_API_KEY },
+          body: JSON.stringify({
+            model: 'google/gemini-2.5-pro',
+            messages: [
+              { role: 'system', content: RAIO_X_SYSTEM },
+              { role: 'user', content: parts },
+            ],
+            response_format: { type: 'json_object' },
+          }),
+        });
+
+        if (!aiResp.ok) {
+          const errTxt = await aiResp.text();
+          console.error('AI error', aiResp.status, errTxt);
+          let msg = `Erro IA (${aiResp.status})`;
+          if (aiResp.status === 429) msg = 'Limite de requisições atingido. Tente novamente em instantes.';
+          if (aiResp.status === 402) msg = 'Créditos de IA esgotados. Adicione créditos ao workspace.';
+          await supabase.from('cct_analyses').update({ status: 'erro', ai_summary: msg }).eq('id', analysis_id);
+          await supabase.from('cct_audit_log').insert({ cct_analysis_id: analysis_id, action: 'ai_extract_error', metadata: { status: aiResp.status, detail: errTxt.slice(0, 500) } });
+          return;
+        }
+
+        const aiJson = await aiResp.json();
+        const content = aiJson?.choices?.[0]?.message?.content || '';
+        let parsed: any = {};
+        try { parsed = JSON.parse(content); } catch { parsed = {}; }
+
+        const updates: any = {
+          status: 'revisar',
+          ai_summary: parsed.ai_summary || null,
+          confidence_score: typeof parsed.confidence_score === 'number' ? parsed.confidence_score : null,
+          identification: parsed.identification || {},
+          unions: parsed.unions || {},
+          territorial_base: parsed.territorial_base || {},
+          professional_classes: parsed.professional_classes || {},
+          economic_clauses: parsed.economic_clauses || {},
+          benefits_summary: parsed.benefits_summary || {},
+          journey_rules: parsed.journey_rules || {},
+          overtime_rules: parsed.overtime_rules || {},
+          vacation_absence: parsed.vacation_absence || {},
+          admission_termination: parsed.admission_termination || {},
+          union_obligations: parsed.union_obligations || {},
+          health_safety: parsed.health_safety || {},
+          penalties: parsed.penalties || {},
+          dp_attention_points: Array.isArray(parsed.dp_attention_points) ? parsed.dp_attention_points : [],
+          ocr_applied: true,
+        };
+
+        const { error: uErr } = await supabase.from('cct_analyses').update(updates).eq('id', analysis_id);
+        if (uErr) {
+          await supabase.from('cct_analyses').update({ status: 'erro', ai_summary: 'Falha ao salvar Raio-X: ' + uErr.message }).eq('id', analysis_id);
+          return;
+        }
+
+        if (Array.isArray(parsed?.benefits_summary?.beneficios)) {
+          await supabase.from('cct_benefits').delete().eq('cct_analysis_id', analysis_id);
+          const rows = parsed.benefits_summary.beneficios
+            .filter((b: any) => b && (b.nome || b.valor))
+            .map((b: any) => ({
+              cct_analysis_id: analysis_id,
+              benefit_name: b.nome || 'Benefício',
+              value_text: b.valor || null,
+              periodicity: b.periodicidade || null,
+              eligible_employees: b.elegiveis || null,
+              conditions: b.condicoes || null,
+              due_date_rule: b.prazo || null,
+              penalty: b.penalidade || null,
+              notes: b.observacoes || null,
+              page_number: b.page_number ?? null,
+            }));
+          if (rows.length) await supabase.from('cct_benefits').insert(rows);
+        }
+
+        await supabase.from('cct_audit_log').insert({
+          cct_analysis_id: analysis_id,
+          action: 'ai_extract',
+          metadata: { model: 'google/gemini-2.5-pro', files: fileList.length },
+        });
+      } catch (bgErr: any) {
+        console.error('bg analysis error', bgErr);
+        await supabase.from('cct_analyses').update({ status: 'erro', ai_summary: 'Erro na análise: ' + (bgErr?.message || 'desconhecido') }).eq('id', analysis_id);
       }
-    }
-
-    // Chama Gemini via Lovable AI Gateway
-    const aiResp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Lovable-API-Key': LOVABLE_API_KEY,
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-pro',
-        messages: [
-          { role: 'system', content: RAIO_X_SYSTEM },
-          { role: 'user', content: parts },
-        ],
-        response_format: { type: 'json_object' },
-      }),
-    });
-
-    if (!aiResp.ok) {
-      const errTxt = await aiResp.text();
-      console.error('AI error', aiResp.status, errTxt);
-      let msg = `Erro IA (${aiResp.status})`;
-      if (aiResp.status === 429) msg = 'Limite de requisições atingido. Tente novamente em instantes.';
-      if (aiResp.status === 402) msg = 'Créditos de IA esgotados. Adicione créditos ao workspace.';
-      return new Response(JSON.stringify({ error: msg, detail: errTxt.slice(0, 500) }), { status: aiResp.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
-
-    const aiJson = await aiResp.json();
-    const content = aiJson?.choices?.[0]?.message?.content || '';
-    let parsed: any = {};
-    try { parsed = JSON.parse(content); } catch { parsed = {}; }
-
-    // Persiste blocos
-    const updates: any = {
-      status: 'revisar',
-      ai_summary: parsed.ai_summary || null,
-      confidence_score: typeof parsed.confidence_score === 'number' ? parsed.confidence_score : null,
-      identification: parsed.identification || {},
-      unions: parsed.unions || {},
-      territorial_base: parsed.territorial_base || {},
-      professional_classes: parsed.professional_classes || {},
-      economic_clauses: parsed.economic_clauses || {},
-      benefits_summary: parsed.benefits_summary || {},
-      journey_rules: parsed.journey_rules || {},
-      overtime_rules: parsed.overtime_rules || {},
-      vacation_absence: parsed.vacation_absence || {},
-      admission_termination: parsed.admission_termination || {},
-      union_obligations: parsed.union_obligations || {},
-      health_safety: parsed.health_safety || {},
-      penalties: parsed.penalties || {},
-      dp_attention_points: Array.isArray(parsed.dp_attention_points) ? parsed.dp_attention_points : [],
-      ocr_applied: true,
     };
 
-    const { error: uErr } = await supabase.from('cct_analyses').update(updates).eq('id', analysis_id);
-    if (uErr) {
-      return new Response(JSON.stringify({ error: 'Falha ao salvar Raio-X', detail: uErr.message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
+    // @ts-ignore EdgeRuntime global no Supabase Edge Functions
+    EdgeRuntime.waitUntil(runAnalysis());
 
-    // Persiste benefícios detalhados
-    if (Array.isArray(parsed?.benefits_summary?.beneficios)) {
-      await supabase.from('cct_benefits').delete().eq('cct_analysis_id', analysis_id);
-      const rows = parsed.benefits_summary.beneficios
-        .filter((b: any) => b && (b.nome || b.valor))
-        .map((b: any) => ({
-          cct_analysis_id: analysis_id,
-          benefit_name: b.nome || 'Benefício',
-          value_text: b.valor || null,
-          periodicity: b.periodicidade || null,
-          eligible_employees: b.elegiveis || null,
-          conditions: b.condicoes || null,
-          due_date_rule: b.prazo || null,
-          penalty: b.penalidade || null,
-          notes: b.observacoes || null,
-          page_number: b.page_number ?? null,
-        }));
-      if (rows.length) await supabase.from('cct_benefits').insert(rows);
-    }
-
-    // Audit
-    await supabase.from('cct_audit_log').insert({
-      cct_analysis_id: analysis_id,
-      action: 'ai_extract',
-      metadata: { model: 'google/gemini-2.5-pro', files: fileList.length },
-    });
-
-    return new Response(JSON.stringify({ ok: true, confidence_score: updates.confidence_score }), {
+    return new Response(JSON.stringify({ ok: true, status: 'processing', message: 'Análise iniciada em segundo plano. Acompanhe pelo status da CCT.' }), {
+      status: 202,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (err: any) {
