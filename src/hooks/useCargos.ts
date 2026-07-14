@@ -14,9 +14,11 @@ export function useCargos(client_id?: string) {
   useEffect(() => { load(); }, [load]);
   const save = async (row: any) => {
     if (row.id) {
-      await supabase.from('cargos' as any).update(row).eq('id', row.id);
+      const { error } = await supabase.from('cargos' as any).update(row).eq('id', row.id);
+      if (error) throw error;
     } else {
-      await supabase.from('cargos' as any).insert({ ...row, client_id } as any);
+      const { error } = await supabase.from('cargos' as any).insert({ ...row, client_id } as any);
+      if (error) throw error;
     }
     await load();
   };
