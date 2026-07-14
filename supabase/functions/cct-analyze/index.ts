@@ -1,5 +1,4 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { encodeBase64 } from 'https://deno.land/std@0.224.0/encoding/base64.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -81,7 +80,8 @@ Deno.serve(async (req) => {
     }
 
     // Marca como em processamento
-    await supabase.from('cct_analyses').update({ status: 'em_analise', ai_model: 'google/gemini-2.5-pro', ai_version: 'raio-x-v1' }).eq('id', analysis_id);
+    const MODEL = 'google/gemini-2.5-flash';
+    await supabase.from('cct_analyses').update({ status: 'em_analise', ai_model: MODEL, ai_version: 'raio-x-v1' }).eq('id', analysis_id);
 
     // Executa análise em background para evitar timeout de 150s
     const runAnalysis = async () => {
@@ -93,44 +93,52 @@ Deno.serve(async (req) => {
         for (const f of fileList) {
           const lower = (f.file_name || '').toLowerCase();
           const mime = f.mime_type || (lower.endsWith('.pdf') ? 'application/pdf' : (lower.match(/\.(png|jpe?g|webp|heic)$/) ? `image/${lower.split('.').pop()}` : 'application/octet-stream'));
-          // Baixa direto do storage (bytes) e converte para data URL base64
-          const { data: blob, error: dErr } = await supabase.storage.from('cct-docs').download(f.file_path);
-          if (dErr || !blob) { console.warn('[cct-analyze] download falhou', f.file_path, dErr?.message); continue; }
-          const buf = new Uint8Array(await blob.arrayBuffer());
-          const b64 = encodeBase64(buf);
-          const dataUrl = `data:${mime};base64,${b64}`;
-          console.log('[cct-analyze] arquivo pronto', f.file_name, 'bytes=', buf.byteLength);
+          const { data: signed, error: sErr } = await supabase.storage.from('cct-docs').createSignedUrl(f.file_path, 3600);
+          if (sErr || !signed?.signedUrl) { console.warn('[cct-analyze] signed url falhou', f.file_path, sErr?.message); continue; }
           parts.push({ type: 'text', text: `\n--- Arquivo: ${f.file_name} (${f.file_kind}) ---` });
           if (mime.startsWith('image/')) {
-            parts.push({ type: 'image_url', image_url: { url: dataUrl } });
+            parts.push({ type: 'image_url', image_url: { url: signed.signedUrl } });
           } else {
-            parts.push({ type: 'file', file: { filename: f.file_name, file_data: dataUrl } });
+            parts.push({ type: 'file', file: { filename: f.file_name, file_data: signed.signedUrl } });
           }
         }
 
         console.log('[cct-analyze] chamando gateway com', parts.length, 'parts');
-        const aiResp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Lovable-API-Key': LOVABLE_API_KEY },
-          body: JSON.stringify({
-            model: 'google/gemini-2.5-pro',
-            messages: [
-              { role: 'system', content: RAIO_X_SYSTEM },
-              { role: 'user', content: parts },
-            ],
-            response_format: { type: 'json_object' },
-          }),
-        });
-        console.log('[cct-analyze] gateway respondeu', aiResp.status);
+        // Retry até 3x em 503/502/504
+        let aiResp: Response | null = null;
+        let lastStatus = 0;
+        let lastText = '';
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          aiResp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Lovable-API-Key': LOVABLE_API_KEY },
+            body: JSON.stringify({
+              model: MODEL,
+              messages: [
+                { role: 'system', content: RAIO_X_SYSTEM },
+                { role: 'user', content: parts },
+              ],
+              response_format: { type: 'json_object' },
+            }),
+          });
+          console.log('[cct-analyze] tentativa', attempt, 'status', aiResp.status);
+          if (aiResp.ok) break;
+          lastStatus = aiResp.status;
+          lastText = await aiResp.text();
+          console.warn('[cct-analyze] falha tentativa', attempt, lastStatus, lastText.slice(0, 200));
+          if (![502, 503, 504].includes(aiResp.status)) break;
+          await new Promise((r) => setTimeout(r, 2000 * attempt));
+        }
 
-        if (!aiResp.ok) {
-          const errTxt = await aiResp.text();
-          console.error('AI error', aiResp.status, errTxt);
-          let msg = `Erro IA (${aiResp.status})`;
-          if (aiResp.status === 429) msg = 'Limite de requisições atingido. Tente novamente em instantes.';
-          if (aiResp.status === 402) msg = 'Créditos de IA esgotados. Adicione créditos ao workspace.';
+        if (!aiResp || !aiResp.ok) {
+          const status = aiResp?.status ?? lastStatus;
+          console.error('AI error final', status, lastText);
+          let msg = `Erro IA (${status})`;
+          if (status === 429) msg = 'Limite de requisições atingido. Tente novamente em instantes.';
+          if (status === 402) msg = 'Créditos de IA esgotados. Adicione créditos ao workspace.';
+          if ([502, 503, 504].includes(status)) msg = 'Serviço de IA temporariamente indisponível após retries. Tente novamente em alguns minutos.';
           await supabase.from('cct_analyses').update({ status: 'erro', ai_summary: msg }).eq('id', analysis_id);
-          await supabase.from('cct_audit_log').insert({ cct_analysis_id: analysis_id, action: 'ai_extract_error', metadata: { status: aiResp.status, detail: errTxt.slice(0, 500) } });
+          await supabase.from('cct_audit_log').insert({ cct_analysis_id: analysis_id, action: 'ai_extract_error', metadata: { status, detail: lastText.slice(0, 500) } });
           return;
         }
 
