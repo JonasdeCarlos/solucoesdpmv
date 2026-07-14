@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useCargos, useEstruturaSalarial } from '@/hooks/useCargos';
 import { useCCTs } from '@/hooks/useSucessoCliente';
 import { generateCargosPdf } from '@/utils/sucessoCliente/cargosPdf';
+import { generateCargoDetalhePdf } from '@/utils/sucessoCliente/cargoDetalhePdf';
 import { DebouncedInput } from '@/components/sucessoCliente/DebouncedField';
 import { extractPisosCCT } from '@/utils/sucessoCliente/pisosCCT';
 
