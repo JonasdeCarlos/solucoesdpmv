@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import { loadBranding } from '@/utils/sucessoCliente/perfilPdf';
+import { drawBrandLogo } from '@/utils/pdfBrandLogo';
 
 const hexToRgb = (h: string): [number, number, number] => {
   const clean = (h || '').replace('#', '');
@@ -61,7 +62,7 @@ const BLOCKS: Array<{ key: string; label: string }> = [
 export async function generateCctRaioXTecnicoPdf(params: { analysis: any }) {
   const { analysis } = params;
   const branding = await loadBranding().catch(() => null);
-  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+  const doc = new jsPDF({ unit: 'pt', format: 'a4', compress: true });
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
   const primary = branding?.primary_color || '#628E3F';
@@ -71,13 +72,8 @@ export async function generateCctRaioXTecnicoPdf(params: { analysis: any }) {
 
   // Header
   doc.setFillColor(pr, pg, pb);
-  doc.rect(0, 0, W, 100, 'F');
-  if (branding?.logo_url) {
-    const img = await urlToDataUrl(branding.logo_url);
-    if (img) {
-      try { doc.addImage(img, 'PNG', 24, 22, 60, 60); } catch { /* ignore */ }
-    }
-  }
+  doc.rect(0, 0, W, 105, 'F');
+  await drawBrandLogo(doc, branding?.logo_url, 24, 15, 95, 75, { centerY: true });
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(17);
