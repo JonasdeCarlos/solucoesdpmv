@@ -230,6 +230,26 @@ Deno.serve(async (req) => {
           }
         }
 
+        // Garante um resumo executivo mesmo quando a IA não retorna ai_summary no consolidado
+        if (!parsed.ai_summary || typeof parsed.ai_summary !== 'string' || parsed.ai_summary.trim().length < 30) {
+          const ident = parsed.identification || {};
+          const unions = parsed.unions || {};
+          const econ = parsed.economic_clauses || {};
+          const terr = parsed.territorial_base || {};
+          const bens = Array.isArray(parsed?.benefits_summary?.beneficios) ? parsed.benefits_summary.beneficios : [];
+          const partes: string[] = [];
+          if (ident.titulo || ident.vigencia_inicial) {
+            partes.push(`${ident.titulo || 'CCT'} com vigência de ${ident.vigencia_inicial || '—'} a ${ident.vigencia_final || '—'}${ident.data_base ? ` (data-base ${ident.data_base})` : ''}.`);
+          }
+          if (unions.sindicato_laboral) partes.push(`Sindicato laboral: ${unions.sindicato_laboral}${unions.sindicato_patronal ? ` / patronal: ${unions.sindicato_patronal}` : ''}.`);
+          if (terr.uf || (Array.isArray(terr.municipios) && terr.municipios.length)) {
+            partes.push(`Abrangência: ${Array.isArray(terr.municipios) ? terr.municipios.slice(0, 3).join(', ') : ''}${terr.uf ? ` (${terr.uf})` : ''}.`);
+          }
+          if (econ.reajuste_percentual) partes.push(`Reajuste salarial de ${econ.reajuste_percentual}${econ.reajuste_data ? ` a partir de ${econ.reajuste_data}` : ''}.`);
+          if (bens.length) partes.push(`${bens.length} benefício(s) obrigatório(s) identificado(s)${bens[0]?.nome ? `, incluindo ${bens.slice(0, 3).map((b: any) => b.nome).filter(Boolean).join(', ')}` : ''}.`);
+          parsed.ai_summary = partes.join(' ').trim() || 'Análise da CCT concluída. Revise os blocos abaixo para conferir cada cláusula.';
+        }
+
         const updates: any = {
           status: 'revisar',
           ai_summary: parsed.ai_summary || null,
