@@ -200,7 +200,14 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
     setBusy('conselho');
     try {
       const { data, error } = await supabase.functions.invoke('cargo-adequar', {
-        body: { nome: draft.nome, empresa: cliente?.nome, setor: cliente?.segmento || cliente?.cnae || '' },
+        body: {
+          nome: draft.nome,
+          empresa: cliente?.nome,
+          setor: cliente?.segmento || cliente?.cnae || '',
+          cbo: draft.cbo || '',
+          descricao_sumaria: draft.descricao_sumaria || '',
+          atividades: draft.atividades || [],
+        },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -212,16 +219,14 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
           conselho_registro: data.conselho_registro || { obrigatorio: false, sigla: '', descricao: '' },
           observacoes_regulamentacao: data.observacoes_regulamentacao || d.adequacao?.observacoes_regulamentacao || '',
           titulo_cbo: data.titulo_cbo || d.adequacao?.titulo_cbo || '',
+          conselho_mensagem: data.conselho_mensagem || '',
         },
       }));
-      const cr = data.conselho_registro || {};
-      if (cr.obrigatorio) {
-        toast.success(`Exige inscrição em conselho: ${cr.sigla || '—'}${cr.descricao ? ' — ' + cr.descricao : ''}`);
-      } else if (cr.sigla || cr.descricao) {
-        toast.info(`Conselho relacionado (não obrigatório): ${cr.sigla || cr.descricao}`);
-      } else {
-        toast.info('Cargo não exige inscrição em conselho de classe.');
-      }
+      const msg = data.conselho_mensagem || (data.conselho_registro?.obrigatorio
+        ? `Exige inscrição em ${data.conselho_registro?.sigla || 'conselho'}.`
+        : 'Não exige inscrição em conselho de classe.');
+      if (data.conselho_registro?.obrigatorio) toast.success(msg);
+      else toast.info(msg);
     } catch (e: any) {
       toast.error('Falha: ' + e.message);
     } finally { setBusy(null); }
