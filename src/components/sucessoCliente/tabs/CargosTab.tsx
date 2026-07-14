@@ -243,13 +243,18 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
 
   const salvar = async () => {
     if (!draft.nome) return toast.error('Informe o nome do cargo.');
-    const payload = {
-      ...draft,
-      salario_atual: draft.salario_atual === '' || draft.salario_atual == null ? null : Number(draft.salario_atual),
-      piso_salarial: draft.piso_salarial === '' || draft.piso_salarial == null ? null : Number(draft.piso_salarial),
-    };
-    await save(payload);
-    setOpen(false); toast.success('Cargo salvo.');
+    const allowed = ['id','nome','cbo','area','nivel','entrevista','descricao_sumaria','atividades','requisitos','salario_atual','piso_salarial','piso_referencia','adequacao'];
+    const payload: any = {};
+    for (const k of allowed) if (k in draft) payload[k] = (draft as any)[k];
+    payload.salario_atual = draft.salario_atual === '' || draft.salario_atual == null ? null : Number(draft.salario_atual);
+    payload.piso_salarial = draft.piso_salarial === '' || draft.piso_salarial == null ? null : Number(draft.piso_salarial);
+    try {
+      await save(payload);
+      setOpen(false);
+      toast.success('Cargo salvo.');
+    } catch (e: any) {
+      toast.error('Falha ao salvar: ' + (e?.message || e));
+    }
   };
 
   const sugerirEstrutura = async () => {

@@ -1093,6 +1093,7 @@ export type Database = {
       }
       cargos: {
         Row: {
+          adequacao: Json | null
           area: string | null
           atividades: Json | null
           cbo: string | null
@@ -1110,6 +1111,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          adequacao?: Json | null
           area?: string | null
           atividades?: Json | null
           cbo?: string | null
@@ -1127,6 +1129,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          adequacao?: Json | null
           area?: string | null
           atividades?: Json | null
           cbo?: string | null
