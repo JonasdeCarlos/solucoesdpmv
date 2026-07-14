@@ -9,7 +9,7 @@
  * footer of every page.
  */
 
-type LogoCacheEntry = { dataUrl: string; w: number; h: number; fmt: 'JPEG' | 'PNG' };
+type LogoCacheEntry = { dataUrl: string; w: number; h: number; fmt: 'PNG' };
 const cache = new Map<string, LogoCacheEntry>();
 
 async function fetchAsDataUrl(url: string): Promise<string> {
@@ -56,13 +56,14 @@ async function prepareLogo(url: string, maxWpx = 400, maxHpx = 400): Promise<Log
   canvas.height = h;
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('canvas ctx');
-  // White background so JPEG doesn't turn transparency black.
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, w, h);
+  // Preserve transparency — export as PNG. Canvas resize already shrinks the
+  // file dramatically compared to the raw source, and jsPDF `compress: true`
+  // does the final DEFLATE pass.
+  ctx.clearRect(0, 0, w, h);
   ctx.drawImage(img, 0, 0, w, h);
-  const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+  const dataUrl = canvas.toDataURL('image/png');
 
-  const entry: LogoCacheEntry = { dataUrl, w, h, fmt: 'JPEG' };
+  const entry: LogoCacheEntry = { dataUrl, w, h, fmt: 'PNG' };
   cache.set(key, entry);
   return entry;
 }
