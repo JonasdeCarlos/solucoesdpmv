@@ -40,7 +40,7 @@ export async function generateNoticePdf(opts: {
   branding: OfficeBranding | null;
 }): Promise<Blob> {
   const { title, body, holidays, branding } = opts;
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const doc = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
   const W = 210, H = 297;
   const primary = hexToRgb(branding?.primary_color || '#628E3F');
   const secondary = hexToRgb(branding?.secondary_color || '#E1E8F2');
@@ -51,15 +51,7 @@ export async function generateNoticePdf(opts: {
   doc.setFillColor(secondary[0], secondary[1], secondary[2]);
   doc.rect(0, 28, W, 6, 'F');
 
-  if (branding?.logo_url) {
-    const img = await loadImage(branding.logo_url);
-    if (img) {
-      const ratio = img.w / img.h;
-      const h = 18;
-      const w = h * ratio;
-      try { doc.addImage(img.dataUrl, 'PNG', 12, 5, w, h); } catch { /* noop */ }
-    }
-  }
+  await drawBrandLogo(doc, branding?.logo_url, 10, 3, 50, 22, { centerY: true });
 
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
@@ -126,7 +118,7 @@ export async function generateHolidayTablePdf(opts: {
   branding: OfficeBranding | null;
 }): Promise<Blob> {
   const { year, municipios, holidays, branding } = opts;
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const doc = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
   const W = 210, H = 297;
   const primary = hexToRgb(branding?.primary_color || '#628E3F');
   const secondary = hexToRgb(branding?.secondary_color || '#E1E8F2');
@@ -139,14 +131,7 @@ export async function generateHolidayTablePdf(opts: {
   doc.setFillColor(secondary[0], secondary[1], secondary[2]);
   doc.rect(0, HEADER_H, W, 5, 'F');
 
-  if (branding?.logo_url) {
-    const img = await loadImage(branding.logo_url);
-    if (img) {
-      const ratio = img.w / img.h;
-      const h = 32; const w = Math.min(h * ratio, 70);
-      try { doc.addImage(img.dataUrl, 'PNG', 10, (HEADER_H - h) / 2, w, h); } catch { /* noop */ }
-    }
-  }
+  await drawBrandLogo(doc, branding?.logo_url, 10, 4, 70, HEADER_H - 8, { centerY: true });
 
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
