@@ -1329,6 +1329,68 @@ export type Database = {
           },
         ]
       }
+      cct_analysis_files: {
+        Row: {
+          cct_analysis_id: string
+          created_at: string
+          file_kind: string
+          file_name: string
+          file_path: string
+          id: string
+          mime_type: string | null
+          notes: string | null
+          ocr_applied: boolean
+          ocr_text: string | null
+          order_index: number
+          page_count: number | null
+          size_bytes: number | null
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          cct_analysis_id: string
+          created_at?: string
+          file_kind?: string
+          file_name: string
+          file_path: string
+          id?: string
+          mime_type?: string | null
+          notes?: string | null
+          ocr_applied?: boolean
+          ocr_text?: string | null
+          order_index?: number
+          page_count?: number | null
+          size_bytes?: number | null
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          cct_analysis_id?: string
+          created_at?: string
+          file_kind?: string
+          file_name?: string
+          file_path?: string
+          id?: string
+          mime_type?: string | null
+          notes?: string | null
+          ocr_applied?: boolean
+          ocr_text?: string | null
+          order_index?: number
+          page_count?: number | null
+          size_bytes?: number | null
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cct_analysis_files_cct_analysis_id_fkey"
+            columns: ["cct_analysis_id"]
+            isOneToOne: false
+            referencedRelation: "cct_analyses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cct_audit_log: {
         Row: {
           action: string
