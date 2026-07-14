@@ -63,8 +63,7 @@ export function useCctClientLinks(analysisId: string | undefined) {
           await supabase.from('client_ccts' as any).update({ is_active: false } as any).eq('id', row.id);
           await supabase.from('cct_versions' as any).insert({
             cct_analysis_id: row.cct_analysis_id || analysisId,
-            client_cct_id: row.id,
-            snapshot: row,
+            snapshot: { ...row, client_cct_id: row.id, client_id },
             reason: 'substituição por nova CCT vinculada',
             created_by: uid,
           } as any);
