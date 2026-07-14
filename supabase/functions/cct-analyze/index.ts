@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { encodeBase64 } from 'https://deno.land/std@0.224.0/encoding/base64.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -90,15 +91,20 @@ Deno.serve(async (req) => {
         parts.push({ type: 'text', text: `Analise ${fileList.length} arquivo(s) desta CCT (principal + aditivos, se houver) e devolva o Raio-X em JSON estrito seguindo exatamente este schema:\n\n${RAIO_X_SCHEMA_HINT}\n\nRegras: nunca invente; aditivos sobrescrevem a CCT anterior; use "Não identificado no documento" quando ausente.` });
 
         for (const f of fileList) {
-          const { data: signed, error: sErr } = await supabase.storage.from('cct-docs').createSignedUrl(f.file_path, 3600);
-          if (sErr || !signed?.signedUrl) continue;
           const lower = (f.file_name || '').toLowerCase();
           const mime = f.mime_type || (lower.endsWith('.pdf') ? 'application/pdf' : (lower.match(/\.(png|jpe?g|webp|heic)$/) ? `image/${lower.split('.').pop()}` : 'application/octet-stream'));
+          // Baixa direto do storage (bytes) e converte para data URL base64
+          const { data: blob, error: dErr } = await supabase.storage.from('cct-docs').download(f.file_path);
+          if (dErr || !blob) { console.warn('[cct-analyze] download falhou', f.file_path, dErr?.message); continue; }
+          const buf = new Uint8Array(await blob.arrayBuffer());
+          const b64 = encodeBase64(buf);
+          const dataUrl = `data:${mime};base64,${b64}`;
+          console.log('[cct-analyze] arquivo pronto', f.file_name, 'bytes=', buf.byteLength);
           parts.push({ type: 'text', text: `\n--- Arquivo: ${f.file_name} (${f.file_kind}) ---` });
           if (mime.startsWith('image/')) {
-            parts.push({ type: 'image_url', image_url: { url: signed.signedUrl } });
+            parts.push({ type: 'image_url', image_url: { url: dataUrl } });
           } else {
-            parts.push({ type: 'file', file: { filename: f.file_name, file_data: signed.signedUrl } });
+            parts.push({ type: 'file', file: { filename: f.file_name, file_data: dataUrl } });
           }
         }
 
