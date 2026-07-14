@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import { loadBranding } from './perfilPdf';
+import { drawBrandLogo } from '@/utils/pdfBrandLogo';
 
 export type AlinhamentoData = {
   empresa: string;
@@ -21,7 +22,7 @@ const BRL = (n: number) => `R$ ${Number(n || 0).toLocaleString('pt-BR', { minimu
 
 export async function generatePremioAlinhamentoPdf(d: AlinhamentoData) {
   const branding = await loadBranding();
-  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+  const doc = new jsPDF({ unit: 'pt', format: 'a4', compress: true });
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
   const primary = branding?.primary_color || '#628E3F';
@@ -29,22 +30,15 @@ export async function generatePremioAlinhamentoPdf(d: AlinhamentoData) {
   const [pr,pg,pb] = hex(primary);
 
   // Header
-  doc.setFillColor(pr,pg,pb); doc.rect(0,0,W,80,'F');
-  if (branding?.logo_url) {
-    try {
-      const img = await fetch(branding.logo_url).then(r => r.blob()).then(b => new Promise<string>((res) => {
-        const fr = new FileReader(); fr.onload = () => res(fr.result as string); fr.readAsDataURL(b);
-      }));
-      doc.addImage(img, 'PNG', 20, 15, 50, 50);
-    } catch {}
-  }
+  doc.setFillColor(pr,pg,pb); doc.rect(0,0,W,95,'F');
+  await drawBrandLogo(doc, branding?.logo_url, 20, 12, 85, 70, { centerY: true });
   doc.setTextColor(255,255,255); doc.setFontSize(15);
-  doc.text(`ALINHAMENTO DE ${d.verba_label.toUpperCase()}`, 80, 36);
+  doc.text(`ALINHAMENTO DE ${d.verba_label.toUpperCase()}`, 120, 40);
   doc.setFontSize(10);
-  doc.text(`${d.empresa}${d.cnpj ? ` — CNPJ ${d.cnpj}` : ''}`, 80, 54);
-  doc.text(`Competência: ${d.competencia} • Emitido em ${new Date().toLocaleDateString('pt-BR')}`, 80, 68);
+  doc.text(`${d.empresa}${d.cnpj ? ` — CNPJ ${d.cnpj}` : ''}`, 120, 62);
+  doc.text(`Competência: ${d.competencia} • Emitido em ${new Date().toLocaleDateString('pt-BR')}`, 120, 78);
 
-  let y = 100;
+  let y = 115;
   doc.setTextColor(0,0,0);
 
   const box = (title: string, lines: string[]) => {
