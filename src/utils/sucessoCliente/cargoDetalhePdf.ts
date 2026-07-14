@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import { loadBranding } from './perfilPdf';
+import { drawBrandLogo } from '@/utils/pdfBrandLogo';
 
 const NIVEL_LABEL: Record<string, string> = {
   operacional: 'Operacional', tecnico: 'Técnico', analista: 'Analista',
@@ -11,7 +12,7 @@ const brl = (n: any) => Number(n || 0).toLocaleString('pt-BR', { style: 'currenc
 export async function generateCargoDetalhePdf(params: { cargo: any; empresa?: string }) {
   const { cargo, empresa } = params;
   const branding = await loadBranding();
-  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+  const doc = new jsPDF({ unit: 'pt', format: 'a4', compress: true });
   const W = doc.internal.pageSize.getWidth();
   const primary = branding?.primary_color || '#628E3F';
   const secondary = branding?.secondary_color || '#393421';
@@ -19,20 +20,16 @@ export async function generateCargoDetalhePdf(params: { cargo: any; empresa?: st
   const [sr, sg, sb] = hex(secondary);
 
   // Header
-  doc.setFillColor(pr, pg, pb); doc.rect(0, 0, W, 90, 'F');
-  if (branding?.logo_url) {
-    try {
-      const img = await fetch(branding.logo_url).then(r => r.blob()).then(b => new Promise<string>((res) => { const fr = new FileReader(); fr.onload = () => res(fr.result as string); fr.readAsDataURL(b); }));
-      doc.addImage(img, 'PNG', 20, 18, 55, 55);
-    } catch {}
-  }
-  doc.setTextColor(255, 255, 255); doc.setFontSize(16);
-  doc.text('Descrição de Cargo', 90, 38);
-  doc.setFontSize(10);
-  if (empresa) doc.text(`Empresa: ${empresa}`, 90, 56);
-  doc.text(`Emitido em ${new Date().toLocaleDateString('pt-BR')}`, 90, 72);
+  doc.setFillColor(pr, pg, pb); doc.rect(0, 0, W, 100, 'F');
+  await drawBrandLogo(doc, branding?.logo_url, 24, 15, 90, 70, { centerY: true });
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(17);
+  doc.text('Descrição de Cargo', 130, 42);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
+  if (empresa) doc.text(`Empresa: ${empresa}`, 130, 62);
+  doc.text(`Emitido em ${new Date().toLocaleDateString('pt-BR')}`, 130, 78);
 
-  let y = 110;
+  let y = 120;
   doc.setTextColor(0, 0, 0);
 
   const ensure = (h: number) => { if (y + h > 790) { doc.addPage(); y = 40; } };
