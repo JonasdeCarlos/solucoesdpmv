@@ -195,6 +195,38 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
     } finally { setBusy(null); }
   };
 
+  const verificarConselho = async () => {
+    if (!draft.nome?.trim()) return toast.error('Informe o nome do cargo.');
+    setBusy('conselho');
+    try {
+      const { data, error } = await supabase.functions.invoke('cargo-adequar', {
+        body: { nome: draft.nome, empresa: cliente?.nome, setor: cliente?.segmento || cliente?.cnae || '' },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setDraft((d: any) => ({
+        ...d,
+        adequacao: {
+          profissao_regulamentada: !!data.profissao_regulamentada,
+          base_legal: data.base_legal || d.adequacao?.base_legal || '',
+          conselho_registro: data.conselho_registro || { obrigatorio: false, sigla: '', descricao: '' },
+          observacoes_regulamentacao: data.observacoes_regulamentacao || d.adequacao?.observacoes_regulamentacao || '',
+          titulo_cbo: data.titulo_cbo || d.adequacao?.titulo_cbo || '',
+        },
+      }));
+      const cr = data.conselho_registro || {};
+      if (cr.obrigatorio) {
+        toast.success(`Exige inscrição em conselho: ${cr.sigla || '—'}${cr.descricao ? ' — ' + cr.descricao : ''}`);
+      } else if (cr.sigla || cr.descricao) {
+        toast.info(`Conselho relacionado (não obrigatório): ${cr.sigla || cr.descricao}`);
+      } else {
+        toast.info('Cargo não exige inscrição em conselho de classe.');
+      }
+    } catch (e: any) {
+      toast.error('Falha: ' + e.message);
+    } finally { setBusy(null); }
+  };
+
   const _completarComIA = async () => {
     if (!draft.nome?.trim()) return toast.error('Informe ao menos o nome do cargo.');
     const camposVazios = getCamposVaziosCargo(draft);
@@ -726,6 +758,10 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
             <Button type="button" size="sm" variant="default" onClick={adequarCargo} disabled={busy==='adequar' || !draft.nome?.trim()} title="Sugere CBO, descrição, atividades, regulamentação e conselho a partir do nome do cargo.">
               {busy==='adequar' ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <Sparkles className="w-4 h-4 mr-2"/>}
               Adequar cargo (IA)
+            </Button>
+            <Button type="button" size="sm" variant="outline" onClick={verificarConselho} disabled={busy==='conselho' || !draft.nome?.trim()} title="Verifica se o cargo exige inscrição em conselho de classe (CRC, OAB, CAU, CREA, COREN, CRM etc.).">
+              {busy==='conselho' ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <AlertTriangle className="w-4 h-4 mr-2"/>}
+              Exige conselho? (CRC/OAB/CAU…)
             </Button>
             <Button type="button" size="sm" variant="secondary" onClick={completarComIA} disabled={busy==='completar'}>
               {busy==='completar' ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <Sparkles className="w-4 h-4 mr-2"/>}
