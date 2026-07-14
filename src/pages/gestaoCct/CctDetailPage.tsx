@@ -6,11 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ChevronLeft, FileText, Download, MessageSquare, Sparkles, Loader2, Paperclip, X, FileDown } from 'lucide-react';
+import { ChevronLeft, FileText, Download, MessageSquare, Sparkles, Loader2, Paperclip, X, FileDown, FileSearch } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchCctAnalysis, logCctAudit, type CctAnalysis } from '@/hooks/cct/useCctAnalyses';
 import { CctClientLinksCard } from '@/components/gestaoCct/CctClientLinksCard';
 import { generateCctResumoClientePdf } from '@/utils/gestaoCct/resumoClientePdf';
+import { generateCctRaioXTecnicoPdf } from '@/utils/gestaoCct/raioXTecnicoPdf';
+import { CctVersionsCard } from '@/components/gestaoCct/CctVersionsCard';
 
 const BLOCK_TITLES: Record<string, string> = {
   identification: 'A) Identificação',
@@ -116,6 +118,7 @@ export default function CctDetailPage() {
   const [analyzing, setAnalyzing] = useState(false);
   const [uploadingExtra, setUploadingExtra] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [exportingTech, setExportingTech] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const reload = useCallback(async () => {
@@ -214,6 +217,20 @@ export default function CctDetailPage() {
     }
   };
 
+  const exportTechPdf = async () => {
+    if (!a) return;
+    setExportingTech(true);
+    try {
+      await generateCctRaioXTecnicoPdf({ analysis: a });
+      await logCctAudit(a.id, 'raio_x_pdf_exportado', {});
+      toast.success('Raio-X técnico gerado.');
+    } catch (err: any) {
+      toast.error(err?.message || 'Falha ao gerar PDF técnico.');
+    } finally {
+      setExportingTech(false);
+    }
+  };
+
   if (loading) return <p className="text-muted-foreground">Carregando…</p>;
   if (!a) return <p className="text-muted-foreground">Análise não encontrada.</p>;
 
@@ -237,6 +254,10 @@ export default function CctDetailPage() {
           <Button variant="outline" onClick={exportPdf} disabled={exporting || !a.ocr_applied}>
             {exporting ? <Loader2 className="w-4 h-4 mr-1 animate-spin"/> : <FileDown className="w-4 h-4 mr-1"/>}
             Emitir PDF do resumo
+          </Button>
+          <Button variant="outline" onClick={exportTechPdf} disabled={exportingTech || !a.ocr_applied}>
+            {exportingTech ? <Loader2 className="w-4 h-4 mr-1 animate-spin"/> : <FileSearch className="w-4 h-4 mr-1"/>}
+            PDF Raio-X técnico
           </Button>
           <Button variant="outline" onClick={() => nav(`/gestao-cct/${a.id}/revisar`)}><FileText className="w-4 h-4 mr-1"/>Revisar Raio-X</Button>
           <Button variant="outline" onClick={() => nav(`/gestao-cct/${a.id}/perguntar`)}><MessageSquare className="w-4 h-4 mr-1"/>Perguntar à CCT</Button>
@@ -285,6 +306,8 @@ export default function CctDetailPage() {
       )}
 
       <CctClientLinksCard analysis={a} />
+
+      <CctVersionsCard analysis={a} />
 
       {Object.entries(BLOCK_TITLES).map(([key, label]) => (
         <Card key={key}>
