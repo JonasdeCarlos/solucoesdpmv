@@ -132,7 +132,7 @@ Deno.serve(async (req) => {
     fileList = [...fileList].sort((a, b) => fileKindWeight(a.file_kind) - fileKindWeight(b.file_kind) || (a.order_index ?? 0) - (b.order_index ?? 0));
 
     // Marca como em processamento
-    await supabase.from('cct_analyses').update({ status: 'em_analise', ai_model: MODEL, ai_version: 'raio-x-v2-file-parser', ai_summary: 'Análise em andamento...' }).eq('id', analysis_id);
+    await supabase.from('cct_analyses').update({ status: 'em_analise', ai_model: MODEL, ai_version: 'raio-x-v3-por-arquivo', ai_summary: 'Análise em andamento...' }).eq('id', analysis_id);
 
     // Executa análise em background para evitar timeout de 150s
     const runAnalysis = async () => {
