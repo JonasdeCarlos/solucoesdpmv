@@ -130,14 +130,15 @@ Deno.serve(async (req) => {
           await new Promise((r) => setTimeout(r, 2000 * attempt));
         }
 
-        if (!aiResp.ok) {
-          const errTxt = await aiResp.text();
-          console.error('AI error', aiResp.status, errTxt);
-          let msg = `Erro IA (${aiResp.status})`;
-          if (aiResp.status === 429) msg = 'Limite de requisições atingido. Tente novamente em instantes.';
-          if (aiResp.status === 402) msg = 'Créditos de IA esgotados. Adicione créditos ao workspace.';
+        if (!aiResp || !aiResp.ok) {
+          const status = aiResp?.status ?? lastStatus;
+          console.error('AI error final', status, lastText);
+          let msg = `Erro IA (${status})`;
+          if (status === 429) msg = 'Limite de requisições atingido. Tente novamente em instantes.';
+          if (status === 402) msg = 'Créditos de IA esgotados. Adicione créditos ao workspace.';
+          if ([502, 503, 504].includes(status)) msg = 'Serviço de IA temporariamente indisponível após retries. Tente novamente em alguns minutos.';
           await supabase.from('cct_analyses').update({ status: 'erro', ai_summary: msg }).eq('id', analysis_id);
-          await supabase.from('cct_audit_log').insert({ cct_analysis_id: analysis_id, action: 'ai_extract_error', metadata: { status: aiResp.status, detail: errTxt.slice(0, 500) } });
+          await supabase.from('cct_audit_log').insert({ cct_analysis_id: analysis_id, action: 'ai_extract_error', metadata: { status, detail: lastText.slice(0, 500) } });
           return;
         }
 
