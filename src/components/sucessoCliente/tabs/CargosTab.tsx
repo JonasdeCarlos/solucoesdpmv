@@ -195,6 +195,38 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
     } finally { setBusy(null); }
   };
 
+  const verificarConselho = async () => {
+    if (!draft.nome?.trim()) return toast.error('Informe o nome do cargo.');
+    setBusy('conselho');
+    try {
+      const { data, error } = await supabase.functions.invoke('cargo-adequar', {
+        body: { nome: draft.nome, empresa: cliente?.nome, setor: cliente?.segmento || cliente?.cnae || '' },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setDraft((d: any) => ({
+        ...d,
+        adequacao: {
+          profissao_regulamentada: !!data.profissao_regulamentada,
+          base_legal: data.base_legal || d.adequacao?.base_legal || '',
+          conselho_registro: data.conselho_registro || { obrigatorio: false, sigla: '', descricao: '' },
+          observacoes_regulamentacao: data.observacoes_regulamentacao || d.adequacao?.observacoes_regulamentacao || '',
+          titulo_cbo: data.titulo_cbo || d.adequacao?.titulo_cbo || '',
+        },
+      }));
+      const cr = data.conselho_registro || {};
+      if (cr.obrigatorio) {
+        toast.success(`Exige inscrição em conselho: ${cr.sigla || '—'}${cr.descricao ? ' — ' + cr.descricao : ''}`);
+      } else if (cr.sigla || cr.descricao) {
+        toast.info(`Conselho relacionado (não obrigatório): ${cr.sigla || cr.descricao}`);
+      } else {
+        toast.info('Cargo não exige inscrição em conselho de classe.');
+      }
+    } catch (e: any) {
+      toast.error('Falha: ' + e.message);
+    } finally { setBusy(null); }
+  };
+
   const _completarComIA = async () => {
     if (!draft.nome?.trim()) return toast.error('Informe ao menos o nome do cargo.');
     const camposVazios = getCamposVaziosCargo(draft);
