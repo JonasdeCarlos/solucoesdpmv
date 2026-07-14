@@ -35,8 +35,15 @@ Novo card na página de detalhe (`CctDetailPage`) — "Clientes vinculados" — 
 - Reutilizar `RenderObject/RenderValue` do detalhe apenas em modo leitura; a edição usa formulários controlados.
 - Persistência de rascunhos: os blocos editados salvam direto nas colunas JSONB da própria `cct_analyses` (não duplicamos em `cct_clauses`/`cct_benefits` nesta fase — sincronização de `cct_benefits` continua no fluxo da IA).
 
-## Fora do escopo desta fase
+## Fase 4 (entregue)
 
-- Geração de PDF do Raio-X (Fase 4).
-- Alertas automáticos e dashboard com KPIs (Fase 4).
-- Chat "Perguntar à CCT" e versionamento comparativo (Fase 5).
+- PDF técnico completo do Raio-X (`src/utils/gestaoCct/raioXTecnicoPdf.ts`) com identidade visual e todos os blocos A–N + notas do revisor.
+- Botão "PDF Raio-X técnico" no `CctDetailPage` (além do PDF de resumo para cliente).
+- Motor de alertas automáticos: edge function `cct-alerts-refresh` gera linhas em `cct_alerts` a partir de `client_ccts` (vencendo em 30d/90d, vencidas, sem vigência).
+- Hook `useCctAlerts` + card "Alertas abertos" no dashboard com botão "Recalcular", severidade, atalho para a análise e resolver.
+
+## Fase 5 (entregue)
+
+- Edge function `cct-ask` consulta o Raio-X JSON + trecho de OCR na `cct_analyses` e responde via Lovable AI (Gemini 2.5 Flash) com system prompt anti-alucinação.
+- `CctAskPage` funcional: sugestões prontas, chat com histórico, badges de status, integração com `logCctAudit` (`ask_question`).
+- Versionamento: hook `useCctVersions` + componente `CctVersionsCard` no detalhe permitem "Salvar versão" (snapshot com motivo → `cct_versions`) e listar histórico.
