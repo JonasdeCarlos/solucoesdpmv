@@ -11,7 +11,6 @@ import { Search, AlertTriangle, CheckCircle2, XCircle, FileText, Plus, ArrowRigh
 import { useCctAnalyses, type CctAnalysis } from '@/hooks/cct/useCctAnalyses';
 import { useCctAlerts } from '@/hooks/cct/useCctAlerts';
 import { toast } from 'sonner';
-import { useState as useReactState } from 'react';
 
 type LinkedRow = {
   id: string;
@@ -48,7 +47,7 @@ export default function GestaoCctDashboardPage() {
   const nav = useNavigate();
   const { items: analyses, loading: loadingA } = useCctAnalyses();
   const { items: alerts, refresh: refreshAlerts, resolve: resolveAlert, loading: loadingAlerts } = useCctAlerts();
-  const [refreshingAlerts, setRefreshingAlerts] = useReactState(false);
+  const [refreshingAlerts, setRefreshingAlerts] = useState(false);
   const [rows, setRows] = useState<LinkedRow[]>([]);
   const [loadingR, setLoadingR] = useState(true);
   const [q, setQ] = useState('');
