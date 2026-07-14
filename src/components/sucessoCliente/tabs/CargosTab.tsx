@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useCargos, useEstruturaSalarial } from '@/hooks/useCargos';
 import { useCCTs } from '@/hooks/useSucessoCliente';
 import { generateCargosPdf } from '@/utils/sucessoCliente/cargosPdf';
+import { generateCargoDetalhePdf } from '@/utils/sucessoCliente/cargoDetalhePdf';
 import { DebouncedInput } from '@/components/sucessoCliente/DebouncedField';
 import { extractPisosCCT } from '@/utils/sucessoCliente/pisosCCT';
 
@@ -582,6 +583,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
               <div className="flex gap-1">
                 <Button size="icon" variant="ghost" onClick={()=>openEdit(c)}><Pencil className="w-4 h-4"/></Button>
                 <Button size="icon" variant="ghost" onClick={()=>duplicate(c)}><Copy className="w-4 h-4"/></Button>
+                <Button size="icon" variant="ghost" title="Gerar PDF do cargo" onClick={async()=>{ try { await generateCargoDetalhePdf({ cargo: c, empresa: cliente?.nome }); toast.success('PDF do cargo gerado.'); } catch(e:any){ toast.error('Falha: '+e.message); } }}><FileDown className="w-4 h-4"/></Button>
                 <Button size="icon" variant="ghost" onClick={()=>{if(confirm('Excluir cargo?')) remove(c.id);}}><Trash2 className="w-4 h-4 text-destructive"/></Button>
               </div>
             </CardContent></Card>
@@ -784,6 +786,24 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
                   ))}
                 </SelectContent>
               </Select>
+              {pisosCCT.length > 0 && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="mt-1 w-full"
+                  onClick={() => {
+                    const norm = (s: string) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                    const n = norm(draft.nome);
+                    if (!n) return toast.error('Informe o nome do cargo antes.');
+                    const match = pisosCCT.find(p => p.funcao && norm(p.funcao).includes(n))
+                      || pisosCCT.find(p => p.funcao && n.includes(norm(p.funcao)));
+                    if (!match) return toast.info('Nenhum piso da CCT correspondente ao nome do cargo. Selecione manualmente.');
+                    setDraft({ ...draft, piso_salarial: match.valor, piso_referencia: match.ref });
+                    toast.success(`Piso trazido da CCT: R$ ${Number(match.valor).toLocaleString('pt-BR',{minimumFractionDigits:2})}`);
+                  }}
+                ><Sparkles className="w-3 h-3 mr-1"/>Sugerir piso pela CCT</Button>
+              )}
             </div>
             <div>
               <Label className="text-xs">Valor do piso (R$)</Label>
@@ -816,6 +836,11 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={()=>setOpen(false)}>Cancelar</Button>
+            {draft.id && (
+              <Button variant="outline" onClick={async()=>{ try { await generateCargoDetalhePdf({ cargo: draft, empresa: cliente?.nome }); toast.success('PDF do cargo gerado.'); } catch(e:any){ toast.error('Falha: '+e.message); } }}>
+                <FileDown className="w-4 h-4 mr-1"/>PDF do cargo
+              </Button>
+            )}
             <Button onClick={salvar}>Salvar</Button>
           </DialogFooter>
         </DialogContent>
