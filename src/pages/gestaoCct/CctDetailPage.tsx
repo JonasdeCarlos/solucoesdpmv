@@ -36,11 +36,73 @@ type CctFile = {
   order_index: number;
 };
 
+function humanizeKey(k: string) {
+  return k
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function isEmpty(v: any): boolean {
+  if (v == null) return true;
+  if (typeof v === 'string') return v.trim() === '' || /^n[ãa]o identificado/i.test(v.trim());
+  if (Array.isArray(v)) return v.length === 0 || v.every(isEmpty);
+  if (typeof v === 'object') return Object.keys(v).length === 0 || Object.values(v).every(isEmpty);
+  return false;
+}
+
+function RenderValue({ value }: { value: any }) {
+  if (isEmpty(value)) {
+    return <span className="text-muted-foreground italic">—</span>;
+  }
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    return <span className="text-sm whitespace-pre-wrap break-words">{String(value)}</span>;
+  }
+  if (Array.isArray(value)) {
+    // Array of primitives → bullet list
+    if (value.every((v) => typeof v !== 'object' || v === null)) {
+      return (
+        <ul className="list-disc list-inside space-y-1 text-sm">
+          {value.map((v, i) => <li key={i}>{String(v)}</li>)}
+        </ul>
+      );
+    }
+    // Array of objects → cards
+    return (
+      <div className="space-y-2">
+        {value.map((v, i) => (
+          <div key={i} className="border rounded-md p-3 bg-muted/20">
+            <RenderObject obj={v} />
+          </div>
+        ))}
+      </div>
+    );
+  }
+  if (typeof value === 'object') {
+    return <RenderObject obj={value} />;
+  }
+  return <span className="text-sm">{String(value)}</span>;
+}
+
+function RenderObject({ obj }: { obj: Record<string, any> }) {
+  const entries = Object.entries(obj).filter(([, v]) => !isEmpty(v));
+  if (entries.length === 0) return <span className="text-muted-foreground italic text-sm">—</span>;
+  return (
+    <dl className="grid grid-cols-1 md:grid-cols-[minmax(140px,auto)_1fr] gap-x-4 gap-y-2 text-sm">
+      {entries.map(([k, v]) => (
+        <div key={k} className="contents">
+          <dt className="font-medium text-muted-foreground">{humanizeKey(k)}</dt>
+          <dd className="min-w-0"><RenderValue value={v} /></dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
 function JsonBlock({ data }: { data: any }) {
-  if (!data || (typeof data === 'object' && Object.keys(data).length === 0)) {
+  if (isEmpty(data)) {
     return <p className="text-sm text-muted-foreground italic">Ainda não extraído. Clique em "Analisar com IA".</p>;
   }
-  return <pre className="text-xs bg-muted/40 p-2 rounded overflow-x-auto whitespace-pre-wrap">{JSON.stringify(data, null, 2)}</pre>;
+  return <RenderValue value={data} />;
 }
 
 export default function CctDetailPage() {
