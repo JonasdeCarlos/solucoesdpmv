@@ -50,7 +50,7 @@ const BRL = (n: number) => `R$ ${Number(n || 0).toLocaleString('pt-BR', { minimu
 
 export async function generatePremioPoliticaPdf(d: PoliticaPdfData) {
   const branding = await loadBranding();
-  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+  const doc = new jsPDF({ unit: 'pt', format: 'a4', compress: true });
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
   const primary = branding?.primary_color || '#628E3F';
