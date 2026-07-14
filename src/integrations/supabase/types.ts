@@ -1153,6 +1153,492 @@ export type Database = {
           },
         ]
       }
+      cct_alerts: {
+        Row: {
+          alert_type: string
+          cct_analysis_id: string | null
+          client_cct_id: string | null
+          client_id: string | null
+          created_at: string
+          due_date: string | null
+          id: string
+          message: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          alert_type: string
+          cct_analysis_id?: string | null
+          client_cct_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          message?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          alert_type?: string
+          cct_analysis_id?: string | null
+          client_cct_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          message?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cct_alerts_cct_analysis_id_fkey"
+            columns: ["cct_analysis_id"]
+            isOneToOne: false
+            referencedRelation: "cct_analyses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cct_alerts_client_cct_id_fkey"
+            columns: ["client_cct_id"]
+            isOneToOne: false
+            referencedRelation: "client_ccts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cct_analyses: {
+        Row: {
+          admission_termination: Json
+          ai_model: string | null
+          ai_summary: string | null
+          ai_version: string | null
+          benefits_summary: Json
+          client_cct_id: string | null
+          confidence_score: number | null
+          created_at: string
+          created_by: string | null
+          dp_attention_points: Json
+          economic_clauses: Json
+          health_safety: Json
+          id: string
+          identification: Json
+          journey_rules: Json
+          ocr_applied: boolean
+          ocr_text: string | null
+          original_file_name: string | null
+          original_file_path: string | null
+          overtime_rules: Json
+          penalties: Json
+          professional_classes: Json
+          reviewed_at: string | null
+          reviewed_by: string | null
+          reviewer_notes: string | null
+          status: string
+          territorial_base: Json
+          title: string
+          union_obligations: Json
+          unions: Json
+          updated_at: string
+          vacation_absence: Json
+        }
+        Insert: {
+          admission_termination?: Json
+          ai_model?: string | null
+          ai_summary?: string | null
+          ai_version?: string | null
+          benefits_summary?: Json
+          client_cct_id?: string | null
+          confidence_score?: number | null
+          created_at?: string
+          created_by?: string | null
+          dp_attention_points?: Json
+          economic_clauses?: Json
+          health_safety?: Json
+          id?: string
+          identification?: Json
+          journey_rules?: Json
+          ocr_applied?: boolean
+          ocr_text?: string | null
+          original_file_name?: string | null
+          original_file_path?: string | null
+          overtime_rules?: Json
+          penalties?: Json
+          professional_classes?: Json
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          reviewer_notes?: string | null
+          status?: string
+          territorial_base?: Json
+          title?: string
+          union_obligations?: Json
+          unions?: Json
+          updated_at?: string
+          vacation_absence?: Json
+        }
+        Update: {
+          admission_termination?: Json
+          ai_model?: string | null
+          ai_summary?: string | null
+          ai_version?: string | null
+          benefits_summary?: Json
+          client_cct_id?: string | null
+          confidence_score?: number | null
+          created_at?: string
+          created_by?: string | null
+          dp_attention_points?: Json
+          economic_clauses?: Json
+          health_safety?: Json
+          id?: string
+          identification?: Json
+          journey_rules?: Json
+          ocr_applied?: boolean
+          ocr_text?: string | null
+          original_file_name?: string | null
+          original_file_path?: string | null
+          overtime_rules?: Json
+          penalties?: Json
+          professional_classes?: Json
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          reviewer_notes?: string | null
+          status?: string
+          territorial_base?: Json
+          title?: string
+          union_obligations?: Json
+          unions?: Json
+          updated_at?: string
+          vacation_absence?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cct_analyses_client_cct_id_fkey"
+            columns: ["client_cct_id"]
+            isOneToOne: false
+            referencedRelation: "client_ccts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cct_audit_log: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          cct_analysis_id: string | null
+          client_id: string | null
+          created_at: string
+          id: string
+          metadata: Json
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id?: string | null
+          cct_analysis_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string | null
+          cct_analysis_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cct_audit_log_cct_analysis_id_fkey"
+            columns: ["cct_analysis_id"]
+            isOneToOne: false
+            referencedRelation: "cct_analyses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cct_benefits: {
+        Row: {
+          benefit_name: string
+          cct_analysis_id: string
+          conditions: string | null
+          confidence: string | null
+          created_at: string
+          due_date_rule: string | null
+          eligible_employees: string | null
+          employee_discount_allowed: boolean | null
+          id: string
+          notes: string | null
+          page_number: number | null
+          penalty: string | null
+          periodicity: string | null
+          source_snippet: string | null
+          updated_at: string
+          value_amount: number | null
+          value_text: string | null
+        }
+        Insert: {
+          benefit_name: string
+          cct_analysis_id: string
+          conditions?: string | null
+          confidence?: string | null
+          created_at?: string
+          due_date_rule?: string | null
+          eligible_employees?: string | null
+          employee_discount_allowed?: boolean | null
+          id?: string
+          notes?: string | null
+          page_number?: number | null
+          penalty?: string | null
+          periodicity?: string | null
+          source_snippet?: string | null
+          updated_at?: string
+          value_amount?: number | null
+          value_text?: string | null
+        }
+        Update: {
+          benefit_name?: string
+          cct_analysis_id?: string
+          conditions?: string | null
+          confidence?: string | null
+          created_at?: string
+          due_date_rule?: string | null
+          eligible_employees?: string | null
+          employee_discount_allowed?: boolean | null
+          id?: string
+          notes?: string | null
+          page_number?: number | null
+          penalty?: string | null
+          periodicity?: string | null
+          source_snippet?: string | null
+          updated_at?: string
+          value_amount?: number | null
+          value_text?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cct_benefits_cct_analysis_id_fkey"
+            columns: ["cct_analysis_id"]
+            isOneToOne: false
+            referencedRelation: "cct_analyses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cct_clauses: {
+        Row: {
+          cct_analysis_id: string
+          clause_title: string
+          clause_type: string | null
+          confidence: string | null
+          created_at: string
+          extracted_text: string | null
+          id: string
+          order_index: number
+          page_number: number | null
+          source_snippet: string | null
+          status: string
+          summary: string | null
+          updated_at: string
+        }
+        Insert: {
+          cct_analysis_id: string
+          clause_title: string
+          clause_type?: string | null
+          confidence?: string | null
+          created_at?: string
+          extracted_text?: string | null
+          id?: string
+          order_index?: number
+          page_number?: number | null
+          source_snippet?: string | null
+          status?: string
+          summary?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cct_analysis_id?: string
+          clause_title?: string
+          clause_type?: string | null
+          confidence?: string | null
+          created_at?: string
+          extracted_text?: string | null
+          id?: string
+          order_index?: number
+          page_number?: number | null
+          source_snippet?: string | null
+          status?: string
+          summary?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cct_clauses_cct_analysis_id_fkey"
+            columns: ["cct_analysis_id"]
+            isOneToOne: false
+            referencedRelation: "cct_analyses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cct_client_links: {
+        Row: {
+          cct_analysis_id: string
+          client_cct_id: string | null
+          client_id: string
+          created_at: string
+          id: string
+          linked_at: string
+          linked_by: string | null
+          status: string
+          unlinked_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          cct_analysis_id: string
+          client_cct_id?: string | null
+          client_id: string
+          created_at?: string
+          id?: string
+          linked_at?: string
+          linked_by?: string | null
+          status?: string
+          unlinked_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cct_analysis_id?: string
+          client_cct_id?: string | null
+          client_id?: string
+          created_at?: string
+          id?: string
+          linked_at?: string
+          linked_by?: string | null
+          status?: string
+          unlinked_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cct_client_links_cct_analysis_id_fkey"
+            columns: ["cct_analysis_id"]
+            isOneToOne: false
+            referencedRelation: "cct_analyses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cct_client_links_client_cct_id_fkey"
+            columns: ["client_cct_id"]
+            isOneToOne: false
+            referencedRelation: "client_ccts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cct_reports: {
+        Row: {
+          cct_analysis_id: string
+          created_at: string
+          generated_at: string
+          generated_by: string | null
+          id: string
+          metadata: Json
+          pdf_path: string | null
+          report_type: string
+          updated_at: string
+          whatsapp_text: string | null
+        }
+        Insert: {
+          cct_analysis_id: string
+          created_at?: string
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          metadata?: Json
+          pdf_path?: string | null
+          report_type: string
+          updated_at?: string
+          whatsapp_text?: string | null
+        }
+        Update: {
+          cct_analysis_id?: string
+          created_at?: string
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          metadata?: Json
+          pdf_path?: string | null
+          report_type?: string
+          updated_at?: string
+          whatsapp_text?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cct_reports_cct_analysis_id_fkey"
+            columns: ["cct_analysis_id"]
+            isOneToOne: false
+            referencedRelation: "cct_analyses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cct_versions: {
+        Row: {
+          cct_analysis_id: string
+          created_at: string
+          created_by: string | null
+          file_path_snapshot: string | null
+          id: string
+          ocr_text_snapshot: string | null
+          reason: string | null
+          snapshot: Json
+          version_number: number
+        }
+        Insert: {
+          cct_analysis_id: string
+          created_at?: string
+          created_by?: string | null
+          file_path_snapshot?: string | null
+          id?: string
+          ocr_text_snapshot?: string | null
+          reason?: string | null
+          snapshot: Json
+          version_number?: number
+        }
+        Update: {
+          cct_analysis_id?: string
+          created_at?: string
+          created_by?: string | null
+          file_path_snapshot?: string | null
+          id?: string
+          ocr_text_snapshot?: string | null
+          reason?: string | null
+          snapshot?: Json
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cct_versions_cct_analysis_id_fkey"
+            columns: ["cct_analysis_id"]
+            isOneToOne: false
+            referencedRelation: "cct_analyses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ccts: {
         Row: {
           created_at: string
@@ -1277,6 +1763,7 @@ export type Database = {
           ai_clauses: Json
           ai_summary: string | null
           categoria_abrangida: string | null
+          cct_analysis_id: string | null
           client_id: string
           codigo_sindicato_dominio: string
           created_at: string
@@ -1311,6 +1798,7 @@ export type Database = {
           ai_clauses?: Json
           ai_summary?: string | null
           categoria_abrangida?: string | null
+          cct_analysis_id?: string | null
           client_id: string
           codigo_sindicato_dominio?: string
           created_at?: string
@@ -1345,6 +1833,7 @@ export type Database = {
           ai_clauses?: Json
           ai_summary?: string | null
           categoria_abrangida?: string | null
+          cct_analysis_id?: string | null
           client_id?: string
           codigo_sindicato_dominio?: string
           created_at?: string
@@ -1375,6 +1864,13 @@ export type Database = {
           version?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "client_ccts_cct_analysis_id_fkey"
+            columns: ["cct_analysis_id"]
+            isOneToOne: false
+            referencedRelation: "cct_analyses"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "client_ccts_client_id_fkey"
             columns: ["client_id"]

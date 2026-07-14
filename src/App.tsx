@@ -51,6 +51,11 @@ import GestaoCctPage from "./pages/sucessoCliente/GestaoCctPage";
 import FeedbackPublicPage from "./pages/sucessoCliente/FeedbackPublicPage";
 import EmpresaFeedbackPage from "./pages/sucessoCliente/EmpresaFeedbackPage";
 import PoliticaHotelariaPublicPage from "./pages/sucessoCliente/PoliticaHotelariaPublicPage";
+import GestaoCctDashboardPage from "./pages/gestaoCct/GestaoCctDashboardPage";
+import CctNovaPage from "./pages/gestaoCct/CctNovaPage";
+import CctDetailPage from "./pages/gestaoCct/CctDetailPage";
+import CctReviewPage from "./pages/gestaoCct/CctReviewPage";
+import CctAskPage from "./pages/gestaoCct/CctAskPage";
 
 const queryClient = new QueryClient();
 
@@ -114,6 +119,11 @@ const App = () => (
               <Route path="/sucesso-cliente/relatorios" element={<SucessoClienteReportsPage />} />
              <Route path="/sucesso-cliente/gestao-cct" element={<GestaoCctPage />} />
               <Route path="/sucesso-cliente/:id" element={<SucessoClienteProfilePage />} />
+              <Route path="/gestao-cct" element={<GestaoCctDashboardPage />} />
+              <Route path="/gestao-cct/nova" element={<CctNovaPage />} />
+              <Route path="/gestao-cct/:id" element={<CctDetailPage />} />
+              <Route path="/gestao-cct/:id/revisar" element={<CctReviewPage />} />
+              <Route path="/gestao-cct/:id/perguntar" element={<CctAskPage />} />
               <Route path="/usuarios" element={<UsuariosPage />} />
               <Route path="/banco-horas" element={<BhLayout />}>
                 <Route index element={<BhDashboardPage />} />
