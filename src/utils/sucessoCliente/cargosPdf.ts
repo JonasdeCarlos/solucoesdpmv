@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { loadBranding } from './perfilPdf';
+import { drawBrandLogo } from '@/utils/pdfBrandLogo';
 
 const NIVEL_LABEL: Record<string,string> = {
   operacional:'Operacional', tecnico:'Técnico', analista:'Analista',
@@ -24,24 +25,14 @@ export async function generateCargosPdf(params: {
   const introducao = replaceManuais(params.introducao);
   const consideracoes = replaceManuais(params.consideracoes);
   const branding = await loadBranding();
-  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+  const doc = new jsPDF({ unit: 'pt', format: 'a4', compress: true });
   const W = doc.internal.pageSize.getWidth();
   const primary = branding?.primary_color || '#628E3F';
   const [pr,pg,pb] = hex(primary);
 
   // Capa
   doc.setFillColor(pr,pg,pb); doc.rect(0,0,W,300,'F');
-  if (branding?.logo_url) {
-    try {
-      const img = await fetch(branding.logo_url).then(r => r.blob()).then(b => new Promise<string>((res) => { const fr = new FileReader(); fr.onload = () => res(fr.result as string); fr.readAsDataURL(b); }));
-      const props = (doc as any).getImageProperties(img);
-      const maxH = 90, maxW = 180;
-      const ratio = props.width / props.height;
-      let h = maxH, w = h * ratio;
-      if (w > maxW) { w = maxW; h = w / ratio; }
-      doc.addImage(img, props.fileType || 'PNG', W/2 - w/2, 40, w, h);
-    } catch {}
-  }
+  await drawBrandLogo(doc, branding?.logo_url, W/2 - 100, 40, 200, 110, { align: 'center' });
   doc.setTextColor(255,255,255); doc.setFontSize(22); doc.text('Plano de Cargos e Salários', W/2, 180, { align: 'center' });
   doc.setFontSize(14); doc.text(empresa, W/2, 210, { align: 'center' });
   doc.setFontSize(11); doc.text(`Consultor: ${consultor || '—'}`, W/2, 240, { align: 'center' });
