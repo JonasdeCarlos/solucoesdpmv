@@ -583,6 +583,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
               <div className="flex gap-1">
                 <Button size="icon" variant="ghost" onClick={()=>openEdit(c)}><Pencil className="w-4 h-4"/></Button>
                 <Button size="icon" variant="ghost" onClick={()=>duplicate(c)}><Copy className="w-4 h-4"/></Button>
+                <Button size="icon" variant="ghost" title="Gerar PDF do cargo" onClick={async()=>{ try { await generateCargoDetalhePdf({ cargo: c, empresa: cliente?.nome }); toast.success('PDF do cargo gerado.'); } catch(e:any){ toast.error('Falha: '+e.message); } }}><FileDown className="w-4 h-4"/></Button>
                 <Button size="icon" variant="ghost" onClick={()=>{if(confirm('Excluir cargo?')) remove(c.id);}}><Trash2 className="w-4 h-4 text-destructive"/></Button>
               </div>
             </CardContent></Card>
