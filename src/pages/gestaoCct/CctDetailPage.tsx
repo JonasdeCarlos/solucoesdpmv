@@ -6,10 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ChevronLeft, FileText, Download, MessageSquare, Sparkles, Loader2, Paperclip, X } from 'lucide-react';
+import { ChevronLeft, FileText, Download, MessageSquare, Sparkles, Loader2, Paperclip, X, FileDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchCctAnalysis, logCctAudit, type CctAnalysis } from '@/hooks/cct/useCctAnalyses';
 import { CctClientLinksCard } from '@/components/gestaoCct/CctClientLinksCard';
+import { generateCctResumoClientePdf } from '@/utils/gestaoCct/resumoClientePdf';
 
 const BLOCK_TITLES: Record<string, string> = {
   identification: 'A) Identificação',
@@ -114,6 +115,7 @@ export default function CctDetailPage() {
   const [loading, setLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
   const [uploadingExtra, setUploadingExtra] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const reload = useCallback(async () => {
@@ -198,6 +200,20 @@ export default function CctDetailPage() {
     }
   };
 
+  const exportPdf = async () => {
+    if (!a) return;
+    setExporting(true);
+    try {
+      await generateCctResumoClientePdf({ analysis: a });
+      await logCctAudit(a.id, 'resumo_pdf_exportado', {});
+      toast.success('PDF gerado.');
+    } catch (err: any) {
+      toast.error(err?.message || 'Falha ao gerar PDF.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   if (loading) return <p className="text-muted-foreground">Carregando…</p>;
   if (!a) return <p className="text-muted-foreground">Análise não encontrada.</p>;
 
@@ -217,6 +233,10 @@ export default function CctDetailPage() {
           <Button onClick={analyze} disabled={analyzing || files.length === 0}>
             {analyzing ? <Loader2 className="w-4 h-4 mr-1 animate-spin"/> : <Sparkles className="w-4 h-4 mr-1"/>}
             {a.ocr_applied ? 'Reanalisar com IA' : 'Analisar com IA'}
+          </Button>
+          <Button variant="outline" onClick={exportPdf} disabled={exporting || !a.ocr_applied}>
+            {exporting ? <Loader2 className="w-4 h-4 mr-1 animate-spin"/> : <FileDown className="w-4 h-4 mr-1"/>}
+            Emitir PDF do resumo
           </Button>
           <Button variant="outline" onClick={() => nav(`/gestao-cct/${a.id}/revisar`)}><FileText className="w-4 h-4 mr-1"/>Revisar Raio-X</Button>
           <Button variant="outline" onClick={() => nav(`/gestao-cct/${a.id}/perguntar`)}><MessageSquare className="w-4 h-4 mr-1"/>Perguntar à CCT</Button>
