@@ -7,8 +7,11 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, AlertTriangle, CheckCircle2, XCircle, FileText, Plus, ArrowRightLeft } from 'lucide-react';
+import { Search, AlertTriangle, CheckCircle2, XCircle, FileText, Plus, ArrowRightLeft, Bell, Loader2, Check } from 'lucide-react';
 import { useCctAnalyses, type CctAnalysis } from '@/hooks/cct/useCctAnalyses';
+import { useCctAlerts } from '@/hooks/cct/useCctAlerts';
+import { toast } from 'sonner';
+import { useState as useReactState } from 'react';
 
 type LinkedRow = {
   id: string;
@@ -44,6 +47,8 @@ function statusAnaliseBadge(s: CctAnalysis['status']) {
 export default function GestaoCctDashboardPage() {
   const nav = useNavigate();
   const { items: analyses, loading: loadingA } = useCctAnalyses();
+  const { items: alerts, refresh: refreshAlerts, resolve: resolveAlert, loading: loadingAlerts } = useCctAlerts();
+  const [refreshingAlerts, setRefreshingAlerts] = useReactState(false);
   const [rows, setRows] = useState<LinkedRow[]>([]);
   const [loadingR, setLoadingR] = useState(true);
   const [q, setQ] = useState('');
@@ -83,6 +88,14 @@ export default function GestaoCctDashboardPage() {
 
   const semRevisao = useMemo(() => analyses.filter((a) => a.status !== 'aprovada' && a.status !== 'arquivada' && a.status !== 'substituida').length, [analyses]);
 
+  const doRefreshAlerts = async () => {
+    setRefreshingAlerts(true);
+    const { data, error } = await refreshAlerts();
+    setRefreshingAlerts(false);
+    if (error) toast.error(error.message || 'Falha ao atualizar alertas.');
+    else toast.success(`Alertas atualizados${data && (data as any).created != null ? ` (${(data as any).created})` : ''}.`);
+  };
+
   const filteredAnalyses = useMemo(() => {
     const s = q.toLowerCase().trim();
     return analyses.filter((a) => (a.title || '').toLowerCase().includes(s));
@@ -121,6 +134,35 @@ export default function GestaoCctDashboardPage() {
         <Card><CardContent className="p-3"><div className="text-xs text-muted-foreground">Sem vigência</div><div className="text-2xl font-bold">{counts.none}</div></CardContent></Card>
         <Card><CardContent className="p-3"><div className="text-xs text-muted-foreground flex items-center gap-1"><FileText className="w-3 h-3"/>Sem revisão</div><div className="text-2xl font-bold">{semRevisao}</div></CardContent></Card>
       </div>
+
+      <Card>
+        <CardContent className="p-4 space-y-3">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="font-semibold flex items-center gap-2"><Bell className="w-4 h-4 text-primary" />Alertas abertos <Badge variant="secondary">{alerts.length}</Badge></div>
+            <Button size="sm" variant="outline" onClick={doRefreshAlerts} disabled={refreshingAlerts}>
+              {refreshingAlerts ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Bell className="w-4 h-4 mr-1" />}
+              Recalcular alertas
+            </Button>
+          </div>
+          {loadingAlerts ? (
+            <p className="text-sm text-muted-foreground">Carregando…</p>
+          ) : alerts.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhum alerta aberto. Clique em "Recalcular alertas" para varrer as CCTs vinculadas.</p>
+          ) : (
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {alerts.slice(0, 20).map((al) => (
+                <div key={al.id} className="flex items-center gap-2 border rounded p-2 text-sm">
+                  <Badge variant={al.severity === 'alta' ? 'destructive' : al.severity === 'media' ? 'outline' : 'secondary'}>{al.severity}</Badge>
+                  <span className="flex-1">{al.message}</span>
+                  {al.due_date && <span className="text-xs text-muted-foreground">{new Date(al.due_date).toLocaleDateString('pt-BR')}</span>}
+                  {al.cct_analysis_id && <Button size="sm" variant="ghost" onClick={() => nav(`/gestao-cct/${al.cct_analysis_id}`)}>Abrir</Button>}
+                  <Button size="sm" variant="ghost" onClick={() => resolveAlert(al.id)}><Check className="w-4 h-4" /></Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="flex gap-2 border-b">
         <button className={`px-3 py-2 text-sm font-medium border-b-2 ${tab==='analises'?'border-primary text-primary':'border-transparent text-muted-foreground'}`} onClick={()=>setTab('analises')}>Raio-X / Análises ({analyses.length})</button>
