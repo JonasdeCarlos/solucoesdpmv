@@ -107,7 +107,9 @@ const AvisoEmpresasPage = () => {
         const emp = empresas.find((e) => e.id === id);
         if (!emp) continue;
         const nums = (editingWa[id] ?? []).map((n) => String(n).replace(/\D/g, '')).filter(Boolean);
-        const { error } = await updateEmpresa(id, { whatsapp_numeros: nums, whatsapp: nums[0] || '' } as any);
+        // Reseta o contact_id aprendido para evitar que o Digisac continue enviando
+        // ao contato antigo mesmo após a edição/remoção de números.
+        const { error } = await updateEmpresa(id, { whatsapp_numeros: nums, whatsapp: nums[0] || '', digisac_contact_id: null } as any);
         if (!error) ok++;
       }
       for (const id of dirtyGestorIds) {

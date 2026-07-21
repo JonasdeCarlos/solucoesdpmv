@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
 
   const t0 = Date.now();
   try {
-    const { empresa_id, aviso_id, mensagem, tipo_aviso, idempotency_key } = await req.json();
+    const { empresa_id, aviso_id, mensagem, tipo_aviso, idempotency_key, number_override } = await req.json();
 
     if (!empresa_id || !mensagem || !tipo_aviso) {
       return json(400, { erro: 'Campos obrigatórios: empresa_id, mensagem, tipo_aviso.' });
@@ -108,19 +108,23 @@ Deno.serve(async (req) => {
 
     if (errEmpresa || !empresa) return json(404, { erro: 'Empresa não encontrada.' });
 
-    // XOR: contactId tem preferência (mais estável); número só como fallback. NUNCA envia para os dois.
+    // Prioridade:
+    // 1) number_override explícito do cliente (loop multi-contato) — nunca usa contact_id nem auto-aprende.
+    // 2) digisac_contact_id aprendido — somente quando empresa tem 0 ou 1 número cadastrado
+    //    (caso contrário o contact_id "trava" o envio em um único destinatário).
+    // 3) primeiro número cadastrado como fallback.
     type Dest = { kind: 'contact'; contactId: string } | { kind: 'number'; number: string };
     let dest: Dest | null = null;
-    if (empresa.digisac_contact_id) {
+    const numerosCadastrados: string[] = Array.isArray((empresa as any).whatsapp_numeros) && (empresa as any).whatsapp_numeros.length
+      ? (empresa as any).whatsapp_numeros.map((n: any) => String(n).replace(/\D/g, '')).filter(Boolean)
+      : (empresa.whatsapp ? [String(empresa.whatsapp).replace(/\D/g, '')].filter(Boolean) : []);
+    const overrideNum = number_override ? String(number_override).replace(/\D/g, '') : '';
+    if (overrideNum) {
+      dest = { kind: 'number', number: overrideNum };
+    } else if (empresa.digisac_contact_id && numerosCadastrados.length <= 1) {
       dest = { kind: 'contact', contactId: empresa.digisac_contact_id };
-    } else {
-      const numeros: string[] = Array.isArray((empresa as any).whatsapp_numeros) && (empresa as any).whatsapp_numeros.length
-        ? (empresa as any).whatsapp_numeros
-        : (empresa.whatsapp ? [String(empresa.whatsapp)] : []);
-      for (const raw of numeros) {
-        const num = String(raw).replace(/\D/g, '');
-        if (num) { dest = { kind: 'number', number: num }; break; }
-      }
+    } else if (numerosCadastrados[0]) {
+      dest = { kind: 'number', number: numerosCadastrados[0] };
     }
     if (!dest) {
       return json(400, { erro: 'Empresa sem contato Digisac nem WhatsApp cadastrado.' });
@@ -224,8 +228,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Aprende contactId se ainda não tinha
-    if (resp?.ok && !empresa.digisac_contact_id && data && typeof data === 'object') {
+    // Aprende contactId APENAS quando empresa tem 1 número (evita travar envios multi-contato)
+    // e quando o envio não veio de um override explícito.
+    if (resp?.ok && !overrideNum && !empresa.digisac_contact_id && numerosCadastrados.length <= 1 && data && typeof data === 'object') {
       const r: any = data;
       const cid = r.contactId || r?.message?.contactId || r?.data?.contactId || r?.contact?.id;
       if (cid) {
