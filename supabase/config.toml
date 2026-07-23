@@ -1,15 +1,1 @@
-project_id = "gdqaemauyhbsltcnkqkc"
-
-[functions.feedback-empresa]
-verify_jwt = false
-
-[functions.feedback-public]
-verify_jwt = false
-
-[functions.premio-criterios-sugerir]
-verify_jwt = true
-[functions.premio-feedback]
-verify_jwt = true
-
-[functions.premio-hotelaria-public]
-verify_jwt = false
+project_id = "ktcfjwjhulvgwnxuddfv"
