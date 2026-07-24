@@ -1038,10 +1038,14 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
           <DialogFooter className="flex-wrap gap-2">
             <Button variant="ghost" onClick={() => setImportOpen(false)}>Fechar</Button>
             {importResult?.cargos?.length ? (
-              <Button variant="outline" onClick={importarCargosExtrato}>Importar cargos do extrato</Button>
+              <Button variant="outline" onClick={importarCargosExtrato} disabled={busy === 'importar-cargos'}>
+                {busy === 'importar-cargos' && <Loader2 className="w-4 h-4 mr-2 animate-spin"/>}Importar cargos do extrato
+              </Button>
             ) : null}
             {importResult?.pcs?.length ? (
-              <Button onClick={adotarPcsSugerido}><Sparkles className="w-4 h-4 mr-2"/>Adotar PCS sugerido</Button>
+              <Button onClick={adotarPcsSugerido} disabled={busy === 'importar-pcs'}>
+                {busy === 'importar-pcs' ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <Sparkles className="w-4 h-4 mr-2"/>}Adotar PCS sugerido
+              </Button>
             ) : null}
           </DialogFooter>
         </DialogContent>
