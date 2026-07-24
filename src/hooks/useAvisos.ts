@@ -68,7 +68,7 @@ export function useAvisos() {
   useEffect(() => {
     refresh();
     const ch = supabase
-      .channel('avisos-rt')
+      .channel(`avisos-rt-${Math.random().toString(36).slice(2)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'avisos' }, () => { refresh(); })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
