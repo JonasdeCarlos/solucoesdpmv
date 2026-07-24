@@ -79,7 +79,7 @@ const getCamposVaziosCargo = (cargo: any) => {
 };
 
 export default function CargosTab({ client_id, cliente }: { client_id: string; cliente: any }) {
-  const { items, save, remove, duplicate } = useCargos(client_id);
+  const { items, save, remove, duplicate, reload } = useCargos(client_id);
   const { estrutura, save: saveEstrutura } = useEstruturaSalarial(client_id);
   const { items: ccts } = useCCTs(client_id);
   const [open, setOpen] = useState(false);
@@ -520,47 +520,76 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
     } finally { setBusy(null); }
   };
 
+  const normNome = (s: string) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();
+
+  const fetchExistentes = async () => {
+    const { data } = await supabase.from('cargos' as any).select('nome').eq('client_id', client_id).limit(2000);
+    return new Set(((data as any[]) || []).map(r => normNome(r.nome)));
+  };
+
   const importarCargosExtrato = async () => {
-    if (!importResult?.cargos?.length) return;
-    const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();
-    const existentes = new Set(items.map(i => norm(i.nome)));
-    let criados = 0;
-    for (const g of importResult.cargos) {
-      if (existentes.has(norm(g.cargo))) continue;
-      await save({
-        nome: g.cargo, cbo: g.cbo || '', area: '', nivel: 'operacional',
-        descricao_sumaria: '', atividades: [],
-        requisitos: { escolaridade: '', experiencia: '', competencias: [] },
-        salario_atual: g.salario_max || g.salario_medio || null,
-        piso_salarial: g.salario_min || null,
-        piso_referencia: 'Importado do extrato',
-      });
-      criados++;
-    }
-    toast.success(`${criados} cargo(s) importado(s).`);
-    setImportOpen(false);
+    if (!importResult?.cargos?.length || busy === 'importar-cargos') return;
+    setBusy('importar-cargos');
+    try {
+      const existentes = await fetchExistentes();
+      const payloads: any[] = [];
+      for (const g of importResult.cargos) {
+        const k = normNome(g.cargo);
+        if (!k || existentes.has(k)) continue;
+        existentes.add(k);
+        payloads.push({
+          client_id,
+          nome: g.cargo, cbo: g.cbo || '', area: '', nivel: 'operacional',
+          descricao_sumaria: '', atividades: [],
+          requisitos: { escolaridade: '', experiencia: '', competencias: [] },
+          salario_atual: g.salario_max || g.salario_medio || null,
+          piso_salarial: g.salario_min || null,
+          piso_referencia: 'Importado do extrato',
+        });
+      }
+      if (payloads.length) {
+        const { error } = await supabase.from('cargos' as any).insert(payloads as any);
+        if (error) throw error;
+      }
+      await reload();
+      toast.success(`${payloads.length} cargo(s) importado(s).`);
+      setImportOpen(false);
+    } catch (e: any) {
+      toast.error('Falha ao importar cargos: ' + e.message);
+    } finally { setBusy(null); }
   };
 
   const adotarPcsSugerido = async () => {
     const pcs = importResult?.pcs || [];
-    if (!pcs.length) return;
-    const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();
-    const existentes = new Set(items.map(i => norm(i.nome)));
-    let criados = 0;
-    for (const p of pcs) {
-      if (existentes.has(norm(p.nome))) continue;
-      await save({
-        nome: p.nome, cbo: p.cbo || '', area: p.area || '', nivel: p.nivel || 'analista',
-        descricao_sumaria: p.justificativa || '', atividades: [],
-        requisitos: { escolaridade: '', experiencia: '', competencias: [] },
-        salario_atual: p.salario_referencia || null,
-        piso_salarial: p.salario_inicial || null,
-        piso_referencia: 'PCS sugerido pela IA',
-      });
-      criados++;
-    }
-    toast.success(`${criados} cargo(s) adicionado(s) do PCS sugerido.`);
-    setImportOpen(false);
+    if (!pcs.length || busy === 'importar-pcs') return;
+    setBusy('importar-pcs');
+    try {
+      const existentes = await fetchExistentes();
+      const payloads: any[] = [];
+      for (const p of pcs) {
+        const k = normNome(p.nome);
+        if (!k || existentes.has(k)) continue;
+        existentes.add(k);
+        payloads.push({
+          client_id,
+          nome: p.nome, cbo: p.cbo || '', area: p.area || '', nivel: p.nivel || 'analista',
+          descricao_sumaria: p.justificativa || '', atividades: [],
+          requisitos: { escolaridade: '', experiencia: '', competencias: [] },
+          salario_atual: p.salario_referencia || null,
+          piso_salarial: p.salario_inicial || null,
+          piso_referencia: 'PCS sugerido pela IA',
+        });
+      }
+      if (payloads.length) {
+        const { error } = await supabase.from('cargos' as any).insert(payloads as any);
+        if (error) throw error;
+      }
+      await reload();
+      toast.success(`${payloads.length} cargo(s) adicionado(s) do PCS sugerido.`);
+      setImportOpen(false);
+    } catch (e: any) {
+      toast.error('Falha ao adotar PCS: ' + e.message);
+    } finally { setBusy(null); }
   };
 
   const gerarOrganograma = async () => {
