@@ -27,16 +27,46 @@ export async function generateCargosPdf(params: {
   const branding = await loadBranding();
   const doc = new jsPDF({ unit: 'pt', format: 'a4', compress: true });
   const W = doc.internal.pageSize.getWidth();
+  const H = doc.internal.pageSize.getHeight();
   const primary = branding?.primary_color || '#628E3F';
   const [pr,pg,pb] = hex(primary);
 
-  // Capa
-  doc.setFillColor(pr,pg,pb); doc.rect(0,0,W,300,'F');
-  await drawBrandLogo(doc, branding?.logo_url, W/2 - 100, 40, 200, 110, { align: 'center' });
-  doc.setTextColor(255,255,255); doc.setFontSize(22); doc.text('Plano de Cargos e Salários', W/2, 180, { align: 'center' });
-  doc.setFontSize(14); doc.text(empresa, W/2, 210, { align: 'center' });
-  doc.setFontSize(11); doc.text(`Consultor: ${consultor || '—'}`, W/2, 240, { align: 'center' });
-  doc.text(new Date().toLocaleDateString('pt-BR'), W/2, 260, { align: 'center' });
+  // ===== Capa (segue o Manual de Identidade Visual) =====
+  // Fundo claro com faixas de marca no topo e rodapé + logo grande e centralizada.
+  doc.setFillColor(250, 249, 245); doc.rect(0, 0, W, H, 'F');
+  // Faixa superior de marca
+  doc.setFillColor(pr, pg, pb); doc.rect(0, 0, W, 12, 'F');
+  // Logo grande, centralizada, sem distorção
+  const logoBoxW = 340;
+  const logoBoxH = 200;
+  await drawBrandLogo(
+    doc,
+    branding?.logo_url,
+    (W - logoBoxW) / 2,
+    170,
+    logoBoxW,
+    logoBoxH,
+    { align: 'center', centerY: true }
+  );
+  // Título e metadados
+  const titleY = 170 + logoBoxH + 60;
+  doc.setTextColor(pr, pg, pb);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(26);
+  doc.text('Plano de Cargos e Salários', W / 2, titleY, { align: 'center' });
+  doc.setDrawColor(pr, pg, pb); doc.setLineWidth(1.2);
+  doc.line(W / 2 - 60, titleY + 10, W / 2 + 60, titleY + 10);
+  doc.setTextColor(57, 52, 33); // marrom institucional
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(16);
+  doc.text(empresa, W / 2, titleY + 44, { align: 'center' });
+  doc.setFontSize(11); doc.setTextColor(110, 110, 110);
+  doc.text(`Consultor(a): ${consultor || '—'}`, W / 2, titleY + 68, { align: 'center' });
+  doc.text(new Date().toLocaleDateString('pt-BR'), W / 2, titleY + 84, { align: 'center' });
+  // Faixa inferior de marca com nome do escritório
+  doc.setFillColor(pr, pg, pb); doc.rect(0, H - 40, W, 40, 'F');
+  doc.setTextColor(255, 255, 255); doc.setFontSize(10);
+  doc.text(branding?.office_name || '', W / 2, H - 16, { align: 'center' });
 
   doc.addPage();
   let y = 60;
