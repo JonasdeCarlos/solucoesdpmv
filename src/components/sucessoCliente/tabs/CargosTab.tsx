@@ -522,6 +522,20 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
 
   const normNome = (s: string) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();
 
+  const limparCargos = async () => {
+    if (busy === 'limpar') return;
+    if (!confirm(`Excluir TODOS os ${items.length} cargo(s) cadastrados deste cliente? Esta ação não pode ser desfeita.`)) return;
+    setBusy('limpar');
+    try {
+      const { error } = await supabase.from('cargos' as any).delete().eq('client_id', client_id);
+      if (error) throw error;
+      await reload();
+      toast.success('Cargos removidos.');
+    } catch (e: any) {
+      toast.error('Falha ao limpar cargos: ' + e.message);
+    } finally { setBusy(null); }
+  };
+
   const fetchExistentes = async () => {
     const { data } = await supabase.from('cargos' as any).select('nome').eq('client_id', client_id).limit(2000);
     return new Set(((data as any[]) || []).map(r => normNome(r.nome)));
