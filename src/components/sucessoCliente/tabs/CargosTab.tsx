@@ -635,6 +635,9 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
           <Button variant="outline" onClick={gerarOrganograma} disabled={busy==='estrutura'}><Network className="w-4 h-4 mr-2"/>Gerar Organograma</Button>
           <Button variant="outline" onClick={()=>setOrgEditOpen(true)}><PencilIcon className="w-4 h-4 mr-2"/>Editar Organograma</Button>
           <Button variant="outline" onClick={exportarPdf} disabled={busy==='pdf'}>{busy==='pdf' ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <FileDown className="w-4 h-4 mr-2"/>}Gerar Relatório Final</Button>
+          <Button variant="outline" onClick={limparCargos} disabled={busy==='limpar' || items.length===0} className="text-destructive hover:text-destructive">
+            {busy==='limpar' ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <Trash2 className="w-4 h-4 mr-2"/>}Limpar cargos
+          </Button>
         </div>
       </div>
 
