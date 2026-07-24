@@ -522,6 +522,20 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
 
   const normNome = (s: string) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();
 
+  const limparCargos = async () => {
+    if (busy === 'limpar') return;
+    if (!confirm(`Excluir TODOS os ${items.length} cargo(s) cadastrados deste cliente? Esta ação não pode ser desfeita.`)) return;
+    setBusy('limpar');
+    try {
+      const { error } = await supabase.from('cargos' as any).delete().eq('client_id', client_id);
+      if (error) throw error;
+      await reload();
+      toast.success('Cargos removidos.');
+    } catch (e: any) {
+      toast.error('Falha ao limpar cargos: ' + e.message);
+    } finally { setBusy(null); }
+  };
+
   const fetchExistentes = async () => {
     const { data } = await supabase.from('cargos' as any).select('nome').eq('client_id', client_id).limit(2000);
     return new Set(((data as any[]) || []).map(r => normNome(r.nome)));
@@ -635,6 +649,9 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
           <Button variant="outline" onClick={gerarOrganograma} disabled={busy==='estrutura'}><Network className="w-4 h-4 mr-2"/>Gerar Organograma</Button>
           <Button variant="outline" onClick={()=>setOrgEditOpen(true)}><PencilIcon className="w-4 h-4 mr-2"/>Editar Organograma</Button>
           <Button variant="outline" onClick={exportarPdf} disabled={busy==='pdf'}>{busy==='pdf' ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <FileDown className="w-4 h-4 mr-2"/>}Gerar Relatório Final</Button>
+          <Button variant="outline" onClick={limparCargos} disabled={busy==='limpar' || items.length===0} className="text-destructive hover:text-destructive">
+            {busy==='limpar' ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <Trash2 className="w-4 h-4 mr-2"/>}Limpar cargos
+          </Button>
         </div>
       </div>
 
