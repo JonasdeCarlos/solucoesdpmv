@@ -35,7 +35,7 @@ export function useAvisoEmpresas() {
   // Atualização em tempo real quando novas empresas são cadastradas
   useEffect(() => {
     const channel = supabase
-      .channel('aviso-empresas-realtime')
+      .channel(`aviso-empresas-realtime-${Math.random().toString(36).slice(2)}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'aviso_empresas' },
