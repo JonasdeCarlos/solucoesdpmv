@@ -2,6 +2,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { loadBranding } from './perfilPdf';
 import { drawBrandLogo } from '@/utils/pdfBrandLogo';
+import { withPcsCapa, nextPcsRevision } from './pcsCapaTemplate';
 
 const NIVEL_LABEL: Record<string,string> = {
   operacional:'Operacional', tecnico:'Técnico', analista:'Analista',
@@ -31,58 +32,7 @@ export async function generateCargosPdf(params: {
   const primary = branding?.primary_color || '#628E3F';
   const [pr,pg,pb] = hex(primary);
 
-  // ===== Capa =====
-  // Fundo claro
-  doc.setFillColor(250, 249, 245); doc.rect(0, 0, W, H, 'F');
-  // Faixa superior de marca
-  doc.setFillColor(pr, pg, pb); doc.rect(0, 0, W, 90, 'F');
-  // Logo grande centralizada em bloco branco arredondado (garante contraste
-  // com qualquer variação de logo — clara, escura ou colorida)
-  const logoBoxW = 300;
-  const logoBoxH = 180;
-  const logoBoxX = (W - logoBoxW) / 2;
-  const logoBoxY = 140;
-  doc.setFillColor(255, 255, 255);
-  doc.setDrawColor(230, 230, 220);
-  doc.setLineWidth(0.8);
-  doc.roundedRect(logoBoxX, logoBoxY, logoBoxW, logoBoxH, 8, 8, 'FD');
-  const drawn = await drawBrandLogo(
-    doc,
-    branding?.logo_url,
-    logoBoxX + 20,
-    logoBoxY + 20,
-    logoBoxW - 40,
-    logoBoxH - 40,
-    { align: 'center', centerY: true }
-  );
-  // Se não houver logo carregada, escreve o nome do escritório dentro do quadro
-  if (!drawn.w) {
-    doc.setTextColor(pr, pg, pb);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(22);
-    doc.text(branding?.office_name || 'Escritório', W / 2, logoBoxY + logoBoxH / 2 + 6, { align: 'center' });
-  }
-  // Título e metadados (bem abaixo da logo para evitar sobreposição)
-  const titleY = logoBoxY + logoBoxH + 80;
-  doc.setTextColor(pr, pg, pb);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(24);
-  doc.text('Plano de Cargos e Salários', W / 2, titleY, { align: 'center' });
-  doc.setDrawColor(pr, pg, pb); doc.setLineWidth(1.2);
-  doc.line(W / 2 - 70, titleY + 12, W / 2 + 70, titleY + 12);
-  doc.setTextColor(57, 52, 33);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(15);
-  doc.text(empresa, W / 2, titleY + 42, { align: 'center' });
-  doc.setFontSize(10); doc.setTextColor(110, 110, 110);
-  doc.text(`Consultor(a): ${consultor || '—'}`, W / 2, titleY + 64, { align: 'center' });
-  doc.text(new Date().toLocaleDateString('pt-BR'), W / 2, titleY + 78, { align: 'center' });
-  // Faixa inferior de marca com nome do escritório
-  doc.setFillColor(pr, pg, pb); doc.rect(0, H - 46, W, 46, 'F');
-  doc.setTextColor(255, 255, 255); doc.setFontSize(10);
-  doc.text(branding?.office_name || '', W / 2, H - 20, { align: 'center' });
-
-  doc.addPage();
+  // A capa oficial (Manual de ID) é anexada no final via pdf-lib.
   let y = 60;
   doc.setTextColor(0,0,0);
   const section = (title: string) => {
@@ -325,10 +275,19 @@ export async function generateCargosPdf(params: {
   }
 
   const total = doc.getNumberOfPages();
-  for (let i = 2; i <= total; i++) {
+  for (let i = 1; i <= total; i++) {
     doc.setPage(i); doc.setFontSize(8); doc.setTextColor(120,120,120);
-    doc.text(`${branding?.office_name || ''} • Plano de Cargos e Salários • ${i}/${total}`, W/2, 825, { align: 'center' });
+    doc.text(`${branding?.office_name || ''} • Plano de Cargos e Salários • ${i + 1}/${total + 1}`, W/2, 825, { align: 'center' });
   }
 
-  doc.save(`PCS_${empresa.replace(/\s+/g,'_')}.pdf`);
+  const revisao = nextPcsRevision(empresa);
+  const blob = await withPcsCapa(doc.output('arraybuffer'), empresa, revisao);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `PCS_${empresa.replace(/\s+/g,'_')}_rev${revisao}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
 }
