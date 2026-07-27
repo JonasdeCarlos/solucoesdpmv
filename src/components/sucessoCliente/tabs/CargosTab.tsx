@@ -855,6 +855,29 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
               {draft.adequacao.observacoes_regulamentacao && (
                 <div className="text-xs mt-1"><strong>Observações:</strong> {draft.adequacao.observacoes_regulamentacao}</div>
               )}
+              {draft.adequacao.cbo_familia && (
+                <div className="text-xs mt-1"><strong>Família ocupacional:</strong> {draft.adequacao.cbo_familia}</div>
+              )}
+              {draft.adequacao.cbo_justificativa && (
+                <div className="text-xs mt-1"><strong>Por que este CBO:</strong> {draft.adequacao.cbo_justificativa}</div>
+              )}
+              {Array.isArray(draft.adequacao.cbo_alternativas) && draft.adequacao.cbo_alternativas.length > 0 && (
+                <div className="text-xs mt-1">
+                  <strong>Alternativas de CBO:</strong>
+                  <ul className="list-disc ml-4">
+                    {draft.adequacao.cbo_alternativas.map((a: any, i: number) => (
+                      <li key={i}>
+                        {a.cbo} — {a.titulo}{a.quando_usar ? ` (${a.quando_usar})` : ''}
+                        <button
+                          type="button"
+                          className="ml-2 underline text-primary"
+                          onClick={() => setDraft((d: any) => ({ ...d, cbo: a.cbo || d.cbo, adequacao: { ...(d.adequacao || {}), titulo_cbo: a.titulo || d.adequacao?.titulo_cbo } }))}
+                        >usar</button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               {draft.adequacao.conselho_mensagem && (
                 <div className="text-xs mt-1 p-2 rounded bg-background/60 border">
                   <strong>Inscrição em conselho de classe:</strong> {draft.adequacao.conselho_mensagem}
@@ -866,6 +889,14 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             <div><Label className="text-xs">Nome do cargo</Label><Input value={draft.nome} onChange={e=>setDraft({...draft,nome:e.target.value})}/></div>
             <div><Label className="text-xs">CBO</Label><Input value={draft.cbo} onChange={e=>setDraft({...draft,cbo:e.target.value})}/></div>
+            <div className="md:col-span-2">
+              <Label className="text-xs">Título oficial do CBO</Label>
+              <Input
+                value={draft.adequacao?.titulo_cbo || ''}
+                placeholder="Ex.: Produtor de audiovisual"
+                onChange={e=>setDraft({...draft, adequacao: { ...(draft.adequacao || {}), titulo_cbo: e.target.value }})}
+              />
+            </div>
             <div><Label className="text-xs">Área / Departamento</Label><Input value={draft.area} onChange={e=>setDraft({...draft,area:e.target.value})}/></div>
             <div><Label className="text-xs">Nível</Label>
               <Select value={draft.nivel} onValueChange={v=>setDraft({...draft,nivel:v})}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{NIVEIS.map(n=><SelectItem key={n.v} value={n.v}>{n.l}</SelectItem>)}</SelectContent></Select>
