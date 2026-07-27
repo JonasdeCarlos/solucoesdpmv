@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Plus, Trash2, Wand2, Save, Pencil, X, Users, Upload, FileDown, Sparkles, Link2 } from 'lucide-react';
+import { Loader2, Plus, Trash2, Wand2, Save, Pencil, X, Users, Upload, FileDown, Sparkles, Link2, KeyRound } from 'lucide-react';
 import { buildExternalAppLink } from '@/utils/publicLinks';
 import { copyToClipboard } from '@/utils/clipboard';
 import { usePrizePolicies, usePrizeCriteria, usePrizeEmployees, type PrizePolicy } from '@/hooks/usePrizePolicies';
