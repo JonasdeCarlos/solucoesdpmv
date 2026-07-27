@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,8 +36,29 @@ export default function PremioAvaliacaoDialog({
   const [parecer, setParecer] = useState<string>('');
   const [exportPdf, setExportPdf] = useState(false);
 
+  // Só (re)hidrata o estado local ao abrir o diálogo para outro colaborador —
+  // recarregamentos de criteria/results não podem sobrescrever o que está sendo editado.
+  const hydratedKey = useRef<string | null>(null);
   useEffect(() => {
-    if (!open) return;
+    if (!open) { hydratedKey.current = null; return; }
+    const key = `${ae?.id ?? ''}`;
+    if (!ae?.id || criteria.length === 0) return;
+    if (hydratedKey.current === key) {
+      // apenas adiciona critérios novos, sem tocar nos já editados
+      setLocal(prev => {
+        const next = { ...prev };
+        let changed = false;
+        for (const c of criteria) {
+          if (!next[c.id]) {
+            next[c.id] = { percentual: 0, observacao: '', status: 'pendente', feedback_ia: null, evidencia_url: null };
+            changed = true;
+          }
+        }
+        return changed ? next : prev;
+      });
+      return;
+    }
+    hydratedKey.current = key;
     const m: Record<string, any> = {};
     for (const c of criteria) {
       const r = results.find(rr => rr.criterion_id === c.id);
@@ -51,7 +72,7 @@ export default function PremioAvaliacaoDialog({
     }
     setLocal(m);
     setParecer(ae?.parecer_geral || '');
-  }, [open, criteria, results, ae?.parecer_geral]);
+  }, [open, ae?.id, criteria, results, ae?.parecer_geral]);
 
   // Cálculo do teto individual para o modelo Hotelaria:
   // pool individual = faturamento_total * split_individual%
