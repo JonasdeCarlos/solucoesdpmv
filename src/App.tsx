@@ -51,6 +51,7 @@ import GestaoCctPage from "./pages/sucessoCliente/GestaoCctPage";
 import FeedbackPublicPage from "./pages/sucessoCliente/FeedbackPublicPage";
 import EmpresaFeedbackPage from "./pages/sucessoCliente/EmpresaFeedbackPage";
 import PoliticaHotelariaPublicPage from "./pages/sucessoCliente/PoliticaHotelariaPublicPage";
+import PremioPublicPage from "./pages/sucessoCliente/PremioPublicPage";
 import GestaoCctDashboardPage from "./pages/gestaoCct/GestaoCctDashboardPage";
 import CctNovaPage from "./pages/gestaoCct/CctNovaPage";
 import CctDetailPage from "./pages/gestaoCct/CctDetailPage";
