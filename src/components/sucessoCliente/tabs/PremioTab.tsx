@@ -272,7 +272,7 @@ function PolicyCard({ policy, expanded, onToggle, onUpdate, onRemove, cliente }:
   onRemove: () => Promise<void>; cliente: any;
 }) {
   const [editing, setEditing] = useState(false);
-  const [hotelariaDraft, setHotelariaDraft] = useState<{ hotelaria_config?: any; hotelaria_apuracao?: any }>({});
+  const [hotelariaDraft, setHotelariaDraft] = useState<{ hotelaria_config?: any; hotelaria_apuracao?: any; hotelaria_apuracoes?: any }>({});
   const [form, setForm] = useState({
     verba_label: policy.verba_label,
     nome: policy.nome,
@@ -288,8 +288,9 @@ function PolicyCard({ policy, expanded, onToggle, onUpdate, onRemove, cliente }:
     setHotelariaDraft({
       hotelaria_config: (policy as any).hotelaria_config,
       hotelaria_apuracao: (policy as any).hotelaria_apuracao,
+      hotelaria_apuracoes: (policy as any).hotelaria_apuracoes,
     });
-  }, [policy.id, (policy as any).hotelaria_config, (policy as any).hotelaria_apuracao]);
+  }, [policy.id, (policy as any).hotelaria_config, (policy as any).hotelaria_apuracao, (policy as any).hotelaria_apuracoes]);
 
   const saveEdit = async () => {
     if (!form.verba_label.trim() || !form.nome.trim()) { toast.error('Nome da verba e da política são obrigatórios.'); return; }
