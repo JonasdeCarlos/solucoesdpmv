@@ -3889,6 +3889,7 @@ export type Database = {
           nome: string
           objetivo: string | null
           periodo_tipo: string
+          public_password_hash: string | null
           remuneracao_variavel: boolean
           rubrica_codigo: string | null
           rubrica_descricao: string | null
@@ -3922,6 +3923,7 @@ export type Database = {
           nome: string
           objetivo?: string | null
           periodo_tipo?: string
+          public_password_hash?: string | null
           remuneracao_variavel?: boolean
           rubrica_codigo?: string | null
           rubrica_descricao?: string | null
@@ -3955,6 +3957,7 @@ export type Database = {
           nome?: string
           objetivo?: string | null
           periodo_tipo?: string
+          public_password_hash?: string | null
           remuneracao_variavel?: boolean
           rubrica_codigo?: string | null
           rubrica_descricao?: string | null
