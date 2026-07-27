@@ -96,7 +96,25 @@ function parseAreas(html: string): AreaAtividade[] {
   }).filter((g) => g.ordem && g.titulo);
 }
 
-async function consultarMte(cbo: string) {
+async function tituloDeReferencia(digits: string): Promise<string> {
+  // A busca por código do MTE passou a exigir reCAPTCHA; usamos um índice público
+  // apenas para descobrir o título oficial e então pesquisar por título no MTE.
+  try {
+    const url = `https://www.ocupacoes.com.br/cbo/${codeDisplay(digits)}`;
+    const r = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
+    if (!r.ok) return "";
+    const html = await r.text();
+    const re = digits.length === 6
+      ? new RegExp(`href="/cbo-mte/${digits}-([a-z0-9-]+)"`, "i")
+      : new RegExp(`href="/cbo-mte/${digits}-([a-z0-9-]+)"`, "i");
+    const slug = html.match(re)?.[1] || "";
+    return slug.replace(/-/g, " ").trim();
+  } catch {
+    return "";
+  }
+}
+
+async function consultarMte(cbo: string, nome?: string) {
   const digits = cbo.replace(/\D/g, "");
   const display = codeDisplay(digits);
   const cookieJar = new Map<string, string>();
@@ -130,27 +148,54 @@ async function consultarMte(cbo: string) {
     body: new URLSearchParams(fields),
   });
 
-  const busca = await fetchHtml("/cbosite/pages/pesquisas/BuscaPorCodigo.jsf");
-  const formBusca = extractForm(busca.text, "formBuscaPorCodigo");
-  if (!formBusca.html) throw new Error("Não foi possível abrir a busca oficial por código no MTE.");
+  const somenteLetras = (v = "") => v.replace(/[^A-Za-zÀ-ÿ\s]/g, " ").replace(/\s+/g, " ").trim();
+  const termos = Array.from(new Set([
+    somenteLetras(await tituloDeReferencia(digits)),
+    somenteLetras(nome || ""),
+  ].filter((t) => t.length >= 3)));
 
-  const fieldsBusca = hiddenFields(formBusca.html);
-  fieldsBusca["formBuscaPorCodigo:j_idt79"] = display;
-  fieldsBusca["formBuscaPorCodigo:btConsultarCodigo"] = "Consultar";
-  const resultado = await postForm(formBusca.action, fieldsBusca, busca.url);
-  const formResultado = extractForm(resultado.text, "formBuscaPorCodigo");
-  const clickCodigo = findAnchorField(formResultado.html, (text, tag) => {
-    if (digits.length === 6) return text.trim() === display;
-    return /^formBuscaPorCodigo:objetos2:\d+:j_idt110/.test(extractJsfField(attr(tag.match(/<a\b[^>]*>/i)?.[0] || "", "onclick"))) || /^\d{4}-\d{2}$/.test(text.trim());
-  });
+  let resultado: { text: string; url: string } | null = null;
+  let formResultado = { html: "", action: "" };
+  let clickCodigo = "";
 
-  if (!formResultado.html || !clickCodigo) {
+  for (const termo of termos) {
+    const busca = await fetchHtml("/cbosite/pages/pesquisas/BuscaPorTitulo.jsf");
+    const formBusca = extractForm(busca.text, "formBuscaPorTitulo");
+    if (!formBusca.html) throw new Error("Não foi possível abrir a busca oficial do MTE.");
+    const fields = hiddenFields(formBusca.html);
+    fields["formBuscaPorTitulo:j_idt80"] = termo;
+    fields["formBuscaPorTitulo:btConsultar"] = "Consultar";
+    fields["formBuscaPorTitulo:radio"] = "3";
+    fields["formBuscaPorTitulo:checkboxFamilias"] = "on";
+    fields["formBuscaPorTitulo:checkboxOcupacoes"] = "on";
+    fields["formBuscaPorTitulo:checkboxSinonimos"] = "on";
+    const page = await postForm(formBusca.action, fields, busca.url);
+    const form = extractForm(page.text, "formSite017");
+    if (!form.html) continue;
+    const linhas = form.html.match(/<tr class=["'](?:odd|even)["'][\s\S]*?<\/tr>/gi) || [];
+    for (const linha of linhas) {
+      const texto = stripTags(linha);
+      const bate = digits.length === 6
+        ? texto.includes(display)
+        : new RegExp(`\\b${digits}(-\\d{2})?\\b`).test(texto);
+      if (!bate) continue;
+      const campo = linha.match(/\{'(formSite017:objetos:\d+:j_idt\d+)':'\1'\}/g)
+        ?.map((m) => m.match(/'(formSite017:objetos:\d+:j_idt\d+)'/)![1])
+        .find((f) => !linha.includes(`'_blank'`) || !f.endsWith("j_idt92"));
+      const campos = Array.from(linha.matchAll(/\{'(formSite017:objetos:\d+:j_idt\d+)':'\1'\}/g)).map((m) => m[1]);
+      clickCodigo = campos[1] || campo || campos[0] || "";
+      if (clickCodigo) { resultado = page; formResultado = form; break; }
+    }
+    if (clickCodigo) break;
+  }
+
+  if (!resultado || !clickCodigo) {
     return {
       cbo: display,
       titulo_oficial: "",
       descricao_sumaria: "",
       areas_de_atividade: [] as AreaAtividade[],
-      observacao: `Código CBO ${display} não encontrado na busca oficial do MTE.`,
+      observacao: `Não foi possível localizar o CBO ${display} na busca oficial do MTE (a consulta por código passou a exigir reCAPTCHA; tentamos pela busca por título). Confira o código ou informe o nome do cargo.`,
     };
   }
 
