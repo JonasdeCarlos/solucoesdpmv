@@ -30,9 +30,20 @@ REGRAS DURAS PARA CONSELHO DE CLASSE:
 - NUNCA invente um conselho por semelhança de nome. Se houver dúvida, retorne obrigatorio=false, sigla="" e explique na "conselho_mensagem".
 - "conselho_mensagem": frase curta pronta para relatório PDF, sempre preenchida, começando por "Este cargo EXIGE inscrição em..." ou "Este cargo NÃO exige inscrição em conselho de classe...". Inclua a base legal quando exigir, e uma justificativa objetiva quando não exigir.
 
+REGRAS DURAS PARA CLASSIFICAÇÃO CBO (CBO 2002 - MTE):
+- Classifique pela NATUREZA DA OCUPAÇÃO efetivamente exercida, não por palavras parecidas no título. Percorra mentalmente: Grande Grupo → Subgrupo Principal → Subgrupo → Família Ocupacional → Ocupação, e só então escolha o código de 6 dígitos.
+- Não confunda ocupações de COMUNICAÇÃO/JORNALISMO (família 2611 - jornalistas, repórteres, editores de texto) com ocupações de PRODUÇÃO AUDIOVISUAL / CINEMA / TV (família 2624 e correlatas - produtor de audiovisual, diretor de produção, produtor cultural; técnicos em 2617/3721 conforme o caso). Um "Produtor Audiovisual" NÃO é jornalista.
+- Erros clássicos a evitar: produtor audiovisual ≠ jornalista; designer ≠ publicitário; analista de suporte ≠ programador; auxiliar administrativo ≠ assistente administrativo; motorista de caminhão ≠ motorista de carro de passeio; técnico em segurança do trabalho ≠ engenheiro de segurança.
+- Se o usuário já informou um CBO no contexto, valide-o: se estiver coerente, mantenha; se estiver incoerente com a ocupação, corrija e explique.
+- Nunca "chute" um código: se houver mais de uma opção plausível, escolha a mais praticada e liste as demais em "cbo_alternativas".
+- Preencha SEMPRE "titulo_cbo" com o TÍTULO OFICIAL exato da ocupação na CBO correspondente ao código informado (não invente sinônimos), "cbo_familia" com o código e o nome da família ocupacional (4 dígitos) e "cbo_justificativa" com 1 a 2 frases explicando por que este código foi escolhido e por que ocupações vizinhas foram descartadas.
+
 SUA TAREFA: sugerir a adequação técnica e legal deste cargo, retornando obrigatoriamente:
 - "cbo": código CBO oficial (6 dígitos, sem hífen) mais adequado ao cargo. Se houver ambiguidade escolha o mais praticado no Brasil.
 - "titulo_cbo": título oficial correspondente ao CBO.
+- "cbo_familia": "XXXX — Nome da família ocupacional".
+- "cbo_justificativa": justificativa curta da escolha do código.
+- "cbo_alternativas": array (0 a 3) de {"cbo":"","titulo":"","quando_usar":""} com códigos alternativos plausíveis.
 - "area": departamento típico (ex.: Operacional, Administrativo, Comercial, RH, Financeiro, Produção, TI, Saúde).
 - "nivel": um destes valores: operacional | tecnico | analista | especialista | gestao | diretoria.
 - "descricao_sumaria": 3 a 5 linhas em linguagem formal descrevendo o propósito e a natureza do trabalho.
@@ -45,17 +56,18 @@ SUA TAREFA: sugerir a adequação técnica e legal deste cargo, retornando obrig
 - "conselho_mensagem": ver regras acima. NUNCA vazio.
 
 Responda SOMENTE com JSON válido no formato exato:
-{"cbo":"","titulo_cbo":"","area":"","nivel":"","descricao_sumaria":"","atividades":[],"requisitos":{"escolaridade":"","experiencia":"","competencias":[]},"profissao_regulamentada":false,"base_legal":"","conselho_registro":{"obrigatorio":false,"sigla":"","descricao":""},"observacoes_regulamentacao":"","conselho_mensagem":""}`;
+{"cbo":"","titulo_cbo":"","cbo_familia":"","cbo_justificativa":"","cbo_alternativas":[{"cbo":"","titulo":"","quando_usar":""}],"area":"","nivel":"","descricao_sumaria":"","atividades":[],"requisitos":{"escolaridade":"","experiencia":"","competencias":[]},"profissao_regulamentada":false,"base_legal":"","conselho_registro":{"obrigatorio":false,"sigla":"","descricao":""},"observacoes_regulamentacao":"","conselho_mensagem":""}`;
 
     const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: { "Lovable-API-Key": KEY, "X-Lovable-AIG-SDK": "edge-function", "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-2.5-pro",
         messages: [
-          { role: "system", content: "Você responde APENAS com JSON válido, sem markdown." },
+          { role: "system", content: "Você é especialista em CBO 2002 (MTE) e responde APENAS com JSON válido, sem markdown." },
           { role: "user", content: prompt },
         ],
+        temperature: 0.2,
         response_format: { type: "json_object" },
       }),
     });
@@ -74,6 +86,18 @@ Responda SOMENTE com JSON válido no formato exato:
     const out = {
       cbo: String(parsed.cbo || "").replace(/\D/g, "").slice(0, 6),
       titulo_cbo: String(parsed.titulo_cbo || ""),
+      cbo_familia: String(parsed.cbo_familia || ""),
+      cbo_justificativa: String(parsed.cbo_justificativa || ""),
+      cbo_alternativas: Array.isArray(parsed.cbo_alternativas)
+        ? parsed.cbo_alternativas
+            .map((a: any) => ({
+              cbo: String(a?.cbo || "").replace(/\D/g, "").slice(0, 6),
+              titulo: String(a?.titulo || ""),
+              quando_usar: String(a?.quando_usar || ""),
+            }))
+            .filter((a: any) => a.cbo || a.titulo)
+            .slice(0, 3)
+        : [],
       area: String(parsed.area || ""),
       nivel: String(parsed.nivel || ""),
       descricao_sumaria: String(parsed.descricao_sumaria || ""),
