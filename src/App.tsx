@@ -51,6 +51,7 @@ import GestaoCctPage from "./pages/sucessoCliente/GestaoCctPage";
 import FeedbackPublicPage from "./pages/sucessoCliente/FeedbackPublicPage";
 import EmpresaFeedbackPage from "./pages/sucessoCliente/EmpresaFeedbackPage";
 import PoliticaHotelariaPublicPage from "./pages/sucessoCliente/PoliticaHotelariaPublicPage";
+import PremioPublicPage from "./pages/sucessoCliente/PremioPublicPage";
 import GestaoCctDashboardPage from "./pages/gestaoCct/GestaoCctDashboardPage";
 import CctNovaPage from "./pages/gestaoCct/CctNovaPage";
 import CctDetailPage from "./pages/gestaoCct/CctDetailPage";
@@ -78,6 +79,7 @@ const App = () => (
             <Route path="/empresa/:token/feedback" element={<EmpresaFeedbackPage />} />
             {/* Política de Hotelaria — link público para usuário da pousada */}
             <Route path="/politica-hotelaria/:policyId" element={<PoliticaHotelariaPublicPage />} />
+            <Route path="/premio/:policyId" element={<PremioPublicPage />} />
             {/* Admissão — escritório (senha) */}
             <Route path="/admissao/escritorio/login" element={<EscritorioLoginPage />} />
             <Route element={<OfficeGuard />}>

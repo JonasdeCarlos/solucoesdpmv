@@ -7,7 +7,9 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Plus, Trash2, Wand2, Save, Pencil, X, Users, Upload, FileDown, Sparkles } from 'lucide-react';
+import { Loader2, Plus, Trash2, Wand2, Save, Pencil, X, Users, Upload, FileDown, Sparkles, Link2 } from 'lucide-react';
+import { buildExternalAppLink } from '@/utils/publicLinks';
+import { copyToClipboard } from '@/utils/clipboard';
 import { usePrizePolicies, usePrizeCriteria, usePrizeEmployees, type PrizePolicy } from '@/hooks/usePrizePolicies';
 import { useEmpregados } from '@/hooks/useEmpregados';
 import { toast } from 'sonner';
@@ -317,6 +319,14 @@ function PolicyCard({ policy, expanded, onToggle, onUpdate, onRemove, cliente }:
             {policy.objetivo && <p className="text-xs text-muted-foreground mt-1">{policy.objetivo}</p>}
           </div>
           <div className="flex gap-1">
+            <Button size="sm" variant="outline" onClick={async ()=>{
+              const link = buildExternalAppLink(`/premio/${policy.id}`);
+              const ok = await copyToClipboard(link);
+              if (ok) toast.success('Link público copiado.');
+              else toast.info(link, { description: 'Copie manualmente o link acima.' });
+            }}>
+              <Link2 className="w-3 h-3 mr-1"/>Link público
+            </Button>
             <Button size="sm" variant="outline" onClick={()=>setEditing(e => !e)}><Pencil className="w-3 h-3"/></Button>
             <Button size="sm" variant="ghost" onClick={onRemove}><Trash2 className="w-3 h-3"/></Button>
           </div>
@@ -388,7 +398,7 @@ function PolicyCard({ policy, expanded, onToggle, onUpdate, onRemove, cliente }:
   );
 }
 
-function CriteriaSection({ policy, cliente }: { policy: PrizePolicy; cliente: any }) {
+export function CriteriaSection({ policy, cliente }: { policy: PrizePolicy; cliente: any }) {
   const { items, create, createMany, update, remove, suggest, explainCriterion } = usePrizeCriteria(policy.id);
   const { items: participantes } = usePrizeEmployees(policy.id);
   const [novo, setNovo] = useState({ nome: '', descricao: '', peso: 1, essencial: false });
