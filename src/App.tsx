@@ -78,6 +78,7 @@ const App = () => (
             <Route path="/empresa/:token/feedback" element={<EmpresaFeedbackPage />} />
             {/* Política de Hotelaria — link público para usuário da pousada */}
             <Route path="/politica-hotelaria/:policyId" element={<PoliticaHotelariaPublicPage />} />
+            <Route path="/premio/:policyId" element={<PremioPublicPage />} />
             {/* Admissão — escritório (senha) */}
             <Route path="/admissao/escritorio/login" element={<EscritorioLoginPage />} />
             <Route element={<OfficeGuard />}>
