@@ -24,7 +24,7 @@ export default function PremioAvaliacaoDialog({
   onSaved?: () => void;
 }) {
   const { items: criteria } = usePrizeCriteria(policy.id);
-  const { items: results, upsert } = useCriterionResults(ae?.id);
+  const { items: results, upsert, loading: resultsLoading } = useCriterionResults(ae?.id);
   const { updateOne } = useAssessmentEmployees(ae?.assessment_id);
   const { items: allEmployees } = usePrizeEmployees(policy.id);
 
@@ -42,7 +42,7 @@ export default function PremioAvaliacaoDialog({
   useEffect(() => {
     if (!open) { hydratedKey.current = null; return; }
     const key = `${ae?.id ?? ''}`;
-    if (!ae?.id || criteria.length === 0) return;
+    if (!ae?.id || criteria.length === 0 || resultsLoading) return;
     if (hydratedKey.current === key) {
       // apenas adiciona critérios novos, sem tocar nos já editados
       setLocal(prev => {
@@ -72,7 +72,7 @@ export default function PremioAvaliacaoDialog({
     }
     setLocal(m);
     setParecer(ae?.parecer_geral || '');
-  }, [open, ae?.id, criteria, results, ae?.parecer_geral]);
+  }, [open, ae?.id, criteria, results, resultsLoading, ae?.parecer_geral]);
 
   // Cálculo do teto individual para o modelo Hotelaria:
   // pool individual = faturamento_total * split_individual%
