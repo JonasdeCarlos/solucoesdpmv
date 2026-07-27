@@ -597,7 +597,14 @@ export default function PremioHotelariaSection({ policy, cliente, onUpdate, onDr
           </CardContent></Card>
 
           <div className="mt-3">
-            <PremioAplicacaoSection policy={policy} cliente={cliente}/>
+            <PremioAplicacaoSection
+              policy={{
+                ...policy,
+                hotelaria_config: config,
+                hotelaria_apuracoes: apMap,
+              } as any}
+              cliente={cliente}
+            />
           </div>
         </TabsContent>
 

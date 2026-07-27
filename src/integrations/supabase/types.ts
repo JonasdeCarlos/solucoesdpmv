@@ -3881,6 +3881,7 @@ export type Database = {
           created_by: string | null
           escopo: string
           hotelaria_apuracao: Json | null
+          hotelaria_apuracoes: Json | null
           hotelaria_config: Json | null
           hotelaria_pontos: Json | null
           id: string
@@ -3915,6 +3916,7 @@ export type Database = {
           created_by?: string | null
           escopo?: string
           hotelaria_apuracao?: Json | null
+          hotelaria_apuracoes?: Json | null
           hotelaria_config?: Json | null
           hotelaria_pontos?: Json | null
           id?: string
@@ -3949,6 +3951,7 @@ export type Database = {
           created_by?: string | null
           escopo?: string
           hotelaria_apuracao?: Json | null
+          hotelaria_apuracoes?: Json | null
           hotelaria_config?: Json | null
           hotelaria_pontos?: Json | null
           id?: string

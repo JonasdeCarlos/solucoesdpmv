@@ -78,10 +78,19 @@ export default function PremioAvaliacaoDialog({
   // pool individual = faturamento_total * split_individual%
   // teto de prêmios = pool * individual_pct_distribuicao%
   // teto por colaborador = teto * (pontos do colaborador / soma de pontos)
+  const competenciaKey = useMemo(() => {
+    const [mes, ano] = String(competencia || '').split('/');
+    if (mes && ano) return `${ano}-${mes.padStart(2, '0')}`;
+    return '';
+  }, [competencia]);
+
   const hotelariaBase = useMemo(() => {
     if ((policy as any).modelo_template !== 'hotelaria') return null;
     const cfg: any = (policy as any).hotelaria_config || {};
-    const ap: any = (policy as any).hotelaria_apuracao || {};
+    const apuracoes: Record<string, any> = ((policy as any).hotelaria_apuracoes as any) || {};
+    const ap: any = (competenciaKey && apuracoes[competenciaKey])
+      || (policy as any).hotelaria_apuracao
+      || {};
     const legacy: Record<string, number> = ((policy as any).hotelaria_pontos as any) || {};
     const pontosOf = (eid: string) => {
       const e = allEmployees.find(x => x.id === eid);
@@ -97,7 +106,7 @@ export default function PremioAvaliacaoDialog({
     const pontosColab = pontosOf(ae?.employee_id || '');
     const tetoColab = somaPontos > 0 ? tetoDistribuicao * (pontosColab / somaPontos) : 0;
     return { splitInd, pctDist, fat, poolIndividual, tetoDistribuicao, somaPontos, pontosColab, tetoColab };
-  }, [policy, allEmployees, ae?.employee_id]);
+  }, [policy, allEmployees, ae?.employee_id, competenciaKey]);
 
   const valorBaseEfetivo = hotelariaBase ? hotelariaBase.tetoColab : Number(policy.valor_base || 0);
   const hotelariaEscala: Array<{ label: string; valor: number }> = hotelariaBase
@@ -123,7 +132,26 @@ export default function PremioAvaliacaoDialog({
 
   if (!ae) return null;
 
-  const setField = (cid: string, patch: any) => setLocal(prev => ({ ...prev, [cid]: { ...prev[cid], ...patch } }));
+  const setField = (cid: string, patch: any) => setLocal(prev => ({
+    ...prev,
+    [cid]: {
+      percentual: 0,
+      observacao: '',
+      status: 'pendente',
+      feedback_ia: null,
+      evidencia_url: null,
+      ...prev[cid],
+      ...patch,
+    },
+  }));
+
+  const setPercentual = (cid: string, value: number) => {
+    const percentual = Math.min(100, Math.max(0, Number(value) || 0));
+    setField(cid, {
+      percentual,
+      status: percentual > 0 ? statusFromPct(percentual) : 'pendente',
+    });
+  };
 
   const statusFromPct = (p: number) => p >= 100 ? 'integral' : p >= 70 ? 'parcial' : p > 0 ? 'parcial' : 'pendente';
 
@@ -327,10 +355,10 @@ export default function PremioAvaliacaoDialog({
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <Slider value={[Number(l.percentual)]} max={100} step={5} className="flex-1"
-                    onValueChange={(v)=>setField(c.id, { percentual: v[0] })}/>
+                  <Slider value={[Number(l.percentual)]} min={0} max={100} step={5} className="flex-1"
+                    onValueChange={(v)=>setPercentual(c.id, v[0])}/>
                   <Input type="number" min={0} max={100} value={l.percentual}
-                    onChange={(e)=>setField(c.id, { percentual: Math.min(100, Math.max(0, Number(e.target.value)||0)) })}
+                    onChange={(e)=>setPercentual(c.id, Number(e.target.value))}
                     className="w-20 h-8"/>
                 </div>
 
@@ -343,7 +371,7 @@ export default function PremioAvaliacaoDialog({
                         size="sm"
                         variant={Number(l.percentual) === Number(opt.valor) ? 'default' : 'outline'}
                         className="h-7 text-[11px]"
-                        onClick={()=>setField(c.id, { percentual: Number(opt.valor) })}
+                        onClick={()=>setPercentual(c.id, Number(opt.valor))}
                       >
                         {opt.label} ({Number(opt.valor).toFixed(0)}%)
                       </Button>
