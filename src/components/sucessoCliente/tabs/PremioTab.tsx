@@ -388,7 +388,7 @@ function PolicyCard({ policy, expanded, onToggle, onUpdate, onRemove, cliente }:
   );
 }
 
-function CriteriaSection({ policy, cliente }: { policy: PrizePolicy; cliente: any }) {
+export function CriteriaSection({ policy, cliente }: { policy: PrizePolicy; cliente: any }) {
   const { items, create, createMany, update, remove, suggest, explainCriterion } = usePrizeCriteria(policy.id);
   const { items: participantes } = usePrizeEmployees(policy.id);
   const [novo, setNovo] = useState({ nome: '', descricao: '', peso: 1, essencial: false });
