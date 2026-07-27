@@ -36,9 +36,9 @@ async function checkPassword(policy_id: string, password: string | undefined) {
   const { data } = await s.from("prize_policies").select("public_password_hash").eq("id", policy_id).maybeSingle();
   const hash = (data as any)?.public_password_hash as string | null | undefined;
   if (!hash) return null; // sem senha configurada
-  if (!password) return json({ error: "Senha necessária", requires_password: true }, 401);
+  if (!password) return json({ requires_password: true }, 200);
   const ok = (await sha256(password)) === hash;
-  if (!ok) return json({ error: "Senha incorreta", requires_password: true }, 401);
+  if (!ok) return json({ requires_password: true, wrong: true }, 200);
   return null;
 }
 // Fields on prize_policies the pousada can patch through the public link
