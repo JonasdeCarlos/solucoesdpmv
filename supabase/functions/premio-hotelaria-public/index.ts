@@ -239,6 +239,14 @@ Deno.serve(async (req) => {
     if (!policy_id) throw new Error("policy_id ausente");
     // Backwards-compat: old callers with no action expected the bundle shape.
     if (action === "get" || !action) action = "get_bundle";
+
+    if (action === "set_public_password") {
+      return await setPublicPassword(policy_id, body.password ?? null, req.headers.get("Authorization") || "");
+    }
+
+    const denied = await checkPassword(policy_id, body.password || url.searchParams.get("password") || undefined);
+    if (denied) return denied;
+
     return await handle(action, policy_id, body);
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : String(e) }, 500);
