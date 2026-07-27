@@ -41,7 +41,7 @@ async function handle(action: string, policy_id: string, body: any) {
     const { data: policy, error } = await s.from("prize_policies").select("*").eq("id", policy_id).maybeSingle();
     if (error) throw error;
     if (!policy) return json({ error: "Política não encontrada" }, 404);
-    if (policy.modelo_template !== "hotelaria") return json({ error: "Política não é do modelo Hotelaria" }, 400);
+    // Qualquer modelo de política pode ser exposto pelo link público.
     const [{ data: cliente }, { data: criteria }, { data: employees }] = await Promise.all([
       s.from("clientes").select("id, nome, cnpj, nome_fantasia").eq("id", policy.client_id).maybeSingle(),
       s.from("prize_criteria").select("*").eq("policy_id", policy_id).order("ordem", { ascending: true }),
