@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Building2 } from 'lucide-react';
+import { Loader2, Building2, Lock } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { PrizePublicApiProvider, type PrizePublicApi } from '@/hooks/prizePublicContext';
 import PremioHotelariaSection from '@/components/sucessoCliente/tabs/PremioHotelariaSection';
 import PremioAplicacaoSection from '@/components/sucessoCliente/tabs/PremioAplicacaoSection';
