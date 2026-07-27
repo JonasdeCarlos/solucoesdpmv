@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Plus, Trash2, Wand2, Save, Pencil, X, Users, Upload, FileDown, Sparkles, Link2 } from 'lucide-react';
+import { Loader2, Plus, Trash2, Wand2, Save, Pencil, X, Users, Upload, FileDown, Sparkles, Link2, KeyRound } from 'lucide-react';
 import { buildExternalAppLink } from '@/utils/publicLinks';
 import { copyToClipboard } from '@/utils/clipboard';
 import { usePrizePolicies, usePrizeCriteria, usePrizeEmployees, type PrizePolicy } from '@/hooks/usePrizePolicies';
@@ -326,6 +326,17 @@ function PolicyCard({ policy, expanded, onToggle, onUpdate, onRemove, cliente }:
               else toast.info(link, { description: 'Copie manualmente o link acima.' });
             }}>
               <Link2 className="w-3 h-3 mr-1"/>Link público
+            </Button>
+            <Button size="sm" variant="outline" onClick={async ()=>{
+              const senha = window.prompt('Defina a senha de acesso do link público (deixe vazio para remover a senha):', '');
+              if (senha === null) return;
+              const { data, error } = await supabase.functions.invoke('premio-hotelaria-public', {
+                body: { policy_id: policy.id, action: 'set_public_password', password: senha },
+              });
+              if (error || (data as any)?.error) { toast.error('Erro ao salvar a senha.'); return; }
+              toast.success((data as any)?.protegido ? 'Senha definida. Envie-a ao cliente junto com o link.' : 'Senha removida — link liberado.');
+            }}>
+              <KeyRound className="w-3 h-3 mr-1"/>Senha
             </Button>
             <Button size="sm" variant="outline" onClick={()=>setEditing(e => !e)}><Pencil className="w-3 h-3"/></Button>
             <Button size="sm" variant="ghost" onClick={onRemove}><Trash2 className="w-3 h-3"/></Button>

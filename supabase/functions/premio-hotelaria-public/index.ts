@@ -7,6 +7,40 @@ const json = (data: unknown, status = 200) =>
 const supa = () =>
   createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
+async function sha256(txt: string) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(txt));
+  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+// Admin (autenticado) define/remove a senha do link público
+async function setPublicPassword(policy_id: string, password: string | null, authHeader: string) {
+  const token = (authHeader || "").replace("Bearer ", "");
+  if (!token) return json({ error: "Não autenticado" }, 401);
+  const userClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+  });
+  const { data: u } = await userClient.auth.getUser();
+  if (!u?.user) return json({ error: "Não autenticado" }, 401);
+  const s = supa();
+  const { data: isAdmin } = await s.rpc("is_admin_or_master", { _user_id: u.user.id });
+  if (!isAdmin) return json({ error: "Sem permissão" }, 403);
+  const hash = password && password.length > 0 ? await sha256(password) : null;
+  const { error } = await s.from("prize_policies").update({ public_password_hash: hash }).eq("id", policy_id);
+  if (error) throw error;
+  return json({ ok: true, protegido: !!hash });
+}
+
+// Confere a senha exigida pelo link público
+async function checkPassword(policy_id: string, password: string | undefined) {
+  const s = supa();
+  const { data } = await s.from("prize_policies").select("public_password_hash").eq("id", policy_id).maybeSingle();
+  const hash = (data as any)?.public_password_hash as string | null | undefined;
+  if (!hash) return null; // sem senha configurada
+  if (!password) return json({ requires_password: true }, 200);
+  const ok = (await sha256(password)) === hash;
+  if (!ok) return json({ requires_password: true, wrong: true }, 200);
+  return null;
+}
 // Fields on prize_policies the pousada can patch through the public link
 const POLICY_PATCH_WHITELIST = new Set([
   "hotelaria_config",
@@ -41,6 +75,7 @@ async function handle(action: string, policy_id: string, body: any) {
     const { data: policy, error } = await s.from("prize_policies").select("*").eq("id", policy_id).maybeSingle();
     if (error) throw error;
     if (!policy) return json({ error: "Política não encontrada" }, 404);
+    delete (policy as any).public_password_hash;
     // Qualquer modelo de política pode ser exposto pelo link público.
     const [{ data: cliente }, { data: criteria }, { data: employees }] = await Promise.all([
       s.from("clientes").select("id, nome, cnpj, nome_fantasia").eq("id", policy.client_id).maybeSingle(),
@@ -204,6 +239,14 @@ Deno.serve(async (req) => {
     if (!policy_id) throw new Error("policy_id ausente");
     // Backwards-compat: old callers with no action expected the bundle shape.
     if (action === "get" || !action) action = "get_bundle";
+
+    if (action === "set_public_password") {
+      return await setPublicPassword(policy_id, body.password ?? null, req.headers.get("Authorization") || "");
+    }
+
+    const denied = await checkPassword(policy_id, body.password || url.searchParams.get("password") || undefined);
+    if (denied) return denied;
+
     return await handle(action, policy_id, body);
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : String(e) }, 500);

@@ -1,18 +1,28 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Building2 } from 'lucide-react';
+import { Loader2, Building2, Lock } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { PrizePublicApiProvider, type PrizePublicApi } from '@/hooks/prizePublicContext';
 import PremioHotelariaSection from '@/components/sucessoCliente/tabs/PremioHotelariaSection';
 import PremioAplicacaoSection from '@/components/sucessoCliente/tabs/PremioAplicacaoSection';
 import { CriteriaSection, EmployeesSection } from '@/components/sucessoCliente/tabs/PremioTab';
 import type { PrizePolicy } from '@/hooks/usePrizePolicies';
 
+let PUB_PASSWORD = '';
+export function setPubPassword(p: string) { PUB_PASSWORD = p; }
+
 async function invokePub(policyId: string, action: string, extra: Record<string, unknown> = {}) {
   const { data, error } = await supabase.functions.invoke('premio-hotelaria-public', {
-    body: { policy_id: policyId, action, ...extra },
+    body: { policy_id: policyId, action, password: PUB_PASSWORD || undefined, ...extra },
   });
   if (error) throw error;
+  if ((data as any)?.requires_password) {
+    const err: any = new Error((data as any).wrong ? 'Senha incorreta.' : 'Senha necessária.');
+    err.requiresPassword = true;
+    throw err;
+  }
   if ((data as any)?.error) throw new Error((data as any).error);
   return data as any;
 }
@@ -23,6 +33,9 @@ export default function PremioPublicPage() {
   const [cliente, setCliente] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [needPassword, setNeedPassword] = useState(false);
+  const [pwd, setPwd] = useState('');
+  const [checking, setChecking] = useState(false);
 
   const reloadBundle = useCallback(async () => {
     if (!policyId) return;
@@ -33,11 +46,33 @@ export default function PremioPublicPage() {
 
   useEffect(() => {
     (async () => {
+      const saved = policyId ? sessionStorage.getItem(`premio_pwd_${policyId}`) : null;
+      if (saved) setPubPassword(saved);
       try { await reloadBundle(); }
-      catch (e: any) { setError(e.message || 'Erro ao carregar'); }
+      catch (e: any) {
+        if (e?.requiresPassword) setNeedPassword(true);
+        else setError(e.message || 'Erro ao carregar');
+      }
       finally { setLoading(false); }
     })();
   }, [reloadBundle]);
+
+  const submitPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setChecking(true);
+    setError(null);
+    setPubPassword(pwd);
+    try {
+      await reloadBundle();
+      if (policyId) sessionStorage.setItem(`premio_pwd_${policyId}`, pwd);
+      setNeedPassword(false);
+    } catch (err: any) {
+      setPubPassword('');
+      setError(err?.requiresPassword ? 'Senha incorreta.' : (err.message || 'Erro ao carregar'));
+    } finally {
+      setChecking(false);
+    }
+  };
 
   const api = useMemo<PrizePublicApi | null>(() => {
     if (!policyId) return null;
@@ -77,6 +112,19 @@ export default function PremioPublicPage() {
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin"/></div>;
+  if (needPassword) return (
+    <div className="min-h-screen flex items-center justify-center bg-muted/30 px-4">
+      <form onSubmit={submitPassword} className="bg-background border rounded-lg p-6 w-full max-w-sm space-y-3">
+        <div className="flex items-center gap-2"><Lock className="w-5 h-5 text-primary"/><h1 className="font-semibold">Acesso restrito</h1></div>
+        <p className="text-xs text-muted-foreground">Informe a senha enviada pela contabilidade para acessar a política.</p>
+        <Input type="password" value={pwd} onChange={(e)=>setPwd(e.target.value)} placeholder="Senha de acesso" autoFocus/>
+        {error && <p className="text-xs text-destructive">{error}</p>}
+        <Button type="submit" className="w-full" disabled={checking || !pwd}>
+          {checking && <Loader2 className="w-4 h-4 mr-2 animate-spin"/>}Entrar
+        </Button>
+      </form>
+    </div>
+  );
   if (error) return <div className="min-h-screen flex items-center justify-center text-destructive">{error}</div>;
   if (!policy || !api) return null;
 
