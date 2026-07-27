@@ -200,6 +200,24 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
   };
 
   const verificarConselho = async () => {
+    return _analisar({});
+  };
+
+  const usarAlternativaCbo = async (a: any) => {
+    const cbo = String(a?.cbo || '').replace(/\D/g, '');
+    setDraft((d: any) => ({
+      ...d,
+      cbo: cbo || d.cbo,
+      adequacao: {
+        ...(d.adequacao || {}),
+        titulo_cbo: a?.titulo || d.adequacao?.titulo_cbo,
+        cbo_alternativas: [],
+      },
+    }));
+    await _analisar({ cbo: cbo || draft.cbo, titulo_cbo: a?.titulo || '', cbo_confirmado: true });
+  };
+
+  const _analisar = async (opts: { cbo?: string; titulo_cbo?: string; cbo_confirmado?: boolean }) => {
     if (!draft.nome?.trim()) return toast.error('Informe o nome do cargo.');
     setBusy('conselho');
     try {
@@ -208,7 +226,9 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
           nome: draft.nome,
           empresa: cliente?.nome,
           setor: cliente?.segmento || cliente?.cnae || '',
-          cbo: draft.cbo || '',
+          cbo: opts.cbo ?? (draft.cbo || ''),
+          titulo_cbo: opts.titulo_cbo || '',
+          cbo_confirmado: !!opts.cbo_confirmado,
           descricao_sumaria: draft.descricao_sumaria || '',
           atividades: draft.atividades || [],
         },
@@ -217,6 +237,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
       if (data?.error) throw new Error(data.error);
       setDraft((d: any) => ({
         ...d,
+        cbo: opts.cbo_confirmado ? (opts.cbo || d.cbo) : d.cbo,
         adequacao: {
           ...(d.adequacao || {}),
           profissao_regulamentada: !!data.profissao_regulamentada,
@@ -226,7 +247,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
           titulo_cbo: data.titulo_cbo || d.adequacao?.titulo_cbo || '',
           cbo_familia: data.cbo_familia || d.adequacao?.cbo_familia || '',
           cbo_justificativa: data.cbo_justificativa || d.adequacao?.cbo_justificativa || '',
-          cbo_alternativas: data.cbo_alternativas?.length ? data.cbo_alternativas : (d.adequacao?.cbo_alternativas || []),
+          cbo_alternativas: opts.cbo_confirmado ? [] : (data.cbo_alternativas?.length ? data.cbo_alternativas : (d.adequacao?.cbo_alternativas || [])),
           conselho_mensagem: data.conselho_mensagem || '',
         },
       }));
@@ -870,9 +891,10 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
                         {a.cbo} — {a.titulo}{a.quando_usar ? ` (${a.quando_usar})` : ''}
                         <button
                           type="button"
+                          disabled={busy === 'conselho'}
                           className="ml-2 underline text-primary"
-                          onClick={() => setDraft((d: any) => ({ ...d, cbo: a.cbo || d.cbo, adequacao: { ...(d.adequacao || {}), titulo_cbo: a.titulo || d.adequacao?.titulo_cbo } }))}
-                        >usar</button>
+                          onClick={() => usarAlternativaCbo(a)}
+                        >{busy === 'conselho' ? 'analisando…' : 'usar'}</button>
                       </li>
                     ))}
                   </ul>
