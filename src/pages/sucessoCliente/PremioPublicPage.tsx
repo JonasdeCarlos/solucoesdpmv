@@ -8,11 +8,19 @@ import PremioAplicacaoSection from '@/components/sucessoCliente/tabs/PremioAplic
 import { CriteriaSection, EmployeesSection } from '@/components/sucessoCliente/tabs/PremioTab';
 import type { PrizePolicy } from '@/hooks/usePrizePolicies';
 
+let PUB_PASSWORD = '';
+export function setPubPassword(p: string) { PUB_PASSWORD = p; }
+
 async function invokePub(policyId: string, action: string, extra: Record<string, unknown> = {}) {
   const { data, error } = await supabase.functions.invoke('premio-hotelaria-public', {
-    body: { policy_id: policyId, action, ...extra },
+    body: { policy_id: policyId, action, password: PUB_PASSWORD || undefined, ...extra },
   });
   if (error) throw error;
+  if ((data as any)?.requires_password) {
+    const err: any = new Error((data as any).wrong ? 'Senha incorreta.' : 'Senha necessária.');
+    err.requiresPassword = true;
+    throw err;
+  }
   if ((data as any)?.error) throw new Error((data as any).error);
   return data as any;
 }
