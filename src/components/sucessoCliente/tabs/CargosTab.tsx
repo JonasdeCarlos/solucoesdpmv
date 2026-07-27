@@ -217,6 +217,69 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
     await _analisar({ cbo: cbo || draft.cbo, titulo_cbo: a?.titulo || '', cbo_confirmado: true });
   };
 
+  const limparPreenchimento = () => {
+    setDraft((d: any) => ({ ...emptyDraft(), id: d.id, nome: d.nome }));
+    toast.info('Preenchimento limpo. Nome do cargo mantido.');
+  };
+
+  const usarEsteCbo = async () => {
+    const code = String(draft.cbo || '').replace(/\D/g, '');
+    if (code.length < 4) return toast.error('Informe um código CBO válido (4 ou 6 dígitos).');
+    setBusy('usarcbo');
+    try {
+      let tituloOficial = '';
+      try {
+        const mte = await supabase.functions.invoke('cargo-cbo-mte', { body: { cbo: code, nome: draft.nome } });
+        tituloOficial = String((mte.data as any)?.titulo_oficial || '');
+      } catch { /* MTE é best-effort */ }
+
+      const { data, error } = await supabase.functions.invoke('cargo-adequar', {
+        body: {
+          nome: draft.nome || tituloOficial,
+          empresa: cliente?.nome,
+          setor: cliente?.segmento || cliente?.cnae || '',
+          cbo: code,
+          titulo_cbo: tituloOficial,
+          cbo_confirmado: true,
+          descricao_sumaria: draft.descricao_sumaria || '',
+          atividades: draft.atividades || [],
+        },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const d0: any = data;
+      setDraft((d: any) => ({
+        ...d,
+        nome: d.nome || d0.titulo_cbo || tituloOficial || '',
+        cbo: code,
+        area: d0.area || d.area || '',
+        nivel: d0.nivel || d.nivel,
+        descricao_sumaria: d0.descricao_sumaria || d.descricao_sumaria || '',
+        atividades: (d0.atividades?.length ? d0.atividades : (d.atividades || [])),
+        requisitos: {
+          escolaridade: d0.requisitos?.escolaridade || d.requisitos?.escolaridade || '',
+          experiencia: d0.requisitos?.experiencia || d.requisitos?.experiencia || '',
+          competencias: (d0.requisitos?.competencias?.length ? d0.requisitos.competencias : (d.requisitos?.competencias || [])),
+        },
+        adequacao: {
+          ...(d.adequacao || {}),
+          profissao_regulamentada: !!d0.profissao_regulamentada,
+          base_legal: d0.base_legal || '',
+          conselho_registro: d0.conselho_registro || { obrigatorio: false, sigla: '', descricao: '' },
+          observacoes_regulamentacao: d0.observacoes_regulamentacao || '',
+          titulo_cbo: tituloOficial || d0.titulo_cbo || '',
+          cbo_familia: d0.cbo_familia || '',
+          cbo_justificativa: d0.cbo_justificativa || '',
+          cbo_alternativas: [],
+          conselho_mensagem: d0.conselho_mensagem || '',
+        },
+      }));
+      toast.success(`Cargo preenchido com base no CBO ${code}${tituloOficial ? ' — ' + tituloOficial : ''}.`);
+    } catch (e: any) {
+      toast.error('Falha: ' + e.message);
+    } finally { setBusy(null); }
+  };
+
   const _analisar = async (opts: { cbo?: string; titulo_cbo?: string; cbo_confirmado?: boolean }) => {
     if (!draft.nome?.trim()) return toast.error('Informe o nome do cargo.');
     setBusy('conselho');
