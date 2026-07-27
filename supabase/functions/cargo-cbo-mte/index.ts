@@ -179,11 +179,8 @@ async function consultarMte(cbo: string, nome?: string) {
         ? texto.includes(display)
         : new RegExp(`\\b${digits}(-\\d{2})?\\b`).test(texto);
       if (!bate) continue;
-      const campo = linha.match(/\{'(formSite017:objetos:\d+:j_idt\d+)':'\1'\}/g)
-        ?.map((m) => m.match(/'(formSite017:objetos:\d+:j_idt\d+)'/)![1])
-        .find((f) => !linha.includes(`'_blank'`) || !f.endsWith("j_idt92"));
       const campos = Array.from(linha.matchAll(/\{'(formSite017:objetos:\d+:j_idt\d+)':'\1'\}/g)).map((m) => m[1]);
-      clickCodigo = campos[1] || campo || campos[0] || "";
+      clickCodigo = campos[1] || campos[0] || "";
       if (clickCodigo) { resultado = page; formResultado = form; break; }
     }
     if (clickCodigo) break;
@@ -232,11 +229,11 @@ async function consultarMte(cbo: string, nome?: string) {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
-    const { cbo } = await req.json();
+    const { cbo, nome } = await req.json();
     const code = String(cbo || "").replace(/\D/g, "");
     if (!code || !/^\d{4}(\d{2})?$/.test(code)) throw new Error("Informe um código CBO com 4 ou 6 dígitos.");
 
-    const data = await consultarMte(code);
+    const data = await consultarMte(code, typeof nome === "string" ? nome : "");
     return new Response(JSON.stringify(data), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : String(e) }), {
