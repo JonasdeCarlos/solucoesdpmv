@@ -910,6 +910,9 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
               {busy==='completar' ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <Sparkles className="w-4 h-4 mr-2"/>}
               Preencher campos vazios com IA
             </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={limparPreenchimento} disabled={!!busy} title="Limpa todos os campos preenchidos, mantendo apenas o nome do cargo.">
+              <Trash2 className="w-4 h-4 mr-2"/>Limpar preenchimento
+            </Button>
           </div>
           {draft.adequacao && (
             <div className={`border rounded-md p-3 mb-2 text-sm ${draft.adequacao.profissao_regulamentada ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/20' : 'bg-muted/40'}`}>
@@ -973,7 +976,19 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
           )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             <div><Label className="text-xs">Nome do cargo</Label><Input value={draft.nome} onChange={e=>setDraft({...draft,nome:e.target.value})}/></div>
-            <div><Label className="text-xs">CBO</Label><Input value={draft.cbo} onChange={e=>setDraft({...draft,cbo:e.target.value})}/></div>
+            <div>
+              <Label className="text-xs">CBO</Label>
+              <Input value={draft.cbo} onChange={e=>setDraft({...draft,cbo:e.target.value})}/>
+              <Button
+                type="button" size="sm" variant="outline" className="mt-2 w-full"
+                onClick={usarEsteCbo}
+                disabled={busy==='usarcbo' || !draft.cbo?.trim()}
+                title="Preenche o cargo com base no CBO informado, traz o título oficial do MTE e verifica regulamentação/conselho de classe."
+              >
+                {busy==='usarcbo' ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <Sparkles className="w-4 h-4 mr-2"/>}
+                Usar este CBO
+              </Button>
+            </div>
             <div className="md:col-span-2">
               <Label className="text-xs">Título oficial do CBO</Label>
               <Input
