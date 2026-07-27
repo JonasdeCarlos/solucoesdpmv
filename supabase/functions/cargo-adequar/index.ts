@@ -5,7 +5,7 @@ Deno.serve(async (req) => {
   try {
     const KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!KEY) throw new Error("LOVABLE_API_KEY missing");
-    const { nome, empresa, setor, cbo, descricao_sumaria, atividades } = await req.json().catch(() => ({}));
+    const { nome, empresa, setor, cbo, titulo_cbo, cbo_confirmado, descricao_sumaria, atividades } = await req.json().catch(() => ({}));
     const nomeCargo = String(nome || "").trim();
     if (!nomeCargo) {
       return new Response(JSON.stringify({ error: "Informe o nome do cargo." }), {
@@ -15,6 +15,7 @@ Deno.serve(async (req) => {
 
     const contexto = [
       cbo ? `CBO informado: ${String(cbo).replace(/\D/g, "")}` : "",
+      cbo_confirmado ? `O USUÁRIO CONFIRMOU ESTE CBO (${String(cbo).replace(/\D/g, "")}${titulo_cbo ? " — " + titulo_cbo : ""}). Mantenha OBRIGATORIAMENTE este código em "cbo", use o título oficial correspondente em "titulo_cbo", refaça toda a análise (área, nível, descrição, atividades, requisitos, regulamentação e conselho de classe) COM BASE NESTE CBO e retorne "cbo_alternativas" como array VAZIO.` : "",
       descricao_sumaria ? `Descrição sumária: ${String(descricao_sumaria).slice(0, 800)}` : "",
       Array.isArray(atividades) && atividades.length ? `Atividades: ${atividades.slice(0, 12).map((a: any) => String(a)).join(" | ").slice(0, 1000)}` : "",
     ].filter(Boolean).join("\n");
