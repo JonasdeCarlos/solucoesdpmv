@@ -180,11 +180,15 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
           competencias: (d.requisitos?.competencias?.length ? d.requisitos.competencias : (data.requisitos?.competencias || [])),
         },
         adequacao: {
+          ...(d.adequacao || {}),
           profissao_regulamentada: !!data.profissao_regulamentada,
           base_legal: data.base_legal || '',
           conselho_registro: data.conselho_registro || { obrigatorio: false, sigla: '', descricao: '' },
           observacoes_regulamentacao: data.observacoes_regulamentacao || '',
           titulo_cbo: data.titulo_cbo || '',
+          cbo_familia: data.cbo_familia || '',
+          cbo_justificativa: data.cbo_justificativa || '',
+          cbo_alternativas: data.cbo_alternativas || [],
         },
       }));
       toast.success(data.profissao_regulamentada
@@ -214,11 +218,15 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
       setDraft((d: any) => ({
         ...d,
         adequacao: {
+          ...(d.adequacao || {}),
           profissao_regulamentada: !!data.profissao_regulamentada,
           base_legal: data.base_legal || d.adequacao?.base_legal || '',
           conselho_registro: data.conselho_registro || { obrigatorio: false, sigla: '', descricao: '' },
           observacoes_regulamentacao: data.observacoes_regulamentacao || d.adequacao?.observacoes_regulamentacao || '',
           titulo_cbo: data.titulo_cbo || d.adequacao?.titulo_cbo || '',
+          cbo_familia: data.cbo_familia || d.adequacao?.cbo_familia || '',
+          cbo_justificativa: data.cbo_justificativa || d.adequacao?.cbo_justificativa || '',
+          cbo_alternativas: data.cbo_alternativas?.length ? data.cbo_alternativas : (d.adequacao?.cbo_alternativas || []),
           conselho_mensagem: data.conselho_mensagem || '',
         },
       }));
