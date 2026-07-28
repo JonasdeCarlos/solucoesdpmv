@@ -18,6 +18,7 @@ import { buildExternalAppLink } from '@/utils/publicLinks';
 import { copyToClipboard } from '@/utils/clipboard';
 import { Link2 } from 'lucide-react';
 import { usePrizePublicApi } from '@/hooks/prizePublicContext';
+import { supabase } from '@/integrations/supabase/client';
 
 const BRL = (n: number) => `R$ ${Number(n || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
