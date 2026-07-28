@@ -20,7 +20,32 @@ import { generatePremioPoliticaPdf } from '@/utils/sucessoCliente/premioPolitica
 import { supabase } from '@/integrations/supabase/client';
 import { HOTELARIA_CONFIG, HOTELARIA_CRITERIOS_INDIVIDUAIS } from '@/utils/sucessoCliente/premioTemplates';
 
-const VERBA_PRESETS = ['Prêmio', 'Gratificação', 'Bonificação', 'Bônus', 'PLR', 'Adicional de Desempenho'];
+const VERBA_PRESETS = ['Prêmio', 'Benefício', 'Gratificação', 'Bonificação', 'Bônus', 'PLR', 'Adicional de Desempenho'];
+
+export function MelhorarComIaButton({ texto, tipo, verba_label, contexto, onResult }: {
+  texto: string; tipo: 'objetivo' | 'regra'; verba_label?: string; contexto?: string; onResult: (t: string) => void;
+}) {
+  const [loading, setLoading] = useState(false);
+  const run = async () => {
+    if (!texto.trim()) { toast.error('Escreva um texto antes de melhorar com IA.'); return; }
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('premio-texto-melhorar', {
+        body: { texto, tipo, verba_label, contexto },
+      });
+      if (error || (data as any)?.error) throw new Error((data as any)?.error || 'Falha na IA');
+      onResult((data as any).texto);
+      toast.success('Texto revisado pela IA.');
+    } catch (e: any) {
+      toast.error(e?.message || 'Erro ao melhorar o texto.');
+    } finally { setLoading(false); }
+  };
+  return (
+    <Button type="button" size="sm" variant="outline" className="h-7 text-xs" disabled={loading} onClick={run}>
+      {loading ? <Loader2 className="w-3 h-3 mr-1 animate-spin"/> : <Sparkles className="w-3 h-3 mr-1"/>}Melhorar com IA
+    </Button>
+  );
+}
 
 export default function PremioTab({ client_id, cliente }: { client_id: string; cliente: any }) {
   const { items, create, update, remove } = usePrizePolicies(client_id);
@@ -30,6 +55,7 @@ export default function PremioTab({ client_id, cliente }: { client_id: string; c
     verba_label_custom: '',
     nome: '',
     objetivo: '',
+    regra_premiacao: '',
     periodo_tipo: 'mensal',
     valor_base: 0,
   });
@@ -48,6 +74,7 @@ export default function PremioTab({ client_id, cliente }: { client_id: string; c
       verba_label: label,
       nome: newForm.nome,
       objetivo: newForm.objetivo || null,
+      regra_premiacao: newForm.regra_premiacao || null,
       periodo_tipo: newForm.periodo_tipo,
       valor_base: Number(newForm.valor_base || 0),
     });
