@@ -48,6 +48,7 @@ const POLICY_PATCH_WHITELIST = new Set([
   "hotelaria_apuracao",
   "hotelaria_apuracoes",
   "objetivo",
+  "regra_premiacao",
   "aviso_legal",
 ]);
 
