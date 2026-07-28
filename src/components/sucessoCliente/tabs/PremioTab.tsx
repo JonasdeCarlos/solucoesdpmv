@@ -495,6 +495,7 @@ export function CriteriaSection({ policy, cliente }: { policy: PrizePolicy; clie
         verba_label: policy.verba_label,
         politica_nome: policy.nome,
         objetivo: policy.objetivo,
+        regra_premiacao: (policy as any).regra_premiacao,
         periodo_tipo: policy.periodo_tipo,
         valor_base: policy.valor_base,
         criterios: items.map(c => ({ nome: c.nome, descricao: c.descricao, peso: c.peso, essencial: c.essencial })),
