@@ -236,8 +236,22 @@ export default function PremioTab({ client_id, cliente }: { client_id: string; c
               <Input type="number" step="0.01" value={newForm.valor_base} onChange={(e)=>setNewForm({...newForm, valor_base: Number(e.target.value)})}/>
             </div>
             <div className="md:col-span-2">
-              <Label>Objetivo (opcional)</Label>
+              <div className="flex items-center justify-between gap-2">
+                <Label>Objetivo (opcional)</Label>
+                <MelhorarComIaButton texto={newForm.objetivo} tipo="objetivo"
+                  verba_label={newForm.verba_label === '__custom__' ? newForm.verba_label_custom : newForm.verba_label}
+                  onResult={(t)=>setNewForm(f => ({...f, objetivo: t}))}/>
+              </div>
               <Textarea rows={2} value={newForm.objetivo} onChange={(e)=>setNewForm({...newForm, objetivo: e.target.value})} placeholder="Ex.: estimular pontualidade e qualidade do atendimento ao cliente."/>
+            </div>
+            <div className="md:col-span-2">
+              <div className="flex items-center justify-between gap-2">
+                <Label>Regra do prêmio / benefício (opcional)</Label>
+                <MelhorarComIaButton texto={newForm.regra_premiacao} tipo="regra"
+                  verba_label={newForm.verba_label === '__custom__' ? newForm.verba_label_custom : newForm.verba_label}
+                  onResult={(t)=>setNewForm(f => ({...f, regra_premiacao: t}))}/>
+              </div>
+              <Textarea rows={3} value={newForm.regra_premiacao} onChange={(e)=>setNewForm({...newForm, regra_premiacao: e.target.value})} placeholder="Ex.: havendo atingimento de 80% no resultado geral, o colaborador fará jus ao recebimento do benefício."/>
             </div>
           </div>
           <div className="border-t pt-3 space-y-2 bg-primary/5 rounded-md p-3">
