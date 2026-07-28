@@ -489,13 +489,27 @@ export function CriteriaSection({ policy, cliente }: { policy: PrizePolicy; clie
     if (items.length === 0) { toast.error('Cadastre ao menos um critério antes de exportar.'); return; }
     setExporting(true);
     try {
+      // busca os textos mais recentes (objetivo / regra) direto do banco
+      let objetivoAtual = policy.objetivo;
+      let regraAtual = (policy as any).regra_premiacao;
+      try {
+        const { data: fresh } = await supabase
+          .from('prize_policies' as any)
+          .select('objetivo, regra_premiacao')
+          .eq('id', policy.id)
+          .maybeSingle();
+        if (fresh) {
+          objetivoAtual = (fresh as any).objetivo ?? objetivoAtual;
+          regraAtual = (fresh as any).regra_premiacao ?? regraAtual;
+        }
+      } catch { /* mantém valores locais */ }
       await generatePremioPoliticaPdf({
         empresa: cliente?.razao_social || cliente?.nome_fantasia || 'Empresa',
         cnpj: cliente?.cnpj || undefined,
         verba_label: policy.verba_label,
         politica_nome: policy.nome,
-        objetivo: policy.objetivo,
-        regra_premiacao: (policy as any).regra_premiacao,
+        objetivo: objetivoAtual,
+        regra_premiacao: regraAtual,
         periodo_tipo: policy.periodo_tipo,
         valor_base: policy.valor_base,
         criterios: items.map(c => ({ nome: c.nome, descricao: c.descricao, peso: c.peso, essencial: c.essencial })),
