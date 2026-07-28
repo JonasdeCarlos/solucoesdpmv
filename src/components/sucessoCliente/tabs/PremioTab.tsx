@@ -81,7 +81,7 @@ export default function PremioTab({ client_id, cliente }: { client_id: string; c
     if (error) { toast.error('Erro ao criar política.'); return; }
     toast.success('Política criada.');
     setCreating(false);
-    setNewForm({ verba_label: 'Prêmio', verba_label_custom: '', nome: '', objetivo: '', periodo_tipo: 'mensal', valor_base: 0 });
+    setNewForm({ verba_label: 'Prêmio', verba_label_custom: '', nome: '', objetivo: '', regra_premiacao: '', periodo_tipo: 'mensal', valor_base: 0 });
     if (data?.id) setSelectedId(data.id);
   };
 
@@ -172,7 +172,7 @@ export default function PremioTab({ client_id, cliente }: { client_id: string; c
       toast.success('Política gerada pela IA a partir dos documentos.');
       setCreating(false);
       setAiFiles([]); setAiContexto('');
-      setNewForm({ verba_label: 'Prêmio', verba_label_custom: '', nome: '', objetivo: '', periodo_tipo: 'mensal', valor_base: 0 });
+      setNewForm({ verba_label: 'Prêmio', verba_label_custom: '', nome: '', objetivo: '', regra_premiacao: '', periodo_tipo: 'mensal', valor_base: 0 });
       if (policyId) setSelectedId(policyId);
     } catch (e: any) {
       toast.error('Erro na geração por IA: ' + (e?.message || ''));
