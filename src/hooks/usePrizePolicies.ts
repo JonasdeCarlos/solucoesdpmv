@@ -9,6 +9,7 @@ export type PrizePolicy = {
   verba_label_plural: string | null;
   nome: string;
   objetivo: string | null;
+  regra_premiacao?: string | null;
   periodo_tipo: string;
   escopo: string;
   tipo_calculo: string;
