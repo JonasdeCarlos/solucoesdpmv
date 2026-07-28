@@ -20,7 +20,32 @@ import { generatePremioPoliticaPdf } from '@/utils/sucessoCliente/premioPolitica
 import { supabase } from '@/integrations/supabase/client';
 import { HOTELARIA_CONFIG, HOTELARIA_CRITERIOS_INDIVIDUAIS } from '@/utils/sucessoCliente/premioTemplates';
 
-const VERBA_PRESETS = ['Prêmio', 'Gratificação', 'Bonificação', 'Bônus', 'PLR', 'Adicional de Desempenho'];
+const VERBA_PRESETS = ['Prêmio', 'Benefício', 'Gratificação', 'Bonificação', 'Bônus', 'PLR', 'Adicional de Desempenho'];
+
+export function MelhorarComIaButton({ texto, tipo, verba_label, contexto, onResult }: {
+  texto: string; tipo: 'objetivo' | 'regra'; verba_label?: string; contexto?: string; onResult: (t: string) => void;
+}) {
+  const [loading, setLoading] = useState(false);
+  const run = async () => {
+    if (!texto.trim()) { toast.error('Escreva um texto antes de melhorar com IA.'); return; }
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('premio-texto-melhorar', {
+        body: { texto, tipo, verba_label, contexto },
+      });
+      if (error || (data as any)?.error) throw new Error((data as any)?.error || 'Falha na IA');
+      onResult((data as any).texto);
+      toast.success('Texto revisado pela IA.');
+    } catch (e: any) {
+      toast.error(e?.message || 'Erro ao melhorar o texto.');
+    } finally { setLoading(false); }
+  };
+  return (
+    <Button type="button" size="sm" variant="outline" className="h-7 text-xs" disabled={loading} onClick={run}>
+      {loading ? <Loader2 className="w-3 h-3 mr-1 animate-spin"/> : <Sparkles className="w-3 h-3 mr-1"/>}Melhorar com IA
+    </Button>
+  );
+}
 
 export default function PremioTab({ client_id, cliente }: { client_id: string; cliente: any }) {
   const { items, create, update, remove } = usePrizePolicies(client_id);
@@ -30,6 +55,7 @@ export default function PremioTab({ client_id, cliente }: { client_id: string; c
     verba_label_custom: '',
     nome: '',
     objetivo: '',
+    regra_premiacao: '',
     periodo_tipo: 'mensal',
     valor_base: 0,
   });
@@ -48,13 +74,14 @@ export default function PremioTab({ client_id, cliente }: { client_id: string; c
       verba_label: label,
       nome: newForm.nome,
       objetivo: newForm.objetivo || null,
+      regra_premiacao: newForm.regra_premiacao || null,
       periodo_tipo: newForm.periodo_tipo,
       valor_base: Number(newForm.valor_base || 0),
     });
     if (error) { toast.error('Erro ao criar política.'); return; }
     toast.success('Política criada.');
     setCreating(false);
-    setNewForm({ verba_label: 'Prêmio', verba_label_custom: '', nome: '', objetivo: '', periodo_tipo: 'mensal', valor_base: 0 });
+    setNewForm({ verba_label: 'Prêmio', verba_label_custom: '', nome: '', objetivo: '', regra_premiacao: '', periodo_tipo: 'mensal', valor_base: 0 });
     if (data?.id) setSelectedId(data.id);
   };
 
@@ -145,7 +172,7 @@ export default function PremioTab({ client_id, cliente }: { client_id: string; c
       toast.success('Política gerada pela IA a partir dos documentos.');
       setCreating(false);
       setAiFiles([]); setAiContexto('');
-      setNewForm({ verba_label: 'Prêmio', verba_label_custom: '', nome: '', objetivo: '', periodo_tipo: 'mensal', valor_base: 0 });
+      setNewForm({ verba_label: 'Prêmio', verba_label_custom: '', nome: '', objetivo: '', regra_premiacao: '', periodo_tipo: 'mensal', valor_base: 0 });
       if (policyId) setSelectedId(policyId);
     } catch (e: any) {
       toast.error('Erro na geração por IA: ' + (e?.message || ''));
@@ -209,8 +236,22 @@ export default function PremioTab({ client_id, cliente }: { client_id: string; c
               <Input type="number" step="0.01" value={newForm.valor_base} onChange={(e)=>setNewForm({...newForm, valor_base: Number(e.target.value)})}/>
             </div>
             <div className="md:col-span-2">
-              <Label>Objetivo (opcional)</Label>
+              <div className="flex items-center justify-between gap-2">
+                <Label>Objetivo (opcional)</Label>
+                <MelhorarComIaButton texto={newForm.objetivo} tipo="objetivo"
+                  verba_label={newForm.verba_label === '__custom__' ? newForm.verba_label_custom : newForm.verba_label}
+                  onResult={(t)=>setNewForm(f => ({...f, objetivo: t}))}/>
+              </div>
               <Textarea rows={2} value={newForm.objetivo} onChange={(e)=>setNewForm({...newForm, objetivo: e.target.value})} placeholder="Ex.: estimular pontualidade e qualidade do atendimento ao cliente."/>
+            </div>
+            <div className="md:col-span-2">
+              <div className="flex items-center justify-between gap-2">
+                <Label>Regra do prêmio / benefício (opcional)</Label>
+                <MelhorarComIaButton texto={newForm.regra_premiacao} tipo="regra"
+                  verba_label={newForm.verba_label === '__custom__' ? newForm.verba_label_custom : newForm.verba_label}
+                  onResult={(t)=>setNewForm(f => ({...f, regra_premiacao: t}))}/>
+              </div>
+              <Textarea rows={3} value={newForm.regra_premiacao} onChange={(e)=>setNewForm({...newForm, regra_premiacao: e.target.value})} placeholder="Ex.: havendo atingimento de 80% no resultado geral, o colaborador fará jus ao recebimento do benefício."/>
             </div>
           </div>
           <div className="border-t pt-3 space-y-2 bg-primary/5 rounded-md p-3">
@@ -277,6 +318,7 @@ function PolicyCard({ policy, expanded, onToggle, onUpdate, onRemove, cliente }:
     verba_label: policy.verba_label,
     nome: policy.nome,
     objetivo: policy.objetivo || '',
+    regra_premiacao: (policy as any).regra_premiacao || '',
     periodo_tipo: policy.periodo_tipo,
     valor_base: policy.valor_base,
     status: policy.status,
@@ -298,6 +340,7 @@ function PolicyCard({ policy, expanded, onToggle, onUpdate, onRemove, cliente }:
       verba_label: form.verba_label.trim(),
       nome: form.nome.trim(),
       objetivo: form.objetivo || null,
+      regra_premiacao: form.regra_premiacao || null,
       periodo_tipo: form.periodo_tipo,
       valor_base: Number(form.valor_base || 0),
       status: form.status,
@@ -378,7 +421,22 @@ function PolicyCard({ policy, expanded, onToggle, onUpdate, onRemove, cliente }:
                 </SelectContent>
               </Select>
             </div>
-            <div className="md:col-span-2"><Label>Objetivo</Label><Textarea rows={2} value={form.objetivo} onChange={(e)=>setForm({...form, objetivo: e.target.value})}/></div>
+            <div className="md:col-span-2">
+              <div className="flex items-center justify-between gap-2">
+                <Label>Objetivo</Label>
+                <MelhorarComIaButton texto={form.objetivo} tipo="objetivo" verba_label={form.verba_label}
+                  onResult={(t)=>setForm(f => ({...f, objetivo: t}))}/>
+              </div>
+              <Textarea rows={2} value={form.objetivo} onChange={(e)=>setForm({...form, objetivo: e.target.value})}/>
+            </div>
+            <div className="md:col-span-2">
+              <div className="flex items-center justify-between gap-2">
+                <Label>Regra do prêmio / benefício</Label>
+                <MelhorarComIaButton texto={form.regra_premiacao} tipo="regra" verba_label={form.verba_label}
+                  contexto={form.objetivo} onResult={(t)=>setForm(f => ({...f, regra_premiacao: t}))}/>
+              </div>
+              <Textarea rows={3} value={form.regra_premiacao} onChange={(e)=>setForm({...form, regra_premiacao: e.target.value})} placeholder="Ex.: havendo atingimento de 80% no resultado geral, o colaborador fará jus ao recebimento do benefício."/>
+            </div>
             <div className="md:col-span-2 flex justify-end gap-2">
               <Button size="sm" variant="outline" onClick={()=>setEditing(false)}>Cancelar</Button>
               <Button size="sm" onClick={saveEdit}><Save className="w-3 h-3 mr-1"/>Salvar</Button>
@@ -437,6 +495,7 @@ export function CriteriaSection({ policy, cliente }: { policy: PrizePolicy; clie
         verba_label: policy.verba_label,
         politica_nome: policy.nome,
         objetivo: policy.objetivo,
+        regra_premiacao: (policy as any).regra_premiacao,
         periodo_tipo: policy.periodo_tipo,
         valor_base: policy.valor_base,
         criterios: items.map(c => ({ nome: c.nome, descricao: c.descricao, peso: c.peso, essencial: c.essencial })),

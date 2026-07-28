@@ -159,6 +159,7 @@ export default function PremioHotelariaSection({ policy, cliente, onUpdate, onDr
         verba_label: policy.verba_label,
         politica_nome: policy.nome,
         objetivo: policy.objetivo,
+        regra_premiacao: (policy as any).regra_premiacao,
         periodo_tipo: policy.periodo_tipo,
         valor_base: policy.valor_base,
         criterios: criteriosBase,

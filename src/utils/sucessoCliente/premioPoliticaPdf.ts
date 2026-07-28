@@ -8,6 +8,7 @@ export type PoliticaPdfData = {
   verba_label: string;
   politica_nome: string;
   objetivo?: string | null;
+  regra_premiacao?: string | null;
   periodo_tipo: string;
   valor_base: number;
   criterios: Array<{ nome: string; descricao?: string | null; peso: number; essencial: boolean }>;
@@ -131,6 +132,15 @@ export async function generatePremioPoliticaPdf(d: PoliticaPdfData) {
     doc.setFont('helvetica','normal'); doc.setFontSize(9);
     const wrap = doc.splitTextToSize(d.objetivo, W-80);
     for (const w of wrap) { y = ensure(12, y); doc.text(w, 46, y); y += 12; }
+    y += 8;
+  }
+
+  // Regra do prêmio / benefício
+  if (d.regra_premiacao) {
+    bandTitle('REGRA DE CONCESSÃO', [245,245,245]);
+    doc.setFont('helvetica','normal'); doc.setFontSize(9);
+    const wrapR = doc.splitTextToSize(d.regra_premiacao, W-80);
+    for (const w of wrapR) { y = ensure(12, y); doc.text(w, 46, y); y += 12; }
     y += 8;
   }
 
