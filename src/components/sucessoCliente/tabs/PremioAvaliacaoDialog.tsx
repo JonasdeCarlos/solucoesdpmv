@@ -267,7 +267,6 @@ export default function PremioAvaliacaoDialog({
         politica_nome: policy.nome,
         competencia,
         objetivo: policy.objetivo,
-        regra_premiacao: (policy as any).regra_premiacao,
         valor_base: Number(policy.valor_base || 0),
         colaborador: {
           nome: ae.employee?.nome,
