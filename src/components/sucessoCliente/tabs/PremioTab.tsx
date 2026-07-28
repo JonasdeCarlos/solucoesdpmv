@@ -318,6 +318,7 @@ function PolicyCard({ policy, expanded, onToggle, onUpdate, onRemove, cliente }:
     verba_label: policy.verba_label,
     nome: policy.nome,
     objetivo: policy.objetivo || '',
+    regra_premiacao: (policy as any).regra_premiacao || '',
     periodo_tipo: policy.periodo_tipo,
     valor_base: policy.valor_base,
     status: policy.status,
@@ -339,6 +340,7 @@ function PolicyCard({ policy, expanded, onToggle, onUpdate, onRemove, cliente }:
       verba_label: form.verba_label.trim(),
       nome: form.nome.trim(),
       objetivo: form.objetivo || null,
+      regra_premiacao: form.regra_premiacao || null,
       periodo_tipo: form.periodo_tipo,
       valor_base: Number(form.valor_base || 0),
       status: form.status,
@@ -419,7 +421,22 @@ function PolicyCard({ policy, expanded, onToggle, onUpdate, onRemove, cliente }:
                 </SelectContent>
               </Select>
             </div>
-            <div className="md:col-span-2"><Label>Objetivo</Label><Textarea rows={2} value={form.objetivo} onChange={(e)=>setForm({...form, objetivo: e.target.value})}/></div>
+            <div className="md:col-span-2">
+              <div className="flex items-center justify-between gap-2">
+                <Label>Objetivo</Label>
+                <MelhorarComIaButton texto={form.objetivo} tipo="objetivo" verba_label={form.verba_label}
+                  onResult={(t)=>setForm(f => ({...f, objetivo: t}))}/>
+              </div>
+              <Textarea rows={2} value={form.objetivo} onChange={(e)=>setForm({...form, objetivo: e.target.value})}/>
+            </div>
+            <div className="md:col-span-2">
+              <div className="flex items-center justify-between gap-2">
+                <Label>Regra do prêmio / benefício</Label>
+                <MelhorarComIaButton texto={form.regra_premiacao} tipo="regra" verba_label={form.verba_label}
+                  contexto={form.objetivo} onResult={(t)=>setForm(f => ({...f, regra_premiacao: t}))}/>
+              </div>
+              <Textarea rows={3} value={form.regra_premiacao} onChange={(e)=>setForm({...form, regra_premiacao: e.target.value})} placeholder="Ex.: havendo atingimento de 80% no resultado geral, o colaborador fará jus ao recebimento do benefício."/>
+            </div>
             <div className="md:col-span-2 flex justify-end gap-2">
               <Button size="sm" variant="outline" onClick={()=>setEditing(false)}>Cancelar</Button>
               <Button size="sm" onClick={saveEdit}><Save className="w-3 h-3 mr-1"/>Salvar</Button>
