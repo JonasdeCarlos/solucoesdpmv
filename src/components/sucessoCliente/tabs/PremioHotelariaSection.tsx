@@ -18,6 +18,7 @@ import { buildExternalAppLink } from '@/utils/publicLinks';
 import { copyToClipboard } from '@/utils/clipboard';
 import { Link2 } from 'lucide-react';
 import { usePrizePublicApi } from '@/hooks/prizePublicContext';
+import { supabase } from '@/integrations/supabase/client';
 
 const BRL = (n: number) => `R$ ${Number(n || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -148,6 +149,19 @@ export default function PremioHotelariaSection({ policy, cliente, onUpdate, onDr
     }
     setExportingPdf(true);
     try {
+      let objetivoAtual = policy.objetivo;
+      let regraAtual = (policy as any).regra_premiacao;
+      try {
+        const { data: fresh } = await supabase
+          .from('prize_policies' as any)
+          .select('objetivo, regra_premiacao')
+          .eq('id', policy.id)
+          .maybeSingle();
+        if (fresh) {
+          objetivoAtual = (fresh as any).objetivo ?? objetivoAtual;
+          regraAtual = (fresh as any).regra_premiacao ?? regraAtual;
+        }
+      } catch { /* mantém valores locais */ }
       const legacy: Record<string, number> = ((policy as any).hotelaria_pontos as any) || {};
       const participantes = (employees || []).filter(p => p.ativo);
       const criteriosBase = criteriosPolicy.length > 0
@@ -158,8 +172,8 @@ export default function PremioHotelariaSection({ policy, cliente, onUpdate, onDr
         cnpj: cliente?.cnpj || undefined,
         verba_label: policy.verba_label,
         politica_nome: policy.nome,
-        objetivo: policy.objetivo,
-        regra_premiacao: (policy as any).regra_premiacao,
+        objetivo: objetivoAtual,
+        regra_premiacao: regraAtual,
         periodo_tipo: policy.periodo_tipo,
         valor_base: policy.valor_base,
         criterios: criteriosBase,
