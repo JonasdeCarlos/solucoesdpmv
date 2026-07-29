@@ -527,10 +527,10 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
       if (!inicial || !pctInicial) return f;
       const ref = inicial * (100 / pctInicial);
       const novos = niveis.map((n: any, j: number) => {
-        if (j === 0) return n;
+        if (j === 0) return { ...n, fixo: false };
         const pct = Number(escala[j]?.percentual_base);
-        if (!pct) return n;
-        return { ...n, valor: Math.round(ref * pct) / 100 };
+        if (!pct) return { ...n, fixo: false };
+        return { ...n, valor: Math.round(ref * pct) / 100, fixo: false };
       });
       return { ...f, niveis: novos };
     });
@@ -541,7 +541,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
       organograma: estrutura?.organograma || [],
       criterios_manuais: estrutura?.criterios_manuais || [],
     });
-    toast.success('Faixas recalculadas pela escala de evolução.');
+    toast.success('Faixas recalculadas pela escala de evolução (travas manuais liberadas).');
   };
 
   const removeSugestao = (idx: number) => {
