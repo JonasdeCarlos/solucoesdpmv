@@ -460,26 +460,34 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
       const original = (f.niveis || []) as any[];
       const oldInicial = Number(original[0]?.valor) || 0;
       let niveis = original.map((n: any, j: number) => j === nivelIdx ? { ...n, valor } : n);
-      // Cascata: ao alterar o nível Inicial (idx 0), reaplica a mesma razão
-      // (novoInicial / inicialAnterior) nos demais níveis, preservando a curva atual.
-      // Se não há histórico (inicialAnterior=0), usa escala_evolucao quando disponível.
+      // Cascata: ao alterar o nível Inicial (idx 0), os demais níveis são recalculados.
       if (nivelIdx === 0 && niveis.length > 1 && valor > 0) {
-        if (oldInicial > 0) {
+        const outrosPositivos = original.slice(1).every((n: any) => Number(n?.valor) > 0);
+        const escala = (estrutura?.escala_evolucao || []) as any[];
+        const pctInicial = Number(escala[0]?.percentual_base) || 0;
+        const escalaCompleta =
+          pctInicial > 0 && niveis.every((_: any, j: number) => Number(escala[j]?.percentual_base) > 0);
+
+        if (oldInicial > 0 && outrosPositivos) {
+          // Preserva a curva atual aplicando a mesma razão
           const ratio = valor / oldInicial;
           niveis = niveis.map((n: any, j: number) =>
-            j === 0 ? n : { ...n, valor: Math.round(Number(n.valor || 0) * ratio * 100) / 100 }
+            j === 0 ? n : { ...n, valor: Math.round(Number(n.valor) * ratio * 100) / 100 }
+          );
+        } else if (escalaCompleta) {
+          const ref = valor * (100 / pctInicial);
+          niveis = niveis.map((n: any, j: number) =>
+            j === 0 ? n : { ...n, valor: Math.round(ref * Number(escala[j].percentual_base)) / 100 }
           );
         } else {
-          const escala = (estrutura?.escala_evolucao || []) as any[];
-          const baseInicialPct = escala[0]?.percentual_base;
-          if (baseInicialPct) {
-            const ref = valor * (100 / Number(baseInicialPct));
-            niveis = niveis.map((n: any, j: number) => {
-              if (j === 0) return n;
-              const pct = escala[j]?.percentual_base;
-              return pct ? { ...n, valor: Math.round(ref * Number(pct)) / 100 } : n;
-            });
-          }
+          // Curva padrão: Inicial 75% -> Referência 100% (progressão linear entre os níveis)
+          const total = niveis.length;
+          const ref = valor / 0.75;
+          niveis = niveis.map((n: any, j: number) => {
+            if (j === 0) return n;
+            const pct = 0.75 + (0.25 * j) / (total - 1);
+            return { ...n, valor: Math.round(ref * pct * 100) / 100 };
+          });
         }
       }
       return { ...f, niveis };
