@@ -43,15 +43,17 @@ Deno.serve(async (req) => {
     const payload: Record<string, unknown> = {
       text: mensagem, serviceId: SERVICE_ID, departmentId: DEPARTMENT_ID,
     };
-    if (empresa.digisac_contact_id) {
+    const numeros: string[] = Array.isArray((empresa as any).whatsapp_numeros) && (empresa as any).whatsapp_numeros.length
+      ? (empresa as any).whatsapp_numeros
+      : (empresa.whatsapp ? [String(empresa.whatsapp)] : []);
+    const num = numeros.map((n) => String(n).replace(/\D/g, '')).find(Boolean);
+    if (num) {
+      // Número cadastrado tem prioridade sobre contactId aprendido (pode estar desatualizado).
+      payload.number = num;
+    } else if (empresa.digisac_contact_id) {
       payload.contactId = empresa.digisac_contact_id;
     } else {
-      const numeros: string[] = Array.isArray((empresa as any).whatsapp_numeros) && (empresa as any).whatsapp_numeros.length
-        ? (empresa as any).whatsapp_numeros
-        : (empresa.whatsapp ? [String(empresa.whatsapp)] : []);
-      const num = numeros.map((n) => String(n).replace(/\D/g, '')).find(Boolean);
-      if (!num) return json(400, { erro: 'Empresa sem contato Digisac nem WhatsApp.' });
-      payload.number = num;
+      return json(400, { erro: 'Empresa sem contato Digisac nem WhatsApp.' });
     }
 
     const controller = new AbortController();
