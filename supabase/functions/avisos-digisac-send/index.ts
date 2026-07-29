@@ -121,10 +121,12 @@ Deno.serve(async (req) => {
     const overrideNum = number_override ? String(number_override).replace(/\D/g, '') : '';
     if (overrideNum) {
       dest = { kind: 'number', number: overrideNum };
-    } else if (empresa.digisac_contact_id && numerosCadastrados.length <= 1) {
-      dest = { kind: 'contact', contactId: empresa.digisac_contact_id };
     } else if (numerosCadastrados[0]) {
+      // Os números cadastrados SEMPRE têm prioridade sobre o contactId aprendido,
+      // que pode estar desatualizado após troca de número.
       dest = { kind: 'number', number: numerosCadastrados[0] };
+    } else if (empresa.digisac_contact_id) {
+      dest = { kind: 'contact', contactId: empresa.digisac_contact_id };
     }
     if (!dest) {
       return json(400, { erro: 'Empresa sem contato Digisac nem WhatsApp cadastrado.' });
