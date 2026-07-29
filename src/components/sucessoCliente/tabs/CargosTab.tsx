@@ -458,9 +458,11 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
     const faixas = (estrutura?.faixas || []).map((f: any, i: number) => {
       if (i !== faixaIdx) return f;
       const original = (f.niveis || []) as any[];
-      let niveis = original.map((n: any, j: number) => j === nivelIdx ? { ...n, valor } : n);
+      // O nível editado passa a ser "fixo" (travado): nunca é recalculado pela cascata.
+      let niveis = original.map((n: any, j: number) => j === nivelIdx ? { ...n, valor, fixo: true } : n);
+      const isFixo = (j: number) => j === nivelIdx || niveis[j]?.fixo === true;
       // Cascata: ao alterar QUALQUER nível manualmente, toda a faixa é recalculada
-      // (níveis anteriores e posteriores) para manter a coerência da evolução salarial.
+      // (níveis anteriores e posteriores), exceto os níveis travados manualmente.
       const total = niveis.length;
       if (total > 1 && valor > 0) {
         const oldValor = Number(original[nivelIdx]?.valor) || 0;
@@ -473,23 +475,25 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
         if (escalaCompleta) {
           const ref = valor * (100 / pctAtual);
           niveis = niveis.map((n: any, j: number) =>
-            j === nivelIdx ? n : { ...n, valor: Math.round(ref * Number(escala[j].percentual_base)) / 100 }
+            isFixo(j) ? n : { ...n, valor: Math.round(ref * Number(escala[j].percentual_base)) / 100 }
           );
         } else if (oldValor > 0 && outrosPositivos) {
           // Preserva a curva atual aplicando a mesma razão aos demais níveis
           const ratio = valor / oldValor;
           niveis = niveis.map((n: any, j: number) =>
-            j === nivelIdx ? n : { ...n, valor: Math.round(Number(n.valor) * ratio * 100) / 100 }
+            isFixo(j) ? n : { ...n, valor: Math.round(Number(n.valor) * ratio * 100) / 100 }
           );
         } else {
           // Curva padrão: Inicial 75% -> Referência 100% (progressão linear entre os níveis)
           const pctOf = (j: number) => 0.75 + (0.25 * j) / (total - 1);
           const ref = valor / pctOf(nivelIdx);
           niveis = niveis.map((n: any, j: number) =>
-            j === nivelIdx ? n : { ...n, valor: Math.round(ref * pctOf(j) * 100) / 100 }
+            isFixo(j) ? n : { ...n, valor: Math.round(ref * pctOf(j) * 100) / 100 }
           );
         }
       }
+      // Garantia final: o valor digitado nunca é sobrescrito pela cascata.
+      niveis = niveis.map((n: any, j: number) => (j === nivelIdx ? { ...n, valor, fixo: true } : n));
       return { ...f, niveis };
     });
     saveEstrutura({
@@ -523,10 +527,10 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
       if (!inicial || !pctInicial) return f;
       const ref = inicial * (100 / pctInicial);
       const novos = niveis.map((n: any, j: number) => {
-        if (j === 0) return n;
+        if (j === 0) return { ...n, fixo: false };
         const pct = Number(escala[j]?.percentual_base);
-        if (!pct) return n;
-        return { ...n, valor: Math.round(ref * pct) / 100 };
+        if (!pct) return { ...n, fixo: false };
+        return { ...n, valor: Math.round(ref * pct) / 100, fixo: false };
       });
       return { ...f, niveis: novos };
     });
@@ -537,7 +541,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
       organograma: estrutura?.organograma || [],
       criterios_manuais: estrutura?.criterios_manuais || [],
     });
-    toast.success('Faixas recalculadas pela escala de evolução.');
+    toast.success('Faixas recalculadas pela escala de evolução (travas manuais liberadas).');
   };
 
   const removeSugestao = (idx: number) => {
