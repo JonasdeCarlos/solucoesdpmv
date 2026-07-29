@@ -458,36 +458,36 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
     const faixas = (estrutura?.faixas || []).map((f: any, i: number) => {
       if (i !== faixaIdx) return f;
       const original = (f.niveis || []) as any[];
-      const oldInicial = Number(original[0]?.valor) || 0;
       let niveis = original.map((n: any, j: number) => j === nivelIdx ? { ...n, valor } : n);
-      // Cascata: ao alterar o nível Inicial (idx 0), os demais níveis são recalculados.
-      if (nivelIdx === 0 && niveis.length > 1 && valor > 0) {
-        const outrosPositivos = original.slice(1).every((n: any) => Number(n?.valor) > 0);
+      // Cascata: ao alterar QUALQUER nível manualmente, toda a faixa é recalculada
+      // (níveis anteriores e posteriores) para manter a coerência da evolução salarial.
+      const total = niveis.length;
+      if (total > 1 && valor > 0) {
+        const oldValor = Number(original[nivelIdx]?.valor) || 0;
         const escala = (estrutura?.escala_evolucao || []) as any[];
-        const pctInicial = Number(escala[0]?.percentual_base) || 0;
+        const pctAtual = Number(escala[nivelIdx]?.percentual_base) || 0;
         const escalaCompleta =
-          pctInicial > 0 && niveis.every((_: any, j: number) => Number(escala[j]?.percentual_base) > 0);
+          pctAtual > 0 && niveis.every((_: any, j: number) => Number(escala[j]?.percentual_base) > 0);
+        const outrosPositivos = original.every((n: any, j: number) => j === nivelIdx || Number(n?.valor) > 0);
 
-        if (oldInicial > 0 && outrosPositivos) {
-          // Preserva a curva atual aplicando a mesma razão
-          const ratio = valor / oldInicial;
+        if (escalaCompleta) {
+          const ref = valor * (100 / pctAtual);
           niveis = niveis.map((n: any, j: number) =>
-            j === 0 ? n : { ...n, valor: Math.round(Number(n.valor) * ratio * 100) / 100 }
+            j === nivelIdx ? n : { ...n, valor: Math.round(ref * Number(escala[j].percentual_base)) / 100 }
           );
-        } else if (escalaCompleta) {
-          const ref = valor * (100 / pctInicial);
+        } else if (oldValor > 0 && outrosPositivos) {
+          // Preserva a curva atual aplicando a mesma razão aos demais níveis
+          const ratio = valor / oldValor;
           niveis = niveis.map((n: any, j: number) =>
-            j === 0 ? n : { ...n, valor: Math.round(ref * Number(escala[j].percentual_base)) / 100 }
+            j === nivelIdx ? n : { ...n, valor: Math.round(Number(n.valor) * ratio * 100) / 100 }
           );
         } else {
           // Curva padrão: Inicial 75% -> Referência 100% (progressão linear entre os níveis)
-          const total = niveis.length;
-          const ref = valor / 0.75;
-          niveis = niveis.map((n: any, j: number) => {
-            if (j === 0) return n;
-            const pct = 0.75 + (0.25 * j) / (total - 1);
-            return { ...n, valor: Math.round(ref * pct * 100) / 100 };
-          });
+          const pctOf = (j: number) => 0.75 + (0.25 * j) / (total - 1);
+          const ref = valor / pctOf(nivelIdx);
+          niveis = niveis.map((n: any, j: number) =>
+            j === nivelIdx ? n : { ...n, valor: Math.round(ref * pctOf(j) * 100) / 100 }
+          );
         }
       }
       return { ...f, niveis };
