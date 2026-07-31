@@ -6,13 +6,14 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Upload, FileText, Copy, AlertTriangle, Loader2, Trash2, Eye, Sparkles, Search } from 'lucide-react';
+import { Upload, FileText, Copy, AlertTriangle, Loader2, Trash2, Eye, Sparkles, Search, Download } from 'lucide-react';
 import { useCCTs } from '@/hooks/useSucessoCliente';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import * as pdfjs from 'pdfjs-dist';
 import pdfWorkerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { extractPisosCCT } from '@/utils/sucessoCliente/pisosCCT';
+import { buildClientCctFromAnalysis } from '@/utils/gestaoCct/mirrorToClientCct';
 
 (pdfjs as any).GlobalWorkerOptions.workerSrc = pdfWorkerSrc;
 
@@ -147,6 +148,12 @@ export default function CCTTab({ client_id }: { client_id: string }) {
   const [pdfView, setPdfView] = useState<{ url: string; name: string; data: ArrayBuffer } | null>(null);
   const [pdfLoadingPath, setPdfLoadingPath] = useState<string | null>(null);
   const [notifyBusy, setNotifyBusy] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [analyses, setAnalyses] = useState<any[]>([]);
+  const [importQuery, setImportQuery] = useState('');
+  const [importSelected, setImportSelected] = useState<any>(null);
+  const [importCodigo, setImportCodigo] = useState('');
+  const [importBusy, setImportBusy] = useState(false);
 
   // Busca inteligente IA
   const [aiQuery, setAiQuery] = useState('');
@@ -382,6 +389,44 @@ export default function CCTTab({ client_id }: { client_id: string }) {
     } finally { setNotifyBusy(false); }
   };
 
+  const openImport = async () => {
+    setImportOpen(true);
+    setImportSelected(null);
+    setImportCodigo('');
+    const { data } = await supabase
+      .from('cct_analyses' as any)
+      .select('*')
+      .order('created_at', { ascending: false });
+    setAnalyses((data || []) as any[]);
+  };
+
+  const importarAnalise = async () => {
+    if (!importSelected) { toast.error('Selecione uma CCT do módulo Gestão.'); return; }
+    setImportBusy(true);
+    try {
+      const payload = buildClientCctFromAnalysis(importSelected, {
+        client_id,
+        version: items.length + 1,
+        codigo_sindicato_dominio: importCodigo.trim(),
+      });
+      const { error } = await supabase.from('client_ccts' as any).insert(payload as any);
+      if (error) throw error;
+      toast.success('CCT importada do módulo Gestão CCT.');
+      setImportOpen(false);
+      reload();
+    } catch (e: any) {
+      toast.error('Falha ao importar: ' + errorMessage(e));
+    } finally {
+      setImportBusy(false);
+    }
+  };
+
+  const analysesFiltradas = analyses.filter((a) => {
+    const q = importQuery.trim().toLowerCase();
+    if (!q) return true;
+    return `${a.title || ''} ${a?.unions?.sindicato_laboral || ''} ${a?.territorial_base?.uf || ''}`.toLowerCase().includes(q);
+  });
+
   return (
     <div className="space-y-4">
       <Card><CardContent className="p-4 flex items-end gap-2 flex-wrap">
@@ -400,6 +445,9 @@ export default function CCTTab({ client_id }: { client_id: string }) {
         {items[0]?.sindicato && <Button variant="outline" onClick={()=>openReplica(items[0].sindicato)}><Copy className="w-4 h-4 mr-1"/>Replicar de outro cliente</Button>}
         <Button type="button" variant="outline" onClick={openReplicaAll}>
           <Copy className="w-4 h-4 mr-1"/>Usar CCT de outra empresa
+        </Button>
+        <Button type="button" variant="outline" onClick={openImport}>
+          <Download className="w-4 h-4 mr-1"/>Importar CCT do módulo Gestão
         </Button>
         <Button type="button" variant="outline" onClick={notificarVencimentos} disabled={notifyBusy}>
           {notifyBusy ? <Loader2 className="w-4 h-4 mr-1 animate-spin"/> : <AlertTriangle className="w-4 h-4 mr-1"/>}
@@ -514,10 +562,11 @@ export default function CCTTab({ client_id }: { client_id: string }) {
                   <div className="text-xs text-muted-foreground">{c.union_base} {c.uf && '• ' + c.uf} • Data-base: {c.data_base || '—'}</div>
                 </div>
                 <div className="flex items-center gap-2">
+                  {(c as any).cct_analysis_id && <Badge variant="secondary">Espelho Gestão CCT</Badge>}
                   {c.validity_end && <Badge variant={alert ? 'destructive' : 'outline'}>Vence: {new Date(c.validity_end).toLocaleDateString('pt-BR')}{d!==null && ` (${d}d)`}</Badge>}
                   {alert && <AlertTriangle className="w-4 h-4 text-amber-500"/>}
                   <Button size="sm" variant="outline" onClick={()=>setView(c)}>Ver resumo</Button>
-                  <Button size="sm" variant="outline" onClick={()=>openPdf(c)} disabled={pdfLoadingPath === c.doc_path}>
+                  <Button size="sm" variant="outline" onClick={()=>openPdf(c)} disabled={pdfLoadingPath === c.doc_path || !c.doc_path}>
                     {pdfLoadingPath === c.doc_path ? <Loader2 className="w-4 h-4 mr-1 animate-spin"/> : <Eye className="w-4 h-4 mr-1"/>}
                     Ver PDF
                   </Button>
@@ -612,6 +661,47 @@ export default function CCTTab({ client_id }: { client_id: string }) {
               </CardContent></Card>
             ))}
             {origemList.length === 0 && <p className="text-sm text-muted-foreground">Sem CCTs disponíveis da mesma base sindical.</p>}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={importOpen} onOpenChange={setImportOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-auto">
+          <DialogHeader><DialogTitle>Importar CCT do módulo Gestão CCT</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <Input value={importQuery} onChange={(e)=>setImportQuery(e.target.value)} placeholder="Buscar por título, sindicato ou UF…" />
+            <div className="max-h-64 overflow-y-auto border rounded divide-y">
+              {analysesFiltradas.length === 0 && <p className="text-sm text-muted-foreground p-3">Nenhuma análise disponível.</p>}
+              {analysesFiltradas.map((a) => (
+                <label key={a.id} className={`flex items-start gap-2 p-2 text-sm cursor-pointer hover:bg-muted/40 ${importSelected?.id === a.id ? 'bg-muted' : ''}`}>
+                  <input type="radio" name="cct-analise" className="mt-1" checked={importSelected?.id === a.id} onChange={()=>setImportSelected(a)} />
+                  <div className="min-w-0">
+                    <div className="font-medium truncate">{a.title || 'Sem título'}</div>
+                    <div className="text-xs text-muted-foreground truncate">
+                      {a.status} • {a?.territorial_base?.uf || '—'} • {a.client_summary ? 'com resumo para cliente' : 'sem resumo para cliente'}
+                    </div>
+                  </div>
+                </label>
+              ))}
+            </div>
+            {importSelected && (
+              <div className="border rounded p-3 bg-muted/30 space-y-2">
+                <div className="text-xs font-bold uppercase text-muted-foreground">Espelho do resumo</div>
+                <p className="text-sm whitespace-pre-wrap">
+                  {importSelected.client_summary || importSelected.ai_summary || 'Sem resumo gerado nesta análise.'}
+                </p>
+              </div>
+            )}
+            <div>
+              <Label className="text-xs">Código do Sindicato na Domínio (opcional)</Label>
+              <Input value={importCodigo} onChange={(e)=>setImportCodigo(e.target.value)} placeholder="ex.: 12345" />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={()=>setImportOpen(false)} disabled={importBusy}>Cancelar</Button>
+              <Button onClick={importarAnalise} disabled={importBusy || !importSelected}>
+                {importBusy ? <Loader2 className="w-4 h-4 mr-1 animate-spin"/> : <Download className="w-4 h-4 mr-1"/>}Importar
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

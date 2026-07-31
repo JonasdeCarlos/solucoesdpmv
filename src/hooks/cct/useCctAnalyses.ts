@@ -28,6 +28,7 @@ export interface CctAnalysis {
   penalties: any;
   dp_attention_points: any[];
   ai_summary: string | null;
+  client_summary: string | null;
   reviewer_notes: string | null;
   reviewed_by: string | null;
   reviewed_at: string | null;
