@@ -230,7 +230,10 @@ export default function CCTTab({ client_id }: { client_id: string }) {
       if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
         try { text = await extractPdfText(file); } catch { text = ''; }
         const letters = (text.match(/[a-zA-ZÀ-ú]/g) || []).length;
-        if (text.trim().length < 500 || letters < 100) {
+        const normalized = text.toLowerCase();
+        const hasCctSignals = /(conven[cç][aã]o coletiva|acordo coletivo|\bcct\b|sindicato)/.test(normalized)
+          && /(cl[áa]usula|vig[eê]ncia|data[-\s]?base|piso salarial|categoria profissional)/.test(normalized);
+        if (text.trim().length < 500 || letters < 100 || !hasCctSignals) {
           setStage('PDF sem texto — preparando OCR…');
           pdf_base64 = await fileToBase64(file);
         }
