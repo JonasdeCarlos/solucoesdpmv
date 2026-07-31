@@ -59,28 +59,54 @@ SUA TAREFA: sugerir a adequação técnica e legal deste cargo, retornando obrig
 Responda SOMENTE com JSON válido no formato exato:
 {"cbo":"","titulo_cbo":"","cbo_familia":"","cbo_justificativa":"","cbo_alternativas":[{"cbo":"","titulo":"","quando_usar":""}],"area":"","nivel":"","descricao_sumaria":"","atividades":[],"requisitos":{"escolaridade":"","experiencia":"","competencias":[]},"profissao_regulamentada":false,"base_legal":"","conselho_registro":{"obrigatorio":false,"sigla":"","descricao":""},"observacoes_regulamentacao":"","conselho_mensagem":""}`;
 
+    const SYS = "Você é especialista em CBO 2002 (MTE) e responde APENAS com JSON válido, sem markdown.";
+    let raw = "";
+
     const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: { "Lovable-API-Key": KEY, "X-Lovable-AIG-SDK": "edge-function", "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "google/gemini-2.5-pro",
         messages: [
-          { role: "system", content: "Você é especialista em CBO 2002 (MTE) e responde APENAS com JSON válido, sem markdown." },
+          { role: "system", content: SYS },
           { role: "user", content: prompt },
         ],
         temperature: 0.2,
         response_format: { type: "json_object" },
       }),
     });
-    if (r.status === 429) return json({ error: "Limite de requisições atingido. Tente novamente em instantes." }, 429);
-    if (r.status === 402) return json({ error: "Créditos de IA esgotados." }, 402);
-    if (!r.ok) {
+
+    if (r.ok) {
+      const d = await r.json();
+      raw = d?.choices?.[0]?.message?.content || "{}";
+    } else {
       const detail = await r.text();
-      console.error("cargo-adequar AI error", r.status, detail.slice(0, 500));
-      return json({ error: "A IA não conseguiu adequar o cargo neste momento." }, r.status);
+      console.error("cargo-adequar gateway error", r.status, detail.slice(0, 300));
+      const ANTH = Deno.env.get("ANTHROPIC_API_KEY");
+      if (!ANTH) {
+        if (r.status === 429) return json({ error: "Limite de requisições atingido. Tente novamente em instantes." }, 429);
+        if (r.status === 402) return json({ error: "Créditos de IA esgotados." }, 402);
+        return json({ error: "A IA não conseguiu adequar o cargo neste momento." }, r.status);
+      }
+      const ar = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "x-api-key": ANTH, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 4000,
+          temperature: 0.2,
+          system: SYS,
+          messages: [{ role: "user", content: prompt }],
+        }),
+      });
+      if (!ar.ok) {
+        const adetail = await ar.text();
+        console.error("cargo-adequar anthropic error", ar.status, adetail.slice(0, 500));
+        return json({ error: `Falha na IA (Anthropic ${ar.status}).`, detail: adetail.slice(0, 300) }, ar.status);
+      }
+      const ad = await ar.json();
+      raw = ad?.content?.map((c: any) => (c?.type === "text" ? c.text : "")).join("") || "{}";
     }
-    const d = await r.json();
-    const raw = d?.choices?.[0]?.message?.content || "{}";
     const cleaned = String(raw).replace(/^```(?:json)?\s*/i, "").replace(/```$/i, "").trim();
     let parsed: any = {};
     try { parsed = JSON.parse(cleaned); } catch { parsed = {}; }
