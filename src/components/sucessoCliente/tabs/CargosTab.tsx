@@ -28,6 +28,7 @@ const NIVEIS = [
 
 const emptyDraft = () => ({
   nome: '', cbo: '', area: '', nivel: 'analista', entrevista: '',
+  contexto_ia: '',
   descricao_sumaria: '', atividades: [] as string[],
   requisitos: { escolaridade: '', experiencia: '', competencias: [] as string[] },
   salario_atual: '' as any,
@@ -50,6 +51,7 @@ const sanitizeCargoDraft = (cargo: any = {}) => ({
   area: cargo?.area || '',
   nivel: cargo?.nivel || '',
   entrevista: cargo?.entrevista || '',
+  contexto_ia: cargo?.contexto_ia || '',
   descricao_sumaria: cargo?.descricao_sumaria || '',
   atividades: Array.isArray(cargo?.atividades) ? cargo.atividades.map((s: any) => String(s || '').trim()).filter(Boolean) : [],
   requisitos: {
@@ -169,6 +171,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
           setor: cliente?.segmento || cliente?.cnae || '',
           descricao_sumaria: draft.descricao_sumaria || '',
           atividades: draft.atividades || [],
+          contexto: draft.contexto_ia || '',
         },
       });
       const msgErro = (data as any)?.error || (error as any)?.message;
@@ -276,6 +279,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
           cbo_confirmado: true,
           descricao_sumaria: draft.descricao_sumaria || '',
           atividades: draft.atividades || [],
+          contexto: draft.contexto_ia || '',
         },
       });
       if (error) throw error;
@@ -327,6 +331,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
           cbo_confirmado: !!opts.cbo_confirmado,
           descricao_sumaria: draft.descricao_sumaria || '',
           atividades: draft.atividades || [],
+          contexto: draft.contexto_ia || '',
         },
       });
       if (error) throw error;
@@ -1028,6 +1033,16 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
                 onBlur={()=>{ if (draft.nome?.trim() && !draft.cbo?.trim() && !busy) sugerirCbo(true); }}
               />
               <div className="text-[10px] text-muted-foreground mt-1">Ao sair deste campo, o CBO é sugerido automaticamente pela IA.</div>
+            </div>
+            <div className="md:col-span-2 order-none">
+              <Label className="text-xs">O que este cargo executa? (contexto para a IA)</Label>
+              <Textarea
+                rows={3}
+                placeholder="Ex.: cuida de admissões, folha de pagamento, eSocial, férias, rescisões e obrigações trabalhistas dos clientes do escritório."
+                value={draft.contexto_ia}
+                onChange={e=>setDraft({...draft, contexto_ia: e.target.value})}
+              />
+              <div className="text-[10px] text-muted-foreground mt-1">Descreva as principais rotinas do cargo — quanto mais claro, mais assertivo será o CBO sugerido.</div>
             </div>
             <div>
               <Label className="text-xs">CBO</Label>
