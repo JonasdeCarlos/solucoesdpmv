@@ -111,7 +111,7 @@ Para campos não encontrados, retorne string vazia. Nunca invente CNPJ ou endere
       body: JSON.stringify({
         model: useVision ? "google/gemini-2.5-flash-lite" : "google/gemini-2.5-flash",
         temperature: 0,
-        max_tokens: useVision ? 4000 : 8000,
+        max_tokens: useVision ? 8000 : 8000,
         messages: [{ role: "user", content: userContent }],
         tools: [{
           type: "function",
@@ -170,11 +170,17 @@ Para campos não encontrados, retorne string vazia. Nunca invente CNPJ ou endere
     if (parsed.extraction_ok === false) {
       return jsonResponse({ error: parsed.extraction_notes || "A IA não conseguiu validar o conteúdo como CCT/ACT." }, 422);
     }
-    const meaningfulClauses = Array.isArray(parsed.clauses)
-      ? parsed.clauses.filter((cl: { trecho_base?: string }) => cl.trecho_base && cl.trecho_base.trim().length >= 12)
-      : [];
-    if (!parsed.summary || meaningfulClauses.length === 0) {
-      return jsonResponse({ error: "A IA não encontrou cláusulas comprovadas no texto extraído da CCT." }, 422);
+    const allClauses = Array.isArray(parsed.clauses) ? parsed.clauses : [];
+    // Aceita cláusulas com descrição consistente mesmo sem trecho literal (alguns PDFs perdem a citação no OCR).
+    const meaningfulClauses = allClauses.filter((cl: { titulo?: string; descricao?: string; trecho_base?: string }) => {
+      const hasTrecho = !!cl.trecho_base && cl.trecho_base.trim().length >= 12;
+      const hasDesc = !!cl.descricao && cl.descricao.trim().length >= 10 && !!cl.titulo && cl.titulo.trim().length >= 3;
+      return hasTrecho || hasDesc;
+    });
+    if (meaningfulClauses.length === 0 && !parsed.summary) {
+      return jsonResponse({
+        error: "A IA não conseguiu extrair conteúdo desta CCT. Verifique se o arquivo tem texto legível ou envie o texto copiado.",
+      }, 422);
     }
     return jsonResponse({ ...parsed, clauses: meaningfulClauses });
   } catch (e) {
