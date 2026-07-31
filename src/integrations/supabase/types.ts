@@ -1227,6 +1227,7 @@ export type Database = {
           ai_version: string | null
           benefits_summary: Json
           client_cct_id: string | null
+          client_summary: string | null
           confidence_score: number | null
           created_at: string
           created_by: string | null
@@ -1261,6 +1262,7 @@ export type Database = {
           ai_version?: string | null
           benefits_summary?: Json
           client_cct_id?: string | null
+          client_summary?: string | null
           confidence_score?: number | null
           created_at?: string
           created_by?: string | null
@@ -1295,6 +1297,7 @@ export type Database = {
           ai_version?: string | null
           benefits_summary?: Json
           client_cct_id?: string | null
+          client_summary?: string | null
           confidence_score?: number | null
           created_at?: string
           created_by?: string | null
