@@ -188,7 +188,8 @@ Deno.serve(async (req) => {
     // Marca como em processamento
     await supabase.from('cct_analyses').update({ status: 'em_analise', ai_model: MODEL, ai_version: 'raio-x-v3-por-arquivo', ai_summary: 'Análise em andamento...' }).eq('id', analysis_id);
 
-    // Executa análise em background para evitar timeout de 150s
+    // Mantém a requisição aberta até concluir. O runtime pode encerrar tarefas
+    // desacopladas após a resposta, sobretudo quando há mais de um PDF.
     const runAnalysis = async () => {
       try {
         console.log('[cct-analyze] bg start', { analysis_id, files: fileList.length });
@@ -250,18 +251,21 @@ Deno.serve(async (req) => {
           return { parts, hasPdf: !mime.startsWith('image/') };
         };
 
-        const perFileResults: any[] = [];
-        for (const f of fileList) {
+        const extractionResults = await Promise.allSettled(fileList.map(async (f) => {
           try {
             await supabase.from('cct_analyses').update({ ai_summary: `Analisando ${f.file_name}...` }).eq('id', analysis_id);
             const { parts, hasPdf } = await buildPartsForFile(f);
             const extraction = await callGateway(parts, f.file_name || f.file_path, hasPdf);
-            perFileResults.push({ file_name: f.file_name, file_kind: f.file_kind, extraction });
+            return { file_name: f.file_name, file_kind: f.file_kind, extraction };
           } catch (fileErr: any) {
             console.error('[cct-analyze] erro arquivo', f.file_name, fileErr?.message || fileErr);
             await supabase.from('cct_audit_log').insert({ cct_analysis_id: analysis_id, action: 'ai_file_extract_error', metadata: { file_name: f.file_name, detail: fileErr?.message || String(fileErr) } });
+            throw fileErr;
           }
-        }
+        }));
+        const perFileResults = extractionResults
+          .filter((result): result is PromiseFulfilledResult<any> => result.status === 'fulfilled')
+          .map((result) => result.value);
 
         if (!perFileResults.length) {
           const msg = 'Não foi possível extrair dados dos PDFs. Tente reenviar arquivos menores ou em PDF pesquisável.';
@@ -364,19 +368,22 @@ Deno.serve(async (req) => {
       console.log('[cct-analyze] bg done', analysis_id);
     };
 
-    // Mantém o isolate vivo enquanto a análise roda
-    const bgPromise = runAnalysis();
-    // @ts-ignore EdgeRuntime global no Supabase Edge Functions
-    if (typeof EdgeRuntime !== 'undefined' && typeof EdgeRuntime.waitUntil === 'function') {
-      // @ts-ignore
-      EdgeRuntime.waitUntil(bgPromise);
-      console.log('[cct-analyze] EdgeRuntime.waitUntil registrado');
-    } else {
-      console.warn('[cct-analyze] EdgeRuntime.waitUntil indisponível — promessa solta');
+    await runAnalysis();
+    const { data: completed } = await supabase
+      .from('cct_analyses')
+      .select('status, ai_summary')
+      .eq('id', analysis_id)
+      .maybeSingle();
+
+    if (completed?.status === 'erro') {
+      return new Response(JSON.stringify({ error: completed.ai_summary || 'Falha ao analisar a CCT.' }), {
+        status: 422,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    return new Response(JSON.stringify({ ok: true, status: 'processing', message: 'Análise iniciada em segundo plano. Acompanhe pelo status da CCT.' }), {
-      status: 202,
+    return new Response(JSON.stringify({ ok: true, status: completed?.status || 'revisar', message: 'Análise concluída.' }), {
+      status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (err: any) {
