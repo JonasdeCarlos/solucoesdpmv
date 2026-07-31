@@ -53,8 +53,9 @@ export function extractPisosCCT(ccts: any[]): PisoCCT[] {
       if (!isFinite(valor) || valor < 1000) continue;
 
       const cargo = paragraph.match(/piso\s+(?:salarial\s+)?para\s+(?:o\s+)?cargo\s+de\s+(.{2,90}?)(?=\s+(?:de|no\s+valor|ser[áa]|passar[áa])\s+R?\$?)/i);
-      const jornada = paragraph.match(/(?:jornada\s+integral[^.]{0,60}|\d{2,3}\s*horas\s+mensais)/i);
-      const funcao = limpar(cargo?.[1] || jornada?.[0] || 'Piso geral da categoria');
+      const hours = paragraph.match(/(\d{2,3})\s*horas\s+mensais/i);
+      const funcao = cargo?.[1]?.replace(/\s+/g, ' ').trim()
+        || (hours?.[1] ? `Piso geral da categoria (${hours[1]}h mensais)` : 'Piso geral da categoria');
       found.push({ funcao, valor });
     }
     return found;
