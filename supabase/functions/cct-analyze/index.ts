@@ -15,6 +15,12 @@ REGRAS CRÍTICAS:
 - Confidence: alto, medio ou baixo por bloco.
 - Todo texto em português do Brasil.
 
+REGRA ESPECÍFICA — PISO SALARIAL (economic_clauses.piso_salarial):
+- Só inclua ali valores que sejam efetivamente SALÁRIO BASE MENSAL da categoria (piso/salário normativo).
+- A maioria das CCTs prevê poucos pisos (ex.: apenas dois: "com formação técnica" e "sem formação"). NÃO invente faixas nem replique valores por função quando a CCT não as discrimina.
+- NUNCA classifique como piso: vale/auxílio-alimentação, cesta básica, vale-transporte, auxílio-creche, plano de saúde, seguro de vida, PLR, abono, gratificação, prêmio, ajuda de custo, adicionais, multas ou contribuições. Esses vão SOMENTE em benefits_summary.beneficios.
+- Valores mensais baixos (inferiores ao salário mínimo nacional vigente) praticamente nunca são piso salarial: trate-os como benefício.
+
 Devolva JSON com o schema exato solicitado, sem markdown, sem \`\`\`.`;
 
 const RAIO_X_SCHEMA_HINT = `{
@@ -75,6 +81,54 @@ const parseJsonFromAi = (content: unknown) => {
     if (start >= 0 && end > start) return JSON.parse(cleaned.slice(start, end + 1));
     throw new Error('Resposta da IA não veio em JSON válido');
   }
+};
+
+// ---- Saneamento: tira benefícios do bloco de piso salarial ----
+const BENEFIT_WORDS = /(vale|aliment|cesta|refei|transporte|creche|sa[úu]de|odonto|seguro|vida|plr|participa|abono|gratifica|pr[êe]mio|ajuda de custo|farm[áa]cia|educa|material escolar|funeral|natalidade|cursos?|uniforme|epi|adicional|insalubr|periculos|contribui|mensalidade|taxa|multa|di[áa]ria|reembolso|bolsa|convers[ãa]o)/i;
+const PISO_FLOOR = 1000; // valores mensais abaixo disso não são piso salarial
+
+const parseMoney = (v: unknown): number | null => {
+  const s = String(v ?? '');
+  const m = s.match(/(\d{1,3}(?:\.\d{3})*|\d+)(?:,(\d{1,2}))?/);
+  if (!m) return null;
+  const n = Number(`${m[1].replace(/\./g, '')}.${m[2] || '0'}`);
+  return isFinite(n) ? n : null;
+};
+
+const sanitizePisos = (parsed: any) => {
+  const econ = parsed?.economic_clauses;
+  if (!econ || !Array.isArray(econ.piso_salarial)) return;
+  const kept: any[] = [];
+  const moved: any[] = [];
+  for (const p of econ.piso_salarial) {
+    if (!p || typeof p !== 'object') continue;
+    const nome = String(p.funcao || '');
+    const valor = parseMoney(p.valor);
+    const isBenefit = BENEFIT_WORDS.test(nome) || BENEFIT_WORDS.test(String(p.valor || '')) || (valor !== null && valor > 0 && valor < PISO_FLOOR);
+    if (isBenefit && (nome || p.valor)) moved.push(p); else kept.push(p);
+  }
+  if (!moved.length) return;
+  econ.piso_salarial = kept;
+  parsed.benefits_summary = parsed.benefits_summary || {};
+  const list = Array.isArray(parsed.benefits_summary.beneficios) ? parsed.benefits_summary.beneficios : [];
+  for (const m of moved) {
+    const nome = String(m.funcao || 'Benefício').trim();
+    const jaExiste = list.some((b: any) => String(b?.nome || '').trim().toLowerCase() === nome.toLowerCase());
+    if (jaExiste) continue;
+    list.push({
+      nome,
+      valor: m.valor || '',
+      periodicidade: '',
+      elegiveis: '',
+      condicoes: '',
+      desconto_empregado: '',
+      prazo: '',
+      penalidade: '',
+      observacoes: 'Reclassificado automaticamente: constava como piso salarial na extração.',
+      page_number: null,
+    });
+  }
+  parsed.benefits_summary.beneficios = list;
 };
 
 const hasUsefulExtraction = (parsed: any) => {
@@ -231,6 +285,8 @@ Deno.serve(async (req) => {
         }
 
         // Garante um resumo executivo mesmo quando a IA não retorna ai_summary no consolidado
+        sanitizePisos(parsed);
+
         if (!parsed.ai_summary || typeof parsed.ai_summary !== 'string' || parsed.ai_summary.trim().length < 30) {
           const ident = parsed.identification || {};
           const unions = parsed.unions || {};
