@@ -158,6 +158,39 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
     return _completarComIA();
   };
 
+  const sugerirCbo = async (silent = false) => {
+    if (!draft.nome?.trim()) { if (!silent) toast.error('Informe o nome do cargo.'); return; }
+    setBusy('sugcbo');
+    try {
+      const { data, error } = await supabase.functions.invoke('cargo-adequar', {
+        body: {
+          nome: draft.nome,
+          empresa: cliente?.nome,
+          setor: cliente?.segmento || cliente?.cnae || '',
+          descricao_sumaria: draft.descricao_sumaria || '',
+          atividades: draft.atividades || [],
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      const cboSug = String(data?.cbo || '').replace(/\D/g, '');
+      if (!cboSug) { if (!silent) toast.info('A IA não encontrou um CBO para este cargo.'); return; }
+      setDraft((d: any) => ({
+        ...d,
+        cbo: d.cbo?.trim() ? d.cbo : cboSug,
+        adequacao: {
+          ...(d.adequacao || {}),
+          titulo_cbo: data.titulo_cbo || d.adequacao?.titulo_cbo || '',
+          cbo_familia: data.cbo_familia || d.adequacao?.cbo_familia || '',
+          cbo_justificativa: data.cbo_justificativa || d.adequacao?.cbo_justificativa || '',
+          cbo_alternativas: data.cbo_alternativas || d.adequacao?.cbo_alternativas || [],
+        },
+      }));
+      toast.success(`CBO sugerido: ${cboSug}${data.titulo_cbo ? ' — ' + data.titulo_cbo : ''}`);
+    } catch (e: any) { if (!silent) toast.error('Falha: ' + e.message); }
+    finally { setBusy(null); }
+  };
+
   const adequarCargo = async () => {
     if (!draft.nome?.trim()) return toast.error('Informe o nome do cargo.');
     setBusy('adequar');
