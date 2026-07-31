@@ -287,6 +287,8 @@ Deno.serve(async (req) => {
         }
 
         // Garante um resumo executivo mesmo quando a IA não retorna ai_summary no consolidado
+        sanitizePisos(parsed);
+
         if (!parsed.ai_summary || typeof parsed.ai_summary !== 'string' || parsed.ai_summary.trim().length < 30) {
           const ident = parsed.identification || {};
           const unions = parsed.unions || {};
