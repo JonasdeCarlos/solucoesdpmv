@@ -38,8 +38,8 @@ Deno.serve(async (req) => {
     const body = BodySchema.safeParse(await req.json());
     if (!body.success) return jsonResponse({ error: body.error.flatten().fieldErrors }, 400);
     const { text, pdf_base64 } = body.data;
-    // Prefer text whenever available to avoid slow vision OCR (which often exceeds the 150s edge timeout).
-    const hasUsableText = !!text && text.trim().length >= 120;
+    // PDF.js pode produzir muito texto corrompido. Só evita OCR quando há sinais reais de CCT/ACT.
+    const hasUsableText = !!text && text.trim().length >= 500 && looksLikeCct(text);
     const useVision = !hasUsableText;
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY missing");
@@ -94,7 +94,13 @@ Para campos não encontrados, retorne string vazia. Nunca invente CNPJ ou endere
     const userContent: any[] = [{ type: "text", text: promptCore }];
     if (useVision && pdf_base64) {
       userContent.push({ type: "text", text: "Extraia via OCR o conteúdo do PDF anexo." });
-      userContent.push({ type: "image_url", image_url: { url: `data:application/pdf;base64,${pdf_base64}` } });
+      userContent.push({
+        type: "file",
+        file: {
+          filename: "convencao-coletiva.pdf",
+          file_data: `data:application/pdf;base64,${pdf_base64}`,
+        },
+      });
     } else {
       userContent.push({ type: "text", text: `<documento>\n${truncated}\n</documento>` });
     }
@@ -106,10 +112,10 @@ Para campos não encontrados, retorne string vazia. Nunca invente CNPJ ou endere
     try {
       resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+      headers: { "Lovable-API-Key": LOVABLE_API_KEY, "Content-Type": "application/json" },
       signal: controller.signal,
       body: JSON.stringify({
-        model: useVision ? "google/gemini-2.5-flash-lite" : "google/gemini-2.5-flash",
+        model: "google/gemini-3.6-flash",
         temperature: 0,
         max_tokens: useVision ? 8000 : 8000,
         messages: [{ role: "user", content: userContent }],
@@ -165,8 +171,23 @@ Para campos não encontrados, retorne string vazia. Nunca invente CNPJ ou endere
       });
     }
     const data = await resp.json();
-    const args = data.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
-    const parsed = args ? JSON.parse(args) : {};
+    const message = data.choices?.[0]?.message;
+    const args = message?.tool_calls?.[0]?.function?.arguments;
+    const rawContent = typeof message?.content === "string"
+      ? message.content.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "")
+      : "";
+    let parsed: Record<string, any> = {};
+    try {
+      parsed = args ? JSON.parse(args) : rawContent ? JSON.parse(rawContent) : {};
+    } catch {
+      return jsonResponse({ error: "A IA retornou dados incompletos. Tente novamente; o arquivo foi preservado." }, 502);
+    }
+    console.log("[ai-resumo-cct] extraction", {
+      mode: useVision ? "pdf" : "text",
+      hasToolCall: !!args,
+      fields: Object.keys(parsed),
+      clauses: Array.isArray(parsed.clauses) ? parsed.clauses.length : 0,
+    });
     if (parsed.extraction_ok === false) {
       return jsonResponse({ error: parsed.extraction_notes || "A IA não conseguiu validar o conteúdo como CCT/ACT." }, 422);
     }
