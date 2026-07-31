@@ -96,7 +96,7 @@ export default function PerfilTab({ cliente, onClienteSaved }: { cliente: Client
     if (e1) { toast.error('Erro ao salvar cliente: ' + e1.message); return; }
     const { error: e2 } = await upsert(form);
     if (e2) { toast.error('Erro ao salvar perfil: ' + e2.message); return; }
-    if (pwdLoaded && isAdmin) {
+    if (pwdLoaded) {
       await supabase.rpc('set_timeclock_password' as any, { _client_id: cliente.id, _password: pwd } as any);
     }
     if (ewPwdLoaded && isAdmin) {
@@ -234,10 +234,10 @@ export default function PerfilTab({ cliente, onClienteSaved }: { cliente: Client
                 </div>
                 <div><Label>Usuário</Label><Input value={form.timeclock_user} onChange={(e)=>set('timeclock_user', e.target.value)}/></div>
                 <div>
-                  <Label>Senha {!isAdmin && <span className="text-xs text-muted-foreground">(somente admin)</span>}</Label>
+                  <Label>Senha</Label>
                   <div className="flex gap-1">
-                    <Input type={showPwd ? 'text' : 'password'} value={pwd} onChange={(e)=>{setPwd(e.target.value); setPwdLoaded(true);}} placeholder={isAdmin ? (pwdLoaded ? '' : '•••• (clique para carregar)') : 'restrito'} disabled={!isAdmin}/>
-                    {isAdmin && <Button type="button" variant="outline" size="icon" onClick={() => pwdLoaded ? setShowPwd(s=>!s) : loadPwd()}>{showPwd ? <EyeOff className="w-4 h-4"/> : <Eye className="w-4 h-4"/>}</Button>}
+                    <Input type={showPwd ? 'text' : 'password'} value={pwd} onChange={(e)=>{setPwd(e.target.value); setPwdLoaded(true);}} placeholder={pwdLoaded ? '' : '•••• (clique para carregar)'}/>
+                    <Button type="button" variant="outline" size="icon" onClick={() => pwdLoaded ? setShowPwd(s=>!s) : loadPwd()}>{showPwd ? <EyeOff className="w-4 h-4"/> : <Eye className="w-4 h-4"/>}</Button>
                   </div>
                 </div>
                 <div className="md:col-span-3"><Label>Observações de acesso</Label><Textarea value={form.timeclock_notes} onChange={(e)=>set('timeclock_notes', e.target.value)}/></div>
