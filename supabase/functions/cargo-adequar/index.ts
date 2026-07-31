@@ -88,11 +88,26 @@ Responda SOMENTE com JSON válido no formato exato:
         if (r.status === 402) return json({ error: "Créditos de IA esgotados." }, 402);
         return json({ error: "A IA não conseguiu adequar o cargo neste momento." }, r.status);
       }
+      // Descobre um modelo disponível para esta chave
+      let modelos: string[] = [];
+      try {
+        const lm = await fetch("https://api.anthropic.com/v1/models?limit=50", {
+          headers: { "x-api-key": ANTH, "anthropic-version": "2023-06-01" },
+        });
+        if (lm.ok) {
+          const lj = await lm.json();
+          modelos = (lj?.data || []).map((m: any) => String(m?.id || "")).filter(Boolean);
+        }
+      } catch (_) { /* ignore */ }
+      const preferido = modelos.find((m) => m.includes("sonnet")) || modelos.find((m) => m.includes("haiku")) || modelos[0];
+      if (!preferido) {
+        return json({ error: "Nenhum modelo Anthropic disponível para a chave configurada." }, 502);
+      }
       const ar = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: { "x-api-key": ANTH, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
+          model: preferido,
           max_tokens: 4000,
           temperature: 0.2,
           system: SYS,
