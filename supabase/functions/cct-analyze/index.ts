@@ -14,6 +14,8 @@ REGRAS CRÍTICAS:
 - Cite o trecho de origem em "source_snippet" (máx. 300 caracteres) e, quando possível, page_number.
 - Confidence: alto, medio ou baixo por bloco.
 - Todo texto em português do Brasil.
+- Seja conciso: cada campo textual deve ter no máximo 500 caracteres e cada source_snippet no máximo 160 caracteres.
+- Não transcreva cláusulas inteiras. Resuma regras repetidas e limite listas a 30 itens relevantes por bloco.
 
 REGRA ESPECÍFICA — PISO SALARIAL (economic_clauses.piso_salarial):
 - Só inclua ali valores que sejam efetivamente SALÁRIO BASE MENSAL da categoria (piso/salário normativo).
@@ -216,11 +218,19 @@ Deno.serve(async (req) => {
               });
               clearTimeout(timeout);
               console.log('[cct-analyze] tentativa', { label, attempt, status: aiResp.status });
-              if (aiResp.ok) {
+                if (aiResp.ok) {
                 const aiJson = await aiResp.json();
-                const parsed = parseJsonFromAi(aiJson?.choices?.[0]?.message?.content || '');
-                if (!hasUsefulExtraction(parsed)) throw new Error('IA retornou JSON vazio');
-                return parsed;
+                  const content = aiJson?.choices?.[0]?.message?.content || '';
+                  try {
+                    const parsed = parseJsonFromAi(content);
+                    if (!hasUsefulExtraction(parsed)) throw new Error('IA retornou JSON vazio');
+                    return parsed;
+                  } catch (parseErr: any) {
+                    lastStatus = 502;
+                    lastText = `Resposta JSON inválida ou truncada (${String(content).length} caracteres): ${parseErr?.message || String(parseErr)}`;
+                    console.warn('[cct-analyze] resposta inválida', { label, attempt, finishReason: aiJson?.choices?.[0]?.finish_reason, detail: lastText.slice(0, 240) });
+                    continue;
+                  }
               }
               lastStatus = aiResp.status;
               lastText = await aiResp.text();
