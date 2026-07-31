@@ -195,7 +195,7 @@ export default function CctDetailPage() {
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
       toast.success('Análise concluída. Revise os blocos abaixo.');
-      reload();
+      await reload();
     } catch (err: any) {
       toast.error(err?.message || 'Falha na análise IA.');
     } finally {

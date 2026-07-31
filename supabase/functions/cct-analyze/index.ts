@@ -14,6 +14,8 @@ REGRAS CRÍTICAS:
 - Cite o trecho de origem em "source_snippet" (máx. 300 caracteres) e, quando possível, page_number.
 - Confidence: alto, medio ou baixo por bloco.
 - Todo texto em português do Brasil.
+- Seja conciso: cada campo textual deve ter no máximo 500 caracteres e cada source_snippet no máximo 160 caracteres.
+- Não transcreva cláusulas inteiras. Resuma regras repetidas e limite listas a 30 itens relevantes por bloco.
 
 REGRA ESPECÍFICA — PISO SALARIAL (economic_clauses.piso_salarial):
 - Só inclua ali valores que sejam efetivamente SALÁRIO BASE MENSAL da categoria (piso/salário normativo).
@@ -188,7 +190,8 @@ Deno.serve(async (req) => {
     // Marca como em processamento
     await supabase.from('cct_analyses').update({ status: 'em_analise', ai_model: MODEL, ai_version: 'raio-x-v3-por-arquivo', ai_summary: 'Análise em andamento...' }).eq('id', analysis_id);
 
-    // Executa análise em background para evitar timeout de 150s
+    // Mantém a requisição aberta até concluir. O runtime pode encerrar tarefas
+    // desacopladas após a resposta, sobretudo quando há mais de um PDF.
     const runAnalysis = async () => {
       try {
         console.log('[cct-analyze] bg start', { analysis_id, files: fileList.length });
@@ -215,11 +218,19 @@ Deno.serve(async (req) => {
               });
               clearTimeout(timeout);
               console.log('[cct-analyze] tentativa', { label, attempt, status: aiResp.status });
-              if (aiResp.ok) {
+                if (aiResp.ok) {
                 const aiJson = await aiResp.json();
-                const parsed = parseJsonFromAi(aiJson?.choices?.[0]?.message?.content || '');
-                if (!hasUsefulExtraction(parsed)) throw new Error('IA retornou JSON vazio');
-                return parsed;
+                  const content = aiJson?.choices?.[0]?.message?.content || '';
+                  try {
+                    const parsed = parseJsonFromAi(content);
+                    if (!hasUsefulExtraction(parsed)) throw new Error('IA retornou JSON vazio');
+                    return parsed;
+                  } catch (parseErr: any) {
+                    lastStatus = 502;
+                    lastText = `Resposta JSON inválida ou truncada (${String(content).length} caracteres): ${parseErr?.message || String(parseErr)}`;
+                    console.warn('[cct-analyze] resposta inválida', { label, attempt, finishReason: aiJson?.choices?.[0]?.finish_reason, detail: lastText.slice(0, 240) });
+                    continue;
+                  }
               }
               lastStatus = aiResp.status;
               lastText = await aiResp.text();
@@ -250,18 +261,21 @@ Deno.serve(async (req) => {
           return { parts, hasPdf: !mime.startsWith('image/') };
         };
 
-        const perFileResults: any[] = [];
-        for (const f of fileList) {
+        const extractionResults = await Promise.allSettled(fileList.map(async (f) => {
           try {
             await supabase.from('cct_analyses').update({ ai_summary: `Analisando ${f.file_name}...` }).eq('id', analysis_id);
             const { parts, hasPdf } = await buildPartsForFile(f);
             const extraction = await callGateway(parts, f.file_name || f.file_path, hasPdf);
-            perFileResults.push({ file_name: f.file_name, file_kind: f.file_kind, extraction });
+            return { file_name: f.file_name, file_kind: f.file_kind, extraction };
           } catch (fileErr: any) {
             console.error('[cct-analyze] erro arquivo', f.file_name, fileErr?.message || fileErr);
             await supabase.from('cct_audit_log').insert({ cct_analysis_id: analysis_id, action: 'ai_file_extract_error', metadata: { file_name: f.file_name, detail: fileErr?.message || String(fileErr) } });
+            throw fileErr;
           }
-        }
+        }));
+        const perFileResults = extractionResults
+          .filter((result): result is PromiseFulfilledResult<any> => result.status === 'fulfilled')
+          .map((result) => result.value);
 
         if (!perFileResults.length) {
           const msg = 'Não foi possível extrair dados dos PDFs. Tente reenviar arquivos menores ou em PDF pesquisável.';
@@ -364,19 +378,22 @@ Deno.serve(async (req) => {
       console.log('[cct-analyze] bg done', analysis_id);
     };
 
-    // Mantém o isolate vivo enquanto a análise roda
-    const bgPromise = runAnalysis();
-    // @ts-ignore EdgeRuntime global no Supabase Edge Functions
-    if (typeof EdgeRuntime !== 'undefined' && typeof EdgeRuntime.waitUntil === 'function') {
-      // @ts-ignore
-      EdgeRuntime.waitUntil(bgPromise);
-      console.log('[cct-analyze] EdgeRuntime.waitUntil registrado');
-    } else {
-      console.warn('[cct-analyze] EdgeRuntime.waitUntil indisponível — promessa solta');
+    await runAnalysis();
+    const { data: completed } = await supabase
+      .from('cct_analyses')
+      .select('status, ai_summary')
+      .eq('id', analysis_id)
+      .maybeSingle();
+
+    if (completed?.status === 'erro') {
+      return new Response(JSON.stringify({ error: completed.ai_summary || 'Falha ao analisar a CCT.' }), {
+        status: 422,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    return new Response(JSON.stringify({ ok: true, status: 'processing', message: 'Análise iniciada em segundo plano. Acompanhe pelo status da CCT.' }), {
-      status: 202,
+    return new Response(JSON.stringify({ ok: true, status: completed?.status || 'revisar', message: 'Análise concluída.' }), {
+      status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (err: any) {

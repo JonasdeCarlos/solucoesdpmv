@@ -12,7 +12,7 @@ export interface CctAnalysis {
   ai_model: string | null;
   ai_version: string | null;
   confidence_score: number | null;
-  status: 'em_analise' | 'revisar' | 'aprovada' | 'arquivada' | 'substituida';
+  status: 'em_analise' | 'revisar' | 'aprovada' | 'arquivada' | 'substituida' | 'erro';
   identification: any;
   unions: any;
   territorial_base: any;
