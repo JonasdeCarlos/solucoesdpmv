@@ -1616,6 +1616,136 @@ export type Database = {
           },
         ]
       }
+      cct_radar_findings: {
+        Row: {
+          ai_notes: string | null
+          cct_analysis_id: string | null
+          client_cct_id: string | null
+          client_id: string | null
+          cnpjs: Json
+          confidence: number | null
+          created_at: string
+          evidence: Json
+          finding_type: string
+          id: string
+          numero_registro_mte: string | null
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          source_name: string | null
+          source_type: string
+          source_url: string | null
+          status: string
+          title: string | null
+          updated_at: string
+          vigencia_fim: string | null
+          vigencia_inicio: string | null
+        }
+        Insert: {
+          ai_notes?: string | null
+          cct_analysis_id?: string | null
+          client_cct_id?: string | null
+          client_id?: string | null
+          cnpjs?: Json
+          confidence?: number | null
+          created_at?: string
+          evidence?: Json
+          finding_type?: string
+          id?: string
+          numero_registro_mte?: string | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          source_name?: string | null
+          source_type?: string
+          source_url?: string | null
+          status?: string
+          title?: string | null
+          updated_at?: string
+          vigencia_fim?: string | null
+          vigencia_inicio?: string | null
+        }
+        Update: {
+          ai_notes?: string | null
+          cct_analysis_id?: string | null
+          client_cct_id?: string | null
+          client_id?: string | null
+          cnpjs?: Json
+          confidence?: number | null
+          created_at?: string
+          evidence?: Json
+          finding_type?: string
+          id?: string
+          numero_registro_mte?: string | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          source_name?: string | null
+          source_type?: string
+          source_url?: string | null
+          status?: string
+          title?: string | null
+          updated_at?: string
+          vigencia_fim?: string | null
+          vigencia_inicio?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cct_radar_findings_cct_analysis_id_fkey"
+            columns: ["cct_analysis_id"]
+            isOneToOne: false
+            referencedRelation: "cct_analyses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cct_radar_findings_client_cct_id_fkey"
+            columns: ["client_cct_id"]
+            isOneToOne: false
+            referencedRelation: "client_ccts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cct_radar_findings_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cct_radar_settings: {
+        Row: {
+          alert_days_before: number
+          auto_search_enabled: boolean
+          created_at: string
+          emails: string[]
+          id: string
+          last_run_at: string | null
+          search_frequency_days: number
+          updated_at: string
+        }
+        Insert: {
+          alert_days_before?: number
+          auto_search_enabled?: boolean
+          created_at?: string
+          emails?: string[]
+          id?: string
+          last_run_at?: string | null
+          search_frequency_days?: number
+          updated_at?: string
+        }
+        Update: {
+          alert_days_before?: number
+          auto_search_enabled?: boolean
+          created_at?: string
+          emails?: string[]
+          id?: string
+          last_run_at?: string | null
+          search_frequency_days?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       cct_reports: {
         Row: {
           cct_analysis_id: string

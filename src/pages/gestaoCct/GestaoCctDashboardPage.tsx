@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, AlertTriangle, CheckCircle2, XCircle, FileText, Plus, ArrowRightLeft, Bell, Loader2, Check } from 'lucide-react';
+import { Radar, Search, AlertTriangle, CheckCircle2, XCircle, FileText, Plus, ArrowRightLeft, Bell, Loader2, Check } from 'lucide-react';
 import { useCctAnalyses, type CctAnalysis } from '@/hooks/cct/useCctAnalyses';
 import { useCctAlerts } from '@/hooks/cct/useCctAlerts';
 import { toast } from 'sonner';
@@ -121,6 +121,7 @@ export default function GestaoCctDashboardPage() {
           <p className="text-sm text-muted-foreground">Central completa: upload, Raio-X inteligente, vinculação, alertas e replicação.</p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={() => nav('/gestao-cct/radar')}><Radar className="w-4 h-4 mr-1"/>Radar de CCT</Button>
           <Button variant="outline" onClick={() => nav('/sucesso-cliente/gestao-cct')}><ArrowRightLeft className="w-4 h-4 mr-1"/>Ver por cliente</Button>
           <Button onClick={() => nav('/gestao-cct/nova')}><Plus className="w-4 h-4 mr-1"/>Nova CCT</Button>
         </div>
