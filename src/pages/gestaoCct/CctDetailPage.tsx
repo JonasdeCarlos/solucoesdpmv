@@ -13,6 +13,7 @@ import { CctClientLinksCard } from '@/components/gestaoCct/CctClientLinksCard';
 import { generateCctResumoClientePdf } from '@/utils/gestaoCct/resumoClientePdf';
 import { generateCctRaioXTecnicoPdf } from '@/utils/gestaoCct/raioXTecnicoPdf';
 import { CctVersionsCard } from '@/components/gestaoCct/CctVersionsCard';
+import { CctResumoClienteCard } from '@/components/gestaoCct/CctResumoClienteCard';
 
 const BLOCK_TITLES: Record<string, string> = {
   identification: 'A) Identificação',
@@ -304,6 +305,8 @@ export default function CctDetailPage() {
       {a.ai_summary && (
         <Card><CardHeader><CardTitle>Resumo IA</CardTitle></CardHeader><CardContent><p className="text-sm whitespace-pre-wrap">{a.ai_summary}</p></CardContent></Card>
       )}
+
+      <CctResumoClienteCard analysis={a} onChanged={reload} />
 
       <CctClientLinksCard analysis={a} />
 
