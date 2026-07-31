@@ -177,12 +177,25 @@ Para campos não encontrados, retorne string vazia. Nunca invente CNPJ ou endere
       const hasDesc = !!cl.descricao && cl.descricao.trim().length >= 10 && !!cl.titulo && cl.titulo.trim().length >= 3;
       return hasTrecho || hasDesc;
     });
-    if (meaningfulClauses.length === 0 && !parsed.summary) {
+    const hasAnyField = [
+      parsed.summary, parsed.sindicato, parsed.union_base, parsed.uf, parsed.data_base,
+      parsed.validity_start, parsed.validity_end, parsed.instrumento_tipo,
+      parsed.numero_registro_mte, parsed.abrangencia_territorial, parsed.categoria_abrangida,
+      parsed.sindicato_laboral?.nome, parsed.sindicato_patronal?.nome,
+    ].some((v) => typeof v === "string" && v.trim().length > 0);
+
+    if (meaningfulClauses.length === 0 && !hasAnyField) {
       return jsonResponse({
         error: "A IA não conseguiu extrair conteúdo desta CCT. Verifique se o arquivo tem texto legível ou envie o texto copiado.",
       }, 422);
     }
-    return jsonResponse({ ...parsed, clauses: meaningfulClauses });
+    return jsonResponse({
+      ...parsed,
+      clauses: meaningfulClauses,
+      warning: meaningfulClauses.length === 0
+        ? "Nenhuma cláusula foi extraída; revise manualmente os dados retornados."
+        : undefined,
+    });
   } catch (e) {
     return jsonResponse({ error: e instanceof Error ? e.message : String(e) }, 500);
   }
