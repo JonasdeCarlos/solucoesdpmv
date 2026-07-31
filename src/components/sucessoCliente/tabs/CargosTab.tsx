@@ -171,10 +171,10 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
           atividades: draft.atividades || [],
         },
       });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      const msgErro = (data as any)?.error || (error as any)?.message;
+      if (msgErro) { toast.error('CBO não sugerido: ' + msgErro); return; }
       const cboSug = String(data?.cbo || '').replace(/\D/g, '');
-      if (!cboSug) { if (!silent) toast.info('A IA não encontrou um CBO para este cargo.'); return; }
+      if (!cboSug) { toast.info('A IA não encontrou um CBO para este cargo.'); return; }
       setDraft((d: any) => ({
         ...d,
         cbo: d.cbo?.trim() ? d.cbo : cboSug,
@@ -187,7 +187,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
         },
       }));
       toast.success(`CBO sugerido: ${cboSug}${data.titulo_cbo ? ' — ' + data.titulo_cbo : ''}`);
-    } catch (e: any) { if (!silent) toast.error('Falha: ' + e.message); }
+    } catch (e: any) { toast.error('CBO não sugerido: ' + (e?.message || 'falha na IA')); }
     finally { setBusy(null); }
   };
 
