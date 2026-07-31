@@ -109,7 +109,6 @@ Responda SOMENTE com JSON válido no formato exato:
         body: JSON.stringify({
           model: preferido,
           max_tokens: 4000,
-          temperature: 0.2,
           system: SYS,
           messages: [{ role: "user", content: prompt }],
         }),
