@@ -35,7 +35,12 @@ REGRAS DURAS PARA CLASSIFICAÇÃO CBO (CBO 2002 - MTE):
 - Classifique pela NATUREZA DA OCUPAÇÃO efetivamente exercida, não por palavras parecidas no título. Percorra mentalmente: Grande Grupo → Subgrupo Principal → Subgrupo → Família Ocupacional → Ocupação, e só então escolha o código de 6 dígitos.
 - Não confunda ocupações de COMUNICAÇÃO/JORNALISMO (família 2611 - jornalistas, repórteres, editores de texto) com ocupações de PRODUÇÃO AUDIOVISUAL / CINEMA / TV (família 2624 e correlatas - produtor de audiovisual, diretor de produção, produtor cultural; técnicos em 2617/3721 conforme o caso). Um "Produtor Audiovisual" NÃO é jornalista.
 - Erros clássicos a evitar: produtor audiovisual ≠ jornalista; designer ≠ publicitário; analista de suporte ≠ programador; auxiliar administrativo ≠ assistente administrativo; motorista de caminhão ≠ motorista de carro de passeio; técnico em segurança do trabalho ≠ engenheiro de segurança.
-- OCUPAÇÕES DIGITAIS / MARKETING (social media, analista de mídias sociais, gestor de tráfego, community manager, analista de marketing digital, growth, SEO): classifique nas famílias de MARKETING/PUBLICIDADE/COMUNICAÇÃO EMPRESARIAL (ex.: 2531 — profissionais de publicidade, mercadologia, comunicação e negócios; 3532/3541 conforme nível técnico/operacional). É TERMINANTEMENTE PROIBIDO classificar esses cargos em famílias de ARTES CÊNICAS, ESPETÁCULOS, DIREÇÃO TEATRAL, CINEMA OU MÚSICA (2624, 2625, 2626 e correlatas). "Social media" NÃO é diretor teatral, produtor de espetáculo nem artista.
+- OCUPAÇÕES DIGITAIS / MARKETING (social media, analista de mídias sociais, gestor de tráfego, community manager, analista de marketing digital, growth, SEO): classifique nas famílias de MARKETING/PUBLICIDADE/COMUNICAÇÃO EMPRESARIAL. É TERMINANTEMENTE PROIBIDO classificar esses cargos em famílias de ARTES CÊNICAS, ESPETÁCULOS, DIREÇÃO TEATRAL, CINEMA OU MÚSICA (2624, 2625, 2626 e correlatas). "Social media" NÃO é diretor teatral, produtor de espetáculo nem artista.
+- TABELA CANÔNICA OBRIGATÓRIA (use EXATAMENTE estes códigos quando o cargo corresponder; não substitua por "publicitário" 254105/253105 nem por outro código parecido):
+  • Social media / Analista de mídias sociais / Community manager / Gestor de redes sociais → 253405 — Analista de mídias sociais
+  • Gestor de tráfego pago / Analista de mídia paga / Especialista em performance digital → 253405 (alternativa 253115 quando o escopo for marketing amplo)
+  • Analista de marketing digital / Growth / SEO → 253115 — Profissional de marketing (alternativa 253405 quando o foco for mídias sociais)
+  • Produtor audiovisual → 261610 — Produtor de audiovisual
 - Antes de responder, faça uma CONFERÊNCIA FINAL: leia o "titulo_cbo" que você escolheu e pergunte-se "uma pessoa contratada com o título informado pelo usuário exerceria exatamente esta ocupação no dia a dia?". Se a resposta for não, refaça a classificação. Nunca escolha um código só porque uma palavra do título coincide.
 - Se o usuário já informou um CBO no contexto, valide-o: se estiver coerente, mantenha; se estiver incoerente com a ocupação, corrija e explique.
 - Nunca "chute" um código: se houver mais de uma opção plausível, escolha a mais praticada e liste as demais em "cbo_alternativas".
@@ -168,6 +173,18 @@ Responda SOMENTE com JSON válido no formato exato:
         ? `Este cargo EXIGE inscrição em ${parsed.conselho_registro?.sigla || 'conselho de classe'}${parsed.base_legal ? ' (' + parsed.base_legal + ')' : ''}.`
         : 'Este cargo NÃO exige inscrição em conselho de classe.')),
     };
+    if (!cbo_confirmado) {
+      const canon = canonizar(nomeCargo);
+      if (canon && out.cbo !== canon.cbo) {
+        if (out.cbo) {
+          out.cbo_alternativas = [{ cbo: out.cbo, titulo: out.titulo_cbo, quando_usar: "Sugestão original da IA" }, ...out.cbo_alternativas].slice(0, 3);
+        }
+        out.cbo = canon.cbo;
+        out.titulo_cbo = canon.titulo;
+        out.cbo_familia = canon.familia;
+        out.cbo_justificativa = canon.justificativa;
+      }
+    }
     return json(out);
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : String(e) }, 500);
@@ -176,4 +193,33 @@ Responda SOMENTE com JSON válido no formato exato:
 
 function json(b: any, status = 200) {
   return new Response(JSON.stringify(b), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+}
+
+const CANONICOS: { re: RegExp; cbo: string; titulo: string; familia: string; justificativa: string }[] = [
+  {
+    re: /(social ?media|midias? sociais|redes sociais|community manager|gestor de trafego|gestora de trafego|trafego pago|midia paga)/,
+    cbo: "253405",
+    titulo: "Analista de mídias sociais",
+    familia: "2534 — Profissionais de mídias sociais e comunicação digital",
+    justificativa: "Ocupação de gestão de conteúdo e performance em mídias sociais/digitais; não se confunde com publicitário (254105) nem com ocupações artísticas.",
+  },
+  {
+    re: /(marketing digital|growth|seo|inbound)/,
+    cbo: "253115",
+    titulo: "Profissional de marketing",
+    familia: "2531 — Profissionais de publicidade, mercadologia, comunicação e negócios",
+    justificativa: "Atuação em estratégia e execução de marketing digital, enquadrada na família 2531.",
+  },
+  {
+    re: /produtor(a)? audiovisual/,
+    cbo: "261610",
+    titulo: "Produtor de audiovisual",
+    familia: "2616 — Produtores de espetáculos e de audiovisual",
+    justificativa: "Produção audiovisual não é jornalismo (2611).",
+  },
+];
+
+function canonizar(nome: string) {
+  const n = nome.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  return CANONICOS.find((c) => c.re.test(n)) || null;
 }
