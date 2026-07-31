@@ -83,8 +83,6 @@ const parseJsonFromAi = (content: unknown) => {
   }
 };
 
-const hasUsefulExtraction = (parsed: any) => {
-
 // ---- Saneamento: tira benefícios do bloco de piso salarial ----
 const BENEFIT_WORDS = /(vale|aliment|cesta|refei|transporte|creche|sa[úu]de|odonto|seguro|vida|plr|participa|abono|gratifica|pr[êe]mio|ajuda de custo|farm[áa]cia|educa|material escolar|funeral|natalidade|cursos?|uniforme|epi|adicional|insalubr|periculos|contribui|mensalidade|taxa|multa|di[áa]ria|reembolso|bolsa|convers[ãa]o)/i;
 const PISO_FLOOR = 1000; // valores mensais abaixo disso não são piso salarial
