@@ -158,6 +158,39 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
     return _completarComIA();
   };
 
+  const sugerirCbo = async (silent = false) => {
+    if (!draft.nome?.trim()) { if (!silent) toast.error('Informe o nome do cargo.'); return; }
+    setBusy('sugcbo');
+    try {
+      const { data, error } = await supabase.functions.invoke('cargo-adequar', {
+        body: {
+          nome: draft.nome,
+          empresa: cliente?.nome,
+          setor: cliente?.segmento || cliente?.cnae || '',
+          descricao_sumaria: draft.descricao_sumaria || '',
+          atividades: draft.atividades || [],
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      const cboSug = String(data?.cbo || '').replace(/\D/g, '');
+      if (!cboSug) { if (!silent) toast.info('A IA não encontrou um CBO para este cargo.'); return; }
+      setDraft((d: any) => ({
+        ...d,
+        cbo: d.cbo?.trim() ? d.cbo : cboSug,
+        adequacao: {
+          ...(d.adequacao || {}),
+          titulo_cbo: data.titulo_cbo || d.adequacao?.titulo_cbo || '',
+          cbo_familia: data.cbo_familia || d.adequacao?.cbo_familia || '',
+          cbo_justificativa: data.cbo_justificativa || d.adequacao?.cbo_justificativa || '',
+          cbo_alternativas: data.cbo_alternativas || d.adequacao?.cbo_alternativas || [],
+        },
+      }));
+      toast.success(`CBO sugerido: ${cboSug}${data.titulo_cbo ? ' — ' + data.titulo_cbo : ''}`);
+    } catch (e: any) { if (!silent) toast.error('Falha: ' + e.message); }
+    finally { setBusy(null); }
+  };
+
   const adequarCargo = async () => {
     if (!draft.nome?.trim()) return toast.error('Informe o nome do cargo.');
     setBusy('adequar');
@@ -987,10 +1020,27 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
             </div>
           )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            <div><Label className="text-xs">Nome do cargo</Label><Input value={draft.nome} onChange={e=>setDraft({...draft,nome:e.target.value})}/></div>
+            <div>
+              <Label className="text-xs">Nome do cargo</Label>
+              <Input
+                value={draft.nome}
+                onChange={e=>setDraft({...draft,nome:e.target.value})}
+                onBlur={()=>{ if (draft.nome?.trim() && !draft.cbo?.trim() && !busy) sugerirCbo(true); }}
+              />
+              <div className="text-[10px] text-muted-foreground mt-1">Ao sair deste campo, o CBO é sugerido automaticamente pela IA.</div>
+            </div>
             <div>
               <Label className="text-xs">CBO</Label>
               <Input value={draft.cbo} onChange={e=>setDraft({...draft,cbo:e.target.value})}/>
+              <Button
+                type="button" size="sm" variant="secondary" className="mt-2 w-full"
+                onClick={()=>sugerirCbo(false)}
+                disabled={busy==='sugcbo' || !draft.nome?.trim()}
+                title="Sugere o código CBO e o título oficial a partir do nome do cargo."
+              >
+                {busy==='sugcbo' ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <Sparkles className="w-4 h-4 mr-2"/>}
+                Sugerir CBO pelo nome
+              </Button>
               <Button
                 type="button" size="sm" variant="outline" className="mt-2 w-full"
                 onClick={usarEsteCbo}
