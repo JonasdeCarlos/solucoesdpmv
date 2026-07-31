@@ -50,6 +50,13 @@ Deno.serve(async (req) => {
       }, 422);
     }
 
+    // OCR por visão é lento: PDFs grandes estouram o limite de 150s da edge function.
+    if (useVision && pdf_base64 && pdf_base64.length > 4_500_000) {
+      return jsonResponse({
+        error: "PDF muito grande para OCR (limite ~3 MB). Divida o documento em partes menores ou cole o texto da CCT.",
+      }, 413);
+    }
+
     const compactText = (text || "").replace(/\s+/g, " ").trim();
     const truncated = compactText.slice(0, 90000);
     const promptCore = `Você é especialista em direito do trabalho brasileiro e está auditando uma CCT/ACT.
@@ -94,7 +101,7 @@ Para campos não encontrados, retorne string vazia. Nunca invente CNPJ ou endere
 
     // Abort before the 150s edge function idle timeout so we return a friendly error instead of 504.
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 135_000);
+    const timeoutId = setTimeout(() => controller.abort(), useVision ? 110_000 : 135_000);
     let resp: Response;
     try {
       resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -104,6 +111,7 @@ Para campos não encontrados, retorne string vazia. Nunca invente CNPJ ou endere
       body: JSON.stringify({
         model: useVision ? "google/gemini-2.5-flash-lite" : "google/gemini-2.5-flash",
         temperature: 0,
+        max_tokens: useVision ? 4000 : 8000,
         messages: [{ role: "user", content: userContent }],
         tools: [{
           type: "function",
@@ -141,7 +149,9 @@ Para campos não encontrados, retorne string vazia. Nunca invente CNPJ ou endere
       clearTimeout(timeoutId);
       if (err instanceof Error && err.name === "AbortError") {
         return jsonResponse({
-          error: "A análise da CCT excedeu o tempo limite. Tente enviar o texto extraído (cópia/colar) em vez do PDF, ou divida o documento.",
+          error: useVision
+            ? "O OCR do PDF excedeu o tempo limite. Divida o PDF em partes menores (ex.: 20 páginas) ou envie um PDF com texto selecionável."
+            : "A análise da CCT excedeu o tempo limite. Tente dividir o documento em partes menores.",
         }, 504);
       }
       throw err;
