@@ -61,6 +61,9 @@ REGRAS OBRIGATÓRIAS:
 4. Cada cláusula extraída deve conter um trecho_base curto copiado do documento que justifique a descrição.
 5. Se o documento não contiver CCT/ACT ou o texto estiver ilegível, retorne extraction_ok=false e explique em extraction_notes.
 6. O resumo deve mencionar apenas fatos encontrados no texto.
+7. Crie uma cláusula exclusiva intitulada "Piso Salarial" somente para salários-base mínimos mensais. Preserve separadamente cada categoria realmente prevista (por exemplo, com formação técnica e sem formação).
+8. Nunca coloque abono, prêmio, cesta, auxílio, vale, plano, contribuição ou qualquer benefício dentro da cláusula de Piso Salarial. Um abono indenizatório de R$ 350,00 deve ficar em cláusula própria de abono/benefício, jamais como piso.
+9. Na cláusula de piso, informe todos os valores vigentes e, quando houver texto como “passará de X para Y”, trate Y como valor atual e X apenas como histórico.
 
 Retorne JSON estruturado com:
 - extraction_ok: boolean
