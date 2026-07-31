@@ -73,34 +73,11 @@ Responda SOMENTE com JSON válido no formato exato:
 
     const SYS = "Você é especialista em CBO 2002 (MTE) e responde APENAS com JSON válido, sem markdown.";
     let raw = "";
+    let anthropicErrorStatus: number | null = null;
 
-    const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { "Lovable-API-Key": KEY, "X-Lovable-AIG-SDK": "edge-function", "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-pro",
-        messages: [
-          { role: "system", content: SYS },
-          { role: "user", content: prompt },
-        ],
-        temperature: 0.2,
-        response_format: { type: "json_object" },
-      }),
-    });
-
-    if (r.ok) {
-      const d = await r.json();
-      raw = d?.choices?.[0]?.message?.content || "{}";
-    } else {
-      const detail = await r.text();
-      console.error("cargo-adequar gateway error", r.status, detail.slice(0, 300));
-      const ANTH = Deno.env.get("ANTHROPIC_API_KEY");
-      if (!ANTH) {
-        if (r.status === 429) return json({ error: "Limite de requisições atingido. Tente novamente em instantes." }, 429);
-        if (r.status === 402) return json({ error: "Créditos de IA esgotados." }, 402);
-        return json({ error: "A IA não conseguiu adequar o cargo neste momento." }, r.status);
-      }
-      // Descobre um modelo disponível para esta chave
+    const ANTH = Deno.env.get("ANTHROPIC_API_KEY");
+    if (ANTH) {
+      // Tenta primeiro a chave Anthropic do usuário
       let modelos: string[] = [];
       try {
         const lm = await fetch("https://api.anthropic.com/v1/models?limit=50", {
@@ -118,26 +95,56 @@ Responda SOMENTE com JSON válido no formato exato:
         modelos.find((m) => m.includes("sonnet")) ||
         modelos.find((m) => m.includes("haiku")) ||
         modelos[0];
-      if (!preferido) {
-        return json({ error: "Nenhum modelo Anthropic disponível para a chave configurada." }, 502);
+      if (preferido) {
+        const ar = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: { "x-api-key": ANTH, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: preferido,
+            max_tokens: 4000,
+            system: SYS,
+            messages: [{ role: "user", content: prompt }],
+          }),
+        });
+        if (ar.ok) {
+          const ad = await ar.json();
+          raw = ad?.content?.map((c: any) => (c?.type === "text" ? c.text : "")).join("") || "{}";
+        } else {
+          const adetail = await ar.text();
+          console.error("cargo-adequar anthropic error", ar.status, adetail.slice(0, 500));
+          anthropicErrorStatus = ar.status;
+        }
       }
-      const ar = await fetch("https://api.anthropic.com/v1/messages", {
+    }
+
+    if (!raw) {
+      // Fallback (ou caminho principal quando não há Anthropic) via Lovable AI Gateway
+      const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
-        headers: { "x-api-key": ANTH, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
+        headers: { "Lovable-API-Key": KEY, "X-Lovable-AIG-SDK": "edge-function", "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: preferido,
-          max_tokens: 4000,
-          system: SYS,
-          messages: [{ role: "user", content: prompt }],
+          model: "google/gemini-3.1-pro-preview",
+          messages: [
+            { role: "system", content: SYS },
+            { role: "user", content: prompt },
+          ],
+          temperature: 0.2,
+          response_format: { type: "json_object" },
         }),
       });
-      if (!ar.ok) {
-        const adetail = await ar.text();
-        console.error("cargo-adequar anthropic error", ar.status, adetail.slice(0, 500));
-        return json({ error: `Falha na IA (Anthropic ${ar.status}).`, detail: adetail.slice(0, 300) }, ar.status);
+      if (r.ok) {
+        const d = await r.json();
+        raw = d?.choices?.[0]?.message?.content || "{}";
+      } else {
+        const detail = await r.text();
+        console.error("cargo-adequar gateway error", r.status, detail.slice(0, 300));
+        if (anthropicErrorStatus) {
+          return json({ error: `Falha na IA (Anthropic ${anthropicErrorStatus} e gateway ${r.status}).`, detail: detail.slice(0, 300) }, 502);
+        }
+        if (r.status === 429) return json({ error: "Limite de requisições atingido. Tente novamente em instantes." }, 429);
+        if (r.status === 402) return json({ error: "Créditos de IA esgotados." }, 402);
+        return json({ error: "A IA não conseguiu adequar o cargo neste momento." }, r.status);
       }
-      const ad = await ar.json();
-      raw = ad?.content?.map((c: any) => (c?.type === "text" ? c.text : "")).join("") || "{}";
     }
     const cleaned = String(raw).replace(/^```(?:json)?\s*/i, "").replace(/```$/i, "").trim();
     let parsed: any = {};
