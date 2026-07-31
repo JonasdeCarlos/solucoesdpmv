@@ -706,21 +706,6 @@ export default function CCTTab({ client_id }: { client_id: string }) {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={false} onOpenChange={()=>{}}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Replicar CCT</DialogTitle></DialogHeader>
-          <div className="space-y-2">
-            {origemList.map((o: any) => (
-              <Card key={o.id}><CardContent className="p-3 flex justify-between items-center">
-                <div><div className="font-medium text-sm">{(o.clientes as any)?.nome}</div><div className="text-xs text-muted-foreground">{o.sindicato} • {new Date(o.created_at).toLocaleDateString('pt-BR')}</div></div>
-                <Button size="sm" onClick={()=>replicar(o)}>Replicar</Button>
-              </CardContent></Card>
-            ))}
-            {origemList.length === 0 && <p className="text-sm text-muted-foreground">Sem CCTs disponíveis da mesma base sindical.</p>}
-          </div>
-        </DialogContent>
-      </Dialog>
-
       <Dialog open={!!deleteTarget} onOpenChange={(o)=>{ if(!o){ setDeleteTarget(null); setDeleteReason(''); setDeleteResponsible(''); } }}>
         <DialogContent>
           <DialogHeader><DialogTitle>Excluir CCT — {deleteTarget?.sindicato}</DialogTitle></DialogHeader>
