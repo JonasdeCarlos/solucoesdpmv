@@ -35,6 +35,8 @@ REGRAS DURAS PARA CLASSIFICAÇÃO CBO (CBO 2002 - MTE):
 - Classifique pela NATUREZA DA OCUPAÇÃO efetivamente exercida, não por palavras parecidas no título. Percorra mentalmente: Grande Grupo → Subgrupo Principal → Subgrupo → Família Ocupacional → Ocupação, e só então escolha o código de 6 dígitos.
 - Não confunda ocupações de COMUNICAÇÃO/JORNALISMO (família 2611 - jornalistas, repórteres, editores de texto) com ocupações de PRODUÇÃO AUDIOVISUAL / CINEMA / TV (família 2624 e correlatas - produtor de audiovisual, diretor de produção, produtor cultural; técnicos em 2617/3721 conforme o caso). Um "Produtor Audiovisual" NÃO é jornalista.
 - Erros clássicos a evitar: produtor audiovisual ≠ jornalista; designer ≠ publicitário; analista de suporte ≠ programador; auxiliar administrativo ≠ assistente administrativo; motorista de caminhão ≠ motorista de carro de passeio; técnico em segurança do trabalho ≠ engenheiro de segurança.
+- OCUPAÇÕES DIGITAIS / MARKETING (social media, analista de mídias sociais, gestor de tráfego, community manager, analista de marketing digital, growth, SEO): classifique nas famílias de MARKETING/PUBLICIDADE/COMUNICAÇÃO EMPRESARIAL (ex.: 2531 — profissionais de publicidade, mercadologia, comunicação e negócios; 3532/3541 conforme nível técnico/operacional). É TERMINANTEMENTE PROIBIDO classificar esses cargos em famílias de ARTES CÊNICAS, ESPETÁCULOS, DIREÇÃO TEATRAL, CINEMA OU MÚSICA (2624, 2625, 2626 e correlatas). "Social media" NÃO é diretor teatral, produtor de espetáculo nem artista.
+- Antes de responder, faça uma CONFERÊNCIA FINAL: leia o "titulo_cbo" que você escolheu e pergunte-se "uma pessoa contratada com o título informado pelo usuário exerceria exatamente esta ocupação no dia a dia?". Se a resposta for não, refaça a classificação. Nunca escolha um código só porque uma palavra do título coincide.
 - Se o usuário já informou um CBO no contexto, valide-o: se estiver coerente, mantenha; se estiver incoerente com a ocupação, corrija e explique.
 - Nunca "chute" um código: se houver mais de uma opção plausível, escolha a mais praticada e liste as demais em "cbo_alternativas".
 - Preencha SEMPRE "titulo_cbo" com o TÍTULO OFICIAL exato da ocupação na CBO correspondente ao código informado (não invente sinônimos), "cbo_familia" com o código e o nome da família ocupacional (4 dígitos) e "cbo_justificativa" com 1 a 2 frases explicando por que este código foi escolhido e por que ocupações vizinhas foram descartadas.
@@ -99,7 +101,13 @@ Responda SOMENTE com JSON válido no formato exato:
           modelos = (lj?.data || []).map((m: any) => String(m?.id || "")).filter(Boolean);
         }
       } catch (_) { /* ignore */ }
-      const preferido = modelos.find((m) => m.includes("sonnet")) || modelos.find((m) => m.includes("haiku")) || modelos[0];
+      const preferido =
+        modelos.find((m) => m.includes("opus-4")) ||
+        modelos.find((m) => m.includes("sonnet-4-5")) ||
+        modelos.find((m) => m.includes("sonnet-4")) ||
+        modelos.find((m) => m.includes("sonnet")) ||
+        modelos.find((m) => m.includes("haiku")) ||
+        modelos[0];
       if (!preferido) {
         return json({ error: "Nenhum modelo Anthropic disponível para a chave configurada." }, 502);
       }
