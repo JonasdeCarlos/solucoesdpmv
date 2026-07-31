@@ -665,6 +665,62 @@ export default function CCTTab({ client_id }: { client_id: string }) {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={importOpen} onOpenChange={setImportOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-auto">
+          <DialogHeader><DialogTitle>Importar CCT do módulo Gestão CCT</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <Input value={importQuery} onChange={(e)=>setImportQuery(e.target.value)} placeholder="Buscar por título, sindicato ou UF…" />
+            <div className="max-h-64 overflow-y-auto border rounded divide-y">
+              {analysesFiltradas.length === 0 && <p className="text-sm text-muted-foreground p-3">Nenhuma análise disponível.</p>}
+              {analysesFiltradas.map((a) => (
+                <label key={a.id} className={`flex items-start gap-2 p-2 text-sm cursor-pointer hover:bg-muted/40 ${importSelected?.id === a.id ? 'bg-muted' : ''}`}>
+                  <input type="radio" name="cct-analise" className="mt-1" checked={importSelected?.id === a.id} onChange={()=>setImportSelected(a)} />
+                  <div className="min-w-0">
+                    <div className="font-medium truncate">{a.title || 'Sem título'}</div>
+                    <div className="text-xs text-muted-foreground truncate">
+                      {a.status} • {a?.territorial_base?.uf || '—'} • {a.client_summary ? 'com resumo para cliente' : 'sem resumo para cliente'}
+                    </div>
+                  </div>
+                </label>
+              ))}
+            </div>
+            {importSelected && (
+              <div className="border rounded p-3 bg-muted/30 space-y-2">
+                <div className="text-xs font-bold uppercase text-muted-foreground">Espelho do resumo</div>
+                <p className="text-sm whitespace-pre-wrap">
+                  {importSelected.client_summary || importSelected.ai_summary || 'Sem resumo gerado nesta análise.'}
+                </p>
+              </div>
+            )}
+            <div>
+              <Label className="text-xs">Código do Sindicato na Domínio (opcional)</Label>
+              <Input value={importCodigo} onChange={(e)=>setImportCodigo(e.target.value)} placeholder="ex.: 12345" />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={()=>setImportOpen(false)} disabled={importBusy}>Cancelar</Button>
+              <Button onClick={importarAnalise} disabled={importBusy || !importSelected}>
+                {importBusy ? <Loader2 className="w-4 h-4 mr-1 animate-spin"/> : <Download className="w-4 h-4 mr-1"/>}Importar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={false} onOpenChange={()=>{}}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Replicar CCT</DialogTitle></DialogHeader>
+          <div className="space-y-2">
+            {origemList.map((o: any) => (
+              <Card key={o.id}><CardContent className="p-3 flex justify-between items-center">
+                <div><div className="font-medium text-sm">{(o.clientes as any)?.nome}</div><div className="text-xs text-muted-foreground">{o.sindicato} • {new Date(o.created_at).toLocaleDateString('pt-BR')}</div></div>
+                <Button size="sm" onClick={()=>replicar(o)}>Replicar</Button>
+              </CardContent></Card>
+            ))}
+            {origemList.length === 0 && <p className="text-sm text-muted-foreground">Sem CCTs disponíveis da mesma base sindical.</p>}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={!!deleteTarget} onOpenChange={(o)=>{ if(!o){ setDeleteTarget(null); setDeleteReason(''); setDeleteResponsible(''); } }}>
         <DialogContent>
           <DialogHeader><DialogTitle>Excluir CCT — {deleteTarget?.sindicato}</DialogTitle></DialogHeader>
