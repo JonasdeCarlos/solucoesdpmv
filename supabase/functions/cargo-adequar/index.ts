@@ -173,6 +173,18 @@ Responda SOMENTE com JSON válido no formato exato:
         ? `Este cargo EXIGE inscrição em ${parsed.conselho_registro?.sigla || 'conselho de classe'}${parsed.base_legal ? ' (' + parsed.base_legal + ')' : ''}.`
         : 'Este cargo NÃO exige inscrição em conselho de classe.')),
     };
+    if (!cbo_confirmado) {
+      const canon = canonizar(nomeCargo);
+      if (canon && out.cbo !== canon.cbo) {
+        if (out.cbo) {
+          out.cbo_alternativas = [{ cbo: out.cbo, titulo: out.titulo_cbo, quando_usar: "Sugestão original da IA" }, ...out.cbo_alternativas].slice(0, 3);
+        }
+        out.cbo = canon.cbo;
+        out.titulo_cbo = canon.titulo;
+        out.cbo_familia = canon.familia;
+        out.cbo_justificativa = canon.justificativa;
+      }
+    }
     return json(out);
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : String(e) }, 500);
@@ -181,4 +193,33 @@ Responda SOMENTE com JSON válido no formato exato:
 
 function json(b: any, status = 200) {
   return new Response(JSON.stringify(b), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+}
+
+const CANONICOS: { re: RegExp; cbo: string; titulo: string; familia: string; justificativa: string }[] = [
+  {
+    re: /(social ?media|midias? sociais|redes sociais|community manager|gestor de trafego|gestora de trafego|trafego pago|midia paga)/,
+    cbo: "253405",
+    titulo: "Analista de mídias sociais",
+    familia: "2534 — Profissionais de mídias sociais e comunicação digital",
+    justificativa: "Ocupação de gestão de conteúdo e performance em mídias sociais/digitais; não se confunde com publicitário (254105) nem com ocupações artísticas.",
+  },
+  {
+    re: /(marketing digital|growth|seo|inbound)/,
+    cbo: "253115",
+    titulo: "Profissional de marketing",
+    familia: "2531 — Profissionais de publicidade, mercadologia, comunicação e negócios",
+    justificativa: "Atuação em estratégia e execução de marketing digital, enquadrada na família 2531.",
+  },
+  {
+    re: /produtor(a)? audiovisual/,
+    cbo: "261610",
+    titulo: "Produtor de audiovisual",
+    familia: "2616 — Produtores de espetáculos e de audiovisual",
+    justificativa: "Produção audiovisual não é jornalismo (2611).",
+  },
+];
+
+function canonizar(nome: string) {
+  const n = nome.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  return CANONICOS.find((c) => c.re.test(n)) || null;
 }
