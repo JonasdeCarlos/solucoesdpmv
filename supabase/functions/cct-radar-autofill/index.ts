@@ -119,7 +119,65 @@ async function buscarSiteOficial(nome: string, uf?: string | null): Promise<stri
       if (RE_SINDICAL.test(host)) return base;
     }
   }
-  return primeiro;
+  if (primeiro) return primeiro;
+  // Buscadores costumam bloquear o runtime das edge functions: usa a IA e valida o domínio.
+  return await sugerirSitePorIa(nome, uf);
+}
+
+/** Confirma que o domínio existe e realmente pertence ao sindicato indicado. */
+async function validarSite(url: string, nome: string): Promise<boolean> {
+  try {
+    const res = await fetch(url, {
+      headers: { 'User-Agent': UA, 'Accept-Language': 'pt-BR,pt;q=0.9' },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) return false;
+    const texto = normalizarNome(await res.text()).toLowerCase();
+    const palavras = normalizarNome(nome)
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter((p) => p.length > 4 && !['sindicato', 'estado', 'empregados', 'trabalhadores', 'federacao'].includes(p));
+    const acertos = palavras.filter((p) => texto.includes(p)).length;
+    return /sindicato|federacao|convencao coletiva/.test(texto) && acertos >= Math.min(2, palavras.length);
+  } catch {
+    return false;
+  }
+}
+
+/** Pede à IA candidatos de site oficial e valida cada um antes de aceitar. */
+async function sugerirSitePorIa(nome: string, uf?: string | null): Promise<string | null> {
+  const key = Deno.env.get('LOVABLE_API_KEY');
+  if (!key) return null;
+  try {
+    const res = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        messages: [
+          {
+            role: 'system',
+            content:
+              'Você conhece sindicatos brasileiros. Responda APENAS com um JSON no formato {"dominios":["exemplo.com.br"]} com até 3 domínios prováveis do site oficial. Sem texto extra. Se não souber, retorne {"dominios":[]}.',
+          },
+          { role: 'user', content: `Site oficial do sindicato: ${nome}${uf ? ` (UF ${uf})` : ''}` },
+        ],
+      }),
+      signal: AbortSignal.timeout(20000),
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    const raw = json?.choices?.[0]?.message?.content ?? '';
+    const match = String(raw).match(/\{[\s\S]*\}/);
+    if (!match) return null;
+    const dominios: string[] = JSON.parse(match[0])?.dominios ?? [];
+    for (const d of dominios.slice(0, 3)) {
+      const url = `https://${String(d).replace(/^https?:\/\//, '').replace(/\/.*$/, '').toLowerCase()}`;
+      if (!hostValido(url)) continue;
+      if (await validarSite(url, nome)) return url;
+    }
+  } catch { /* ignora */ }
+  return null;
 }
 
 Deno.serve(async (req) => {
