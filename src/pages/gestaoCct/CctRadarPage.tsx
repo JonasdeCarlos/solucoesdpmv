@@ -13,6 +13,8 @@ import { toast } from 'sonner';
 
 interface FonteCct {
   id: string;
+  ids?: string[];
+  clientes?: number;
   sindicato: string | null;
   uf: string | null;
   validity_end: string | null;
