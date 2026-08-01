@@ -148,7 +148,13 @@ export default function CctRadarPage() {
     setAutofillLoading(false);
     if (error) return toast.error('Falha ao preencher fontes automaticamente.');
     const d = data as any;
-    toast.success(`${d?.atualizados ?? 0} CCT(s) tiveram as fontes preenchidas automaticamente.`);
+    if (d?.error) return toast.error(String(d.error));
+    const semSite = d?.sem_site ?? 0;
+    toast.success(`${d?.atualizados ?? 0} CCT(s) preenchidas.`, {
+      description: semSite
+        ? `${semSite} sem site oficial identificado — informe manualmente se souber.`
+        : 'CNPJs, registro no Mediador, site oficial e termos de busca atualizados.',
+    });
     await load();
   };
 
