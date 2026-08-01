@@ -203,7 +203,7 @@ Deno.serve(async (req) => {
     let atualizados = 0;
     const ano = new Date().getFullYear();
 
-    for (const c of (ccts || []) as any[]) {
+    const processar = async (c: any) => {
       // 1) Análise vinculada (por id direto ou pelo vínculo reverso)
       let analise: any = null;
       if (c.cct_analysis_id) {
@@ -298,6 +298,13 @@ Deno.serve(async (req) => {
           usou_analise: !!analise,
         });
       }
+    };
+
+    // Processa em lotes para reduzir o tempo total sem estourar o runtime.
+    const lista = ((ccts || []) as any[]);
+    const LOTE = 5;
+    for (let i = 0; i < lista.length; i += LOTE) {
+      await Promise.all(lista.slice(i, i + LOTE).map((c) => processar(c).catch(() => undefined)));
     }
 
     const semSite = detalhes.filter((d) => !d.site_oficial).length;
