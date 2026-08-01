@@ -130,14 +130,12 @@ Deno.serve(async (req) => {
         new Set([...(sobrescrever ? [] : c.radar_cnpjs || []), ...cnpjsBase, ...extrairCnpjs(texto)]),
       );
 
-      // 3) Site oficial: cadastrado > URL no documento > domínio de e-mail > busca web
+      // 3) Site oficial: cadastrado > URL no documento > domínio de e-mail (sem adivinhação)
       let siteOficial: string | null = sobrescrever ? null : c.radar_site_oficial || null;
       if (!siteOficial) siteOficial = extrairUrls(texto)[0] || null;
       if (!siteOficial) siteOficial = extrairDominiosDeEmail(texto)[0] || null;
       const nomeLaboral = normalizarNome(c.sindicato_laboral_nome || c.sindicato || '');
       const nomePatronal = normalizarNome(c.sindicato_patronal_nome || '');
-      if (!siteOficial && nomeLaboral) siteOficial = await buscarSiteOficial(nomeLaboral, c.uf);
-      if (!siteOficial && nomePatronal) siteOficial = await buscarSiteOficial(nomePatronal, c.uf);
 
       // 4) Registro no Mediador
       const mediador = (sobrescrever ? null : c.radar_mediador_registro) || c.numero_registro_mte || null;
