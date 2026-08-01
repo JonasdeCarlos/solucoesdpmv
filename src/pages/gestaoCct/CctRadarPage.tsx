@@ -142,6 +142,16 @@ export default function CctRadarPage() {
     await load();
   };
 
+  const preencherFontesAutomaticamente = async () => {
+    setAutofillLoading(true);
+    const { data, error } = await supabase.functions.invoke('cct-radar-autofill', { body: {} });
+    setAutofillLoading(false);
+    if (error) return toast.error('Falha ao preencher fontes automaticamente.');
+    const d = data as any;
+    toast.success(`${d?.atualizados ?? 0} CCT(s) tiveram as fontes preenchidas automaticamente.`);
+    await load();
+  };
+
   const revisar = async (id: string, status: 'aprovado' | 'rejeitado') => {
     const { data: u } = await supabase.auth.getUser();
     const { error } = await supabase.from('cct_radar_findings' as any).update({
