@@ -62,6 +62,36 @@ async function buscaMediador(sindicato: string): Promise<Candidate[]> {
   }
 }
 
+// Lê o site oficial do sindicato cadastrado na CCT e devolve trechos relevantes.
+async function buscaSiteOficial(url: string, sindicato: string): Promise<Candidate[]> {
+  if (!url) return [];
+  try {
+    const alvo = url.startsWith('http') ? url : `https://${url}`;
+    const r = await fetch(alvo, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; RadarCCT/1.0)' },
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!r.ok) return [];
+    const html = await r.text();
+    const texto = html
+      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return [{
+      source_type: 'oficial',
+      source_name: `Site oficial — ${new URL(alvo).hostname}`,
+      source_url: alvo,
+      title: `Site oficial do sindicato — ${sindicato}`,
+      snippet: texto.slice(0, 4000),
+    }];
+  } catch {
+    return [];
+  }
+}
+
 async function avaliarComIA(ctx: any, candidatos: Candidate[]) {
   const KEY = Deno.env.get('LOVABLE_API_KEY');
   if (!KEY || candidatos.length === 0) return [];
