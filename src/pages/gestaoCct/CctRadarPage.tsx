@@ -261,12 +261,18 @@ export default function CctRadarPage() {
 
       <Card>
         <CardContent className="p-4 space-y-3">
-          <div className="font-semibold">Fontes de busca por CCT</div>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="font-semibold">Fontes de busca por CCT</div>
+            <Button variant="outline" size="sm" onClick={preencherFontesAutomaticamente} disabled={autofillLoading || fontes.length === 0}>
+              {autofillLoading ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Radar className="w-4 h-4 mr-1" />}
+              Preencher automaticamente das CCTs
+            </Button>
+          </div>
           <p className="text-xs text-muted-foreground">
             O radar monta a busca a partir destes dados: o site oficial do sindicato é lido diretamente, os CNPJs participantes
             e os termos livres viram consultas na web, e o nº de registro no Mediador serve de referência para a IA comparar
             se o instrumento encontrado é realmente novo. Sem preencher nada, o radar usa o nome do sindicato + UF + ano como
-            termo padrão.
+            termo padrão. Clique no botão acima para tentar extrair CNPJs, site e registro do MTE diretamente da CCT enviada.
           </p>
           {fontes.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nenhuma CCT cadastrada ainda.</p>
