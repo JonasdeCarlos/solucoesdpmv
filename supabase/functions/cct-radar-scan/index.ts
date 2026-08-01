@@ -165,6 +165,33 @@ async function enviarEmail(emails: string[], assunto: string, texto: string) {
   return { enviado: r.ok, motivo: r.ok ? null : await r.text() };
 }
 
+// Notificação do DP por WhatsApp, reaproveitando o canal Digisac já usado no módulo Avisos.
+async function enviarWhatsApp(numeros: string[], texto: string) {
+  const BASE_URL = Deno.env.get('DIGISAC_BASE_URL') || 'https://contabilmv.digisac.co';
+  const TOKEN = Deno.env.get('DIGISAC_API_TOKEN') || Deno.env.get('DIGISAC_TOKEN');
+  const SERVICE_ID = Deno.env.get('DIGISAC_SERVICE_ID');
+  const DEPARTMENT_ID = Deno.env.get('DIGISAC_DEPARTMENT_ID_PESSOAL');
+  const limpos = (numeros || []).map((n) => String(n).replace(/\D/g, '')).filter(Boolean);
+  if (!TOKEN || !SERVICE_ID) return { enviado: false, motivo: 'digisac_nao_configurado' };
+  if (limpos.length === 0) return { enviado: false, motivo: 'sem_numeros' };
+
+  const resultados: any[] = [];
+  for (const number of limpos) {
+    try {
+      const r = await fetch(`${BASE_URL}/api/v1/messages`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: texto, number, serviceId: SERVICE_ID, departmentId: DEPARTMENT_ID }),
+        signal: AbortSignal.timeout(30000),
+      });
+      resultados.push({ number, ok: r.ok, status: r.status });
+    } catch (e) {
+      resultados.push({ number, ok: false, erro: String(e) });
+    }
+  }
+  return { enviado: resultados.some((x) => x.ok), resultados };
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   try {
@@ -258,6 +285,7 @@ Deno.serve(async (req) => {
     }
 
     let email: any = { enviado: false, motivo: 'sem_novidades' };
+    let whatsapp: any = { enviado: false, motivo: 'sem_novidades' };
     if (notify && novos.length > 0) {
       const linhas = novos.map((n) =>
         `• [${n.source_type === 'oficial' ? 'FONTE OFICIAL' : '⚠ FONTE NÃO OFICIAL'}] ${n.finding_type === 'termo_aditivo' ? 'Termo aditivo' : 'Nova CCT'} — ${n.cliente || ''} / ${n.sindicato}\n  ${n.title}\n  ${n.source_url}\n  Confiança: ${n.confidence ?? '—'}`,
@@ -267,11 +295,15 @@ Deno.serve(async (req) => {
         `[Radar CCT] ${novos.length} possível(is) atualização(ões) aguardando aprovação`,
         `Radar de CCT — varredura automática\n\n${linhas}\n\nTodos os achados aguardam APROVAÇÃO no sistema (Gestão de CCT › Radar).`,
       );
+      whatsapp = await enviarWhatsApp(
+        cfg.whatsapp_numeros || [],
+        `*Radar de CCT* — ${novos.length} possível(is) atualização(ões) aguardando aprovação\n\n${linhas}\n\nAprove ou rejeite em Gestão de CCT › Radar.`,
+      );
     }
 
     await admin.from('cct_radar_settings').update({ last_run_at: new Date().toISOString() }).eq('id', cfg.id ?? '00000000-0000-0000-0000-000000000000');
 
-    return new Response(JSON.stringify({ ok: true, verificadas: alvo.length, novos: novos.length, email }), {
+    return new Response(JSON.stringify({ ok: true, verificadas: alvo.length, novos: novos.length, email, whatsapp }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (e) {
