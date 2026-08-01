@@ -63,6 +63,7 @@ export default function CctRadarPage() {
   const [salvandoFonte, setSalvandoFonte] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
+  const [autofillLoading, setAutofillLoading] = useState(false);
   const [filtro, setFiltro] = useState<'pendente' | 'aprovado' | 'rejeitado' | 'todos'>('pendente');
 
   const load = useCallback(async () => {
