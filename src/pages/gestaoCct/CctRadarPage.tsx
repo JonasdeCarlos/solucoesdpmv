@@ -11,6 +11,18 @@ import { Label } from '@/components/ui/label';
 import { Radar, Mail, Loader2, Check, X, ExternalLink, ShieldCheck, AlertTriangle, Plus, Trash2, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 
+interface FonteCct {
+  id: string;
+  sindicato: string | null;
+  uf: string | null;
+  validity_end: string | null;
+  radar_site_oficial: string | null;
+  radar_cnpjs: string[] | null;
+  radar_termos: string[] | null;
+  radar_mediador_registro: string | null;
+  radar_enabled: boolean | null;
+}
+
 interface RadarSettings {
   id?: string;
   emails: string[];
@@ -45,18 +57,26 @@ export default function CctRadarPage() {
   const [cfg, setCfg] = useState<RadarSettings>({ emails: [], alert_days_before: 60, auto_search_enabled: true, search_frequency_days: 7 });
   const [novoEmail, setNovoEmail] = useState('');
   const [findings, setFindings] = useState<Finding[]>([]);
+  const [fontes, setFontes] = useState<FonteCct[]>([]);
+  const [salvandoFonte, setSalvandoFonte] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
   const [filtro, setFiltro] = useState<'pendente' | 'aprovado' | 'rejeitado' | 'todos'>('pendente');
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [{ data: s }, { data: f }] = await Promise.all([
+    const [{ data: s }, { data: f }, { data: cc }] = await Promise.all([
       supabase.from('cct_radar_settings' as any).select('*').limit(1),
       supabase.from('cct_radar_findings' as any).select('*').order('created_at', { ascending: false }),
+      supabase
+        .from('client_ccts' as any)
+        .select('id, sindicato, uf, validity_end, radar_site_oficial, radar_cnpjs, radar_termos, radar_mediador_registro, radar_enabled')
+        .is('deleted_at', null)
+        .order('validity_end', { ascending: true }),
     ]);
     if (s && (s as any[]).length) setCfg((s as any[])[0]);
     setFindings(((f || []) as any) as Finding[]);
+    setFontes(((cc || []) as any) as FonteCct[]);
     setLoading(false);
   }, []);
 
@@ -120,6 +140,25 @@ export default function CctRadarPage() {
 
   const pendentes = findings.filter((f) => f.status === 'pendente').length;
 
+  const patchFonte = (id: string, patch: Partial<FonteCct>) =>
+    setFontes((prev) => prev.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+
+  const salvarFonte = async (f: FonteCct) => {
+    setSalvandoFonte(f.id);
+    const { error } = await supabase.from('client_ccts' as any).update({
+      radar_site_oficial: f.radar_site_oficial || null,
+      radar_cnpjs: f.radar_cnpjs || [],
+      radar_termos: f.radar_termos || [],
+      radar_mediador_registro: f.radar_mediador_registro || null,
+      radar_enabled: f.radar_enabled !== false,
+    } as any).eq('id', f.id);
+    setSalvandoFonte(null);
+    if (error) return toast.error('Falha ao salvar as fontes desta CCT.');
+    toast.success('Fontes de busca salvas.');
+  };
+
+  const toList = (v: string) => v.split(/[;,\n]/).map((x) => x.trim()).filter(Boolean);
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -170,6 +209,76 @@ export default function CctRadarPage() {
             </div>
           </div>
           {cfg.last_run_at && <p className="text-xs text-muted-foreground">Última varredura: {new Date(cfg.last_run_at).toLocaleString('pt-BR')}</p>}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-4 space-y-3">
+          <div className="font-semibold">Fontes de busca por CCT</div>
+          <p className="text-xs text-muted-foreground">
+            O radar monta a busca a partir destes dados: o site oficial do sindicato é lido diretamente, os CNPJs participantes
+            e os termos livres viram consultas na web, e o nº de registro no Mediador serve de referência para a IA comparar
+            se o instrumento encontrado é realmente novo. Sem preencher nada, o radar usa o nome do sindicato + UF + ano como
+            termo padrão.
+          </p>
+          {fontes.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhuma CCT cadastrada ainda.</p>
+          ) : (
+            <div className="space-y-3">
+              {fontes.map((f) => (
+                <div key={f.id} className="rounded-lg border p-3 space-y-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-medium text-sm">{f.sindicato || 'Sem sindicato'}</span>
+                    {f.uf && <Badge variant="secondary">{f.uf}</Badge>}
+                    {f.validity_end && <Badge variant="outline">Vigência até {f.validity_end}</Badge>}
+                    <div className="flex items-center gap-2 ml-auto">
+                      <Switch checked={f.radar_enabled !== false} onCheckedChange={(v) => patchFonte(f.id, { radar_enabled: v })} />
+                      <Label className="text-xs">Monitorar</Label>
+                    </div>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Site oficial do sindicato</Label>
+                      <Input
+                        placeholder="https://sindicato.org.br"
+                        value={f.radar_site_oficial || ''}
+                        onChange={(e) => patchFonte(f.id, { radar_site_oficial: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Nº de registro no Mediador (MTE)</Label>
+                      <Input
+                        placeholder="MG000123/2025"
+                        value={f.radar_mediador_registro || ''}
+                        onChange={(e) => patchFonte(f.id, { radar_mediador_registro: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">CNPJs participantes (separe por vírgula)</Label>
+                      <Input
+                        placeholder="00.000.000/0001-00, 11.111.111/0001-11"
+                        value={(f.radar_cnpjs || []).join(', ')}
+                        onChange={(e) => patchFonte(f.id, { radar_cnpjs: toList(e.target.value) })}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Termos de busca (um por linha)</Label>
+                      <Textarea
+                        rows={2}
+                        placeholder={'"SINDICATO X" convenção coletiva 2026 vigência'}
+                        value={(f.radar_termos || []).join('\n')}
+                        onChange={(e) => patchFonte(f.id, { radar_termos: toList(e.target.value) })}
+                      />
+                    </div>
+                  </div>
+                  <Button size="sm" variant="outline" onClick={() => salvarFonte(f)} disabled={salvandoFonte === f.id}>
+                    {salvandoFonte === f.id ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : null}
+                    Salvar fontes
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
