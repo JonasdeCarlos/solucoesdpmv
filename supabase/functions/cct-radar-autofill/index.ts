@@ -64,32 +64,62 @@ function normalizarNome(nome: string): string {
     .trim();
 }
 
-/** Busca o site oficial do sindicato via DuckDuckGo HTML (sem chave de API). */
-async function buscarSiteOficial(nome: string, uf?: string | null): Promise<string | null> {
-  const query = `${nome} ${uf || ''} sindicato site oficial`.replace(/\s+/g, ' ').trim();
+const UA =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36';
+const RE_SINDICAL = /sind|sinttel|feder|fetr|contrac|trabalhador|hotei|comerc|sinttel|sinpro/;
+
+function candidatosDeHtml(html: string): string[] {
+  const urls: string[] = [];
+  const push = (u: string) => {
+    if (!hostValido(u)) return;
+    try {
+      const base = `https://${new URL(u).hostname.toLowerCase()}`;
+      if (!urls.includes(base)) urls.push(base);
+    } catch { /* ignora */ }
+  };
+  let m: RegExpExecArray | null;
+  const reUddg = /uddg=([^"&]+)/g;
+  while ((m = reUddg.exec(html)) !== null) push(decodeURIComponent(m[1]));
+  const reHref = /href="(https?:\/\/[^"]+)"/g;
+  while ((m = reHref.exec(html)) !== null) push(m[1]);
+  return urls;
+}
+
+async function buscarEm(url: string, init?: RequestInit): Promise<string[]> {
   try {
-    const res = await fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; CctRadar/1.0)' },
+    const res = await fetch(url, {
+      ...init,
+      headers: { 'User-Agent': UA, 'Accept-Language': 'pt-BR,pt;q=0.9', ...(init?.headers || {}) },
       signal: AbortSignal.timeout(12000),
     });
-    if (!res.ok) return null;
-    const html = await res.text();
-    const re = /uddg=([^"&]+)/g;
-    let m: RegExpExecArray | null;
-    let primeiro: string | null = null;
-    while ((m = re.exec(html)) !== null) {
-      const url = decodeURIComponent(m[1]);
-      if (!hostValido(url)) continue;
-      let host: string;
-      try { host = new URL(url).hostname.toLowerCase(); } catch { continue; }
-      const base = `https://${host}`;
-      if (!primeiro) primeiro = base;
-      if (/sind|sinttel|feder|fetr|contrac|trabalhador|hotei|comerc/.test(host)) return base;
-    }
-    return primeiro;
+    if (!res.ok) return [];
+    return candidatosDeHtml(await res.text());
   } catch {
-    return null;
+    return [];
   }
+}
+
+/** Busca o site oficial do sindicato em vários buscadores públicos (sem chave de API). */
+async function buscarSiteOficial(nome: string, uf?: string | null): Promise<string | null> {
+  const query = `${nome} ${uf || ''} sindicato site oficial`.replace(/\s+/g, ' ').trim();
+  const q = encodeURIComponent(query);
+  const fontes: Array<() => Promise<string[]>> = [
+    () => buscarEm(`https://lite.duckduckgo.com/lite/?q=${q}`),
+    () => buscarEm(`https://html.duckduckgo.com/html/?q=${q}`),
+    () => buscarEm(`https://www.bing.com/search?q=${q}&setlang=pt-br`),
+    () => buscarEm(`https://search.marcia.cc/search?q=${q}`),
+  ];
+
+  let primeiro: string | null = null;
+  for (const fonte of fontes) {
+    const candidatos = await fonte();
+    for (const base of candidatos) {
+      const host = base.replace('https://', '');
+      if (!primeiro) primeiro = base;
+      if (RE_SINDICAL.test(host)) return base;
+    }
+  }
+  return primeiro;
 }
 
 Deno.serve(async (req) => {
