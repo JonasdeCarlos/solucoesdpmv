@@ -1724,6 +1724,7 @@ export type Database = {
           next_run_at: string | null
           search_frequency_days: number
           updated_at: string
+          whatsapp_numeros: string[]
         }
         Insert: {
           alert_days_before?: number
@@ -1735,6 +1736,7 @@ export type Database = {
           next_run_at?: string | null
           search_frequency_days?: number
           updated_at?: string
+          whatsapp_numeros?: string[]
         }
         Update: {
           alert_days_before?: number
@@ -1746,6 +1748,7 @@ export type Database = {
           next_run_at?: string | null
           search_frequency_days?: number
           updated_at?: string
+          whatsapp_numeros?: string[]
         }
         Relationships: []
       }
