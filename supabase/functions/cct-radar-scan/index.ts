@@ -62,6 +62,36 @@ async function buscaMediador(sindicato: string): Promise<Candidate[]> {
   }
 }
 
+// Lê o site oficial do sindicato cadastrado na CCT e devolve trechos relevantes.
+async function buscaSiteOficial(url: string, sindicato: string): Promise<Candidate[]> {
+  if (!url) return [];
+  try {
+    const alvo = url.startsWith('http') ? url : `https://${url}`;
+    const r = await fetch(alvo, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; RadarCCT/1.0)' },
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!r.ok) return [];
+    const html = await r.text();
+    const texto = html
+      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return [{
+      source_type: 'oficial',
+      source_name: `Site oficial — ${new URL(alvo).hostname}`,
+      source_url: alvo,
+      title: `Site oficial do sindicato — ${sindicato}`,
+      snippet: texto.slice(0, 4000),
+    }];
+  } catch {
+    return [];
+  }
+}
+
 async function avaliarComIA(ctx: any, candidatos: Candidate[]) {
   const KEY = Deno.env.get('LOVABLE_API_KEY');
   if (!KEY || candidatos.length === 0) return [];
@@ -150,28 +180,48 @@ Deno.serve(async (req) => {
 
     let q = admin
       .from('client_ccts')
-      .select('id, client_id, sindicato, union_base, uf, validity_end, cct_analysis_id, is_active, deleted_at, clientes:client_id(nome)')
+      .select('id, client_id, sindicato, union_base, uf, validity_end, cct_analysis_id, is_active, deleted_at, radar_site_oficial, radar_cnpjs, radar_termos, radar_mediador_registro, radar_enabled, numero_registro_mte, clientes:client_id(nome)')
       .is('deleted_at', null);
     if (onlyCctId) q = q.eq('id', onlyCctId);
     else q = q.or(`validity_end.lte.${limite},validity_end.is.null`);
     const { data: ccts, error } = await q;
     if (error) throw error;
 
-    const alvo = (ccts || []).filter((c: any) => c.is_active !== false).slice(0, 15);
+    const alvo = (ccts || [])
+      .filter((c: any) => c.is_active !== false && c.radar_enabled !== false)
+      .slice(0, 15);
     const novos: any[] = [];
 
     for (const c of alvo as any[]) {
       const sind = c.sindicato || '';
       if (!sind) continue;
       const ano = new Date().getFullYear();
-      const [oficial, web, aditivos] = await Promise.all([
+      const termos: string[] = Array.isArray(c.radar_termos) && c.radar_termos.length
+        ? c.radar_termos
+        : [
+            `"${sind}" convenção coletiva ${ano} ${c.uf || ''} vigência`,
+            `"${sind}" termo aditivo convenção coletiva ${ano}`,
+          ];
+      const cnpjs: string[] = Array.isArray(c.radar_cnpjs) ? c.radar_cnpjs : [];
+      const buscasCnpj = cnpjs.slice(0, 2).map((cnpj) =>
+        buscaDuckDuckGo(`"${cnpj}" convenção coletiva ${ano} mediador`),
+      );
+      const partes = await Promise.all([
         buscaMediador(sind),
-        buscaDuckDuckGo(`"${sind}" convenção coletiva ${ano} ${c.uf || ''} vigência`),
-        buscaDuckDuckGo(`"${sind}" termo aditivo convenção coletiva ${ano}`),
+        buscaSiteOficial(c.radar_site_oficial || '', sind),
+        ...termos.slice(0, 4).map((t) => buscaDuckDuckGo(t)),
+        ...buscasCnpj,
       ]);
-      const candidatos = [...oficial, ...web, ...aditivos];
+      const candidatos = partes.flat();
       const achados = await avaliarComIA(
-        { sindicato: sind, base: c.union_base, uf: c.uf, vigencia_fim_atual: c.validity_end },
+        {
+          sindicato: sind,
+          base: c.union_base,
+          uf: c.uf,
+          vigencia_fim_atual: c.validity_end,
+          cnpjs_participantes: cnpjs,
+          registro_mte_atual: c.radar_mediador_registro || c.numero_registro_mte || null,
+        },
         candidatos,
       );
 

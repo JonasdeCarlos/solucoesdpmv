@@ -1721,6 +1721,7 @@ export type Database = {
           emails: string[]
           id: string
           last_run_at: string | null
+          next_run_at: string | null
           search_frequency_days: number
           updated_at: string
         }
@@ -1731,6 +1732,7 @@ export type Database = {
           emails?: string[]
           id?: string
           last_run_at?: string | null
+          next_run_at?: string | null
           search_frequency_days?: number
           updated_at?: string
         }
@@ -1741,6 +1743,7 @@ export type Database = {
           emails?: string[]
           id?: string
           last_run_at?: string | null
+          next_run_at?: string | null
           search_frequency_days?: number
           updated_at?: string
         }
@@ -1976,6 +1979,11 @@ export type Database = {
           instrumento_tipo: string | null
           is_active: boolean
           numero_registro_mte: string | null
+          radar_cnpjs: string[]
+          radar_enabled: boolean
+          radar_mediador_registro: string | null
+          radar_site_oficial: string | null
+          radar_termos: string[]
           sindicato: string | null
           sindicato_laboral_cnpj: string | null
           sindicato_laboral_endereco: string | null
@@ -2011,6 +2019,11 @@ export type Database = {
           instrumento_tipo?: string | null
           is_active?: boolean
           numero_registro_mte?: string | null
+          radar_cnpjs?: string[]
+          radar_enabled?: boolean
+          radar_mediador_registro?: string | null
+          radar_site_oficial?: string | null
+          radar_termos?: string[]
           sindicato?: string | null
           sindicato_laboral_cnpj?: string | null
           sindicato_laboral_endereco?: string | null
@@ -2046,6 +2059,11 @@ export type Database = {
           instrumento_tipo?: string | null
           is_active?: boolean
           numero_registro_mte?: string | null
+          radar_cnpjs?: string[]
+          radar_enabled?: boolean
+          radar_mediador_registro?: string | null
+          radar_site_oficial?: string | null
+          radar_termos?: string[]
           sindicato?: string | null
           sindicato_laboral_cnpj?: string | null
           sindicato_laboral_endereco?: string | null
