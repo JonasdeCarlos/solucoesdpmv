@@ -63,6 +63,7 @@ export default function CctRadarPage() {
   const [salvandoFonte, setSalvandoFonte] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
+  const [autofillLoading, setAutofillLoading] = useState(false);
   const [filtro, setFiltro] = useState<'pendente' | 'aprovado' | 'rejeitado' | 'todos'>('pendente');
 
   const load = useCallback(async () => {
@@ -138,6 +139,16 @@ export default function CctRadarPage() {
           : 'Falha ao enviar o aviso por WhatsApp (Digisac).',
       );
     }
+    await load();
+  };
+
+  const preencherFontesAutomaticamente = async () => {
+    setAutofillLoading(true);
+    const { data, error } = await supabase.functions.invoke('cct-radar-autofill', { body: {} });
+    setAutofillLoading(false);
+    if (error) return toast.error('Falha ao preencher fontes automaticamente.');
+    const d = data as any;
+    toast.success(`${d?.atualizados ?? 0} CCT(s) tiveram as fontes preenchidas automaticamente.`);
     await load();
   };
 
@@ -250,12 +261,18 @@ export default function CctRadarPage() {
 
       <Card>
         <CardContent className="p-4 space-y-3">
-          <div className="font-semibold">Fontes de busca por CCT</div>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="font-semibold">Fontes de busca por CCT</div>
+            <Button variant="outline" size="sm" onClick={preencherFontesAutomaticamente} disabled={autofillLoading || fontes.length === 0}>
+              {autofillLoading ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Radar className="w-4 h-4 mr-1" />}
+              Preencher automaticamente das CCTs
+            </Button>
+          </div>
           <p className="text-xs text-muted-foreground">
             O radar monta a busca a partir destes dados: o site oficial do sindicato é lido diretamente, os CNPJs participantes
             e os termos livres viram consultas na web, e o nº de registro no Mediador serve de referência para a IA comparar
             se o instrumento encontrado é realmente novo. Sem preencher nada, o radar usa o nome do sindicato + UF + ano como
-            termo padrão.
+            termo padrão. Clique no botão acima para tentar extrair CNPJs, site e registro do MTE diretamente da CCT enviada.
           </p>
           {fontes.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nenhuma CCT cadastrada ainda.</p>
