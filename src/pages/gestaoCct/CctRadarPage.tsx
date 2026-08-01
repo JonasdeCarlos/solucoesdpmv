@@ -84,7 +84,28 @@ export default function CctRadarPage() {
       setCfg({ ...row, emails: row.emails || [], whatsapp_numeros: row.whatsapp_numeros || [] });
     }
     setFindings(((f || []) as any) as Finding[]);
-    setFontes(((cc || []) as any) as FonteCct[]);
+    // A mesma CCT é cadastrada por cliente: agrupa para não repetir na lista do radar.
+    const brutos = ((cc || []) as any) as FonteCct[];
+    const mapa = new Map<string, FonteCct>();
+    for (const r of brutos) {
+      const chave = [
+        (r.sindicato || '').trim().toUpperCase(),
+        (r.uf || '').trim().toUpperCase(),
+        r.validity_end || '',
+      ].join('|');
+      const atual = mapa.get(chave);
+      if (!atual) {
+        mapa.set(chave, { ...r, ids: [r.id], clientes: 1 });
+      } else {
+        atual.ids = [...(atual.ids || []), r.id];
+        atual.clientes = (atual.clientes || 1) + 1;
+        atual.radar_site_oficial = atual.radar_site_oficial || r.radar_site_oficial;
+        atual.radar_mediador_registro = atual.radar_mediador_registro || r.radar_mediador_registro;
+        atual.radar_cnpjs = (atual.radar_cnpjs?.length ? atual.radar_cnpjs : r.radar_cnpjs) || [];
+        atual.radar_termos = (atual.radar_termos?.length ? atual.radar_termos : r.radar_termos) || [];
+      }
+    }
+    setFontes(Array.from(mapa.values()));
     setLoading(false);
   }, []);
 
@@ -188,7 +209,7 @@ export default function CctRadarPage() {
       radar_termos: f.radar_termos || [],
       radar_mediador_registro: f.radar_mediador_registro || null,
       radar_enabled: f.radar_enabled !== false,
-    } as any).eq('id', f.id);
+    } as any).in('id', f.ids?.length ? f.ids : [f.id]);
     setSalvandoFonte(null);
     if (error) return toast.error('Falha ao salvar as fontes desta CCT.');
     toast.success('Fontes de busca salvas.');
@@ -292,6 +313,7 @@ export default function CctRadarPage() {
                     <span className="font-medium text-sm">{f.sindicato || 'Sem sindicato'}</span>
                     {f.uf && <Badge variant="secondary">{f.uf}</Badge>}
                     {f.validity_end && <Badge variant="outline">Vigência até {f.validity_end}</Badge>}
+                    {(f.clientes || 1) > 1 && <Badge variant="outline">{f.clientes} clientes</Badge>}
                     <div className="flex items-center gap-2 ml-auto">
                       <Switch checked={f.radar_enabled !== false} onCheckedChange={(v) => patchFonte(f.id, { radar_enabled: v })} />
                       <Label className="text-xs">Monitorar</Label>
@@ -305,6 +327,9 @@ export default function CctRadarPage() {
                         value={f.radar_site_oficial || ''}
                         onChange={(e) => patchFonte(f.id, { radar_site_oficial: e.target.value })}
                       />
+                      <p className="text-[11px] text-muted-foreground">
+                        Preenchido apenas se constar na CCT enviada; caso contrário, informe manualmente.
+                      </p>
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs">Nº de registro no Mediador (MTE)</Label>
