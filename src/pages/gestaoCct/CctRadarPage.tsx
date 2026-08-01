@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Radar, Mail, Loader2, Check, X, ExternalLink, ShieldCheck, AlertTriangle, Plus, Trash2, ArrowLeft } from 'lucide-react';
+import { Radar, Mail, Loader2, Check, X, ExternalLink, ShieldCheck, AlertTriangle, Plus, Trash2, ArrowLeft, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface FonteCct {
@@ -26,6 +26,7 @@ interface FonteCct {
 interface RadarSettings {
   id?: string;
   emails: string[];
+  whatsapp_numeros: string[];
   alert_days_before: number;
   auto_search_enabled: boolean;
   search_frequency_days: number;
@@ -54,8 +55,9 @@ interface Finding {
 
 export default function CctRadarPage() {
   const nav = useNavigate();
-  const [cfg, setCfg] = useState<RadarSettings>({ emails: [], alert_days_before: 60, auto_search_enabled: true, search_frequency_days: 7 });
+  const [cfg, setCfg] = useState<RadarSettings>({ emails: [], whatsapp_numeros: [], alert_days_before: 60, auto_search_enabled: true, search_frequency_days: 7 });
   const [novoEmail, setNovoEmail] = useState('');
+  const [novoNumero, setNovoNumero] = useState('');
   const [findings, setFindings] = useState<Finding[]>([]);
   const [fontes, setFontes] = useState<FonteCct[]>([]);
   const [salvandoFonte, setSalvandoFonte] = useState<string | null>(null);
@@ -74,7 +76,10 @@ export default function CctRadarPage() {
         .is('deleted_at', null)
         .order('validity_end', { ascending: true }),
     ]);
-    if (s && (s as any[]).length) setCfg((s as any[])[0]);
+    if (s && (s as any[]).length) {
+      const row = (s as any[])[0];
+      setCfg({ ...row, emails: row.emails || [], whatsapp_numeros: row.whatsapp_numeros || [] });
+    }
     setFindings(((f || []) as any) as Finding[]);
     setFontes(((cc || []) as any) as FonteCct[]);
     setLoading(false);
@@ -87,6 +92,7 @@ export default function CctRadarPage() {
     setCfg(next);
     const payload = {
       emails: next.emails,
+      whatsapp_numeros: next.whatsapp_numeros,
       alert_days_before: next.alert_days_before,
       auto_search_enabled: next.auto_search_enabled,
       search_frequency_days: next.search_frequency_days,
@@ -110,6 +116,14 @@ export default function CctRadarPage() {
     salvarCfg({ emails: [...cfg.emails, e] });
   };
 
+  const addNumero = () => {
+    const n = novoNumero.replace(/\D/g, '');
+    if (n.length < 10) return toast.error('Informe o número com DDD (ex.: 35988395876).');
+    if (cfg.whatsapp_numeros.includes(n)) return toast.error('Número já cadastrado.');
+    setNovoNumero('');
+    salvarCfg({ whatsapp_numeros: [...cfg.whatsapp_numeros, n] });
+  };
+
   const rodarRadar = async () => {
     setScanning(true);
     const { data, error } = await supabase.functions.invoke('cct-radar-scan', { body: { notify: true } });
@@ -117,8 +131,12 @@ export default function CctRadarPage() {
     if (error) return toast.error('Falha ao executar o radar.');
     const d = data as any;
     toast.success(`Radar concluído: ${d?.verificadas ?? 0} CCT(s) verificada(s), ${d?.novos ?? 0} achado(s).`);
-    if (d?.novos > 0 && d?.email?.enviado === false && d?.email?.motivo === 'sem_resend_key') {
-      toast.warning('E-mails não enviados: canal de e-mail (Resend) ainda não configurado.');
+    if (d?.novos > 0 && d?.whatsapp?.enviado === false) {
+      toast.warning(
+        d?.whatsapp?.motivo === 'sem_numeros'
+          ? 'Nenhum número de WhatsApp cadastrado para aviso do DP.'
+          : 'Falha ao enviar o aviso por WhatsApp (Digisac).',
+      );
     }
     await load();
   };
@@ -177,7 +195,25 @@ export default function CctRadarPage() {
 
       <Card>
         <CardContent className="p-4 space-y-4">
-          <div className="font-semibold flex items-center gap-2"><Mail className="w-4 h-4 text-primary" />E-mails do Departamento Pessoal</div>
+          <div className="font-semibold flex items-center gap-2"><MessageCircle className="w-4 h-4 text-primary" />WhatsApp do Departamento Pessoal (Digisac)</div>
+          <p className="text-xs text-muted-foreground">Ao encontrar novidades, o radar envia o resumo dos achados por WhatsApp para estes números.</p>
+          <div className="flex flex-wrap gap-2">
+            {cfg.whatsapp_numeros.length === 0 && <span className="text-sm text-muted-foreground">Nenhum número cadastrado.</span>}
+            {cfg.whatsapp_numeros.map((n) => (
+              <Badge key={n} variant="secondary" className="gap-1">
+                {n}
+                <button onClick={() => salvarCfg({ whatsapp_numeros: cfg.whatsapp_numeros.filter((x) => x !== n) })} aria-label={`Remover ${n}`}>
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              </Badge>
+            ))}
+          </div>
+          <div className="flex gap-2 max-w-md">
+            <Input placeholder="35988395876" value={novoNumero} onChange={(ev) => setNovoNumero(ev.target.value)} onKeyDown={(ev) => ev.key === 'Enter' && addNumero()} />
+            <Button variant="outline" onClick={addNumero}><Plus className="w-4 h-4" /></Button>
+          </div>
+
+          <div className="font-semibold flex items-center gap-2 pt-2"><Mail className="w-4 h-4 text-primary" />E-mails do Departamento Pessoal (opcional)</div>
           <div className="flex flex-wrap gap-2">
             {cfg.emails.length === 0 && <span className="text-sm text-muted-foreground">Nenhum e-mail cadastrado.</span>}
             {cfg.emails.map((e) => (
