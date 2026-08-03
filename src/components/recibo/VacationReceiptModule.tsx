@@ -95,6 +95,7 @@ function mapCalculationRow(row: any, receipt?: any): VacationHistoryItem {
     vacationValue: Number(row.vacation_value) || 0,
     oneThirdValue: Number(row.one_third_value) || 0,
     abonoEnabled: Boolean(row.abono_enabled),
+    skipOneThird: (Number(row.one_third_value) || 0) === 0 && (Number(row.vacation_value) || 0) > 0,
     abonoDays: Number(row.abono_days) || 0,
     abonoValue: Number(row.abono_value) || 0,
     abonoOneThirdValue: Number(row.abono_one_third_value) || 0,
