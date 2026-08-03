@@ -82,6 +82,7 @@ export function createEmptyVacationReceiptData(): VacationReceiptData {
     otherPayItems: 0,
     abonoEnabled: false,
     abonoDays: 0,
+    skipOneThird: false,
     discountsValue: 0,
     discountsDesc: '',
     payMethod: 'Depósito',
