@@ -25,6 +25,7 @@ export interface VacationReceiptData {
   otherPayItems: number;
   abonoEnabled: boolean;
   abonoDays: number;
+  skipOneThird: boolean;
   discountsValue: number;
   discountsDesc: string;
   payMethod: string;
