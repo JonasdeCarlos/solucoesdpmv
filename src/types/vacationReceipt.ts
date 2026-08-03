@@ -25,6 +25,7 @@ export interface VacationReceiptData {
   otherPayItems: number;
   abonoEnabled: boolean;
   abonoDays: number;
+  skipOneThird: boolean;
   discountsValue: number;
   discountsDesc: string;
   payMethod: string;
@@ -81,6 +82,7 @@ export function createEmptyVacationReceiptData(): VacationReceiptData {
     otherPayItems: 0,
     abonoEnabled: false,
     abonoDays: 0,
+    skipOneThird: false,
     discountsValue: 0,
     discountsDesc: '',
     payMethod: 'Depósito',
@@ -100,9 +102,9 @@ export function roundVacationValue(value: number): number {
 export function calculateVacationReceipt(data: VacationReceiptData): VacationCalculationResult {
   const baseRemuneration = roundVacationValue(data.salaryBase + data.avgVariables + data.otherPayItems);
   const vacationValue = roundVacationValue((baseRemuneration / 30) * data.vacationDays);
-  const oneThirdValue = roundVacationValue(vacationValue / 3);
+  const oneThirdValue = data.skipOneThird ? 0 : roundVacationValue(vacationValue / 3);
   const abonoValue = data.abonoEnabled ? roundVacationValue((baseRemuneration / 30) * data.abonoDays) : 0;
-  const abonoOneThirdValue = data.abonoEnabled ? roundVacationValue(abonoValue / 3) : 0;
+  const abonoOneThirdValue = data.abonoEnabled && !data.skipOneThird ? roundVacationValue(abonoValue / 3) : 0;
   const grossTotal = roundVacationValue(vacationValue + oneThirdValue + abonoValue + abonoOneThirdValue);
   const netTotal = roundVacationValue(grossTotal - data.discountsValue);
   return {
