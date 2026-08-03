@@ -88,8 +88,8 @@ export function generateVacationReceiptPDF(data: VacationReceiptData, result: Va
       ['Outras verbas incorporáveis', formatCurrency(data.otherPayItems)],
       ['Remuneração base para férias', formatCurrency(result.baseRemuneration)],
       ['Valor das férias', formatCurrency(result.vacationValue)],
-      ['1/3 constitucional', formatCurrency(result.oneThirdValue)],
-      ...(data.abonoEnabled ? [['Abono pecuniário', formatCurrency(result.abonoValue)], ['1/3 sobre abono', formatCurrency(result.abonoOneThirdValue)]] : []),
+      ...(data.skipOneThird ? [] : [['1/3 constitucional', formatCurrency(result.oneThirdValue)]]),
+      ...(data.abonoEnabled ? [['Abono pecuniário', formatCurrency(result.abonoValue)], ...(data.skipOneThird ? [] : [['1/3 sobre abono', formatCurrency(result.abonoOneThirdValue)]])] : []),
       ...(data.discountsValue > 0 ? [['Descontos' + (data.discountsDesc ? ` — ${data.discountsDesc}` : ''), `- ${formatCurrency(data.discountsValue)}`]] : []),
       ['TOTAL BRUTO', formatCurrency(result.grossTotal)],
       ['VALOR LÍQUIDO', formatCurrency(result.netTotal)],
@@ -113,8 +113,8 @@ export function generateVacationReceiptPDF(data: VacationReceiptData, result: Va
   const memo = [
     `RB = ${[data.salaryBase, data.avgVariables, data.otherPayItems].filter(hasValue).map(formatCurrency).join(' + ')} = ${formatCurrency(result.baseRemuneration)}`,
     `VF = RB ÷ 30 × ${data.vacationDays} = ${formatCurrency(result.vacationValue)}`,
-    `T = VF ÷ 3 = ${formatCurrency(result.oneThirdValue)}`,
-    ...(data.abonoEnabled && result.abonoValue > 0 ? [`VA = RB ÷ 30 × ${data.abonoDays} = ${formatCurrency(result.abonoValue)}; TA = VA ÷ 3 = ${formatCurrency(result.abonoOneThirdValue)}`] : []),
+    ...(data.skipOneThird ? ['1/3 constitucional não calculado (opção selecionada).'] : [`T = VF ÷ 3 = ${formatCurrency(result.oneThirdValue)}`]),
+    ...(data.abonoEnabled && result.abonoValue > 0 ? [`VA = RB ÷ 30 × ${data.abonoDays} = ${formatCurrency(result.abonoValue)}${data.skipOneThird ? '' : `; TA = VA ÷ 3 = ${formatCurrency(result.abonoOneThirdValue)}`}`] : []),
     data.discountsValue > 0 ? `Líquido = ${formatCurrency(result.grossTotal)} - ${formatCurrency(data.discountsValue)} = ${formatCurrency(result.netTotal)}` : `Líquido = ${formatCurrency(result.netTotal)}`,
   ];
   doc.text(memo, MARGIN, y);
