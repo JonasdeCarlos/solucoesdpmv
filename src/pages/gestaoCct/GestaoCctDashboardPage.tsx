@@ -122,6 +122,7 @@ export default function GestaoCctDashboardPage() {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => nav('/gestao-cct/radar')}><Radar className="w-4 h-4 mr-1"/>Radar de CCT</Button>
+          <Button variant="outline" onClick={() => nav('/gestao-cct/comparar')}><ArrowRightLeft className="w-4 h-4 mr-1"/>Comparar CCTs</Button>
           <Button variant="outline" onClick={() => nav('/sucesso-cliente/gestao-cct')}><ArrowRightLeft className="w-4 h-4 mr-1"/>Ver por cliente</Button>
           <Button onClick={() => nav('/gestao-cct/nova')}><Plus className="w-4 h-4 mr-1"/>Nova CCT</Button>
         </div>
