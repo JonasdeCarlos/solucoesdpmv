@@ -229,6 +229,28 @@ export default function CctRadarPage() {
 
   const toList = (v: string) => v.split(/[;,\n]/).map((x) => x.trim()).filter(Boolean);
 
+  const ehDocumentoCompleto = (f: Finding) =>
+    f.finding_type === 'nova_cct' && f.source_type === 'oficial';
+
+  const abrirDerivacao = (f: Finding) =>
+    setDerivacao({ finding: f, base: (f.client_cct_id && mapaCctAnalise[f.client_cct_id]) || '', texto: '' });
+
+  const gerarDerivada = async () => {
+    if (!derivacao) return;
+    if (!derivacao.base) return toast.error('Selecione a CCT vigente que será atualizada.');
+    setDerivando(true);
+    const { data, error } = await supabase.functions.invoke('cct-derivar', {
+      body: { base_analysis_id: derivacao.base, finding_id: derivacao.finding.id, texto_alteracao: derivacao.texto || null },
+    });
+    setDerivando(false);
+    if (error) return toast.error('Falha ao gerar a CCT consolidada.');
+    if ((data as any)?.error) return toast.error(String((data as any).error));
+    const novaId = (data as any).analysis_id;
+    setDerivacao(null);
+    toast.success('Nova CCT gerada com os pontos alterados. Revise antes de aprovar.');
+    nav(`/gestao-cct/comparar?anterior=${derivacao.base}&nova=${novaId}`);
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
