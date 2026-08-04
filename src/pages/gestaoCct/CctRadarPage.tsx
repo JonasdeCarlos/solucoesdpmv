@@ -471,7 +471,20 @@ export default function CctRadarPage() {
                       <Badge variant={f.status === 'aprovado' ? 'default' : 'secondary'}>{f.status === 'aprovado' ? 'Aprovado' : 'Rejeitado'}</Badge>
                     )}
                     {f.status === 'aprovado' && (
-                      <Button size="sm" variant="outline" onClick={() => nav('/gestao-cct/nova')}>Cadastrar CCT</Button>
+                      ehDocumentoCompleto(f) ? (
+                        <Button size="sm" variant="outline" onClick={() => nav('/gestao-cct/nova')}>
+                          <FilePlus2 className="w-4 h-4 mr-1" />Subir CCT completa (gera nova CCT)
+                        </Button>
+                      ) : (
+                        <>
+                          <Button size="sm" variant="outline" onClick={() => abrirDerivacao(f)}>
+                            <GitCompareArrows className="w-4 h-4 mr-1" />Gerar CCT consolidada (só os pontos citados)
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => nav('/gestao-cct/nova')}>
+                            <FilePlus2 className="w-4 h-4 mr-1" />Subir PDF completo
+                          </Button>
+                        </>
+                      )
                     )}
                   </div>
                 </div>
@@ -480,6 +493,46 @@ export default function CctRadarPage() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={!!derivacao} onOpenChange={(o) => !o && setDerivacao(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Gerar CCT consolidada</DialogTitle>
+            <DialogDescription>
+              O sistema clona a CCT vigente e aplica <strong>somente</strong> os pontos mencionados neste documento
+              (circular, ata de assembleia, comunicado ou aditivo), mantendo todo o restante como está.
+              Para documentos completos do MTE, prefira subir o PDF e gerar uma CCT nova.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label className="text-xs">CCT vigente (base)</Label>
+              <Select value={derivacao?.base || ''} onValueChange={(v) => setDerivacao((d) => (d ? { ...d, base: v } : d))}>
+                <SelectTrigger><SelectValue placeholder="Selecione a CCT vigente…" /></SelectTrigger>
+                <SelectContent>
+                  {analises.map((a) => <SelectItem key={a.id} value={a.id}>{a.title || 'Sem título'}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Pontos alterados (opcional — complemente o que a evidência não traz)</Label>
+              <Textarea
+                rows={4}
+                placeholder="Ex.: piso passa para R$ 1.980,00 a partir de 01/05; vale-alimentação sobe para R$ 25,00/dia."
+                value={derivacao?.texto || ''}
+                onChange={(e) => setDerivacao((d) => (d ? { ...d, texto: e.target.value } : d))}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDerivacao(null)}>Cancelar</Button>
+            <Button onClick={gerarDerivada} disabled={derivando}>
+              {derivando ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <GitCompareArrows className="w-4 h-4 mr-1" />}
+              Gerar e comparar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
