@@ -71,7 +71,7 @@ export default function CctRadarPage() {
   const [filtro, setFiltro] = useState<'pendente' | 'aprovado' | 'rejeitado' | 'todos'>('pendente');
   const [analises, setAnalises] = useState<any[]>([]);
   const [mapaCctAnalise, setMapaCctAnalise] = useState<Record<string, string>>({});
-  const [derivacao, setDerivacao] = useState<{ finding: Finding; base: string; texto: string } | null>(null);
+  const [derivacao, setDerivacao] = useState<{ finding: Finding; base: string; texto: string; modo: 'atualizar' | 'nova' } | null>(null);
   const [derivando, setDerivando] = useState(false);
 
   const load = useCallback(async () => {
@@ -201,6 +201,10 @@ export default function CctRadarPage() {
     if (error) return toast.error('Falha ao registrar a decisão.');
     toast.success(status === 'aprovado' ? 'Achado aprovado.' : 'Achado rejeitado.');
     await load();
+    if (status === 'aprovado') {
+      const f = findings.find((x) => x.id === id);
+      if (f && !ehDocumentoCompleto(f)) abrirDerivacao(f);
+    }
   };
 
   const lista = useMemo(
@@ -233,22 +237,29 @@ export default function CctRadarPage() {
     f.finding_type === 'nova_cct' && f.source_type === 'oficial';
 
   const abrirDerivacao = (f: Finding) =>
-    setDerivacao({ finding: f, base: (f.client_cct_id && mapaCctAnalise[f.client_cct_id]) || '', texto: '' });
+    setDerivacao({ finding: f, base: (f.client_cct_id && mapaCctAnalise[f.client_cct_id]) || '', texto: '', modo: 'atualizar' });
 
   const gerarDerivada = async () => {
     if (!derivacao) return;
     if (!derivacao.base) return toast.error('Selecione a CCT vigente que será atualizada.');
     setDerivando(true);
     const { data, error } = await supabase.functions.invoke('cct-derivar', {
-      body: { base_analysis_id: derivacao.base, finding_id: derivacao.finding.id, texto_alteracao: derivacao.texto || null },
+      body: { base_analysis_id: derivacao.base, finding_id: derivacao.finding.id, texto_alteracao: derivacao.texto || null, modo: derivacao.modo },
     });
     setDerivando(false);
     if (error) return toast.error('Falha ao gerar a CCT consolidada.');
     if ((data as any)?.error) return toast.error(String((data as any).error));
     const novaId = (data as any).analysis_id;
+    const atualizado = (data as any).atualizado;
+    const base = derivacao.base;
     setDerivacao(null);
-    toast.success('Nova CCT gerada com os pontos alterados. Revise antes de aprovar.');
-    nav(`/gestao-cct/comparar?anterior=${derivacao.base}&nova=${novaId}`);
+    if (atualizado) {
+      toast.success(`CCT vigente atualizada com ${((data as any).mudancas || []).length} ponto(s). Veja o histórico de modificações.`);
+      nav(`/gestao-cct/${novaId}`);
+    } else {
+      toast.success('Nova CCT gerada com os pontos alterados. Revise antes de aprovar.');
+      nav(`/gestao-cct/comparar?anterior=${base}&nova=${novaId}`);
+    }
   };
 
   return (
@@ -478,7 +489,7 @@ export default function CctRadarPage() {
                       ) : (
                         <>
                           <Button size="sm" variant="outline" onClick={() => abrirDerivacao(f)}>
-                            <GitCompareArrows className="w-4 h-4 mr-1" />Gerar CCT consolidada (só os pontos citados)
+                            <GitCompareArrows className="w-4 h-4 mr-1" />Aplicar à CCT vigente (só os pontos citados)
                           </Button>
                           <Button size="sm" variant="ghost" onClick={() => nav('/gestao-cct/nova')}>
                             <FilePlus2 className="w-4 h-4 mr-1" />Subir PDF completo
@@ -497,11 +508,11 @@ export default function CctRadarPage() {
       <Dialog open={!!derivacao} onOpenChange={(o) => !o && setDerivacao(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Gerar CCT consolidada</DialogTitle>
+            <DialogTitle>Aplicar documento à CCT</DialogTitle>
             <DialogDescription>
-              O sistema clona a CCT vigente e aplica <strong>somente</strong> os pontos mencionados neste documento
+              O sistema aplica <strong>somente</strong> os pontos mencionados neste documento
               (circular, ata de assembleia, comunicado ou aditivo), mantendo todo o restante como está.
-              Para documentos completos do MTE, prefira subir o PDF e gerar uma CCT nova.
+              A versão anterior fica arquivada no histórico de modificações.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
@@ -511,6 +522,16 @@ export default function CctRadarPage() {
                 <SelectTrigger><SelectValue placeholder="Selecione a CCT vigente…" /></SelectTrigger>
                 <SelectContent>
                   {analises.map((a) => <SelectItem key={a.id} value={a.id}>{a.title || 'Sem título'}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Como aplicar</Label>
+              <Select value={derivacao?.modo || 'atualizar'} onValueChange={(v) => setDerivacao((d) => (d ? { ...d, modo: v as 'atualizar' | 'nova' } : d))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="atualizar">Atualizar a CCT vigente (recomendado)</SelectItem>
+                  <SelectItem value="nova">Criar uma CCT consolidada separada</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -528,7 +549,7 @@ export default function CctRadarPage() {
             <Button variant="outline" onClick={() => setDerivacao(null)}>Cancelar</Button>
             <Button onClick={gerarDerivada} disabled={derivando}>
               {derivando ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <GitCompareArrows className="w-4 h-4 mr-1" />}
-              Gerar e comparar
+              {derivacao?.modo === 'nova' ? 'Gerar e comparar' : 'Atualizar CCT'}
             </Button>
           </DialogFooter>
         </DialogContent>

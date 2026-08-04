@@ -14,6 +14,7 @@ import { generateCctResumoClientePdf } from '@/utils/gestaoCct/resumoClientePdf'
 import { generateCctRaioXTecnicoPdf } from '@/utils/gestaoCct/raioXTecnicoPdf';
 import { CctVersionsCard } from '@/components/gestaoCct/CctVersionsCard';
 import { CctResumoClienteCard } from '@/components/gestaoCct/CctResumoClienteCard';
+import { CctHistoricoCard } from '@/components/gestaoCct/CctHistoricoCard';
 
 const BLOCK_TITLES: Record<string, string> = {
   identification: 'A) Identificação',
@@ -314,6 +315,8 @@ export default function CctDetailPage() {
       <CctClientLinksCard analysis={a} />
 
       <CctVersionsCard analysis={a} />
+
+      <CctHistoricoCard analysisId={a.id} />
 
       {Object.entries(BLOCK_TITLES).map(([key, label]) => (
         <Card key={key}>
