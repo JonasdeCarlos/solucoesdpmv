@@ -1231,6 +1231,9 @@ export type Database = {
           confidence_score: number | null
           created_at: string
           created_by: string | null
+          derivation_changes: Json
+          derivation_type: string | null
+          derived_from_finding_id: string | null
           dp_attention_points: Json
           economic_clauses: Json
           health_safety: Json
@@ -1242,6 +1245,7 @@ export type Database = {
           original_file_name: string | null
           original_file_path: string | null
           overtime_rules: Json
+          parent_analysis_id: string | null
           penalties: Json
           professional_classes: Json
           reviewed_at: string | null
@@ -1266,6 +1270,9 @@ export type Database = {
           confidence_score?: number | null
           created_at?: string
           created_by?: string | null
+          derivation_changes?: Json
+          derivation_type?: string | null
+          derived_from_finding_id?: string | null
           dp_attention_points?: Json
           economic_clauses?: Json
           health_safety?: Json
@@ -1277,6 +1284,7 @@ export type Database = {
           original_file_name?: string | null
           original_file_path?: string | null
           overtime_rules?: Json
+          parent_analysis_id?: string | null
           penalties?: Json
           professional_classes?: Json
           reviewed_at?: string | null
@@ -1301,6 +1309,9 @@ export type Database = {
           confidence_score?: number | null
           created_at?: string
           created_by?: string | null
+          derivation_changes?: Json
+          derivation_type?: string | null
+          derived_from_finding_id?: string | null
           dp_attention_points?: Json
           economic_clauses?: Json
           health_safety?: Json
@@ -1312,6 +1323,7 @@ export type Database = {
           original_file_name?: string | null
           original_file_path?: string | null
           overtime_rules?: Json
+          parent_analysis_id?: string | null
           penalties?: Json
           professional_classes?: Json
           reviewed_at?: string | null
@@ -1331,6 +1343,13 @@ export type Database = {
             columns: ["client_cct_id"]
             isOneToOne: false
             referencedRelation: "client_ccts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cct_analyses_parent_analysis_id_fkey"
+            columns: ["parent_analysis_id"]
+            isOneToOne: false
+            referencedRelation: "cct_analyses"
             referencedColumns: ["id"]
           },
         ]
@@ -1612,6 +1631,54 @@ export type Database = {
             columns: ["client_cct_id"]
             isOneToOne: false
             referencedRelation: "client_ccts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cct_comparacoes: {
+        Row: {
+          analise_anterior_id: string | null
+          analise_nova_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          resultado: Json
+          resumo: string | null
+          updated_at: string
+        }
+        Insert: {
+          analise_anterior_id?: string | null
+          analise_nova_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          resultado?: Json
+          resumo?: string | null
+          updated_at?: string
+        }
+        Update: {
+          analise_anterior_id?: string | null
+          analise_nova_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          resultado?: Json
+          resumo?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cct_comparacoes_analise_anterior_id_fkey"
+            columns: ["analise_anterior_id"]
+            isOneToOne: false
+            referencedRelation: "cct_analyses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cct_comparacoes_analise_nova_id_fkey"
+            columns: ["analise_nova_id"]
+            isOneToOne: false
+            referencedRelation: "cct_analyses"
             referencedColumns: ["id"]
           },
         ]
