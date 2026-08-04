@@ -11,6 +11,7 @@ import { useAdmissaoFiles } from '@/hooks/useAdmissaoFiles';
 import FieldRenderer from '@/components/admissao/preencher/FieldRenderer';
 import FileUploadField from '@/components/admissao/preencher/FileUploadField';
 import WorkScheduleField from '@/components/admissao/preencher/WorkScheduleField';
+import SectionErrorBoundary from '@/components/admissao/preencher/SectionErrorBoundary';
 import { isValidCpf, isValidEmail, isValidCep } from '@/utils/admissao/validators';
 import { isFieldEmpty } from '@/utils/admissao/formSchema';
 import { toast } from 'sonner';
@@ -24,7 +25,8 @@ const PreencherPage = () => {
   const [sectionIdx, setSectionIdx] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
-  const { files, uploadFile, deleteFile } = useAdmissaoFiles(req?.id || null);
+  const { files, loading: filesLoading, loadError: filesError, uploadFile, deleteFile, fetchAll } =
+    useAdmissaoFiles(req?.id || null);
 
   useEffect(() => {
     getRequestByToken(token).then((r) => {
@@ -51,8 +53,8 @@ const PreencherPage = () => {
     if (!req) return;
     setAnswers((prev) => {
       const next = { ...prev };
-      for (const sec of req.template_schema_snapshot.sections) {
-        for (const f of sec.fields) {
+      for (const sec of req.template_schema_snapshot?.sections || []) {
+        for (const f of sec.fields || []) {
           if (f.type === 'file') {
             next[f.field_key] = files.filter((x) => x.field_key === f.field_key).map((x) => x.original_name);
           }
@@ -62,7 +64,7 @@ const PreencherPage = () => {
     });
   }, [files, req]);
 
-  const sections = req?.template_schema_snapshot.sections || [];
+  const sections = req?.template_schema_snapshot?.sections || [];
   const currentSection = sections[sectionIdx];
 
   const validateField = (field: any, value: any): string | null => {
@@ -180,13 +182,21 @@ const PreencherPage = () => {
 
         {currentSection && (
           <Card className="p-6 space-y-5">
+            <SectionErrorBoundary>
+            <div className="space-y-5">
             <div>
               <h2 className="text-lg font-semibold">{currentSection.title}</h2>
               {currentSection.description && (
                 <p className="text-sm text-muted-foreground">{currentSection.description}</p>
               )}
             </div>
-            {currentSection.fields.map((f) => {
+            {filesError && currentSection.fields.some((f) => f.type === 'file') && (
+              <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm space-y-2">
+                <p>Não foi possível carregar os arquivos já enviados.</p>
+                <Button variant="outline" size="sm" onClick={() => fetchAll()}>Tentar novamente</Button>
+              </div>
+            )}
+            {(currentSection.fields || []).map((f) => {
               if (f.type === 'file') {
                 const fieldFiles = files.filter((x) => x.field_key === f.field_key);
                 return (
@@ -195,10 +205,11 @@ const PreencherPage = () => {
                     field={f}
                     files={fieldFiles}
                     error={sectionErrors[f.field_key]}
+                    disabled={filesLoading}
                     onUpload={async (file) => {
                       const order = fieldFiles.length;
                       const { error } = await uploadFile(req.id, f.field_key, file, order);
-                      if (error) toast.error('Erro ao enviar arquivo');
+                      if (error) toast.error('Erro ao enviar arquivo: ' + (error.message || ''));
                     }}
                     onDelete={async (id, path) => {
                       const { error } = await deleteFile(id, path);
@@ -228,6 +239,8 @@ const PreencherPage = () => {
                 />
               );
             })}
+            </div>
+            </SectionErrorBoundary>
           </Card>
         )}
 
