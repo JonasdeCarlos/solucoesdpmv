@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ChevronLeft, FileText, Download, MessageSquare, Sparkles, Loader2, Paperclip, X, FileDown, FileSearch } from 'lucide-react';
+import { ChevronLeft, FileText, Download, MessageSquare, Sparkles, Loader2, Paperclip, X, FileDown, FileSearch, GitCompareArrows } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchCctAnalysis, logCctAudit, type CctAnalysis } from '@/hooks/cct/useCctAnalyses';
 import { CctClientLinksCard } from '@/components/gestaoCct/CctClientLinksCard';
@@ -262,6 +262,9 @@ export default function CctDetailPage() {
           </Button>
           <Button variant="outline" onClick={() => nav(`/gestao-cct/${a.id}/revisar`)}><FileText className="w-4 h-4 mr-1"/>Revisar Raio-X</Button>
           <Button variant="outline" onClick={() => nav(`/gestao-cct/${a.id}/perguntar`)}><MessageSquare className="w-4 h-4 mr-1"/>Perguntar à CCT</Button>
+          <Button variant="outline" onClick={() => nav(`/gestao-cct/comparar?anterior=${(a as any).parent_analysis_id || ''}&nova=${a.id}`)}>
+            <GitCompareArrows className="w-4 h-4 mr-1"/>Comparar CCTs
+          </Button>
         </div>
       </div>
 
