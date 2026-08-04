@@ -8,7 +8,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Radar, Mail, Loader2, Check, X, ExternalLink, ShieldCheck, AlertTriangle, Plus, Trash2, ArrowLeft, MessageCircle } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Radar, Mail, Loader2, Check, X, ExternalLink, ShieldCheck, AlertTriangle, Plus, Trash2, ArrowLeft, MessageCircle, GitCompareArrows, FilePlus2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface FonteCct {
@@ -67,10 +69,14 @@ export default function CctRadarPage() {
   const [scanning, setScanning] = useState(false);
   const [autofillLoading, setAutofillLoading] = useState(false);
   const [filtro, setFiltro] = useState<'pendente' | 'aprovado' | 'rejeitado' | 'todos'>('pendente');
+  const [analises, setAnalises] = useState<any[]>([]);
+  const [mapaCctAnalise, setMapaCctAnalise] = useState<Record<string, string>>({});
+  const [derivacao, setDerivacao] = useState<{ finding: Finding; base: string; texto: string } | null>(null);
+  const [derivando, setDerivando] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [{ data: s }, { data: f }, { data: cc }] = await Promise.all([
+    const [{ data: s }, { data: f }, { data: cc }, { data: an }, { data: vinc }] = await Promise.all([
       supabase.from('cct_radar_settings' as any).select('*').limit(1),
       supabase.from('cct_radar_findings' as any).select('*').order('created_at', { ascending: false }),
       supabase
@@ -78,12 +84,18 @@ export default function CctRadarPage() {
         .select('id, sindicato, uf, validity_end, radar_site_oficial, radar_cnpjs, radar_termos, radar_mediador_registro, radar_enabled')
         .is('deleted_at', null)
         .order('validity_end', { ascending: true }),
+      supabase.from('cct_analyses' as any).select('id, title, created_at').order('created_at', { ascending: false }),
+      supabase.from('client_ccts' as any).select('id, cct_analysis_id').not('cct_analysis_id', 'is', null),
     ]);
     if (s && (s as any[]).length) {
       const row = (s as any[])[0];
       setCfg({ ...row, emails: row.emails || [], whatsapp_numeros: row.whatsapp_numeros || [] });
     }
     setFindings(((f || []) as any) as Finding[]);
+    setAnalises(((an || []) as any[]));
+    const mapa2: Record<string, string> = {};
+    for (const r of ((vinc || []) as any[])) if (r.cct_analysis_id) mapa2[r.id] = r.cct_analysis_id;
+    setMapaCctAnalise(mapa2);
     // A mesma CCT é cadastrada por cliente: agrupa para não repetir na lista do radar.
     const brutos = ((cc || []) as any) as FonteCct[];
     const mapa = new Map<string, FonteCct>();
