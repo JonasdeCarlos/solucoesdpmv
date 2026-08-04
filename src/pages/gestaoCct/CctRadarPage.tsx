@@ -489,7 +489,7 @@ export default function CctRadarPage() {
                       ) : (
                         <>
                           <Button size="sm" variant="outline" onClick={() => abrirDerivacao(f)}>
-                            <GitCompareArrows className="w-4 h-4 mr-1" />Gerar CCT consolidada (só os pontos citados)
+                            <GitCompareArrows className="w-4 h-4 mr-1" />Aplicar à CCT vigente (só os pontos citados)
                           </Button>
                           <Button size="sm" variant="ghost" onClick={() => nav('/gestao-cct/nova')}>
                             <FilePlus2 className="w-4 h-4 mr-1" />Subir PDF completo
