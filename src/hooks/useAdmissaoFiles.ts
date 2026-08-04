@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { AdmissionFileRow } from '@/utils/admissao/dossieBuilder';
+import { safeUuid } from '@/utils/safeUuid';
 
 export function useAdmissaoFiles(requestId: string | null) {
   const [files, setFiles] = useState<AdmissionFileRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const fetchAll = useCallback(async () => {
     if (!requestId) {
@@ -12,12 +14,17 @@ export function useAdmissaoFiles(requestId: string | null) {
       return;
     }
     setLoading(true);
+    setLoadError(null);
     const { data, error } = await supabase
       .from('admission_files' as any)
       .select('*')
       .eq('request_id', requestId)
       .order('sort_order', { ascending: true });
-    if (!error && data) setFiles(data as any[]);
+    if (error) {
+      setLoadError(error.message || 'Falha ao carregar os arquivos enviados.');
+    } else {
+      setFiles((data as any[]) || []);
+    }
     setLoading(false);
   }, [requestId]);
 
@@ -30,7 +37,7 @@ export function useAdmissaoFiles(requestId: string | null) {
     sortOrder: number
   ) => {
     const ext = (file.name.split('.').pop() || 'bin').toLowerCase();
-    const path = `requests/${requestId}/${fieldKey}/${crypto.randomUUID()}.${ext}`;
+    const path = `requests/${requestId}/${fieldKey}/${safeUuid()}.${ext}`;
     const { error: upErr } = await supabase.storage
       .from('admissao-uploads')
       .upload(path, file, { contentType: file.type || 'application/octet-stream', upsert: false });
@@ -55,7 +62,7 @@ export function useAdmissaoFiles(requestId: string | null) {
     return { error };
   };
 
-  return { files, loading, uploadFile, deleteFile, fetchAll };
+  return { files, loading, loadError, uploadFile, deleteFile, fetchAll };
 }
 
 export async function listFilesForRequest(requestId: string): Promise<AdmissionFileRow[]> {
