@@ -51,7 +51,8 @@ function extractJson(txt: string): any {
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   try {
-    const { base_analysis_id, finding_id, texto_alteracao, titulo } = await req.json();
+    const { base_analysis_id, finding_id, texto_alteracao, titulo, modo } = await req.json();
+    const modoAplicacao = modo === 'nova' ? 'nova' : 'atualizar';
     if (!base_analysis_id) return json(400, { error: 'Informe a CCT vigente que será atualizada.' });
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
@@ -116,6 +117,52 @@ Deno.serve(async (req) => {
     const mudancas = Array.isArray(parsed.mudancas) ? parsed.mudancas : [];
     if (Object.keys(alterados).length === 0) {
       return json(422, { error: 'O documento não trouxe pontos que alterem a CCT vigente.' });
+    }
+
+    if (modoAplicacao === 'atualizar') {
+      // Congela a versão atual antes de alterar (histórico de modificações).
+      const { data: ultima } = await supabase
+        .from('cct_versions')
+        .select('version_number')
+        .eq('cct_analysis_id', base.id)
+        .order('version_number', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const proxima = ((ultima as any)?.version_number || 0) + 1;
+
+      await supabase.from('cct_versions').insert({
+        cct_analysis_id: base.id,
+        version_number: proxima,
+        snapshot: { anterior: base, mudancas, documento: { finding_id: finding_id || null, titulo: finding?.title || titulo || null, fonte: finding?.source_url || null }, resumo: String(parsed.resumo || '').trim() || null },
+        ocr_text_snapshot: base.ocr_text ?? null,
+        file_path_snapshot: base.original_file_path ?? null,
+        reason: `Documento aceito: ${finding?.title || titulo || 'alteração parcial'} — ${mudancas.length} ponto(s) atualizado(s)`,
+        created_by: null,
+      });
+
+      const patchBase: Record<string, unknown> = {
+        status: 'revisar',
+        ai_model: MODEL,
+        derivation_type: 'parcial',
+        derivation_changes: mudancas,
+        derived_from_finding_id: finding_id || null,
+        ai_summary: String(parsed.resumo || '').trim() || base.ai_summary,
+        dp_attention_points: Array.isArray(parsed.dp_attention_points) && parsed.dp_attention_points.length
+          ? parsed.dp_attention_points
+          : (base.dp_attention_points ?? []),
+      };
+      for (const k of BLOCOS) if ((alterados as any)[k] != null) patchBase[k] = (alterados as any)[k];
+
+      const { error: updErr } = await supabase.from('cct_analyses').update(patchBase).eq('id', base.id);
+      if (updErr) return json(500, { error: updErr.message });
+
+      if (finding_id) {
+        await supabase.from('cct_radar_findings')
+          .update({ review_notes: `CCT vigente atualizada com ${mudancas.length} ponto(s) (v${proxima} arquivada).` })
+          .eq('id', finding_id);
+      }
+
+      return json(200, { ok: true, analysis_id: base.id, atualizado: true, version_number: proxima, mudancas });
     }
 
     const novaLinha: Record<string, unknown> = {
