@@ -113,6 +113,13 @@ Deno.serve(async (req) => {
 Com base na atividade/CNAE e no município/UF, classifique a categoria e selecione, APENAS entre os resultados de busca fornecidos, os sindicatos patronais (categoria econômica) e laborais (categoria profissional) mais prováveis para a base territorial.
 Regras: nunca invente CNPJ nem site; se não constar nas evidências, deixe vazio. Confiança: alta somente se nome + base territorial + categoria batem claramente. Sempre traga a URL da fonte usada. Máximo 5 candidatos por lista. Responda em pt-BR.`;
 
+    const semEvidencias = hits.length === 0;
+    const systemFinal = semEvidencias
+      ? `${system}
+
+ATENÇÃO: nenhuma evidência de busca foi obtida. Nesse caso, sugira os sindicatos mais prováveis com base no seu conhecimento da estrutura sindical brasileira (nome provável da entidade e base territorial), marcando SEMPRE confianca="baixa", cnpj e site vazios, fonte_url="http://www3.mte.gov.br/sistemas/mediador/ConsultarInstColetivo" e deixando claro em observacoes que as buscas externas falharam e que tudo deve ser confirmado no CNES/Mediador.`
+      : system;
+
     const resp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
@@ -120,7 +127,7 @@ Regras: nunca invente CNPJ nem site; se não constar nas evidências, deixe vazi
         model: 'google/gemini-2.5-flash',
         temperature: 0,
         messages: [
-          { role: 'system', content: system },
+          { role: 'system', content: systemFinal },
           {
             role: 'user',
             content: `Município: ${municipio}\nUF: ${uf}\nCNAE: ${cnae || '(não informado)'}\nAtividade: ${atividade || '(não informada)'}\n\n<resultados_busca>\n${hits
