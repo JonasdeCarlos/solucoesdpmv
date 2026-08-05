@@ -31,7 +31,15 @@ REGRAS:
 - NÃO invente dados. Se algo não está legível, marque como ilegível.
 - Tente identificar o nome do empregado e o mês/ano do cartão.
 - "confianca" reflete a qualidade geral da leitura.
-- Retorne SOMENTE o JSON, sem nenhum texto adicional, sem backticks, sem markdown.`;
+- Retorne SOMENTE o JSON, sem nenhum texto adicional, sem backticks, sem markdown.
+
+CALIBRAÇÃO DE DÍGITOS (crítico — erros comuns 1 x 2, 3 x 8, 5 x 6, 0 x 8, 7 x 1):
+- Analise a FORMA do dígito: "1" é um traço vertical simples (com ou sem serifa curta no topo); "2" tem curva superior e base horizontal. Nunca converta um em outro por "parecer provável".
+- Valide o horário: horas entre 00 e 23, minutos entre 00 e 59. Se a leitura resultar em minutos > 59 (ex.: "12:75"), releia o dígito duvidoso.
+- Use coerência da jornada como conferência, NÃO como invenção: entradas costumam ficar entre 06:00 e 09:00, saída de intervalo próxima do meio-dia, retorno 1h a 2h depois, saída final entre 16:00 e 19:00. Se a leitura destoar muito do padrão dos OUTROS dias do mesmo cartão, releia o dígito antes de confirmar.
+- As marcações de um dia devem estar em ordem cronológica crescente (salvo turno que cruza a meia-noite). Se não estiverem, o dígito lido está errado — releia.
+- Compare a coluna inteira: no mesmo cartão os horários se repetem quase todos os dias. Um valor isolado muito diferente dos vizinhos é forte indício de dígito mal lido.
+- Se após reler ainda houver dúvida real entre dois dígitos, use "??:??" naquela marcação e reduza a "confianca". É melhor sinalizar ilegível do que chutar.`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -90,6 +98,7 @@ serve(async (req) => {
             body: JSON.stringify({
               model: preferido,
               max_tokens: 8000,
+              temperature: 0,
               system: SYSTEM_PROMPT,
               messages: [{ role: "user", content: blocks }],
             }),
@@ -183,7 +192,34 @@ serve(async (req) => {
       });
     }
 
-    return new Response(JSON.stringify({ ...parsed, _provider: provider }), {
+    // Sanidade: invalida horários impossíveis e fora de ordem (dígito mal lido)
+    const isValid = (t: string) => /^([01]\d|2[0-3]):[0-5]\d$/.test(t);
+    const toMin = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
+    let suspeitos = 0;
+    if (Array.isArray(parsed?.registros)) {
+      for (const reg of parsed.registros) {
+        if (!Array.isArray(reg?.marcacoes)) continue;
+        reg.marcacoes = reg.marcacoes.map((m: unknown) => {
+          const s = String(m ?? "").trim();
+          if (!s || s.includes("?")) return "??:??";
+          if (!isValid(s)) { suspeitos++; return "??:??"; }
+          return s;
+        });
+        // ordem cronológica (tolera 1 virada de meia-noite)
+        const mins = reg.marcacoes.map((m: string) => (m.includes("?") ? null : toMin(m)));
+        let quebras = 0;
+        for (let i = 1; i < mins.length; i++) {
+          if (mins[i] !== null && mins[i - 1] !== null && mins[i] < mins[i - 1]) quebras++;
+        }
+        if (quebras > 1) {
+          suspeitos++;
+          reg.observacao = [reg.observacao, "Sequência fora de ordem — revisar leitura."].filter(Boolean).join(" ");
+        }
+      }
+    }
+    if (suspeitos > 0 && parsed?.confianca === "alta") parsed.confianca = "media";
+
+    return new Response(JSON.stringify({ ...parsed, _provider: provider, _suspeitos: suspeitos }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
