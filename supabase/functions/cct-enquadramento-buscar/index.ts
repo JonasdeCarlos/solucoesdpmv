@@ -5,26 +5,85 @@ const corsHeaders = {
 
 type Hit = { title: string; url: string; snippet: string };
 
-async function ddg(query: string, limit = 10): Promise<Hit[]> {
-  try {
-    const r = await fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; EnquadramentoCCT/1.0)' },
-      signal: AbortSignal.timeout(15000),
-    });
-    if (!r.ok) return [];
-    const html = await r.text();
-    const out: Hit[] = [];
-    const re = /<a[^>]+class="result__a"[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?class="result__snippet"[^>]*>([\s\S]*?)<\/a>/g;
-    let m: RegExpExecArray | null;
-    const strip = (s: string) => s.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').trim();
-    while ((m = re.exec(html)) && out.length < limit) {
-      const url = decodeURIComponent((m[1].match(/uddg=([^&]+)/)?.[1]) || m[1]);
-      out.push({ url, title: strip(m[2]), snippet: strip(m[3]).slice(0, 500) });
-    }
-    return out;
-  } catch {
-    return [];
+async function ddgHtml(query: string, limit: number): Promise<Hit[]> {
+  const r = await fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
+      'Accept': 'text/html',
+      'Accept-Language': 'pt-BR,pt;q=0.9',
+    },
+    signal: AbortSignal.timeout(12000),
+  });
+  if (!r.ok) throw new Error(`ddg ${r.status}`);
+  const html = await r.text();
+  const out: Hit[] = [];
+  const strip = (s: string) => s.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&#x27;/g, "'").trim();
+  const re = /<a[^>]+class="result__a"[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>([\s\S]*?)(?=<a[^>]+class="result__a"|$)/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(html)) && out.length < limit) {
+    const raw = m[1];
+    const url = decodeURIComponent(raw.match(/uddg=([^&]+)/)?.[1] || raw);
+    const snip = strip(m[3].match(/class="result__snippet"[^>]*>([\s\S]*?)<\/a>/)?.[1] || '').slice(0, 500);
+    out.push({ url, title: strip(m[2]), snippet: snip });
   }
+  return out;
+}
+
+async function ddgLite(query: string, limit: number): Promise<Hit[]> {
+  const r = await fetch('https://lite.duckduckgo.com/lite/', {
+    method: 'POST',
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: `q=${encodeURIComponent(query)}`,
+    signal: AbortSignal.timeout(12000),
+  });
+  if (!r.ok) throw new Error(`ddglite ${r.status}`);
+  const html = await r.text();
+  const out: Hit[] = [];
+  const strip = (s: string) => s.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').trim();
+  const re = /<a[^>]+class="result-link"[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>([\s\S]*?)(?=<a[^>]+class="result-link"|$)/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(html)) && out.length < limit) {
+    const raw = m[1];
+    const url = decodeURIComponent(raw.match(/uddg=([^&]+)/)?.[1] || raw);
+    const snip = strip(m[3].match(/class="result-snippet"[^>]*>([\s\S]*?)<\/td>/)?.[1] || '').slice(0, 500);
+    out.push({ url, title: strip(m[2]), snippet: snip });
+  }
+  return out;
+}
+
+async function bing(query: string, limit: number): Promise<Hit[]> {
+  const r = await fetch(`https://www.bing.com/search?q=${encodeURIComponent(query)}&setlang=pt-br&cc=BR`, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
+      'Accept-Language': 'pt-BR,pt;q=0.9',
+    },
+    signal: AbortSignal.timeout(12000),
+  });
+  if (!r.ok) throw new Error(`bing ${r.status}`);
+  const html = await r.text();
+  const out: Hit[] = [];
+  const strip = (s: string) => s.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').trim();
+  const re = /<li class="b_algo"[\s\S]*?<h2>\s*<a[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?(?:<p[^>]*>([\s\S]*?)<\/p>)?<\/li>/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(html)) && out.length < limit) {
+    out.push({ url: m[1], title: strip(m[2]), snippet: strip(m[3] || '').slice(0, 500) });
+  }
+  return out;
+}
+
+async function search(query: string, limit = 8): Promise<Hit[]> {
+  for (const engine of [ddgLite, ddgHtml, bing]) {
+    try {
+      const hits = await engine(query, limit);
+      if (hits.length) return hits;
+    } catch (e) {
+      console.log('search engine falhou', engine.name, String(e));
+    }
+  }
+  return [];
 }
 
 Deno.serve(async (req) => {
@@ -43,7 +102,7 @@ Deno.serve(async (req) => {
       `sindicato ${cnae || atividade || ''} ${uf} CNPJ site oficial`,
       `convenção coletiva ${base} sindicato`,
     ];
-    const results = (await Promise.all(queries.map((q) => ddg(q, 8)))).flat();
+    const results = (await Promise.all(queries.map((q) => search(q, 8)))).flat();
     const seen = new Set<string>();
     const hits = results.filter((h) => (seen.has(h.url) ? false : (seen.add(h.url), true))).slice(0, 28);
 
