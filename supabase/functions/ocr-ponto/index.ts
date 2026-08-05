@@ -39,7 +39,17 @@ CALIBRAÇÃO DE DÍGITOS (crítico — erros comuns 1 x 2, 3 x 8, 5 x 6, 0 x 8, 
 - Use coerência da jornada como conferência, NÃO como invenção: entradas costumam ficar entre 06:00 e 09:00, saída de intervalo próxima do meio-dia, retorno 1h a 2h depois, saída final entre 16:00 e 19:00. Se a leitura destoar muito do padrão dos OUTROS dias do mesmo cartão, releia o dígito antes de confirmar.
 - As marcações de um dia devem estar em ordem cronológica crescente (salvo turno que cruza a meia-noite). Se não estiverem, o dígito lido está errado — releia.
 - Compare a coluna inteira: no mesmo cartão os horários se repetem quase todos os dias. Um valor isolado muito diferente dos vizinhos é forte indício de dígito mal lido.
-- Se após reler ainda houver dúvida real entre dois dígitos, use "??:??" naquela marcação e reduza a "confianca". É melhor sinalizar ilegível do que chutar.`;
+- Se após reler ainda houver dúvida real entre dois dígitos, use "??:??" naquela marcação e reduza a "confianca". É melhor sinalizar ilegível do que chutar.
+
+DESEMPATE POR CONTEXTO DO DIA (use ANTES de marcar como ilegível):
+Quando houver dúvida entre duas leituras possíveis (ex.: 11:55 x 12:55), NÃO escolha ao acaso. Faça este raciocínio, nesta ordem, olhando as marcações VIZINHAS do MESMO dia:
+1) Ordem: a marcação precisa ser maior que a anterior e menor que a próxima. Descarte a hipótese que quebra a sequência.
+   Ex.: se a próxima batida é 13:00, então 12:55 dá intervalo de 5 min (implausível) e 11:55 dá 1h05 (plausível) → escolha 11:55.
+2) Duração do intervalo: o intervalo de almoço quase sempre fica entre 1h e 2h (mínimo legal 1h para jornadas acima de 6h). Descarte a hipótese que gere intervalo menor que 30 min ou maior que 3h.
+3) Duração total do dia: a jornada líquida costuma ficar entre 6h e 9h. Descarte a hipótese que gere um total absurdo (ex.: 3h ou 14h) quando a outra hipótese cai na faixa normal.
+4) Padrão do próprio cartão: compare com o MESMO horário nos demais dias do mês. Se nos outros dias a saída para almoço é 11:55, prefira 11:55.
+5) Só depois de esgotar 1 a 4, se as duas hipóteses continuarem igualmente plausíveis, use "??:??".
+Aplique o mesmo raciocínio para dúvidas em qualquer posição (entrada, retorno, saída final), sempre ancorando na batida anterior e na posterior.`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
