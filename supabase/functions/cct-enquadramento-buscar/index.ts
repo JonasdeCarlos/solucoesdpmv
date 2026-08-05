@@ -5,6 +5,32 @@ const corsHeaders = {
 
 type Hit = { title: string; url: string; snippet: string };
 
+async function jinaDdg(query: string, limit: number): Promise<Hit[]> {
+  const target = `https://duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
+  const r = await fetch(`https://r.jina.ai/${target}`, {
+    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; EnquadramentoCCT/1.0)', 'X-Return-Format': 'markdown' },
+    signal: AbortSignal.timeout(25000),
+  });
+  if (!r.ok) throw new Error(`jina ${r.status}`);
+  const md = await r.text();
+  const out: Hit[] = [];
+  const re = /^#{2,3}\s*\[([^\]]+)\]\(([^)]+)\)\s*([\s\S]*?)(?=^#{2,3}\s*\[|\Z)/gm;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(md)) && out.length < limit) {
+    const raw = m[2];
+    const url = decodeURIComponent(raw.match(/uddg=([^&]+)/)?.[1] || raw);
+    if (!/^https?:\/\//.test(url) || /duckduckgo\.com/.test(url)) continue;
+    const snippet = m[3]
+      .replace(/\[!\[[^\]]*\]\([^)]*\)\]\([^)]*\)/g, '')
+      .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 500);
+    out.push({ url, title: m[1].trim(), snippet });
+  }
+  return out;
+}
+
 async function ddgHtml(query: string, limit: number): Promise<Hit[]> {
   const r = await fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`, {
     headers: {
@@ -75,7 +101,7 @@ async function bing(query: string, limit: number): Promise<Hit[]> {
 }
 
 async function search(query: string, limit = 8): Promise<Hit[]> {
-  for (const engine of [ddgLite, ddgHtml, bing]) {
+  for (const engine of [jinaDdg, ddgHtml, ddgLite, bing]) {
     try {
       const hits = await engine(query, limit);
       if (hits.length) return hits;
