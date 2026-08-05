@@ -45,6 +45,11 @@ export function useDPProfile(client_id: string | undefined) {
     if (!client_id) return { error: new Error('no client') };
     const payload = { client_id, ...(profile || {}), ...patch };
     delete (payload as any).id;
+    // Nunca reescrever colunas criptografadas (bytea) — elas são gravadas via RPC
+    delete (payload as any).timeclock_password_encrypted;
+    delete (payload as any).empregador_web_password_encrypted;
+    delete (payload as any).created_at;
+    delete (payload as any).updated_at;
     const { error } = await supabase.from('client_dp_profile' as any)
       .upsert(payload as any, { onConflict: 'client_id' });
     if (!error) await load();
