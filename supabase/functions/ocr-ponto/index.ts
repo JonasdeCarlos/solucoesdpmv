@@ -192,7 +192,34 @@ serve(async (req) => {
       });
     }
 
-    return new Response(JSON.stringify({ ...parsed, _provider: provider }), {
+    // Sanidade: invalida horários impossíveis e fora de ordem (dígito mal lido)
+    const isValid = (t: string) => /^([01]\d|2[0-3]):[0-5]\d$/.test(t);
+    const toMin = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
+    let suspeitos = 0;
+    if (Array.isArray(parsed?.registros)) {
+      for (const reg of parsed.registros) {
+        if (!Array.isArray(reg?.marcacoes)) continue;
+        reg.marcacoes = reg.marcacoes.map((m: unknown) => {
+          const s = String(m ?? "").trim();
+          if (!s || s.includes("?")) return "??:??";
+          if (!isValid(s)) { suspeitos++; return "??:??"; }
+          return s;
+        });
+        // ordem cronológica (tolera 1 virada de meia-noite)
+        const mins = reg.marcacoes.map((m: string) => (m.includes("?") ? null : toMin(m)));
+        let quebras = 0;
+        for (let i = 1; i < mins.length; i++) {
+          if (mins[i] !== null && mins[i - 1] !== null && mins[i] < mins[i - 1]) quebras++;
+        }
+        if (quebras > 1) {
+          suspeitos++;
+          reg.observacao = [reg.observacao, "Sequência fora de ordem — revisar leitura."].filter(Boolean).join(" ");
+        }
+      }
+    }
+    if (suspeitos > 0 && parsed?.confianca === "alta") parsed.confianca = "media";
+
+    return new Response(JSON.stringify({ ...parsed, _provider: provider, _suspeitos: suspeitos }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
