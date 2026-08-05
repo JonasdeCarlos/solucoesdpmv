@@ -39,9 +39,6 @@ serve(async (req) => {
   }
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
-
     const { images } = await req.json();
     
     if (!images || !Array.isArray(images) || images.length === 0) {
@@ -50,6 +47,69 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    let rawContent = "";
+    let provider = "";
+
+    // 1) Tenta primeiro a chave Anthropic do usuário (visão)
+    const ANTH = Deno.env.get("ANTHROPIC_API_KEY");
+    if (ANTH) {
+      try {
+        let modelos: string[] = [];
+        const lm = await fetch("https://api.anthropic.com/v1/models?limit=50", {
+          headers: { "x-api-key": ANTH, "anthropic-version": "2023-06-01" },
+        });
+        if (lm.ok) {
+          const lj = await lm.json();
+          modelos = (lj?.data || []).map((m: any) => String(m?.id || "")).filter(Boolean);
+        }
+        const preferido =
+          modelos.find((m) => m.includes("opus-4")) ||
+          modelos.find((m) => m.includes("sonnet-4-5")) ||
+          modelos.find((m) => m.includes("sonnet-4")) ||
+          modelos.find((m) => m.includes("sonnet")) ||
+          modelos.find((m) => m.includes("haiku")) ||
+          modelos[0];
+
+        if (preferido) {
+          const blocks: any[] = [];
+          for (const img of images) {
+            const url = String(img?.dataUrl || "");
+            const m = url.match(/^data:([^;]+);base64,(.+)$/);
+            if (!m) continue;
+            blocks.push({
+              type: "image",
+              source: { type: "base64", media_type: m[1], data: m[2] },
+            });
+          }
+          blocks.push({ type: "text", text: "Analise o(s) cartão(ões) de ponto a seguir e extraia todas as marcações dia a dia." });
+
+          const ar = await fetch("https://api.anthropic.com/v1/messages", {
+            method: "POST",
+            headers: { "x-api-key": ANTH, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model: preferido,
+              max_tokens: 8000,
+              system: SYSTEM_PROMPT,
+              messages: [{ role: "user", content: blocks }],
+            }),
+          });
+          if (ar.ok) {
+            const ad = await ar.json();
+            rawContent = ad?.content?.map((c: any) => (c?.type === "text" ? c.text : "")).join("") || "";
+            provider = `anthropic:${preferido}`;
+          } else {
+            console.error("ocr-ponto anthropic error", ar.status, (await ar.text()).slice(0, 400));
+          }
+        }
+      } catch (e) {
+        console.error("ocr-ponto anthropic exception", e);
+      }
+    }
+
+    if (!rawContent) {
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     // Build content array with all images
     const contentParts: any[] = [
@@ -102,7 +162,9 @@ serve(async (req) => {
     }
 
     const data = await response.json();
-    const rawContent = data.choices?.[0]?.message?.content ?? "";
+    rawContent = data.choices?.[0]?.message?.content ?? "";
+    provider = "lovable:google/gemini-2.5-flash";
+    }
     
     // Try to parse the JSON from the response
     let parsed;
@@ -121,7 +183,7 @@ serve(async (req) => {
       });
     }
 
-    return new Response(JSON.stringify(parsed), {
+    return new Response(JSON.stringify({ ...parsed, _provider: provider }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
