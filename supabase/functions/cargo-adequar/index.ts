@@ -214,8 +214,29 @@ Responda SOMENTE com JSON válido no formato exato:
         out.titulo_cbo = canon.titulo;
         out.cbo_familia = canon.familia;
         out.cbo_justificativa = canon.justificativa;
+      } else if (!canon && candidatos.length) {
+        // Ancoragem na base oficial: título idêntico ao nome do cargo vence a sugestão da IA
+        const alvo = norm(nomeCargo);
+        const exato = candidatos.find((c) => norm(c.titulo) === alvo)
+          || candidatos.find((c) => norm(c.titulo).startsWith(alvo) || alvo.startsWith(norm(c.titulo)));
+        if (exato && out.cbo !== exato.cbo) {
+          if (out.cbo) {
+            out.cbo_alternativas = [{ cbo: out.cbo, titulo: out.titulo_cbo, quando_usar: "Sugestão original da IA" }, ...out.cbo_alternativas];
+          }
+          out.cbo = exato.cbo;
+          out.titulo_cbo = exato.titulo;
+          out.cbo_justificativa = `Título idêntico ao cargo informado na base oficial do MTE (${exato.tipo.toLowerCase()} "${exato.titulo}").`;
+        }
+        // Garante que os candidatos oficiais apareçam como alternativas
+        for (const c of candidatos) {
+          if (c.cbo && c.cbo !== out.cbo && !out.cbo_alternativas.some((a: any) => a.cbo === c.cbo)) {
+            out.cbo_alternativas.push({ cbo: c.cbo, titulo: c.titulo, quando_usar: `Resultado oficial do MTE (${c.tipo.toLowerCase()})` });
+          }
+        }
+        out.cbo_alternativas = out.cbo_alternativas.slice(0, 5);
       }
     }
+    (out as any).cbo_candidatos_mte = candidatos;
     return json(out);
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : String(e) }, 500);
@@ -224,6 +245,142 @@ Responda SOMENTE com JSON válido no formato exato:
 
 function json(b: any, status = 200) {
   return new Response(JSON.stringify(b), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+}
+
+function norm(v = "") {
+  return v.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+// ─────────── Busca oficial de candidatos (MTE — Busca por título) ───────────
+const MTE_BASE = "http://cbo.mte.gov.br";
+const STOP = new Set(["de", "da", "do", "das", "dos", "e", "em", "para", "a", "o", "no", "na"]);
+const PREFIXOS = /^(analista|assistente|auxiliar|aux|tecnico|técnico|especialista|consultor|consultora|coordenador|coordenadora|supervisor|supervisora|gerente|encarregado|encarregada|lider|líder|estagiario|estagiária|estagiario|operador|operadora|ajudante|junior|pleno|senior|sênior)\s+/i;
+
+function termosBusca(nome: string, descricao: string): string[] {
+  const limpo = (v: string) => v.replace(/[^A-Za-zÀ-ÿ\s]/g, " ").replace(/\s+/g, " ").trim();
+  const base = limpo(nome);
+  const semPrefixo = limpo(base.replace(PREFIXOS, ""));
+  const tokens = base.split(" ").filter((t) => t.length > 2 && !STOP.has(t.toLowerCase()));
+  const doisUltimos = tokens.slice(-2).join(" ");
+  const nucleo = tokens.slice(-1).join(" ");
+  const descTokens = limpo(descricao).split(" ").filter((t) => t.length > 4 && !STOP.has(t.toLowerCase())).slice(0, 4);
+  const lista = [base, semPrefixo, doisUltimos, nucleo, ...descTokens];
+  return Array.from(new Set(lista.map((t) => t.trim()).filter((t) => t.length >= 3))).slice(0, 6);
+}
+
+async function buscarCandidatosMte(nome: string, descricao: string) {
+  const termos = termosBusca(nome, descricao);
+  const resultados = await Promise.all(termos.map((t) => buscarTermoMte(t).catch(() => [])));
+  const mapa = new Map<string, { cbo: string; titulo: string; tipo: string }>();
+  for (const grupo of resultados) {
+    for (const item of grupo) {
+      if (!item.cbo) continue;
+      const atual = mapa.get(item.cbo);
+      // Ocupação tem prioridade sobre sinônimo/família na deduplicação
+      if (!atual || (atual.tipo !== "Ocupação" && item.tipo === "Ocupação")) mapa.set(item.cbo, item);
+    }
+  }
+  return Array.from(mapa.values())
+    .sort((a, b) => (a.tipo === b.tipo ? 0 : a.tipo === "Ocupação" ? -1 : 1))
+    .slice(0, 25);
+}
+
+async function buscarTermoMte(termo: string) {
+  const jar = new Map<string, string>();
+  const upd = (h: Headers) => {
+    const raw = typeof (h as any).getSetCookie === "function" ? (h as any).getSetCookie() : [h.get("set-cookie")].filter(Boolean);
+    for (const l of (raw as string[])) {
+      for (const p of l.split(/,(?=\s*[^;,\s=]+=)/g)) {
+        const pair = p.split(";")[0]?.trim() || "";
+        const i = pair.indexOf("=");
+        if (i > 0) jar.set(pair.slice(0, i), pair.slice(i + 1));
+      }
+    }
+  };
+  const req = async (path: string, init: RequestInit = {}) => {
+    const h = new Headers(init.headers);
+    h.set("User-Agent", "Mozilla/5.0");
+    if (jar.size) h.set("Cookie", Array.from(jar).map(([k, v]) => `${k}=${v}`).join("; "));
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 12000);
+    try {
+      const r = await fetch(path.startsWith("http") ? path : MTE_BASE + path, { ...init, headers: h, signal: ctrl.signal });
+      upd(r.headers);
+      return { text: new TextDecoder("iso-8859-1").decode(await r.arrayBuffer()), url: r.url };
+    } finally { clearTimeout(timer); }
+  };
+
+  const busca = await req("/cbosite/pages/pesquisas/BuscaPorTitulo.jsf");
+  const form = extrairForm(busca.text, "formBuscaPorTitulo");
+  if (!form.html) return [];
+  const fields = camposOcultos(form.html);
+  fields["formBuscaPorTitulo:j_idt80"] = termo;
+  fields["formBuscaPorTitulo:btConsultar"] = "Consultar";
+  fields["formBuscaPorTitulo:radio"] = "3";
+  fields["formBuscaPorTitulo:checkboxFamilias"] = "on";
+  fields["formBuscaPorTitulo:checkboxOcupacoes"] = "on";
+  fields["formBuscaPorTitulo:checkboxSinonimos"] = "on";
+  const page = await req(form.action, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded", Referer: busca.url },
+    body: new URLSearchParams(fields),
+  });
+  const lista = extrairForm(page.text, "formSite017");
+  const linhas = lista.html.match(/<tr class=["'](?:odd|even)["'][\s\S]*?<\/tr>/gi) || [];
+  const out: { cbo: string; titulo: string; tipo: string }[] = [];
+  for (const linha of linhas.slice(0, 40)) {
+    const texto = semTags(linha);
+    const m = texto.match(/^(.*?)\s(\d{4}(?:-\d{2})?)\s(Ocupação|Sinônimo|Família)\s*$/);
+    if (!m) continue;
+    const digitos = m[2].replace(/\D/g, "");
+    if (digitos.length !== 6) continue; // ignora famílias (4 dígitos)
+    out.push({ cbo: digitos, titulo: m[1].trim(), tipo: m[3] });
+  }
+  return out;
+}
+
+function extrairForm(html: string, id: string) {
+  const re = new RegExp(`<form\\b(?=[^>]*\\bid=["']${id}["'])[^>]*>[\\s\\S]*?<\\/form>`, "i");
+  const formHtml = html.match(re)?.[0] || "";
+  const open = formHtml.match(/<form\b[^>]*>/i)?.[0] || "";
+  return { html: formHtml, action: atributo(open, "action") };
+}
+
+function camposOcultos(formHtml: string) {
+  const fields: Record<string, string> = {};
+  for (const m of formHtml.matchAll(/<input\b[^>]*>/gi)) {
+    const tag = m[0];
+    const name = atributo(tag, "name");
+    const type = atributo(tag, "type").toLowerCase();
+    if (name && (!type || type === "hidden")) fields[name] = atributo(tag, "value");
+  }
+  return fields;
+}
+
+function atributo(tag: string, name: string) {
+  const m = tag.match(new RegExp(`${name}=(["'])([\\s\\S]*?)\\1`, "i"));
+  return m ? decodificar(m[2]) : "";
+}
+
+function semTags(html = "") {
+  return decodificar(html.replace(/<[^>]+>/g, " "));
+}
+
+function decodificar(value = "") {
+  const named: Record<string, string> = {
+    amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ",
+    Aacute: "Á", Eacute: "É", Iacute: "Í", Oacute: "Ó", Uacute: "Ú",
+    aacute: "á", eacute: "é", iacute: "í", oacute: "ó", uacute: "ú",
+    Acirc: "Â", Ecirc: "Ê", Ocirc: "Ô", acirc: "â", ecirc: "ê", ocirc: "ô",
+    Agrave: "À", agrave: "à", Atilde: "Ã", Otilde: "Õ", atilde: "ã", otilde: "õ",
+    Ccedil: "Ç", ccedil: "ç",
+  };
+  return value
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+    .replace(/&#x([\da-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)))
+    .replace(/&([a-z]+);/gi, (m, n) => named[n] ?? m)
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 const CANONICOS: { re: RegExp; cbo: string; titulo: string; familia: string; justificativa: string }[] = [
