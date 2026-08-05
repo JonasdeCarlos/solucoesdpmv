@@ -21,10 +21,29 @@ Deno.serve(async (req) => {
       Array.isArray(atividades) && atividades.length ? `Atividades: ${atividades.slice(0, 12).map((a: any) => String(a)).join(" | ").slice(0, 1000)}` : "",
     ].filter(Boolean).join("\n");
 
+    // ── Grounding: busca REAL de candidatos na base oficial do MTE (busca por título) ──
+    let candidatos: { cbo: string; titulo: string; tipo: string }[] = [];
+    if (!cbo_confirmado) {
+      try {
+        candidatos = await buscarCandidatosMte(nomeCargo, String(contextoUsuario || descricao_sumaria || ""));
+      } catch (e) {
+        console.error("cargo-adequar MTE candidatos falhou", e instanceof Error ? e.message : e);
+      }
+    }
+    const blocoCandidatos = candidatos.length
+      ? `\nCANDIDATOS REAIS RETORNADOS PELA BASE OFICIAL DO MTE (busca por título/sinônimo com o nome do cargo e termos derivados). Estes códigos EXISTEM e são a única fonte confiável:\n${candidatos.map((c) => `- ${c.cbo} — ${c.titulo} (${c.tipo})`).join("\n")}\n
+REGRA ABSOLUTA DE ESCOLHA:
+1. Escolha o "cbo" OBRIGATORIAMENTE dentro desta lista de candidatos, salvo se NENHUM deles corresponder à ocupação realmente descrita — nesse caso explique o motivo em "cbo_justificativa" e só então use outro código.
+2. Prefira candidatos do tipo "Ocupação" ao tipo "Sinônimo"; se escolher um sinônimo, use o código de 6 dígitos dele e informe em "titulo_cbo" o TÍTULO OFICIAL da ocupação (não o sinônimo).
+3. Nunca escolha um candidato apenas por coincidência de palavra: confronte cada candidato com a descrição do que o cargo executa e descarte os incompatíveis, citando o descarte em "cbo_justificativa".
+4. Preencha "cbo_alternativas" com outros candidatos plausíveis DESTA lista, em ordem de aderência.\n`
+      : "";
+
     const prompt = `Você é um especialista em descrição de cargos, CBO e legislação trabalhista brasileira.
 Empresa: ${empresa || "n/i"}. Setor: ${setor || "n/i"}.
 Cargo informado pelo usuário: "${nomeCargo}".
 ${contexto ? `\nContexto adicional do cargo já cadastrado (use como âncora — NÃO troque a profissão):\n${contexto}\n` : ""}
+${blocoCandidatos}
 
 REGRAS DURAS PARA CONSELHO DE CLASSE:
 - Marque "profissao_regulamentada": true SOMENTE quando existir lei federal específica exigindo formação e registro em conselho profissional para EXERCER o cargo descrito (ex.: Contador→CRC, Advogado→OAB, Engenheiro→CREA, Arquiteto→CAU, Médico→CRM, Enfermeiro→COREN, Odontólogo→CRO, Farmacêutico→CRF, Psicólogo→CRP, Assistente Social→CRESS, Nutricionista→CRN, Fisioterapeuta→CREFITO, Educador Físico→CREF, Técnico em Segurança do Trabalho→registro MTE, Corretor→CRECI, Administrador→CFA/CRA, Economista→CORECON, Técnico em Contabilidade→CRC, Biomédico→CRBM).
