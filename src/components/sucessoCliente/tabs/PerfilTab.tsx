@@ -97,10 +97,12 @@ export default function PerfilTab({ cliente, onClienteSaved }: { cliente: Client
     const { error: e2 } = await upsert(form);
     if (e2) { toast.error('Erro ao salvar perfil: ' + e2.message); return; }
     if (pwdLoaded) {
-      await supabase.rpc('set_timeclock_password' as any, { _client_id: cliente.id, _password: pwd } as any);
+      const { error: e3 } = await supabase.rpc('set_timeclock_password' as any, { _client_id: cliente.id, _password: pwd } as any);
+      if (e3) { toast.error('Erro ao salvar senha do ponto: ' + e3.message); return; }
     }
     if (ewPwdLoaded && isAdmin) {
-      await supabase.rpc('set_empregador_web_password' as any, { _client_id: cliente.id, _password: ewPwd } as any);
+      const { error: e4 } = await supabase.rpc('set_empregador_web_password' as any, { _client_id: cliente.id, _password: ewPwd } as any);
+      if (e4) { toast.error('Erro ao salvar senha do Empregador Web: ' + e4.message); return; }
     }
     toast.success('Salvo.');
     onClienteSaved();
