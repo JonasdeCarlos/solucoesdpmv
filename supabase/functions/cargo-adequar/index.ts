@@ -280,9 +280,19 @@ async function buscarCandidatosMte(nome: string, descricao: string) {
       if (!atual || (atual.tipo !== "Ocupação" && item.tipo === "Ocupação")) mapa.set(item.cbo, item);
     }
   }
+  // Relevância: mantém apenas candidatos que compartilham termos significativos com o nome do cargo
+  const chaves = norm(nome).split(" ").filter((t) => t.length > 2 && !STOP.has(t));
+  const pontuar = (c: { titulo: string; tipo: string }) => {
+    const t = norm(c.titulo);
+    const hits = chaves.filter((k) => t.includes(k)).length;
+    return hits * 10 + (c.tipo === "Ocupação" ? 3 : 0) + (t === norm(nome) ? 50 : 0);
+  };
   return Array.from(mapa.values())
-    .sort((a, b) => (a.tipo === b.tipo ? 0 : a.tipo === "Ocupação" ? -1 : 1))
-    .slice(0, 25);
+    .map((c) => ({ ...c, _p: pontuar(c) }))
+    .filter((c) => c._p >= 10)
+    .sort((a, b) => b._p - a._p)
+    .slice(0, 20)
+    .map(({ _p, ...c }) => c);
 }
 
 async function buscarTermoMte(termo: string) {
