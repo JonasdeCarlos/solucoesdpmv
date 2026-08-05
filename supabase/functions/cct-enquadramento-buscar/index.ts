@@ -102,11 +102,17 @@ async function bing(query: string, limit: number): Promise<Hit[]> {
 
 async function search(query: string, limit = 8): Promise<Hit[]> {
   for (const engine of [jinaDdg, ddgHtml, ddgLite, bing]) {
-    try {
-      const hits = await engine(query, limit);
-      if (hits.length) return hits;
-    } catch (e) {
-      console.log('search engine falhou', engine.name, String(e));
+    for (let tentativa = 0; tentativa < 2; tentativa++) {
+      try {
+        const hits = await engine(query, limit);
+        if (hits.length) return hits;
+        break;
+      } catch (e) {
+        const msg = String(e);
+        console.log('search engine falhou', engine.name, msg);
+        if (!/429/.test(msg)) break;
+        await new Promise((r) => setTimeout(r, 2500));
+      }
     }
   }
   return [];
@@ -128,7 +134,12 @@ Deno.serve(async (req) => {
       `sindicato ${cnae || atividade || ''} ${uf} CNPJ site oficial`,
       `convenção coletiva ${base} sindicato`,
     ];
-    const results = (await Promise.all(queries.map((q) => search(q, 8)))).flat();
+    // r.jina.ai limita requisições concorrentes: buscamos em série com pequena pausa.
+    const results: Hit[] = [];
+    for (const q of queries) {
+      results.push(...(await search(q, 8)));
+      await new Promise((r) => setTimeout(r, 900));
+    }
     const seen = new Set<string>();
     const hits = results.filter((h) => (seen.has(h.url) ? false : (seen.add(h.url), true))).slice(0, 28);
 
