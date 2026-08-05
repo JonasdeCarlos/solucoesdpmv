@@ -4,8 +4,9 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Eye, Copy as CopyIcon, FileText, Trash2, AlertCircle, UserRound } from 'lucide-react';
+import { Plus, Eye, Copy as CopyIcon, FileText, Trash2, AlertCircle, UserRound, BellRing } from 'lucide-react';
 import { useAdmissaoRequests, STATUS_LABELS, AdmissionStatus, AdmissionRequest } from '@/hooks/useAdmissaoRequests';
+import AdmissaoNotificacaoDialog from '@/components/admissao/AdmissaoNotificacaoDialog';
 import { extractEmployeeIdentity } from '@/utils/admissao/dossieBuilder';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -33,6 +34,7 @@ const EscritorioDashboardPage = () => {
   const [xferTarget, setXferTarget] = useState<AdmissionRequest | null>(null);
   const [xferName, setXferName] = useState('');
   const [xferBusy, setXferBusy] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
 
   const filtered = useMemo(() => {
     return requests.filter((r) => {
@@ -118,12 +120,19 @@ const EscritorioDashboardPage = () => {
           <h2 className="text-2xl font-bold">Admissões</h2>
           <p className="text-sm text-muted-foreground">Crie processos de admissão e envie o link ao cliente.</p>
         </div>
-        <Button asChild>
-          <Link to="/admissao/escritorio/admissoes/nova">
-            <Plus className="w-4 h-4 mr-1" /> Nova admissão
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setNotifOpen(true)}>
+            <BellRing className="w-4 h-4 mr-1" /> Alertas
+          </Button>
+          <Button asChild>
+            <Link to="/admissao/escritorio/admissoes/nova">
+              <Plus className="w-4 h-4 mr-1" /> Nova admissão
+            </Link>
+          </Button>
+        </div>
       </div>
+
+      <AdmissaoNotificacaoDialog open={notifOpen} onOpenChange={setNotifOpen} />
 
       <div className="flex gap-2">
         <Input placeholder="Buscar por empresa ou colaborador..." value={q} onChange={(e) => setQ(e.target.value)} />
