@@ -110,7 +110,7 @@ const FormulariosListPage = () => {
               disabled={!t.is_published}
               title={t.is_published ? 'Copiar link público' : 'Publique o formulário para gerar o link'}
               onClick={async () => {
-                const PUBLISHED = 'https://calculo-clt-agora.lovable.app';
+                const PUBLISHED = 'https://solucoesdpmv.lovable.app';
                 const origin = window.location.hostname.includes('id-preview--') ||
                   window.location.hostname.includes('lovableproject.com')
                   ? PUBLISHED
@@ -133,7 +133,7 @@ const FormulariosListPage = () => {
               disabled={!t.is_published}
               title={t.is_published ? 'Copiar texto para WhatsApp' : 'Publique o formulário para gerar o texto'}
               onClick={async () => {
-                const PUBLISHED = 'https://calculo-clt-agora.lovable.app';
+                const PUBLISHED = 'https://solucoesdpmv.lovable.app';
                 const origin = window.location.hostname.includes('id-preview--') ||
                   window.location.hostname.includes('lovableproject.com')
                   ? PUBLISHED
