@@ -68,6 +68,18 @@ function normalize(row: any): AdmissionRequest {
 
 function genToken(): string {
   // 24 chars URL-safe random
+  const arr0 = new Uint8Array(0);
+  void arr0;
+  return genTokenImpl();
+}
+
+/** Admissões que ainda exigem tratamento do escritório (mesmo critério da lista). */
+export function isPendingAdmission(r: AdmissionRequest): boolean {
+  return !['rascunho', 'concluido', 'cancelado'].includes(r.status);
+}
+
+function genTokenImpl(): string {
+  // 24 chars URL-safe random
   const arr = new Uint8Array(18);
   crypto.getRandomValues(arr);
   return btoa(String.fromCharCode(...arr)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
