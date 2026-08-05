@@ -59,6 +59,7 @@ import CctReviewPage from "./pages/gestaoCct/CctReviewPage";
 import CctAskPage from "./pages/gestaoCct/CctAskPage";
 import CctRadarPage from "./pages/gestaoCct/CctRadarPage";
 import CctCompararPage from "./pages/gestaoCct/CctCompararPage";
+import CctEnquadramentoPage from "./pages/gestaoCct/CctEnquadramentoPage";
 
 const queryClient = new QueryClient();
 
@@ -129,6 +130,7 @@ const App = () => (
               <Route path="/gestao-cct/:id/revisar" element={<CctReviewPage />} />
               <Route path="/gestao-cct/radar" element={<CctRadarPage />} />
              <Route path="/gestao-cct/comparar" element={<CctCompararPage />} />
+             <Route path="/enquadramento-sindical" element={<CctEnquadramentoPage />} />
              <Route path="/gestao-cct/:id/perguntar" element={<CctAskPage />} />
               <Route path="/usuarios" element={<UsuariosPage />} />
               <Route path="/banco-horas" element={<BhLayout />}>
