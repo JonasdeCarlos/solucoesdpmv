@@ -4,13 +4,13 @@ import { LogOut, FileText, ClipboardList, ArrowLeft, Archive } from 'lucide-reac
 import { useOfficeAuth } from '@/hooks/useOfficeAuth';
 import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'sonner';
-import { useAdmissaoRequests } from '@/hooks/useAdmissaoRequests';
+import { useAdmissaoRequests, isPendingAdmission } from '@/hooks/useAdmissaoRequests';
 
 const EscritorioLayout = () => {
   const { logout } = useOfficeAuth();
   const nav = useNavigate();
   const { requests } = useAdmissaoRequests();
-  const untendedCount = requests.filter((r) => !r.responsible_name).length;
+  const pendingCount = requests.filter(isPendingAdmission).length;
 
   return (
     <div className="min-h-screen bg-background">
@@ -35,7 +35,7 @@ const EscritorioLayout = () => {
       </header>
       <nav className="border-b bg-card/50">
         <div className="container max-w-6xl mx-auto px-4 flex gap-1">
-          <NavTab to="/admissao/escritorio" end icon={<ClipboardList className="w-4 h-4" />} label="Admissões" badge={untendedCount > 0 ? untendedCount : undefined} />
+          <NavTab to="/admissao/escritorio" end icon={<ClipboardList className="w-4 h-4" />} label="Admissões" badge={pendingCount > 0 ? pendingCount : undefined} />
           <NavTab to="/admissao/escritorio/formularios" icon={<FileText className="w-4 h-4" />} label="Formulários" />
           <NavTab to="/admissao/escritorio/arquivo" icon={<Archive className="w-4 h-4" />} label="Arquivo" />
         </div>
