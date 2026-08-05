@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      admissao_notify_settings: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          updated_at: string
+          whatsapp_numeros: string[]
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          updated_at?: string
+          whatsapp_numeros?: string[]
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          updated_at?: string
+          whatsapp_numeros?: string[]
+        }
+        Relationships: []
+      }
       admission_archive: {
         Row: {
           admission_completed: boolean

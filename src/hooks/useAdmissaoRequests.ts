@@ -66,6 +66,11 @@ function normalize(row: any): AdmissionRequest {
   };
 }
 
+/** Admissões que ainda exigem tratamento do escritório (mesmo critério da lista). */
+export function isPendingAdmission(r: AdmissionRequest): boolean {
+  return !['rascunho', 'concluido', 'cancelado'].includes(r.status);
+}
+
 function genToken(): string {
   // 24 chars URL-safe random
   const arr = new Uint8Array(18);
@@ -175,7 +180,7 @@ export async function saveDraftAnswers(id: string, draft: Record<string, any>) {
 }
 
 export async function submitAnswers(id: string, answers: Record<string, any>) {
-  return supabase
+  const res = await supabase
     .from('admission_requests' as any)
     .update({
       answers,
@@ -184,4 +189,13 @@ export async function submitAnswers(id: string, answers: Record<string, any>) {
       submitted_at: new Date().toISOString(),
     } as any)
     .eq('id', id);
+  if (!res.error) {
+    // Notificação WhatsApp (Digisac) de nova admissão pendente — nunca bloqueia o envio.
+    try {
+      await supabase.functions.invoke('admissao-notificar', { body: { request_id: id } });
+    } catch (e) {
+      console.warn('Falha ao notificar nova admissão', e);
+    }
+  }
+  return res;
 }
