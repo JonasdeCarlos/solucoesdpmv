@@ -31,6 +31,7 @@ const PontoManualBulk: React.FC<Props> = ({ config, dias, onImportDias }) => {
   const [open, setOpen] = useState(false);
   const [grade, setGrade] = useState<Grade>(() => gradeInicial(slots));
   const [somenteVazios, setSomenteVazios] = useState(true);
+  const [vaziosFolga, setVaziosFolga] = useState(false);
 
   const labels = useMemo(
     () => (slots === 6
@@ -70,10 +71,18 @@ const PontoManualBulk: React.FC<Props> = ({ config, dias, onImportDias }) => {
       return;
     }
     let aplicados = 0;
+    let folgas = 0;
     const novos = dias.map((d) => {
       const modelo = grade[d.diaSemana as DiaSemanaKey];
-      if (!modelo || !modelo.ativo) return d;
-      if (!modelo.marcacoes.some((m) => /^\d{2}:\d{2}$/.test(m))) return d;
+      const marcarFolga = (dia: PontoDia) => {
+        if (!vaziosFolga) return dia;
+        if (dia.marcacoes.some((m) => m)) return dia;
+        if (dia.tipoDia === 'feriado' || dia.tipoDia === 'folga_dsr') return dia;
+        folgas++;
+        return { ...dia, tipoDia: 'folga_dsr' as const };
+      };
+      if (!modelo || !modelo.ativo) return marcarFolga(d);
+      if (!modelo.marcacoes.some((m) => /^\d{2}:\d{2}$/.test(m))) return marcarFolga(d);
       if (somenteVazios && d.marcacoes.some((m) => m)) return d;
       const marcacoes = Array(slots).fill('');
       modelo.marcacoes.forEach((m, i) => { if (i < slots && /^\d{2}:\d{2}$/.test(m)) marcacoes[i] = m; });
@@ -82,8 +91,11 @@ const PontoManualBulk: React.FC<Props> = ({ config, dias, onImportDias }) => {
     });
     onImportDias(novos);
     setOpen(false);
-    toast({ title: 'Ponto aplicado', description: `${aplicados} dia(s) preenchido(s) a partir da grade semanal.` });
-  }, [grade, dias, slots, somenteVazios, onImportDias]);
+    toast({
+      title: 'Ponto aplicado',
+      description: `${aplicados} dia(s) preenchido(s)${folgas ? ` e ${folgas} dia(s) marcado(s) como folga/DSR` : ''}.`,
+    });
+  }, [grade, dias, slots, somenteVazios, vaziosFolga, onImportDias]);
 
   return (
     <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (o) setGrade(gradeInicial(slots)); }}>
@@ -134,6 +146,13 @@ const PontoManualBulk: React.FC<Props> = ({ config, dias, onImportDias }) => {
           <Switch id="somente-vazios" checked={somenteVazios} onCheckedChange={setSomenteVazios} />
           <Label htmlFor="somente-vazios" className="text-sm">
             Preencher apenas dias sem marcações (desmarque para sobrescrever tudo)
+          </Label>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Switch id="vazios-folga" checked={vaziosFolga} onCheckedChange={setVaziosFolga} />
+          <Label htmlFor="vazios-folga" className="text-sm">
+            Campos vazios considerar folga automaticamente
           </Label>
         </div>
 
