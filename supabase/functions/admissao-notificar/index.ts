@@ -41,17 +41,40 @@ Deno.serve(async (req) => {
 
     const { data: reqRow } = await supabase
       .from('admission_requests')
-      .select('id, company_name, employee_name, template_name_snapshot, submitted_at')
+      .select('id, company_name, employee_name, template_name_snapshot, submitted_at, answers, draft_answers')
       .eq('id', request_id)
       .maybeSingle();
     if (!reqRow) return json(404, { erro: 'Admissão não encontrada.' });
 
+    // Fallback: buscar nome do colaborador / empresa nas respostas do formulário
+    const ans: Record<string, unknown> = {
+      ...(reqRow.draft_answers as Record<string, unknown> || {}),
+      ...(reqRow.answers as Record<string, unknown> || {}),
+    };
+    const pick = (patterns: RegExp[]) => {
+      for (const [k, v] of Object.entries(ans)) {
+        if (typeof v !== 'string' || !v.trim()) continue;
+        if (patterns.some((p) => p.test(k))) return v.trim();
+      }
+      return '';
+    };
+    const empresa = reqRow.company_name?.trim() ||
+      pick([/empresa/i, /razao/i, /razão/i, /company/i]) || '—';
+    const colaborador = reqRow.employee_name?.trim() ||
+      pick([/nome_?completo/i, /^nome$/i, /colaborador/i, /funcionario/i, /funcionário/i, /employee/i]) || '—';
+
+    const dataBR = new Date(reqRow.submitted_at || Date.now()).toLocaleString('pt-BR', {
+      timeZone: 'America/Sao_Paulo',
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+    });
+
     const mensagem =
       `🔔 *Nova admissão pendente*\n\n` +
-      `Empresa: ${reqRow.company_name || '—'}\n` +
-      `Colaborador: ${reqRow.employee_name || '—'}\n` +
+      `Empresa: ${empresa}\n` +
+      `Colaborador: ${colaborador}\n` +
       `Formulário: ${reqRow.template_name_snapshot || '—'}\n` +
-      `Recebida em: ${new Date(reqRow.submitted_at || Date.now()).toLocaleString('pt-BR')}\n\n` +
+      `Recebida em: ${dataBR}\n\n` +
       `Acesse o módulo de Admissão para dar andamento.`;
 
     const resultados: unknown[] = [];
