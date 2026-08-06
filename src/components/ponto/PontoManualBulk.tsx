@@ -66,7 +66,7 @@ const PontoManualBulk: React.FC<Props> = ({ config, dias, onImportDias }) => {
 
   const aplicar = useCallback(() => {
     const preenchidos = DIAS.filter((d) => grade[d].ativo && grade[d].marcacoes.some((m) => /^\d{2}:\d{2}$/.test(m)));
-    if (preenchidos.length === 0) {
+    if (preenchidos.length === 0 && !vaziosFolga) {
       toast({ title: 'Nada a aplicar', description: 'Preencha ao menos um dia da grade.', variant: 'destructive' });
       return;
     }
