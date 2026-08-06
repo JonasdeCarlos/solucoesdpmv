@@ -1,4 +1,4 @@
-const PUBLISHED_APP_URL = 'https://solucoesdpmv.lovable.app';
+const PUBLISHED_APP_URL = 'https://calculo-clt-agora.lovable.app';
 
 export const getExternalAppOrigin = () => {
   if (typeof window === 'undefined') return PUBLISHED_APP_URL;
