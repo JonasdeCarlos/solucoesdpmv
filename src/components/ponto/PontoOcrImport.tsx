@@ -144,8 +144,15 @@ const PontoOcrImport: React.FC<Props> = ({ config, dias, mesAno, onImportDias })
       }
 
       const result = data as OcrResult;
-      setOcrResult(result);
-      setEditableRegistros(result.registros || []);
+      const normalized: OcrResult = {
+        ...result,
+        registros: (result.registros || []).map((r) => ({
+          ...r,
+          marcacoes: normalizeMarcacoes(r.marcacoes),
+        })),
+      };
+      setOcrResult(normalized);
+      setEditableRegistros(normalized.registros || []);
       setProgress(100);
 
       // Save audit record
