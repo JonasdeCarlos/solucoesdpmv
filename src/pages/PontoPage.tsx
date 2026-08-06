@@ -8,6 +8,7 @@ import PontoPrintView from '@/components/ponto/PontoPrintView';
 import PontoOcrImport from '@/components/ponto/PontoOcrImport';
 import PontoBancoHoras from '@/components/ponto/PontoBancoHoras';
 import PontoBlankSheet from '@/components/ponto/PontoBlankSheet';
+import PontoManualBulk from '@/components/ponto/PontoManualBulk';
 import {
   type PontoIdentificacao,
   type PontoConfig,
@@ -157,6 +158,7 @@ const PontoPage: React.FC = () => {
             onImportDias={handleImportDias}
           />
           <PontoBlankSheet config={config} />
+          <PontoManualBulk config={config} dias={dias} onImportDias={handleImportDias} />
         </div>
         <Button variant="outline" size="sm" onClick={handleLimparMarcacoes} className="gap-1.5">
           <Eraser className="w-4 h-4" />
