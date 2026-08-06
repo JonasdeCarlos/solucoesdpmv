@@ -34,6 +34,32 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/heic', 'image/heif', 'application/pdf'];
 const STORAGE_KEY = 'ponto_ocr_review_state_v1';
 
+/** Normaliza marcações que vieram unidas por traços/barras/espaços em um único campo. */
+export function normalizeMarcacoes(marcacoes: unknown): string[] {
+  const raw = Array.isArray(marcacoes) ? marcacoes : [marcacoes];
+  const out: string[] = [];
+  for (const item of raw) {
+    const s = String(item ?? '').trim();
+    if (!s) continue;
+    if (s.includes('?')) { out.push('??:??'); continue; }
+    // separa por traço, hífen, barra, ponto-e-vírgula, vírgula, "às" ou espaços
+    const parts = s.split(/\s*(?:[-–—/|;,]|\bàs\b|\ba\b)\s*|\s{2,}/i).filter(Boolean);
+    for (const p of parts) {
+      const digits = p.replace(/\D/g, '');
+      if (digits.length === 4) {
+        out.push(`${digits.slice(0, 2)}:${digits.slice(2)}`);
+      } else if (digits.length === 3) {
+        out.push(`0${digits.slice(0, 1)}:${digits.slice(1)}`);
+      } else if (digits.length >= 8 && digits.length % 4 === 0) {
+        for (let i = 0; i < digits.length; i += 4) {
+          out.push(`${digits.slice(i, i + 2)}:${digits.slice(i + 2, i + 4)}`);
+        }
+      }
+    }
+  }
+  return out.map((t) => (/^([01]\d|2[0-3]):[0-5]\d$/.test(t) ? t : '??:??'));
+}
+
 function loadPersistedReview() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
