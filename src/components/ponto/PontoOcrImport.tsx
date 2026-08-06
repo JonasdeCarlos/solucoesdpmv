@@ -223,7 +223,14 @@ const PontoOcrImport: React.FC<Props> = ({ config, dias, mesAno, onImportDias })
     // Merge OCR data into existing dias
     const updatedDias = dias.map(d => {
       const reg = editableRegistros.find(r => r.dia === d.dia);
-      if (!reg || reg.marcacoes.length === 0) return d;
+      const semMarcacao = !reg || reg.marcacoes.length === 0;
+
+      // Campos vazios considerar folga automaticamente
+      if (vaziosFolga && semMarcacao && d.tipoDia !== 'feriado' && d.tipoDia !== 'folga_dsr' && d.tipoDia !== 'folga_comp_feriado') {
+        return { ...d, tipoDia: 'folga_dsr' as const };
+      }
+
+      if (semMarcacao) return d;
 
       // Pad or trim marcacoes to match config
       const marcacoes = Array(config.colunasMarcacoes).fill('');
