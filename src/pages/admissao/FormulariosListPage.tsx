@@ -10,6 +10,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Plus, Edit, Copy, Trash2, FileText, Link2, MessageCircle } from 'lucide-react';
 import { useAdmissaoTemplates } from '@/hooks/useAdmissaoTemplates';
+import { buildExternalAppLink } from '@/utils/publicLinks';
 import { toast } from 'sonner';
 
 const copyToClipboard = async (text: string) => {
@@ -110,12 +111,7 @@ const FormulariosListPage = () => {
               disabled={!t.is_published}
               title={t.is_published ? 'Copiar link público' : 'Publique o formulário para gerar o link'}
               onClick={async () => {
-                const PUBLISHED = 'https://solucoesdpmv.lovable.app';
-                const origin = window.location.hostname.includes('id-preview--') ||
-                  window.location.hostname.includes('lovableproject.com')
-                  ? PUBLISHED
-                  : window.location.origin;
-                const url = `${origin}/admissao/publico/${t.id}`;
+                const url = buildExternalAppLink(`/admissao/publico/${t.id}`);
                 try {
                   const copied = await copyToClipboard(url);
                   if (!copied) throw new Error('Clipboard copy failed');
@@ -133,12 +129,7 @@ const FormulariosListPage = () => {
               disabled={!t.is_published}
               title={t.is_published ? 'Copiar texto para WhatsApp' : 'Publique o formulário para gerar o texto'}
               onClick={async () => {
-                const PUBLISHED = 'https://solucoesdpmv.lovable.app';
-                const origin = window.location.hostname.includes('id-preview--') ||
-                  window.location.hostname.includes('lovableproject.com')
-                  ? PUBLISHED
-                  : window.location.origin;
-                const url = `${origin}/admissao/publico/${t.id}`;
+                const url = buildExternalAppLink(`/admissao/publico/${t.id}`);
                 const text = `Prezado Cliente,\n\nPara que o processo de admissão seja realizado sem divergências, pedimos gentilmente para que se preencha o formulário abaixo preenchendo de forma íntegra todos os campos obrigatórios.\n\nAgradecemos a colaboração.\n\n${url}\n\nQualquer dúvida estamos à disposição.\n\nAtenciosamente,\n\nDepartamento Pessoal\nMonte Verde Contabilidade`;
                 try {
                   const copied = await copyToClipboard(text);
