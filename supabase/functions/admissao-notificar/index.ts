@@ -51,15 +51,22 @@ Deno.serve(async (req) => {
       ...(reqRow.draft_answers as Record<string, unknown> || {}),
       ...(reqRow.answers as Record<string, unknown> || {}),
     };
-    const pick = (patterns: RegExp[]) => {
+    const isEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+    const pick = (patterns: RegExp[], excludedKeyPatterns: RegExp[] = []) => {
       for (const [k, v] of Object.entries(ans)) {
         if (typeof v !== 'string' || !v.trim()) continue;
+        if (excludedKeyPatterns.some((p) => p.test(k))) continue;
         if (patterns.some((p) => p.test(k))) return v.trim();
       }
       return '';
     };
-    const empresa = reqRow.company_name?.trim() ||
-      pick([/empresa/i, /razao/i, /razão/i, /company/i]) || '—';
+    const companyName = reqRow.company_name?.trim() || '';
+    const empresaResposta = pick(
+      [/razao_?social/i, /razão_?social/i, /nome_?empresarial/i, /nome_?da_?empresa/i, /^empresa$/i, /^company(?:_?name)?$/i],
+      [/e-?mail/i, /email/i, /contato/i, /responsavel/i, /responsável/i],
+    );
+    const empresa = (!isEmail(companyName) && companyName) ||
+      (!isEmail(empresaResposta) && empresaResposta) || '—';
     const colaborador = reqRow.employee_name?.trim() ||
       pick([/nome_?completo/i, /^nome$/i, /colaborador/i, /funcionario/i, /funcionário/i, /employee/i]) || '—';
 
