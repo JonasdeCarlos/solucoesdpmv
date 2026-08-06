@@ -81,6 +81,7 @@ const PontoOcrImport: React.FC<Props> = ({ config, dias, mesAno, onImportDias })
   const [editableRegistros, setEditableRegistros] = useState<OcrRegistro[]>(persisted?.editableRegistros ?? []);
   const [showUpload, setShowUpload] = useState(false);
   const [showReview, setShowReview] = useState(persisted?.showReview ?? false);
+  const [vaziosFolga, setVaziosFolga] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
