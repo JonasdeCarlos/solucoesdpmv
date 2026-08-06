@@ -269,7 +269,7 @@ const PontoOcrImport: React.FC<Props> = ({ config, dias, mesAno, onImportDias })
     setEditableRegistros([]);
 
     toast({ title: 'Marcações importadas!', description: 'Os horários do cartão de ponto foram preenchidos na grade.' });
-  }, [dias, editableRegistros, config.colunasMarcacoes, onImportDias]);
+  }, [dias, editableRegistros, config.colunasMarcacoes, onImportDias, vaziosFolga]);
 
   const confiancaColor = (c: string) => {
     if (c === 'alta') return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
