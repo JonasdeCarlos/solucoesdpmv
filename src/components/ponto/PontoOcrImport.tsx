@@ -453,16 +453,28 @@ const PontoOcrImport: React.FC<Props> = ({ config, dias, mesAno, onImportDias })
             </table>
           </div>
 
-          <div className="flex items-center justify-between pt-2 border-t">
-            <p className="text-xs text-muted-foreground">
-              ⚠️ Revise todos os horários antes de confirmar. Dados ilegíveis estão marcados em amarelo.
-            </p>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setShowReview(false)}>Cancelar</Button>
-              <Button onClick={handleConfirm} className="gap-1.5">
-                <CheckCircle className="w-4 h-4" />
-                Confirmar e Importar
-              </Button>
+          <div className="flex flex-col gap-3 pt-2 border-t">
+            <div className="flex items-center gap-2">
+              <Switch
+                id="ocr-vazios-folga"
+                checked={vaziosFolga}
+                onCheckedChange={setVaziosFolga}
+              />
+              <Label htmlFor="ocr-vazios-folga" className="text-sm cursor-pointer">
+                Campos vazios considerar folga automaticamente
+              </Label>
+            </div>
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">
+                ⚠️ Revise todos os horários antes de confirmar. Dados ilegíveis estão marcados em amarelo.
+              </p>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setShowReview(false)}>Cancelar</Button>
+                <Button onClick={handleConfirm} className="gap-1.5">
+                  <CheckCircle className="w-4 h-4" />
+                  Confirmar e Importar
+                </Button>
+              </div>
             </div>
           </div>
         </DialogContent>
