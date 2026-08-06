@@ -33,6 +33,16 @@ REGRAS:
 - "confianca" reflete a qualidade geral da leitura.
 - Retorne SOMENTE o JSON, sem nenhum texto adicional, sem backticks, sem markdown.
 
+FORMATOS DE SEPARAÇÃO DAS BATIDAS (importante):
+Nem todo cartão separa as marcações em células/colunas. Muitos modelos colocam todas as batidas do dia em UM ÚNICO campo de texto, separadas por traço, hífen, barra, ponto-e-vírgula, vírgula ou apenas espaços. Exemplos que devem gerar o MESMO resultado:
+- "08:00 - 12:00 - 13:00 - 17:00"  → ["08:00","12:00","13:00","17:00"]
+- "0800-1200-1300-1700"            → ["08:00","12:00","13:00","17:00"]
+- "08:00/12:00/13:00/17:00"        → ["08:00","12:00","13:00","17:00"]
+- "08 00  12 00  13 00  17 00"     → ["08:00","12:00","13:00","17:00"]
+- "08:00 às 12:00"                 → ["08:00","12:00"]
+Regras: o traço/hífen é SEPARADOR, nunca faz parte do horário e nunca indica valor negativo. Sempre normalize para "HH:MM" com dois dígitos. Sequências de 4 dígitos sem dois-pontos (ex.: "1745") viram "17:45". Se o campo trouxer mais de 6 batidas, mantenha a ordem em que aparecem.
+Ignore textos como "FOLGA", "DSR", "FERIADO", "FALTA", "ATESTADO": nesses casos "marcacoes" fica [] e o texto vai em "observacao".
+
 CALIBRAÇÃO DE DÍGITOS (crítico — erros comuns 1 x 2, 3 x 8, 5 x 6, 0 x 8, 7 x 1):
 - Analise a FORMA do dígito: "1" é um traço vertical simples (com ou sem serifa curta no topo); "2" tem curva superior e base horizontal. Nunca converta um em outro por "parecer provável".
 - Valide o horário: horas entre 00 e 23, minutos entre 00 e 59. Se a leitura resultar em minutos > 59 (ex.: "12:75"), releia o dígito duvidoso.
