@@ -4,6 +4,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Camera, Upload, FileText, AlertTriangle, CheckCircle, X, Eye } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -79,6 +81,7 @@ const PontoOcrImport: React.FC<Props> = ({ config, dias, mesAno, onImportDias })
   const [editableRegistros, setEditableRegistros] = useState<OcrRegistro[]>(persisted?.editableRegistros ?? []);
   const [showUpload, setShowUpload] = useState(false);
   const [showReview, setShowReview] = useState(persisted?.showReview ?? false);
+  const [vaziosFolga, setVaziosFolga] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -220,7 +223,14 @@ const PontoOcrImport: React.FC<Props> = ({ config, dias, mesAno, onImportDias })
     // Merge OCR data into existing dias
     const updatedDias = dias.map(d => {
       const reg = editableRegistros.find(r => r.dia === d.dia);
-      if (!reg || reg.marcacoes.length === 0) return d;
+      const semMarcacao = !reg || reg.marcacoes.length === 0;
+
+      // Campos vazios considerar folga automaticamente
+      if (vaziosFolga && semMarcacao && d.tipoDia !== 'feriado' && d.tipoDia !== 'folga_dsr' && d.tipoDia !== 'folga_comp_feriado') {
+        return { ...d, tipoDia: 'folga_dsr' as const };
+      }
+
+      if (semMarcacao) return d;
 
       // Pad or trim marcacoes to match config
       const marcacoes = Array(config.colunasMarcacoes).fill('');
@@ -259,7 +269,7 @@ const PontoOcrImport: React.FC<Props> = ({ config, dias, mesAno, onImportDias })
     setEditableRegistros([]);
 
     toast({ title: 'Marcações importadas!', description: 'Os horários do cartão de ponto foram preenchidos na grade.' });
-  }, [dias, editableRegistros, config.colunasMarcacoes, onImportDias]);
+  }, [dias, editableRegistros, config.colunasMarcacoes, onImportDias, vaziosFolga]);
 
   const confiancaColor = (c: string) => {
     if (c === 'alta') return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
@@ -443,16 +453,28 @@ const PontoOcrImport: React.FC<Props> = ({ config, dias, mesAno, onImportDias })
             </table>
           </div>
 
-          <div className="flex items-center justify-between pt-2 border-t">
-            <p className="text-xs text-muted-foreground">
-              ⚠️ Revise todos os horários antes de confirmar. Dados ilegíveis estão marcados em amarelo.
-            </p>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setShowReview(false)}>Cancelar</Button>
-              <Button onClick={handleConfirm} className="gap-1.5">
-                <CheckCircle className="w-4 h-4" />
-                Confirmar e Importar
-              </Button>
+          <div className="flex flex-col gap-3 pt-2 border-t">
+            <div className="flex items-center gap-2">
+              <Switch
+                id="ocr-vazios-folga"
+                checked={vaziosFolga}
+                onCheckedChange={setVaziosFolga}
+              />
+              <Label htmlFor="ocr-vazios-folga" className="text-sm cursor-pointer">
+                Campos vazios considerar folga automaticamente
+              </Label>
+            </div>
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">
+                ⚠️ Revise todos os horários antes de confirmar. Dados ilegíveis estão marcados em amarelo.
+              </p>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setShowReview(false)}>Cancelar</Button>
+                <Button onClick={handleConfirm} className="gap-1.5">
+                  <CheckCircle className="w-4 h-4" />
+                  Confirmar e Importar
+                </Button>
+              </div>
             </div>
           </div>
         </DialogContent>
