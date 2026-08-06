@@ -104,6 +104,7 @@ const PontoOcrImport: React.FC<Props> = ({ config, dias, mesAno, onImportDias })
   };
 
   const handleProcess = useCallback(async () => {
+    // (normalizeMarcacoes definido no escopo do módulo)
     if (files.length === 0) return;
     setIsProcessing(true);
     setProgress(10);
