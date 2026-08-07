@@ -79,6 +79,26 @@ export default function PerfilTab({ cliente, onClienteSaved }: { cliente: Client
     setPwd((data as any) || ''); setPwdLoaded(true); setShowPwd(true);
   };
 
+  // Carrega a senha do ponto automaticamente (mascarada) ao abrir o cliente
+  useEffect(() => {
+    let cancel = false;
+    (async () => {
+      const { data, error } = await supabase.rpc('get_timeclock_password' as any, { _client_id: cliente.id } as any);
+      if (cancel || error) return;
+      setPwd((data as any) || '');
+      setPwdLoaded(true);
+      setShowPwd(false);
+    })();
+    return () => { cancel = true; };
+  }, [cliente.id]);
+
+  const savePwd = async () => {
+    const { error } = await supabase.rpc('set_timeclock_password' as any, { _client_id: cliente.id, _password: pwd } as any);
+    if (error) { toast.error('Erro ao salvar senha do ponto: ' + error.message); return; }
+    setPwdLoaded(true);
+    toast.success('Senha do ponto salva.');
+  };
+
   const loadEwPwd = async () => {
     const { data, error } = await supabase.rpc('get_empregador_web_password' as any, { _client_id: cliente.id } as any);
     if (error) { toast.error('Sem permissão para ver a senha.'); return; }
@@ -240,6 +260,7 @@ export default function PerfilTab({ cliente, onClienteSaved }: { cliente: Client
                   <div className="flex gap-1">
                     <Input type={showPwd ? 'text' : 'password'} value={pwd} onChange={(e)=>{setPwd(e.target.value); setPwdLoaded(true);}} placeholder={pwdLoaded ? '' : '•••• (clique para carregar)'}/>
                     <Button type="button" variant="outline" size="icon" onClick={() => pwdLoaded ? setShowPwd(s=>!s) : loadPwd()}>{showPwd ? <EyeOff className="w-4 h-4"/> : <Eye className="w-4 h-4"/>}</Button>
+                    <Button type="button" variant="outline" size="icon" title="Salvar senha do ponto" onClick={savePwd}><Save className="w-4 h-4"/></Button>
                   </div>
                 </div>
                 <div className="md:col-span-3"><Label>Observações de acesso</Label><Textarea value={form.timeclock_notes} onChange={(e)=>set('timeclock_notes', e.target.value)}/></div>
