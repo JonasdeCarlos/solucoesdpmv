@@ -819,7 +819,44 @@ const ReciboPage = () => {
             <Button variant="outline" onClick={handleCopiarTexto}>
               <Copy className="w-4 h-4 mr-1" /> Copiar Recibo (Texto)
             </Button>
+            <Button variant="outline" onClick={handleIncluirNoLote}>
+              <Plus className="w-4 h-4 mr-1" /> Incluir Recibo (lote)
+            </Button>
           </div>
+
+          {lote.length > 0 && (
+            <div className="rounded-md border p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium">Recibos no lote ({lote.length})</p>
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={handleEmitirLote}>
+                    <FileDown className="w-4 h-4 mr-1" /> Emitir todos
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setLote([])}>
+                    Limpar lote
+                  </Button>
+                </div>
+              </div>
+              <div className="space-y-1 max-h-64 overflow-y-auto">
+                {lote.map((r, idx) => (
+                  <div key={idx} className="flex items-center justify-between gap-2 text-sm border rounded px-2 py-1">
+                    <span className="truncate">
+                      {r.recebedorNome || 'Sem nome'} • {r.competencia || 's/ competência'} •{' '}
+                      {formatCurrency(calcularTotaisRecibo(r.linhas, r.calcularFGTS, r.aliquotaFGTS).totalLiquido)}
+                    </span>
+                    <div className="flex gap-1">
+                      <Button size="sm" variant="outline" onClick={() => setRecibo(r)} title="Carregar">
+                        <FolderOpen className="h-4 w-4" />
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => handleRemoverDoLote(idx)} title="Remover">
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
