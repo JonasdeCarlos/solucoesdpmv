@@ -33,6 +33,14 @@ import {
 } from '@/utils/reciboHistory';
 
 const STORAGE_KEY = 'recibo_avulso_state_v1';
+const LOTE_KEY = 'recibo_avulso_lote_v1';
+
+function extrairPercentualDoNome(nome: string): number | null {
+  const m = nome.match(/(\d{1,3})\s*%/);
+  if (!m) return null;
+  const n = Number(m[1]);
+  return isNaN(n) ? null : Math.min(200, Math.max(0, n));
+}
 
 function loadPersistedRecibo() {
   try {
@@ -53,11 +61,23 @@ const ReciboPage = () => {
   const [currentReciboId, setCurrentReciboId] = useState<string | null>(null);
   const [savedRecibos, setSavedRecibos] = useState<SavedRecibo[]>(() => loadReciboHistory());
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [lote, setLote] = useState<ReciboData[]>(() => {
+    try {
+      const raw = localStorage.getItem(LOTE_KEY);
+      return raw ? (JSON.parse(raw) as ReciboData[]) : [];
+    } catch {
+      return [];
+    }
+  });
   const { toast } = useToast();
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(recibo));
   }, [recibo]);
+
+  useEffect(() => {
+    localStorage.setItem(LOTE_KEY, JSON.stringify(lote));
+  }, [lote]);
 
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
@@ -148,7 +168,9 @@ const ReciboPage = () => {
     const v = verbasDB.find((vb) => vb.id === verbaId);
     if (!v) return;
     const linhaId = crypto.randomUUID();
-    const percentDefault = v.tipoCalculo === 'hora_extra' ? 50 : v.tipoCalculo === 'adicional_noturno' ? 20 : 0;
+    const percentNome = extrairPercentualDoNome(v.nome);
+    const percentDefault =
+      percentNome ?? (v.tipoCalculo === 'hora_extra' ? 50 : v.tipoCalculo === 'adicional_noturno' ? 20 : 0);
     const novaLinha: ReciboLinha = {
       id: linhaId,
       descricao: v.nome,
@@ -159,29 +181,10 @@ const ReciboPage = () => {
       tipoCalculo: v.tipoCalculo,
       quantidade: 0,
       adicionalPercent: percentDefault,
+      geraDSR: v.calculaDSR,
     };
-    const novasLinhas: ReciboLinha[] = [novaLinha];
 
-    if (v.calculaDSR) {
-      novasLinhas.push({
-        id: crypto.randomUUID(),
-        descricao: `DSR ${v.nome}`,
-        pd: v.padraoPD,
-        ref: '', // will be set in setRecibo with diasNaoUteis
-        valor: 0,
-        incideFGTS: v.incideFGTS,
-        tipoCalculo: 'manual',
-        isDSR: true,
-        dsrParentId: linhaId,
-      });
-    }
-
-    setRecibo((prev) => ({
-      ...prev,
-      linhas: [...prev.linhas, ...novasLinhas.map((l) =>
-        l.isDSR ? { ...l, ref: String(prev.diasNaoUteis || '') } : l
-      )],
-    }));
+    setRecibo((prev) => ({ ...prev, linhas: [...prev.linhas, novaLinha] }));
   };
 
   // Adicionar linha manual
@@ -226,7 +229,35 @@ const ReciboPage = () => {
         }
         return l;
       });
-      // Second pass: calculate DSR lines based on parent value
+      // Second pass: gerar automaticamente as linhas de DSR das verbas marcadas
+      const resultado: ReciboLinha[] = [];
+      for (const l of linhas) {
+        if (l.isDSR) {
+          const parent = linhas.find((p) => p.id === l.dsrParentId);
+          if (!parent || !parent.geraDSR) continue; // remove DSR órfão
+          continue; // será recriado logo após o pai
+        }
+        resultado.push(l);
+        if (l.geraDSR) {
+          const existente = linhas.find((d) => d.isDSR && d.dsrParentId === l.id);
+          const dsrValor =
+            prev.diasUteis > 0
+              ? Math.round((l.valor / prev.diasUteis) * prev.diasNaoUteis * 100) / 100
+              : 0;
+          resultado.push({
+            id: existente?.id ?? crypto.randomUUID(),
+            descricao: `DSR ${l.descricao}`,
+            pd: l.pd,
+            ref: String(prev.diasNaoUteis || ''),
+            valor: dsrValor,
+            incideFGTS: l.incideFGTS,
+            tipoCalculo: 'manual',
+            isDSR: true,
+            dsrParentId: l.id,
+          });
+        }
+      }
+      linhas = resultado;
       linhas = linhas.map((l) => {
         if (l.isDSR && l.dsrParentId) {
           const parent = linhas.find((p) => p.id === l.dsrParentId);
@@ -240,6 +271,26 @@ const ReciboPage = () => {
       return { ...prev, linhas };
     });
     toast({ title: 'Valores calculados!' });
+  };
+
+  // Lote de recibos
+  const handleIncluirNoLote = () => {
+    if (!recibo.recebedorNome.trim()) {
+      toast({ title: 'Informe o nome do recebedor antes de incluir', variant: 'destructive' });
+      return;
+    }
+    setLote((prev) => [...prev, JSON.parse(JSON.stringify(recibo)) as ReciboData]);
+    toast({ title: 'Recibo incluído no lote' });
+  };
+
+  const handleRemoverDoLote = (idx: number) => {
+    setLote((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleEmitirLote = () => {
+    if (lote.length === 0) return;
+    lote.forEach((r, i) => setTimeout(() => generateReciboPDF(r), i * 350));
+    toast({ title: `Emitindo ${lote.length} recibo(s)...` });
   };
 
   // Totais
@@ -561,7 +612,7 @@ const ReciboPage = () => {
                     <TableHead className="text-card">Descrição</TableHead>
                     <TableHead className="text-card w-16">P/D</TableHead>
                     <TableHead className="text-card w-20">REF.</TableHead>
-                    <TableHead className="text-card w-20">Qtd</TableHead>
+                    <TableHead className="text-card w-20">%</TableHead>
                     <TableHead className="text-card w-28">Valor (R$)</TableHead>
                     <TableHead className="text-card w-16">FGTS</TableHead>
                     <TableHead className="text-card w-12"></TableHead>
@@ -573,7 +624,15 @@ const ReciboPage = () => {
                       <TableCell>
                         <Input
                           value={l.descricao}
-                          onChange={(e) => updateLinha(l.id, { descricao: e.target.value })}
+                          onChange={(e) => {
+                            const nome = e.target.value;
+                            const updates: Partial<ReciboLinha> = { descricao: nome };
+                            if (l.tipoCalculo === 'hora_extra' || l.tipoCalculo === 'adicional_noturno') {
+                              const p = extrairPercentualDoNome(nome);
+                              if (p !== null) updates.adicionalPercent = p;
+                            }
+                            updateLinha(l.id, updates);
+                          }}
                           className="h-8 text-sm"
                         />
                       </TableCell>
@@ -634,60 +693,17 @@ const ReciboPage = () => {
                         />
                       </TableCell>
                       <TableCell>
-                        {l.tipoCalculo !== 'manual' && (
-                          <div className="flex items-center gap-1">
-                            {(l.tipoCalculo === 'hora_extra' || l.tipoCalculo === 'horas' || l.tipoCalculo === 'adicional_noturno') ? (
-                              <Input
-                                type="text"
-                                value={l._horaInput ?? String(l.quantidade || '')}
-                                onChange={(e) => {
-                                  const raw = e.target.value;
-                                  // Allow typing HH:MM format
-                                  if (/^\d{0,3}(:\d{0,2})?$/.test(raw) || /^\d*[,.]?\d*$/.test(raw)) {
-                                    const updates: Partial<ReciboLinha> = { _horaInput: raw } as any;
-                                    // Parse on the fly
-                                    if (raw.includes(':')) {
-                                      const [h, m] = raw.split(':');
-                                      const hours = Number(h) || 0;
-                                      const mins = Number(m) || 0;
-                                      updates.quantidade = Math.round((hours + mins / 60) * 100) / 100;
-                                    } else {
-                                      updates.quantidade = Number(raw.replace(',', '.')) || 0;
-                                    }
-                                    updateLinha(l.id, updates);
-                                  }
-                                }}
-                                onBlur={() => {
-                                  // Format display on blur
-                                  const val = l.quantidade || 0;
-                                  updateLinha(l.id, { _horaInput: String(val) } as any);
-                                }}
-                                className="h-8 text-sm w-20"
-                                placeholder="1:30"
-                                title="Ex: 1:30 = 1,50h centesimal"
-                              />
-                            ) : (
-                              <Input
-                                type="number"
-                                value={l.quantidade || ''}
-                                onChange={(e) => updateLinha(l.id, { quantidade: Number(e.target.value) })}
-                                className="h-8 text-sm w-16"
-                                placeholder="0"
-                              />
-                            )}
-                            {(l.tipoCalculo === 'hora_extra' || l.tipoCalculo === 'adicional_noturno') && (
-                              <div className="flex items-center gap-0.5">
-                                <Input
-                                  type="number"
-                                  min={0}
-                                  max={200}
-                                  value={l.adicionalPercent ?? (l.tipoCalculo === 'hora_extra' ? 50 : 20)}
-                                  onChange={(e) => updateLinha(l.id, { adicionalPercent: Math.min(200, Math.max(0, Number(e.target.value))) })}
-                                  className="h-8 text-sm w-[4.5rem]"
-                                />
-                                <span className="text-xs text-muted-foreground">%</span>
-                              </div>
-                            )}
+                        {(l.tipoCalculo === 'hora_extra' || l.tipoCalculo === 'adicional_noturno') && (
+                          <div className="flex items-center gap-0.5">
+                            <Input
+                              type="number"
+                              min={0}
+                              max={200}
+                              value={l.adicionalPercent ?? (l.tipoCalculo === 'hora_extra' ? 50 : 20)}
+                              onChange={(e) => updateLinha(l.id, { adicionalPercent: Math.min(200, Math.max(0, Number(e.target.value))) })}
+                              className="h-8 text-sm w-[4.5rem]"
+                            />
+                            <span className="text-xs text-muted-foreground">%</span>
                           </div>
                         )}
                       </TableCell>
@@ -803,7 +819,44 @@ const ReciboPage = () => {
             <Button variant="outline" onClick={handleCopiarTexto}>
               <Copy className="w-4 h-4 mr-1" /> Copiar Recibo (Texto)
             </Button>
+            <Button variant="outline" onClick={handleIncluirNoLote}>
+              <Plus className="w-4 h-4 mr-1" /> Incluir Recibo (lote)
+            </Button>
           </div>
+
+          {lote.length > 0 && (
+            <div className="rounded-md border p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium">Recibos no lote ({lote.length})</p>
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={handleEmitirLote}>
+                    <FileDown className="w-4 h-4 mr-1" /> Emitir todos
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setLote([])}>
+                    Limpar lote
+                  </Button>
+                </div>
+              </div>
+              <div className="space-y-1 max-h-64 overflow-y-auto">
+                {lote.map((r, idx) => (
+                  <div key={idx} className="flex items-center justify-between gap-2 text-sm border rounded px-2 py-1">
+                    <span className="truncate">
+                      {r.recebedorNome || 'Sem nome'} • {r.competencia || 's/ competência'} •{' '}
+                      {formatCurrency(calcularTotaisRecibo(r.linhas, r.calcularFGTS, r.aliquotaFGTS).totalLiquido)}
+                    </span>
+                    <div className="flex gap-1">
+                      <Button size="sm" variant="outline" onClick={() => setRecibo(r)} title="Carregar">
+                        <FolderOpen className="h-4 w-4" />
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => handleRemoverDoLote(idx)} title="Remover">
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

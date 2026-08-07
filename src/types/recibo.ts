@@ -13,6 +13,7 @@ export interface ReciboLinha {
   // DSR automático
   isDSR?: boolean;
   dsrParentId?: string; // id da linha que originou este DSR
+  geraDSR?: boolean; // marca que esta verba gera linha de DSR no cálculo
 }
 
 export interface ReciboData {
