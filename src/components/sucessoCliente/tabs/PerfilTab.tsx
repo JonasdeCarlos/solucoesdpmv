@@ -79,6 +79,26 @@ export default function PerfilTab({ cliente, onClienteSaved }: { cliente: Client
     setPwd((data as any) || ''); setPwdLoaded(true); setShowPwd(true);
   };
 
+  // Carrega a senha do ponto automaticamente (mascarada) ao abrir o cliente
+  useEffect(() => {
+    let cancel = false;
+    (async () => {
+      const { data, error } = await supabase.rpc('get_timeclock_password' as any, { _client_id: cliente.id } as any);
+      if (cancel || error) return;
+      setPwd((data as any) || '');
+      setPwdLoaded(true);
+      setShowPwd(false);
+    })();
+    return () => { cancel = true; };
+  }, [cliente.id]);
+
+  const savePwd = async () => {
+    const { error } = await supabase.rpc('set_timeclock_password' as any, { _client_id: cliente.id, _password: pwd } as any);
+    if (error) { toast.error('Erro ao salvar senha do ponto: ' + error.message); return; }
+    setPwdLoaded(true);
+    toast.success('Senha do ponto salva.');
+  };
+
   const loadEwPwd = async () => {
     const { data, error } = await supabase.rpc('get_empregador_web_password' as any, { _client_id: cliente.id } as any);
     if (error) { toast.error('Sem permissão para ver a senha.'); return; }
