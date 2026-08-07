@@ -33,6 +33,14 @@ import {
 } from '@/utils/reciboHistory';
 
 const STORAGE_KEY = 'recibo_avulso_state_v1';
+const LOTE_KEY = 'recibo_avulso_lote_v1';
+
+function extrairPercentualDoNome(nome: string): number | null {
+  const m = nome.match(/(\d{1,3})\s*%/);
+  if (!m) return null;
+  const n = Number(m[1]);
+  return isNaN(n) ? null : Math.min(200, Math.max(0, n));
+}
 
 function loadPersistedRecibo() {
   try {
@@ -53,11 +61,23 @@ const ReciboPage = () => {
   const [currentReciboId, setCurrentReciboId] = useState<string | null>(null);
   const [savedRecibos, setSavedRecibos] = useState<SavedRecibo[]>(() => loadReciboHistory());
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [lote, setLote] = useState<ReciboData[]>(() => {
+    try {
+      const raw = localStorage.getItem(LOTE_KEY);
+      return raw ? (JSON.parse(raw) as ReciboData[]) : [];
+    } catch {
+      return [];
+    }
+  });
   const { toast } = useToast();
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(recibo));
   }, [recibo]);
+
+  useEffect(() => {
+    localStorage.setItem(LOTE_KEY, JSON.stringify(lote));
+  }, [lote]);
 
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
@@ -148,7 +168,9 @@ const ReciboPage = () => {
     const v = verbasDB.find((vb) => vb.id === verbaId);
     if (!v) return;
     const linhaId = crypto.randomUUID();
-    const percentDefault = v.tipoCalculo === 'hora_extra' ? 50 : v.tipoCalculo === 'adicional_noturno' ? 20 : 0;
+    const percentNome = extrairPercentualDoNome(v.nome);
+    const percentDefault =
+      percentNome ?? (v.tipoCalculo === 'hora_extra' ? 50 : v.tipoCalculo === 'adicional_noturno' ? 20 : 0);
     const novaLinha: ReciboLinha = {
       id: linhaId,
       descricao: v.nome,
@@ -159,29 +181,10 @@ const ReciboPage = () => {
       tipoCalculo: v.tipoCalculo,
       quantidade: 0,
       adicionalPercent: percentDefault,
+      geraDSR: v.calculaDSR,
     };
-    const novasLinhas: ReciboLinha[] = [novaLinha];
 
-    if (v.calculaDSR) {
-      novasLinhas.push({
-        id: crypto.randomUUID(),
-        descricao: `DSR ${v.nome}`,
-        pd: v.padraoPD,
-        ref: '', // will be set in setRecibo with diasNaoUteis
-        valor: 0,
-        incideFGTS: v.incideFGTS,
-        tipoCalculo: 'manual',
-        isDSR: true,
-        dsrParentId: linhaId,
-      });
-    }
-
-    setRecibo((prev) => ({
-      ...prev,
-      linhas: [...prev.linhas, ...novasLinhas.map((l) =>
-        l.isDSR ? { ...l, ref: String(prev.diasNaoUteis || '') } : l
-      )],
-    }));
+    setRecibo((prev) => ({ ...prev, linhas: [...prev.linhas, novaLinha] }));
   };
 
   // Adicionar linha manual
@@ -226,7 +229,35 @@ const ReciboPage = () => {
         }
         return l;
       });
-      // Second pass: calculate DSR lines based on parent value
+      // Second pass: gerar automaticamente as linhas de DSR das verbas marcadas
+      const resultado: ReciboLinha[] = [];
+      for (const l of linhas) {
+        if (l.isDSR) {
+          const parent = linhas.find((p) => p.id === l.dsrParentId);
+          if (!parent || !parent.geraDSR) continue; // remove DSR órfão
+          continue; // será recriado logo após o pai
+        }
+        resultado.push(l);
+        if (l.geraDSR) {
+          const existente = linhas.find((d) => d.isDSR && d.dsrParentId === l.id);
+          const dsrValor =
+            prev.diasUteis > 0
+              ? Math.round((l.valor / prev.diasUteis) * prev.diasNaoUteis * 100) / 100
+              : 0;
+          resultado.push({
+            id: existente?.id ?? crypto.randomUUID(),
+            descricao: `DSR ${l.descricao}`,
+            pd: l.pd,
+            ref: String(prev.diasNaoUteis || ''),
+            valor: dsrValor,
+            incideFGTS: l.incideFGTS,
+            tipoCalculo: 'manual',
+            isDSR: true,
+            dsrParentId: l.id,
+          });
+        }
+      }
+      linhas = resultado;
       linhas = linhas.map((l) => {
         if (l.isDSR && l.dsrParentId) {
           const parent = linhas.find((p) => p.id === l.dsrParentId);
@@ -240,6 +271,26 @@ const ReciboPage = () => {
       return { ...prev, linhas };
     });
     toast({ title: 'Valores calculados!' });
+  };
+
+  // Lote de recibos
+  const handleIncluirNoLote = () => {
+    if (!recibo.recebedorNome.trim()) {
+      toast({ title: 'Informe o nome do recebedor antes de incluir', variant: 'destructive' });
+      return;
+    }
+    setLote((prev) => [...prev, JSON.parse(JSON.stringify(recibo)) as ReciboData]);
+    toast({ title: 'Recibo incluído no lote' });
+  };
+
+  const handleRemoverDoLote = (idx: number) => {
+    setLote((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleEmitirLote = () => {
+    if (lote.length === 0) return;
+    lote.forEach((r, i) => setTimeout(() => generateReciboPDF(r), i * 350));
+    toast({ title: `Emitindo ${lote.length} recibo(s)...` });
   };
 
   // Totais
