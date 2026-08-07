@@ -612,7 +612,7 @@ const ReciboPage = () => {
                     <TableHead className="text-card">Descrição</TableHead>
                     <TableHead className="text-card w-16">P/D</TableHead>
                     <TableHead className="text-card w-20">REF.</TableHead>
-                    <TableHead className="text-card w-20">Qtd</TableHead>
+                    <TableHead className="text-card w-20">%</TableHead>
                     <TableHead className="text-card w-28">Valor (R$)</TableHead>
                     <TableHead className="text-card w-16">FGTS</TableHead>
                     <TableHead className="text-card w-12"></TableHead>
@@ -624,7 +624,15 @@ const ReciboPage = () => {
                       <TableCell>
                         <Input
                           value={l.descricao}
-                          onChange={(e) => updateLinha(l.id, { descricao: e.target.value })}
+                          onChange={(e) => {
+                            const nome = e.target.value;
+                            const updates: Partial<ReciboLinha> = { descricao: nome };
+                            if (l.tipoCalculo === 'hora_extra' || l.tipoCalculo === 'adicional_noturno') {
+                              const p = extrairPercentualDoNome(nome);
+                              if (p !== null) updates.adicionalPercent = p;
+                            }
+                            updateLinha(l.id, updates);
+                          }}
                           className="h-8 text-sm"
                         />
                       </TableCell>
