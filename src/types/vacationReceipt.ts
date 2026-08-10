@@ -101,9 +101,11 @@ export function roundVacationValue(value: number): number {
 
 export function calculateVacationReceipt(data: VacationReceiptData): VacationCalculationResult {
   const baseRemuneration = roundVacationValue(data.salaryBase + data.avgVariables + data.otherPayItems);
-  const vacationValue = roundVacationValue((baseRemuneration / 30) * data.vacationDays);
+  const abonoDays = data.abonoEnabled ? Math.min(data.abonoDays || 0, data.vacationDays) : 0;
+  const effectiveLeaveDays = Math.max(0, data.vacationDays - abonoDays);
+  const vacationValue = roundVacationValue((baseRemuneration / 30) * effectiveLeaveDays);
   const oneThirdValue = data.skipOneThird ? 0 : roundVacationValue(vacationValue / 3);
-  const abonoValue = data.abonoEnabled ? roundVacationValue((baseRemuneration / 30) * data.abonoDays) : 0;
+  const abonoValue = abonoDays > 0 ? roundVacationValue((baseRemuneration / 30) * abonoDays) : 0;
   const abonoOneThirdValue = data.abonoEnabled && !data.skipOneThird ? roundVacationValue(abonoValue / 3) : 0;
   const grossTotal = roundVacationValue(vacationValue + oneThirdValue + abonoValue + abonoOneThirdValue);
   const netTotal = roundVacationValue(grossTotal - data.discountsValue);
@@ -113,7 +115,7 @@ export function calculateVacationReceipt(data: VacationReceiptData): VacationCal
     oneThirdValue,
     abonoValue,
     abonoOneThirdValue,
-    effectiveLeaveDays: Math.max(0, data.vacationDays - (data.abonoEnabled ? data.abonoDays : 0)),
+    effectiveLeaveDays,
     grossTotal,
     netTotal,
   };

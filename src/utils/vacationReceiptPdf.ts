@@ -112,7 +112,7 @@ export function generateVacationReceiptPDF(data: VacationReceiptData, result: Va
   doc.setFontSize(8.5);
   const memo = [
     `RB = ${[data.salaryBase, data.avgVariables, data.otherPayItems].filter(hasValue).map(formatCurrency).join(' + ')} = ${formatCurrency(result.baseRemuneration)}`,
-    `VF = RB ÷ 30 × ${data.vacationDays} = ${formatCurrency(result.vacationValue)}`,
+    `VF = RB ÷ 30 × ${result.effectiveLeaveDays} (dias de gozo, já descontado o abono) = ${formatCurrency(result.vacationValue)}`,
     ...(data.skipOneThird ? ['1/3 constitucional não calculado (opção selecionada).'] : [`T = VF ÷ 3 = ${formatCurrency(result.oneThirdValue)}`]),
     ...(data.abonoEnabled && result.abonoValue > 0 ? [`VA = RB ÷ 30 × ${data.abonoDays} = ${formatCurrency(result.abonoValue)}${data.skipOneThird ? '' : `; TA = VA ÷ 3 = ${formatCurrency(result.abonoOneThirdValue)}`}`] : []),
     data.discountsValue > 0 ? `Líquido = ${formatCurrency(result.grossTotal)} - ${formatCurrency(data.discountsValue)} = ${formatCurrency(result.netTotal)}` : `Líquido = ${formatCurrency(result.netTotal)}`,
