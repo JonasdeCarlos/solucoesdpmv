@@ -91,6 +91,8 @@ export default function PdfAnnotationEditor({ file, onExit, initialSession }: Pr
   const [magnifierStep, setMagnifierStep] = useState<0 | 1>(0); // 0=source, 1=target
   const [pendingMag, setPendingMag] = useState<{ src: { x: number; y: number; w: number; h: number } } | null>(null);
   const arrayBufferRef = useRef<ArrayBuffer | null>(null);
+  const dragRef = useRef<{ id: string; startX: number; startY: number; orig: Annotation } | null>(null);
+  const [dragging, setDragging] = useState(false);
 
   // Load PDF
   useEffect(() => {
@@ -270,6 +272,21 @@ export default function PdfAnnotationEditor({ file, onExit, initialSession }: Pr
   };
 
   const onMouseMove = (e: React.MouseEvent) => {
+    if (dragRef.current) {
+      const p = svgToPageCoords(e);
+      const { orig, startX, startY } = dragRef.current;
+      const dx = p.x - startX;
+      const dy = p.y - startY;
+      const patch: Partial<Annotation> = {};
+      if (orig.x != null) patch.x = orig.x + dx;
+      if (orig.y != null) patch.y = orig.y + dy;
+      if (orig.x2 != null) patch.x2 = orig.x2 + dx;
+      if (orig.y2 != null) patch.y2 = orig.y2 + dy;
+      if (orig.points) patch.points = orig.points.map((pt) => ({ x: pt.x + dx, y: pt.y + dy }));
+      if (orig.magnifier) patch.magnifier = { ...orig.magnifier };
+      updateAnnotation(orig.id, patch);
+      return;
+    }
     if (!drawing) return;
     const p = svgToPageCoords(e);
     setDrawing((d) => {
@@ -285,6 +302,11 @@ export default function PdfAnnotationEditor({ file, onExit, initialSession }: Pr
   };
 
   const onMouseUp = () => {
+    if (dragRef.current) {
+      dragRef.current = null;
+      setDragging(false);
+      return;
+    }
     if (!drawing) return;
     let d = drawing;
     // normalize negative width/height
