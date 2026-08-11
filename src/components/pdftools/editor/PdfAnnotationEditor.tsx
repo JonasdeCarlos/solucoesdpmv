@@ -690,6 +690,11 @@ export default function PdfAnnotationEditor({ file, onExit, initialSession }: Pr
                 {tool === 'magnifier' && ` (passo ${magnifierStep + 1}/2)`}
               </span>
             )}
+            {tool === 'select' && (
+              <span className="text-xs text-muted-foreground">
+                Arraste para mover a marcação · duplo clique para editar o texto
+              </span>
+            )}
           </div>
           <div className="p-4 flex justify-center">
             <div className="relative shadow-lg" style={{ width: pageSize.w, height: pageSize.h }}>
