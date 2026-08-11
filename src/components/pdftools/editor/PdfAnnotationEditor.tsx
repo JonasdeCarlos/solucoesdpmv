@@ -91,6 +91,8 @@ export default function PdfAnnotationEditor({ file, onExit, initialSession }: Pr
   const [magnifierStep, setMagnifierStep] = useState<0 | 1>(0); // 0=source, 1=target
   const [pendingMag, setPendingMag] = useState<{ src: { x: number; y: number; w: number; h: number } } | null>(null);
   const arrayBufferRef = useRef<ArrayBuffer | null>(null);
+  const dragRef = useRef<{ id: string; startX: number; startY: number; orig: Annotation } | null>(null);
+  const [dragging, setDragging] = useState(false);
 
   // Load PDF
   useEffect(() => {
@@ -270,6 +272,21 @@ export default function PdfAnnotationEditor({ file, onExit, initialSession }: Pr
   };
 
   const onMouseMove = (e: React.MouseEvent) => {
+    if (dragRef.current) {
+      const p = svgToPageCoords(e);
+      const { orig, startX, startY } = dragRef.current;
+      const dx = p.x - startX;
+      const dy = p.y - startY;
+      const patch: Partial<Annotation> = {};
+      if (orig.x != null) patch.x = orig.x + dx;
+      if (orig.y != null) patch.y = orig.y + dy;
+      if (orig.x2 != null) patch.x2 = orig.x2 + dx;
+      if (orig.y2 != null) patch.y2 = orig.y2 + dy;
+      if (orig.points) patch.points = orig.points.map((pt) => ({ x: pt.x + dx, y: pt.y + dy }));
+      if (orig.magnifier) patch.magnifier = { ...orig.magnifier };
+      updateAnnotation(orig.id, patch);
+      return;
+    }
     if (!drawing) return;
     const p = svgToPageCoords(e);
     setDrawing((d) => {
@@ -285,6 +302,11 @@ export default function PdfAnnotationEditor({ file, onExit, initialSession }: Pr
   };
 
   const onMouseUp = () => {
+    if (dragRef.current) {
+      dragRef.current = null;
+      setDragging(false);
+      return;
+    }
     if (!drawing) return;
     let d = drawing;
     // normalize negative width/height
@@ -392,8 +414,25 @@ export default function PdfAnnotationEditor({ file, onExit, initialSession }: Pr
   const renderShape = (a: Annotation, isDrawing = false) => {
     const stroke = Math.max(1, (a.strokeWidth ?? 0.003) * Math.min(pageSize.w, pageSize.h));
     const common = { stroke: a.color || '#e53935', strokeWidth: stroke, fill: 'none', opacity: a.opacity ?? 1 };
-    const onClick = (e: React.MouseEvent) => {
-      if (tool === 'select') { e.stopPropagation(); setSelectedId(a.id); }
+    const handlers = {
+      onClick: (e: React.MouseEvent) => {
+        if (tool === 'select') { e.stopPropagation(); setSelectedId(a.id); }
+      },
+      onMouseDown: (e: React.MouseEvent) => {
+        if (tool !== 'select' || isDrawing) return;
+        e.stopPropagation();
+        e.preventDefault();
+        setSelectedId(a.id);
+        const p = svgToPageCoords(e);
+        dragRef.current = { id: a.id, startX: p.x, startY: p.y, orig: a };
+        setDragging(true);
+      },
+      onDoubleClick: (e: React.MouseEvent) => {
+        if (a.type !== 'text' && a.type !== 'comment') return;
+        e.stopPropagation();
+        const v = window.prompt('Editar texto:', a.content || '');
+        if (v != null) updateAnnotation(a.id, { content: v });
+      },
     };
     switch (a.type) {
       case 'highlight':
@@ -403,35 +442,35 @@ export default function PdfAnnotationEditor({ file, onExit, initialSession }: Pr
         if (a.x == null || a.y == null || a.w == null || a.h == null) return null;
         if (a.type === 'highlight') {
           return <rect key={a.id} x={nx(a.x)} y={ny(a.y)} width={nx(a.w)} height={ny(a.h)}
-            fill={a.color} opacity={(a.opacity ?? 0.6)} onClick={onClick} style={{ cursor: 'pointer' }} />;
+            fill={a.color} opacity={(a.opacity ?? 0.6)} {...handlers} style={{ cursor: tool === 'select' ? 'move' : 'pointer' }} />;
         }
         if (a.type === 'underline') {
           return <line key={a.id} x1={nx(a.x)} y1={ny(a.y + a.h)} x2={nx(a.x + a.w)} y2={ny(a.y + a.h)}
-            {...common} onClick={onClick} style={{ cursor: 'pointer' }} />;
+            {...common} {...handlers} style={{ cursor: tool === 'select' ? 'move' : 'pointer' }} />;
         }
         if (a.type === 'strike') {
           return <line key={a.id} x1={nx(a.x)} y1={ny(a.y + a.h / 2)} x2={nx(a.x + a.w)} y2={ny(a.y + a.h / 2)}
-            {...common} onClick={onClick} style={{ cursor: 'pointer' }} />;
+            {...common} {...handlers} style={{ cursor: tool === 'select' ? 'move' : 'pointer' }} />;
         }
         return <rect key={a.id} x={nx(a.x)} y={ny(a.y)} width={nx(a.w)} height={ny(a.h)}
-          {...common} fill={a.fill || 'none'} onClick={onClick} style={{ cursor: 'pointer' }} />;
+          {...common} fill={a.fill || 'none'} {...handlers} style={{ cursor: tool === 'select' ? 'move' : 'pointer' }} />;
       case 'circle':
         if (a.x == null || a.y == null || a.w == null || a.h == null) return null;
         return <ellipse key={a.id}
           cx={nx(a.x + a.w / 2)} cy={ny(a.y + a.h / 2)}
           rx={Math.abs(nx(a.w) / 2)} ry={Math.abs(ny(a.h) / 2)}
-          {...common} onClick={onClick} style={{ cursor: 'pointer' }} />;
+          {...common} {...handlers} style={{ cursor: tool === 'select' ? 'move' : 'pointer' }} />;
       case 'line':
         if (a.x == null || a.x2 == null) return null;
         return <line key={a.id} x1={nx(a.x)} y1={ny(a.y!)} x2={nx(a.x2)} y2={ny(a.y2!)}
-          {...common} onClick={onClick} style={{ cursor: 'pointer' }} />;
+          {...common} {...handlers} style={{ cursor: tool === 'select' ? 'move' : 'pointer' }} />;
       case 'arrow': {
         if (a.x == null || a.x2 == null) return null;
         const sx = nx(a.x), sy = ny(a.y!), ex = nx(a.x2), ey = ny(a.y2!);
         const ang = Math.atan2(ey - sy, ex - sx);
         const head = Math.max(8, stroke * 4);
         return (
-          <g key={a.id} onClick={onClick} style={{ cursor: 'pointer' }}>
+          <g key={a.id} {...handlers} style={{ cursor: tool === 'select' ? 'move' : 'pointer' }}>
             <line x1={sx} y1={sy} x2={ex} y2={ey} {...common} />
             <line x1={ex} y1={ey} x2={ex - head * Math.cos(ang - Math.PI / 6)} y2={ey - head * Math.sin(ang - Math.PI / 6)} {...common} />
             <line x1={ex} y1={ey} x2={ex - head * Math.cos(ang + Math.PI / 6)} y2={ey - head * Math.sin(ang + Math.PI / 6)} {...common} />
@@ -441,12 +480,12 @@ export default function PdfAnnotationEditor({ file, onExit, initialSession }: Pr
       case 'freehand': {
         if (!a.points || a.points.length < 2) return null;
         const d = a.points.map((p, i) => `${i === 0 ? 'M' : 'L'}${nx(p.x)},${ny(p.y)}`).join(' ');
-        return <path key={a.id} d={d} {...common} strokeLinecap="round" strokeLinejoin="round" onClick={onClick} style={{ cursor: 'pointer' }} />;
+        return <path key={a.id} d={d} {...common} strokeLinecap="round" strokeLinejoin="round" {...handlers} style={{ cursor: tool === 'select' ? 'move' : 'pointer' }} />;
       }
       case 'text':
         if (a.x == null || a.y == null) return null;
         return (
-          <g key={a.id} onClick={onClick} style={{ cursor: 'pointer' }}>
+          <g key={a.id} {...handlers} style={{ cursor: tool === 'select' ? 'move' : 'pointer' }}>
             {a.fill && (
               <rect x={nx(a.x) - 2} y={ny(a.y)} width={((a.content || '').length) * (a.fontSize || 0.02) * pageSize.w * 0.55} height={(a.fontSize || 0.02) * pageSize.h * 1.4} fill={a.fill} opacity={a.opacity ?? 0.9} />
             )}
@@ -462,7 +501,7 @@ export default function PdfAnnotationEditor({ file, onExit, initialSession }: Pr
       case 'comment': {
         if (a.x == null || a.y == null) return null;
         return (
-          <g key={a.id} onClick={onClick} style={{ cursor: 'pointer' }}>
+          <g key={a.id} {...handlers} style={{ cursor: tool === 'select' ? 'move' : 'pointer' }}>
             <circle cx={nx(a.x)} cy={ny(a.y)} r={10} fill={a.color || '#f59e0b'} stroke="#fff" strokeWidth={2} />
             <text x={nx(a.x)} y={ny(a.y) + 4} fontSize={12} fill="#fff" textAnchor="middle" fontWeight="bold">!</text>
           </g>
@@ -473,7 +512,7 @@ export default function PdfAnnotationEditor({ file, onExit, initialSession }: Pr
         const label = a.content || (a.stampKind || '').toUpperCase();
         const fs = (a.fontSize || 0.028) * Math.min(pageSize.w, pageSize.h);
         return (
-          <g key={a.id} onClick={onClick} style={{ cursor: 'pointer' }}>
+          <g key={a.id} {...handlers} style={{ cursor: tool === 'select' ? 'move' : 'pointer' }}>
             <text x={nx(a.x)} y={ny(a.y) + fs} fontSize={fs} fontWeight="bold" fill={a.color} stroke={a.color} strokeWidth={0.5}>
               {label}
             </text>
@@ -484,7 +523,7 @@ export default function PdfAnnotationEditor({ file, onExit, initialSession }: Pr
         if (a.x == null || a.y == null || a.w == null || a.h == null || !a.magnifier) return null;
         const src = a.magnifier.src;
         return (
-          <g key={a.id} onClick={onClick} style={{ cursor: 'pointer' }}>
+          <g key={a.id} {...handlers} style={{ cursor: tool === 'select' ? 'move' : 'pointer' }}>
             <rect x={nx(src.x)} y={ny(src.y)} width={nx(src.w)} height={ny(src.h)}
               fill="none" stroke={a.color} strokeWidth={1.5} strokeDasharray="4 3" />
             <rect x={nx(a.x)} y={ny(a.y)} width={nx(a.w)} height={ny(a.h)}
@@ -649,6 +688,11 @@ export default function PdfAnnotationEditor({ file, onExit, initialSession }: Pr
               <span className="text-xs text-primary">
                 Ferramenta: {TOOL_LABELS[tool]}
                 {tool === 'magnifier' && ` (passo ${magnifierStep + 1}/2)`}
+              </span>
+            )}
+            {tool === 'select' && (
+              <span className="text-xs text-muted-foreground">
+                Arraste para mover a marcação · duplo clique para editar o texto
               </span>
             )}
           </div>
