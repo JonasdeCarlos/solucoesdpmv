@@ -14,6 +14,10 @@ class SectionErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error) {
     console.error('[admissao] falha ao renderizar seção:', error);
+    // Erros de DOM causados por extensões/tradução automática: tenta remontar a seção
+    if (/removeChild|insertBefore|is not a child of this node|não é filho/i.test(error.message)) {
+      setTimeout(() => this.setState({ error: null }), 50);
+    }
   }
 
   render() {
@@ -23,9 +27,17 @@ class SectionErrorBoundary extends Component<Props, State> {
           <AlertTriangle className="w-6 h-6 mx-auto text-destructive" />
           <p className="text-sm font-medium">Não foi possível carregar esta seção.</p>
           <p className="text-xs text-muted-foreground">{this.state.error.message}</p>
-          <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
-            Recarregar página
-          </Button>
+          <p className="text-xs text-muted-foreground">
+            Se o navegador estiver traduzindo a página, desative a tradução automática e tente novamente.
+          </p>
+          <div className="flex gap-2 justify-center">
+            <Button variant="outline" size="sm" onClick={() => this.setState({ error: null })}>
+              Tentar novamente
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+              Recarregar página
+            </Button>
+          </div>
         </div>
       );
     }
