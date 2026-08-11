@@ -414,8 +414,25 @@ export default function PdfAnnotationEditor({ file, onExit, initialSession }: Pr
   const renderShape = (a: Annotation, isDrawing = false) => {
     const stroke = Math.max(1, (a.strokeWidth ?? 0.003) * Math.min(pageSize.w, pageSize.h));
     const common = { stroke: a.color || '#e53935', strokeWidth: stroke, fill: 'none', opacity: a.opacity ?? 1 };
-    const onClick = (e: React.MouseEvent) => {
-      if (tool === 'select') { e.stopPropagation(); setSelectedId(a.id); }
+    const handlers = {
+      onClick: (e: React.MouseEvent) => {
+        if (tool === 'select') { e.stopPropagation(); setSelectedId(a.id); }
+      },
+      onMouseDown: (e: React.MouseEvent) => {
+        if (tool !== 'select' || isDrawing) return;
+        e.stopPropagation();
+        e.preventDefault();
+        setSelectedId(a.id);
+        const p = svgToPageCoords(e);
+        dragRef.current = { id: a.id, startX: p.x, startY: p.y, orig: a };
+        setDragging(true);
+      },
+      onDoubleClick: (e: React.MouseEvent) => {
+        if (a.type !== 'text' && a.type !== 'comment') return;
+        e.stopPropagation();
+        const v = window.prompt('Editar texto:', a.content || '');
+        if (v != null) updateAnnotation(a.id, { content: v });
+      },
     };
     switch (a.type) {
       case 'highlight':
