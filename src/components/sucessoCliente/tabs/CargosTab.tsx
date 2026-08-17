@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Sparkles, Plus, Trash2, Copy, Pencil, FileDown, Loader2, Network, X, Pencil as PencilIcon, Upload, AlertTriangle } from 'lucide-react';
+import { Sparkles, Plus, Trash2, Copy, Pencil, FileDown, Loader2, Network, X, Pencil as PencilIcon, Upload, AlertTriangle, MessagesSquare } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useCargos, useEstruturaSalarial } from '@/hooks/useCargos';
@@ -16,6 +16,7 @@ import { generateCargosPdf } from '@/utils/sucessoCliente/cargosPdf';
 import { generateCargoDetalhePdf } from '@/utils/sucessoCliente/cargoDetalhePdf';
 import { DebouncedInput } from '@/components/sucessoCliente/DebouncedField';
 import { extractPisosCCT } from '@/utils/sucessoCliente/pisosCCT';
+import CargosChat from '@/components/sucessoCliente/tabs/CargosChat';
 
 const NIVEIS = [
   { v:'operacional', l:'Operacional' },
@@ -88,6 +89,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
   const [draft, setDraft] = useState<any>(emptyDraft());
   const [filterArea, setFilterArea] = useState('all');
   const [filterNivel, setFilterNivel] = useState('all');
+  const [chatOpen, setChatOpen] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
 
   const pisosCCT = useMemo(() => extractPisosCCT(ccts as any[]), [ccts]);
@@ -788,6 +790,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
             </Button>
           </label>
           <Button variant="outline" onClick={sugerirEstrutura} disabled={busy==='estrutura'}>{busy==='estrutura' ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <Sparkles className="w-4 h-4 mr-2"/>}Sugerir Estrutura Salarial</Button>
+          <Button variant={chatOpen ? 'default' : 'outline'} onClick={()=>setChatOpen(v=>!v)}><MessagesSquare className="w-4 h-4 mr-2"/>Consultor IA</Button>
           <Button variant="outline" onClick={gerarOrganograma} disabled={busy==='estrutura'}><Network className="w-4 h-4 mr-2"/>Gerar Organograma</Button>
           <Button variant="outline" onClick={()=>setOrgEditOpen(true)}><PencilIcon className="w-4 h-4 mr-2"/>Editar Organograma</Button>
           <Button variant="outline" onClick={exportarPdf} disabled={busy==='pdf'}>{busy==='pdf' ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <FileDown className="w-4 h-4 mr-2"/>}Gerar Relatório Final</Button>
@@ -796,6 +799,16 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
           </Button>
         </div>
       </div>
+
+      {chatOpen && (
+        <CargosChat
+          empresa={cliente?.nome}
+          setor={cliente?.segmento || cliente?.cnae || ''}
+          cargos={items}
+          estrutura={estrutura}
+          pisos={pisosCCT}
+        />
+      )}
 
       <div className="space-y-2">
         {filtered.length === 0 ? <p className="text-center text-sm text-muted-foreground py-6">Nenhum cargo cadastrado.</p> :
