@@ -37,6 +37,7 @@ export interface Step1Data {
   dataAdmissao: Date | null;
   dataDesligamento: Date | null;
   salarioMensal: number;
+  verbasBase?: VerbaBase[];
   motivo: MotivoRescisao;
   motivoOutroTexto: string;
   descontaAvisoPrevio: boolean;
@@ -51,6 +52,18 @@ export interface Step1Data {
   diasAvisoPrevioIndenizado: number;
   calcula13AnosAnteriores: boolean;
   anos13Selecionados: number[];
+}
+
+export interface VerbaBase {
+  id: string;
+  descricao: string;
+  valor: number;
+}
+
+/** Base de cálculo dos proventos = salário mensal + verbas adicionais habituais */
+export function getBaseCalculo(step1: Step1Data): number {
+  const extras = (step1.verbasBase || []).reduce((s, v) => s + (v.valor || 0), 0);
+  return round2((step1.salarioMensal || 0) + extras);
 }
 
 export interface Step2Data {
@@ -105,7 +118,7 @@ export interface Step3Data {
 
 export function calcularVerbas(step1: Step1Data, step2: Step2Data): VerbaRescisoria[] {
   const verbas: VerbaRescisoria[] = [];
-  const sal = step1.salarioMensal;
+  const sal = getBaseCalculo(step1);
 
   // Saldo de salário (teto: 30/30 = salário integral)
   const diasSaldo = Math.min(step2.diasTrabalhadosMes, 30);
