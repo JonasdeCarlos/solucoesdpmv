@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { type Step1Data, type Step2Data, type Step3Data, type VerbaRescisoria, calcularTotal, MOTIVO_TERMO_TITULO, MOTIVO_TERMO_CORPO, MOTIVO_LABELS } from './calculations';
+import { type Step1Data, type Step2Data, type Step3Data, type VerbaRescisoria, calcularTotal, getBaseCalculo, MOTIVO_TERMO_TITULO, MOTIVO_TERMO_CORPO, MOTIVO_LABELS } from './calculations';
 import { calcularFgtsDetalhado } from './fgtsDetail';
 import { formatCurrency, formatDate } from './formatters';
 import { numberToWords } from './numberToWords';

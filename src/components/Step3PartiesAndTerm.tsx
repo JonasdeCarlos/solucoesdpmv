@@ -10,7 +10,7 @@ import { ArrowLeft, FileText, Copy, Download, Calculator, RefreshCw } from 'luci
 import { Check, ChevronsUpDown, Save } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useClientes } from '@/hooks/useClientes';
-import { type Step1Data, type Step2Data, type Step3Data, type VerbaRescisoria, calcularTotal, calcularVerbas, recalcDependents, MOTIVO_TERMO_TITULO, MOTIVO_TERMO_CORPO, MOTIVO_LABELS } from '@/utils/calculations';
+import { type Step1Data, type Step2Data, type Step3Data, type VerbaRescisoria, calcularTotal, calcularVerbas, getBaseCalculo, recalcDependents, MOTIVO_TERMO_TITULO, MOTIVO_TERMO_CORPO, MOTIVO_LABELS } from '@/utils/calculations';
 import { calcularFgtsDetalhado } from '@/utils/fgtsDetail';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { numberToWords } from '@/utils/numberToWords';
