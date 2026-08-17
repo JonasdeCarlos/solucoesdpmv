@@ -520,8 +520,12 @@ export function recalcDependents(
 
         let valorBase: number;
         if (isLastMonth) {
-          // Usa o saldo de salário (possivelmente editado) como base do mês de desligamento
-          valorBase = valOf('saldo_salario');
+          // Saldo de salário + verbas adicionais do mês (possivelmente editados)
+          valorBase =
+            valOf('saldo_salario') +
+            next
+              .filter((v) => v.id.startsWith('saldo_verba_'))
+              .reduce((s, v) => s + (v.valor || 0), 0);
         } else if (isFirstMonth) {
           const diasReais = totalDiasNoMes - start.getDate() + 1;
           const dias = start.getDate() === 1 ? 30 : diasReais;
