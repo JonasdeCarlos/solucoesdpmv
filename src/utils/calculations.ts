@@ -58,12 +58,24 @@ export interface VerbaBase {
   id: string;
   descricao: string;
   valor: number;
+  /** 'base' = integra a base de todas as verbas; 'saldo' = só compõe o saldo do mês da rescisão */
+  aplicacao?: 'base' | 'saldo';
 }
 
 /** Base de cálculo dos proventos = salário mensal + verbas adicionais habituais */
 export function getBaseCalculo(step1: Step1Data): number {
-  const extras = (step1.verbasBase || []).reduce((s, v) => s + (v.valor || 0), 0);
+  const extras = (step1.verbasBase || [])
+    .filter((v) => (v.aplicacao ?? 'base') === 'base')
+    .reduce((s, v) => s + (v.valor || 0), 0);
   return round2((step1.salarioMensal || 0) + extras);
+}
+
+/** Base usada apenas no saldo de salário do mês da rescisão (inclui verbas marcadas como 'saldo') */
+export function getBaseSaldo(step1: Step1Data): number {
+  const somenteSaldo = (step1.verbasBase || [])
+    .filter((v) => v.aplicacao === 'saldo')
+    .reduce((s, v) => s + (v.valor || 0), 0);
+  return round2(getBaseCalculo(step1) + somenteSaldo);
 }
 
 export interface Step2Data {
@@ -121,8 +133,9 @@ export function calcularVerbas(step1: Step1Data, step2: Step2Data): VerbaResciso
   const sal = getBaseCalculo(step1);
 
   // Saldo de salário (teto: 30/30 = salário integral)
+  const salSaldo = getBaseSaldo(step1);
   const diasSaldo = Math.min(step2.diasTrabalhadosMes, 30);
-  const saldoSalario = diasSaldo >= 30 ? sal : (sal / 30) * diasSaldo;
+  const saldoSalario = diasSaldo >= 30 ? salSaldo : (salSaldo / 30) * diasSaldo;
   verbas.push({
     id: 'saldo_salario',
     verba: 'Saldo de salário',
