@@ -165,6 +165,5 @@ export function gerarTextoCopiavel(input: CustoMensalInput, r: CustoMensalResult
   txt += `Provisão multa FGTS: ${formatBRL(r.provMultaFgts)}\n`;
   txt += `CUSTO MENSAL TOTAL ESTIMADO: ${formatBRL(r.custoMensalTotal)}\n`;
   txt += `Percentual efetivo sobre base: ${formatPct(r.percentualEfetivo)}\n`;
-  txt += `\n⚠️ Cálculo estimativo. Alíquotas variam por CNAE/FPAS/FAP, regras do Simples/CPP, CCT e particularidades do contrato.`;
   return txt;
 }

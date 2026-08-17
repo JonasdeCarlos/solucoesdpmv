@@ -424,7 +424,6 @@ function addFooterDisclaimer(doc: jsPDF) {
     doc.setFontSize(7);
     doc.setFont('helvetica', 'italic');
     doc.setTextColor(120);
-    doc.text('Cálculo estimativo. Pode variar conforme CCT, médias, adicionais, descontos legais e particularidades do contrato.', PAGE_WIDTH / 2, 290, { align: 'center' });
     doc.setTextColor(0);
   }
 }

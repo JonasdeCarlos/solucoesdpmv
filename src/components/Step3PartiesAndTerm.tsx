@@ -407,9 +407,6 @@ ${data.empregadoNome || '[NOME DO EMPREGADO]'}`;
     lines.push(`Por extenso: ${numberToWords(total)}`);
     lines.push('═══════════════════════════════════════════════════');
     lines.push('');
-    lines.push('⚠️ Cálculo estimativo. Pode variar conforme CCT,');
-    lines.push('médias, adicionais, descontos legais e');
-    lines.push('particularidades do contrato.');
 
     return lines.join('\n');
   };

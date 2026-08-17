@@ -218,9 +218,6 @@ const PontoPrintView: React.FC<Props> = ({ identificacao, config, diasCalculados
           <div className="sig-line"><hr/> Empresa / Responsável</div>
         </div>
 
-        <div className="disclaimer">
-          ⚠️ Apuração estimativa para conferência. Pode haver regras específicas por CCT, escalas e acordos.
-        </div>
       </div>
     </div>
   );
