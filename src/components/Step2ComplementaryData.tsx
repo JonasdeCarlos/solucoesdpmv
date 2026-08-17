@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { ArrowLeft, Calculator, Plus, Trash2 } from 'lucide-react';
-import { type Step1Data, type Step2Data, type LinhaExtra, type TipoCalculoLinha } from '@/utils/calculations';
+import { type Step1Data, type Step2Data, type LinhaExtra, type TipoCalculoLinha, getBaseCalculo } from '@/utils/calculations';
 import { diffMonths } from '@/utils/formatters';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useVerbas } from '@/hooks/useVerbas';
@@ -26,7 +26,7 @@ const Step2ComplementaryData = ({ step1, data, onChange, onBack, onCalculate }: 
   const { verbas: verbasDB } = useVerbas();
 
   const calcLinhaValor = (linha: LinhaExtra): number => {
-    const sal = step1.salarioMensal || 0;
+    const sal = getBaseCalculo(step1) || 0;
     const qtd = linha.quantidade || 0;
     if (sal <= 0 || !linha.tipoCalculo || linha.tipoCalculo === 'manual') return linha.valor || 0;
     switch (linha.tipoCalculo) {

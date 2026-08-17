@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { type Step1Data, type Step2Data, type Step3Data, type VerbaRescisoria, calcularTotal, MOTIVO_TERMO_TITULO, MOTIVO_TERMO_CORPO, MOTIVO_LABELS } from './calculations';
+import { type Step1Data, type Step2Data, type Step3Data, type VerbaRescisoria, calcularTotal, getBaseCalculo, MOTIVO_TERMO_TITULO, MOTIVO_TERMO_CORPO, MOTIVO_LABELS } from './calculations';
 import { calcularFgtsDetalhado } from './fgtsDetail';
 import { formatCurrency, formatDate } from './formatters';
 import { numberToWords } from './numberToWords';
@@ -430,7 +430,7 @@ function addFooterDisclaimer(doc: jsPDF) {
 }
 
 function renderMemoriaPages(doc: jsPDF, step1: Step1Data, step2: Step2Data, verbas: VerbaRescisoria[]) {
-  const sal = step1.salarioMensal;
+  const sal = getBaseCalculo(step1);
   const total = calcularTotal(verbas);
   const dataAdm = step1.dataAdmissao ? formatDate(step1.dataAdmissao) : '—';
   const dataDesl = step1.dataDesligamento ? formatDate(step1.dataDesligamento) : '—';
