@@ -69,8 +69,8 @@ export default function CargosChat({ empresa, setor, cargos, estrutura, pisos, o
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
-      const { text, proposta } = extrairProposta((data as any)?.answer || 'Sem resposta.');
-      setMsgs((m) => [...m, { role: 'assistant', content: text || 'Sem resposta.', proposta }]);
+      const parsed = extrairProposta((data as any)?.answer || 'Sem resposta.');
+      setMsgs((m) => [...m, { role: 'assistant', content: parsed.text || 'Sem resposta.', proposta: parsed.proposta }]);
     } catch (err: any) {
       toast.error(err?.message || 'Falha ao consultar a IA.');
       setMsgs((m) => [...m, { role: 'assistant', content: 'Não foi possível responder agora. Tente novamente.' }]);
