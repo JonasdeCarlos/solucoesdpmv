@@ -633,6 +633,56 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
   };
 
   const [orgOpen, setOrgOpen] = useState(false);
+
+  const aplicarPropostaIA = async (p: any) => {
+    const norm = (s: any) => String(s || '').trim().toLowerCase();
+    let alterados = 0;
+
+    for (const c of (p?.cargos || [])) {
+      if (!c?.nome) continue;
+      const existente = items.find((it: any) => norm(it.nome) === norm(c.nome));
+      const payload: any = existente ? { id: existente.id } : { nome: String(c.nome).trim() };
+      if (c.area != null && c.area !== '') payload.area = String(c.area);
+      if (c.nivel != null && c.nivel !== '') payload.nivel = String(c.nivel);
+      if (c.cbo != null && c.cbo !== '') payload.cbo = String(c.cbo);
+      if (c.salario_atual != null && c.salario_atual !== '') payload.salario_atual = Number(c.salario_atual);
+      if (c.piso_salarial != null && c.piso_salarial !== '') payload.piso_salarial = Number(c.piso_salarial);
+      if (!existente) {
+        payload.descricao_sumaria = '';
+        payload.atividades = [];
+        payload.requisitos = { escolaridade: '', experiencia: '', competencias: [] };
+        payload.piso_referencia = 'Consultor IA';
+      }
+      await save(payload);
+      alterados++;
+    }
+
+    const faixasAtuais = [...((estrutura?.faixas || []) as any[])];
+    for (const f of (p?.faixas || [])) {
+      if (!f?.cargo) continue;
+      const idx = faixasAtuais.findIndex((x: any) => norm(x.cargo) === norm(f.cargo));
+      if (idx >= 0) faixasAtuais[idx] = { ...faixasAtuais[idx], ...f, niveis: f.niveis || faixasAtuais[idx].niveis };
+      else faixasAtuais.push({ cargo: f.cargo, area: f.area || '', cbo: f.cbo || '', niveis: f.niveis || [] });
+      alterados++;
+    }
+
+    const escala = (p?.escala_evolucao || []).length ? p.escala_evolucao : (estrutura?.escala_evolucao || []);
+    if ((p?.escala_evolucao || []).length) alterados++;
+
+    if ((p?.faixas || []).length || (p?.escala_evolucao || []).length) {
+      await saveEstrutura({
+        faixas: faixasAtuais,
+        escala_evolucao: escala,
+        cargos_sugeridos: estrutura?.cargos_sugeridos || [],
+        organograma: estrutura?.organograma || [],
+        criterios_manuais: estrutura?.criterios_manuais || [],
+      });
+    }
+
+    if (!alterados) throw new Error('Nada aplicável na proposta.');
+    await reload();
+  };
+
   const [orgEditOpen, setOrgEditOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [importResult, setImportResult] = useState<any>(null);
