@@ -203,7 +203,6 @@ const JornadaPage: React.FC = () => {
         <div class="sig-line"><hr/> Responsável / Analista</div>
         <div class="sig-line"><hr/> Empresa / Representante</div>
       </div>
-      <div class="disclaimer">⚠️ Verificação estimativa para conferência. Pode haver regras específicas por CCT, escalas e acordos.</div>
     </body></html>`);
     pw.document.close();
     pw.print();

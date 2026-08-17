@@ -471,12 +471,6 @@ export async function exportPdf(rows: ReportRow[], meta: ReportMeta, _filename?:
     },
   });
 
-  doc.setFontSize(7);
-  doc.setTextColor(120);
-  doc.text(
-    'Valores estimativos calculados a partir dos saldos (BSALDO) extraídos automaticamente dos PDFs de cartão ponto. Confira os dados antes de utilizar.',
-    14, ph - 6,
-  );
   return doc.output('arraybuffer') as ArrayBuffer;
 }
 

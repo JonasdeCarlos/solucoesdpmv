@@ -197,7 +197,7 @@ const PontoBancoHoras: React.FC<Props> = ({ empregadoNome, empregadoCpf, emprega
         <div class="sig-line"><hr/> Empregado</div>
         <div class="sig-line"><hr/> Empresa / Responsável</div>
       </div>
-      <div class="disclaimer">⚠️ Apuração estimativa para conferência.</div>`;
+`;
 
     if (asFragment) return body;
     return `<!DOCTYPE html><html><head><title>Ponto - ${identificacao.empregadoNome}</title><style>${styles}</style></head><body>${body}</body></html>`;

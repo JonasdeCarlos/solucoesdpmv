@@ -98,12 +98,6 @@ export function gerarPdfApuracaoDsr(r: DsrMonthlyResult, contagem: ContagemDiasM
     doc.setPage(i);
     doc.setFontSize(7);
     doc.setTextColor(120);
-    doc.text(
-      'Cálculo estimativo. Pode variar conforme CCT e particularidades. Consulte um profissional.',
-      pageW / 2,
-      290,
-      { align: 'center' },
-    );
   }
 
   doc.save(`apuracao-dsr-${r.competencia}.pdf`);
@@ -231,12 +225,6 @@ export function gerarPdfApuracaoDsrAnual(
     doc.setPage(i);
     doc.setFontSize(7);
     doc.setTextColor(120);
-    doc.text(
-      'Cálculo estimativo. Pode variar conforme CCT e particularidades. Consulte um profissional.',
-      pageW / 2,
-      290,
-      { align: 'center' },
-    );
     doc.text(`Página ${i} de ${totalPages}`, pageW - 14, 290, { align: 'right' });
   }
 
