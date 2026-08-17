@@ -1,3 +1,6 @@
 project_id = "ktcfjwjhulvgwnxuddfv"
 [functions.admissao-notificar]
 verify_jwt = false
+
+[functions.cargos-chat]
+verify_jwt = false
