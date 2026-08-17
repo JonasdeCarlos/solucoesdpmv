@@ -8,11 +8,12 @@ import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, ArrowRight } from 'lucide-react';
+import { CalendarIcon, ArrowRight, Plus, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { type Step1Data, type MotivoRescisao, MOTIVO_LABELS } from '@/utils/calculations';
+import { type Step1Data, type MotivoRescisao, MOTIVO_LABELS, getBaseCalculo } from '@/utils/calculations';
+import { safeUuid } from '@/utils/safeUuid';
 
 function parseDateBR(text: string): Date | null {
   const clean = text.replace(/\D/g, '');
@@ -226,6 +227,72 @@ const Step1InitialQuestions = ({ data, onChange, onNext }: Step1Props) => {
             onChange={(e) => update({ salarioMensal: parseFloat(e.target.value) || 0 })}
           />
           {errors.salarioMensal && <p className="text-sm text-destructive">{errors.salarioMensal}</p>}
+        </div>
+
+        {/* Outras verbas que integram a base de cálculo */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label>Outras verbas na base de cálculo (habituais)</Label>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() =>
+                update({
+                  verbasBase: [
+                    ...(data.verbasBase || []),
+                    { id: safeUuid(), descricao: '', valor: 0 },
+                  ],
+                })
+              }
+            >
+              <Plus className="w-4 h-4" /> Incluir verba
+            </Button>
+          </div>
+          {(data.verbasBase || []).map((v, idx) => (
+            <div key={v.id} className="flex gap-2 items-center">
+              <Input
+                className="flex-1"
+                placeholder="Ex.: Insalubridade, Adicional noturno, Gratificação"
+                value={v.descricao}
+                onChange={(e) => {
+                  const list = [...(data.verbasBase || [])];
+                  list[idx] = { ...v, descricao: e.target.value };
+                  update({ verbasBase: list });
+                }}
+              />
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0,00"
+                className="w-36"
+                value={v.valor || ''}
+                onChange={(e) => {
+                  const list = [...(data.verbasBase || [])];
+                  list[idx] = { ...v, valor: parseFloat(e.target.value) || 0 };
+                  update({ verbasBase: list });
+                }}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => update({ verbasBase: (data.verbasBase || []).filter((x) => x.id !== v.id) })}
+              >
+                <Trash2 className="w-4 h-4 text-destructive" />
+              </Button>
+            </div>
+          ))}
+          {(data.verbasBase || []).length > 0 && (
+            <p className="text-sm text-muted-foreground">
+              Base de cálculo dos proventos:{' '}
+              <strong>
+                {getBaseCalculo(data).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </strong>
+            </p>
+          )}
         </div>
 
         {/* Motivo */}
