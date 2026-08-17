@@ -807,6 +807,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
           cargos={items}
           estrutura={estrutura}
           pisos={pisosCCT}
+          onAplicar={aplicarPropostaIA}
         />
       )}
 
