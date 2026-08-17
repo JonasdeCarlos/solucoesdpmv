@@ -143,7 +143,7 @@ ${data.empregadoNome || '[NOME DO EMPREGADO]'}`;
   };
 
   const generateMemoriaCalculo = (): string => {
-    const sal = step1.salarioMensal;
+    const sal = getBaseCalculo(step1);
     const dataAdm = step1.dataAdmissao ? formatDate(step1.dataAdmissao) : '—';
     const dataDesl = step1.dataDesligamento ? formatDate(step1.dataDesligamento) : '—';
     const motivo = step1.motivo === 'outros' ? (step1.motivoOutroTexto || 'Outros') : MOTIVO_LABELS[step1.motivo];

@@ -26,7 +26,7 @@ const Step2ComplementaryData = ({ step1, data, onChange, onBack, onCalculate }: 
   const { verbas: verbasDB } = useVerbas();
 
   const calcLinhaValor = (linha: LinhaExtra): number => {
-    const sal = step1.salarioMensal || 0;
+    const sal = getBaseCalculo(step1) || 0;
     const qtd = linha.quantidade || 0;
     if (sal <= 0 || !linha.tipoCalculo || linha.tipoCalculo === 'manual') return linha.valor || 0;
     switch (linha.tipoCalculo) {

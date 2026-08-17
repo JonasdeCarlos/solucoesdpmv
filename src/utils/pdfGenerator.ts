@@ -430,7 +430,7 @@ function addFooterDisclaimer(doc: jsPDF) {
 }
 
 function renderMemoriaPages(doc: jsPDF, step1: Step1Data, step2: Step2Data, verbas: VerbaRescisoria[]) {
-  const sal = step1.salarioMensal;
+  const sal = getBaseCalculo(step1);
   const total = calcularTotal(verbas);
   const dataAdm = step1.dataAdmissao ? formatDate(step1.dataAdmissao) : '—';
   const dataDesl = step1.dataDesligamento ? formatDate(step1.dataDesligamento) : '—';
