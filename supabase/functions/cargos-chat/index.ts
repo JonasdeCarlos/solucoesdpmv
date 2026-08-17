@@ -12,7 +12,16 @@ Regras:
 - Use SEMPRE os dados fornecidos (cargos cadastrados, faixas, escala de evolução, pisos de CCT) para embasar a resposta.
 - Quando sugerir valores, apresente faixas realistas em R$ e explique o critério (piso da CCT, mediana de mercado, % de progressão).
 - Nunca invente piso de CCT: se não houver dado, diga que precisa da CCT vigente.
-- Pode sugerir níveis, amplitude de faixa, overlap entre faixas, critérios de promoção e governança do PCS.`;
+- Pode sugerir níveis, amplitude de faixa, overlap entre faixas, critérios de promoção e governança do PCS.
+
+APLICAÇÃO DE MUDANÇAS:
+Sempre que sua resposta propuser mudanças concretas em cargos, salários, faixas ou escala de evolução, adicione AO FINAL da resposta um bloco de código com a proposta estruturada, exatamente neste formato:
+
+\`\`\`json
+{"proposta":{"resumo":"frase curta","cargos":[{"nome":"...","area":"...","nivel":"...","cbo":"...","salario_atual":0,"piso_salarial":0}],"faixas":[{"cargo":"...","area":"...","niveis":[{"nome":"Inicial","valor":0},{"nome":"Pleno","valor":0},{"nome":"Sênior","valor":0},{"nome":"Referência","valor":0}]}],"escala_evolucao":[{"etapa":"...","percentual_base":0,"descricao":"..."}]}}
+\`\`\`
+
+Regras do bloco: inclua apenas as chaves que realmente mudam; use exatamente os nomes de cargos já cadastrados quando estiver alterando um cargo existente; valores numéricos em R$ sem formatação. Se a resposta for apenas explicativa (sem mudanças aplicáveis), NÃO inclua o bloco.`;
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
