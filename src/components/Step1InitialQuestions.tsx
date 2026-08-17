@@ -242,7 +242,7 @@ const Step1InitialQuestions = ({ data, onChange, onNext }: Step1Props) => {
                 update({
                   verbasBase: [
                     ...(data.verbasBase || []),
-                    { id: safeUuid(), descricao: '', valor: 0 },
+                    { id: safeUuid(), descricao: '', valor: 0, aplicacao: 'base' as const },
                   ],
                 })
               }
@@ -251,9 +251,9 @@ const Step1InitialQuestions = ({ data, onChange, onNext }: Step1Props) => {
             </Button>
           </div>
           {(data.verbasBase || []).map((v, idx) => (
-            <div key={v.id} className="flex gap-2 items-center">
+            <div key={v.id} className="flex flex-wrap gap-2 items-center">
               <Input
-                className="flex-1"
+                className="flex-1 min-w-[180px]"
                 placeholder="Ex.: Insalubridade, Adicional noturno, Gratificação"
                 value={v.descricao}
                 onChange={(e) => {
@@ -262,6 +262,22 @@ const Step1InitialQuestions = ({ data, onChange, onNext }: Step1Props) => {
                   update({ verbasBase: list });
                 }}
               />
+              <Select
+                value={v.aplicacao ?? 'base'}
+                onValueChange={(val) => {
+                  const list = [...(data.verbasBase || [])];
+                  list[idx] = { ...v, aplicacao: val as 'base' | 'saldo' };
+                  update({ verbasBase: list });
+                }}
+              >
+                <SelectTrigger className="w-[230px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-popover z-50">
+                  <SelectItem value="base">Compõe base de cálculo</SelectItem>
+                  <SelectItem value="saldo">Só saldo do mês da rescisão</SelectItem>
+                </SelectContent>
+              </Select>
               <Input
                 type="number"
                 step="0.01"
