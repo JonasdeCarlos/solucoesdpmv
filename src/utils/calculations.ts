@@ -476,7 +476,7 @@ export function recalcDependents(
   // FGTS do período — recomputa a partir das verbas editadas (saldo / 13º)
   // quando o FGTS não foi informado manualmente.
   if (byId('fgts') && step1.calculaFGTS && (step2.fgtsManual === null || step2.fgtsManual <= 0)) {
-    const sal = step1.salarioMensal;
+    const sal = getBaseCalculo(step1);
     let baseSalarial = 0;
     if (step1.dataAdmissao && step1.dataDesligamento) {
       const start = new Date(step1.dataAdmissao);
