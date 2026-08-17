@@ -132,16 +132,27 @@ export function calcularVerbas(step1: Step1Data, step2: Step2Data): VerbaResciso
   const verbas: VerbaRescisoria[] = [];
   const sal = getBaseCalculo(step1);
 
-  // Saldo de salário (teto: 30/30 = salário integral)
-  const salSaldo = getBaseSaldo(step1);
+  // Saldo de salário (teto: 30/30 = salário integral) — apenas o salário mensal
   const diasSaldo = Math.min(step2.diasTrabalhadosMes, 30);
-  const saldoSalario = diasSaldo >= 30 ? salSaldo : (salSaldo / 30) * diasSaldo;
+  const proporcional = (v: number) => (diasSaldo >= 30 ? v : (v / 30) * diasSaldo);
   verbas.push({
     id: 'saldo_salario',
     verba: 'Saldo de salário',
     referencia: `${diasSaldo}/30 dias`,
-    valor: round2(saldoSalario),
+    valor: round2(proporcional(step1.salarioMensal || 0)),
     tipo: 'credito',
+  });
+
+  // Cada verba adicional habitual sai em linha própria no mês da rescisão
+  (step1.verbasBase || []).forEach((vb) => {
+    if (!vb.valor) return;
+    verbas.push({
+      id: `saldo_verba_${vb.id}`,
+      verba: vb.descricao?.trim() || 'Verba adicional',
+      referencia: `${diasSaldo}/30 dias`,
+      valor: round2(proporcional(vb.valor)),
+      tipo: 'credito',
+    });
   });
 
   // 13º proporcional
@@ -509,8 +520,12 @@ export function recalcDependents(
 
         let valorBase: number;
         if (isLastMonth) {
-          // Usa o saldo de salário (possivelmente editado) como base do mês de desligamento
-          valorBase = valOf('saldo_salario');
+          // Saldo de salário + verbas adicionais do mês (possivelmente editados)
+          valorBase =
+            valOf('saldo_salario') +
+            next
+              .filter((v) => v.id.startsWith('saldo_verba_'))
+              .reduce((s, v) => s + (v.valor || 0), 0);
         } else if (isFirstMonth) {
           const diasReais = totalDiasNoMes - start.getDate() + 1;
           const dias = start.getDate() === 1 ? 30 : diasReais;
