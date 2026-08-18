@@ -1,4 +1,4 @@
-import { formatBR } from './normalize';
+import { formatBR, normalizeText } from './normalize';
 
 export interface AvisoMsgInput {
   empresa_name?: string;
@@ -21,11 +21,19 @@ function fmtDateTimeBR(iso: string): string {
   return `${dia} às ${hora}`;
 }
 
+function isExameAviso(motivo: string): boolean {
+  const n = normalizeText(motivo);
+  if (n.includes('MONITORAMENTO') && n.includes('SAUDE')) return true;
+  if (n.includes('EXAME')) return true;
+  return false;
+}
+
 export function buildWhatsappMessage(a: AvisoMsgInput, prefix: AvisoMsgPrefix = { kind: 'none' }): string {
   const nome = a.employee_name.trim();
   const motivo = a.motivo;
   const due = formatBR(a.due_date);
   const limite = formatBR(a.limit_date);
+  const exame = isExameAviso(motivo);
 
   const linhas: string[] = [];
   if (prefix.kind === 'aviso') {
@@ -39,16 +47,22 @@ export function buildWhatsappMessage(a: AvisoMsgInput, prefix: AvisoMsgPrefix = 
   linhas.push('');
   linhas.push('Olá! 👋');
   linhas.push('');
-  linhas.push('Segue *aviso de vencimento* para acompanhamento:');
+  linhas.push('Segue aviso de vencimento para acompanhamento:');
   linhas.push('');
   linhas.push(`• *Colaborador:* ${nome}`);
   linhas.push(`• *Motivo:* ${motivo}`);
   if (due) linhas.push(`• *Vencimento:* ${due}`);
   if (limite) linhas.push(`• *Data limite:* ${limite}`);
   linhas.push('');
-  linhas.push('Por favor, entre em contato para darmos o tratamento necessário e evitar encargos desnecessários.');
-  linhas.push('');
-  linhas.push('_Monte Verde Contabilidade_');
+  if (exame) {
+    linhas.push('Procure o Responsável Técnico de segurança de sua empresa para renovação.');
+    linhas.push('');
+    linhas.push('Monte Verde Contabilidade');
+  } else {
+    linhas.push('Por favor, entre em contato para darmos o tratamento necessário e evitar encargos desnecessários.');
+    linhas.push('');
+    linhas.push('_Monte Verde Contabilidade_');
+  }
 
   return linhas.join('\n');
 }
