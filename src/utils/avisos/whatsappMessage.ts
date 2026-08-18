@@ -1,5 +1,4 @@
-import { formatBR } from './normalize';
-import { normalizeText } from './normalize';
+import { formatBR, normalizeText } from './normalize';
 
 export interface AvisoMsgInput {
   empresa_name?: string;
