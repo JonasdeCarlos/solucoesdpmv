@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, useEffect } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -10,6 +10,8 @@ import {
   LineChart, Line, CartesianGrid,
 } from 'recharts';
 import { useBhAll, getDailyMinutes, getTrendThreshold } from '@/hooks/useBancoHorasModulo';
+import { useBhEmpresaConfig, fetchBhEmpresaLogo } from '@/hooks/useBhEmpresaConfig';
+
 import { supabase } from '@/integrations/supabase/client';
 import { PDFDocument } from 'pdf-lib';
 import {
@@ -25,13 +27,7 @@ type SinalFilter = 'todos' | 'positivo' | 'negativo' | 'zero';
 export default function BhDashboardPage() {
   const { imports, employees, balances, settings, loading } = useBhAll();
 
-  // Logo da empresa (persistida em localStorage por CNPJ)
-  const [empresaLogo, setEmpresaLogo] = useState<string>('');
   const logoInputRef = useRef<HTMLInputElement>(null);
-
-  // Período do banco (data início / fim) — persistido em localStorage por CNPJ
-  const [periodoInicio, setPeriodoInicio] = useState<string>('');
-  const [periodoFim, setPeriodoFim] = useState<string>('');
 
   const empresas = useMemo(() => {
     const map = new Map<string, string>();
@@ -46,25 +42,24 @@ export default function BhDashboardPage() {
   const [compIni, setCompIni] = useState<string>('');
   const [compFim, setCompFim] = useState<string>('');
 
-  useEffect(() => {
-    if (empresa === 'all') { setEmpresaLogo(''); return; }
-    const k = `bh:logo:${empresa}`;
-    setEmpresaLogo(localStorage.getItem(k) || '');
-  }, [empresa]);
+  const empresaNomeSel = useMemo(
+    () => empresas.find((e) => e.cnpj === empresa)?.nome || '',
+    [empresas, empresa],
+  );
 
-  useEffect(() => {
-    const scope = empresa === 'all' ? 'all' : empresa;
-    setPeriodoInicio(localStorage.getItem(`bh:periodo-ini:${scope}`) || '');
-    setPeriodoFim(localStorage.getItem(`bh:periodo-fim:${scope}`) || '');
-  }, [empresa]);
+  // Logo + período: fixados por empresa no banco (não somem mais ao limpar o navegador)
+  const {
+    logo: empresaLogo,
+    periodoInicio,
+    periodoFim,
+    save: saveEmpresaConfig,
+  } = useBhEmpresaConfig(empresa, empresaNomeSel);
 
   const savePeriodo = (ini: string, fim: string) => {
-    const scope = empresa === 'all' ? 'all' : empresa;
-    if (ini) localStorage.setItem(`bh:periodo-ini:${scope}`, ini);
-    else localStorage.removeItem(`bh:periodo-ini:${scope}`);
-    if (fim) localStorage.setItem(`bh:periodo-fim:${scope}`, fim);
-    else localStorage.removeItem(`bh:periodo-fim:${scope}`);
+    saveEmpresaConfig({ periodo_inicio: ini || null, periodo_fim: fim || null });
   };
+  const setPeriodoInicio = (v: string) => saveEmpresaConfig({ periodo_inicio: v || null });
+  const setPeriodoFim = (v: string) => saveEmpresaConfig({ periodo_fim: v || null });
 
   const periodoDias = useMemo(() => {
     if (!periodoInicio || !periodoFim) return null;
@@ -86,16 +81,12 @@ export default function BhDashboardPage() {
   const onPickLogo = async (f: File) => {
     const reader = new FileReader();
     reader.onloadend = () => {
-      const data = reader.result as string;
-      setEmpresaLogo(data);
-      if (empresa !== 'all') localStorage.setItem(`bh:logo:${empresa}`, data);
+      saveEmpresaConfig({ logo_data_url: reader.result as string });
     };
     reader.readAsDataURL(f);
   };
-  const clearLogo = () => {
-    setEmpresaLogo('');
-    if (empresa !== 'all') localStorage.removeItem(`bh:logo:${empresa}`);
-  };
+  const clearLogo = () => saveEmpresaConfig({ logo_data_url: null });
+
 
   const empById = useMemo(() => new Map(employees.map((e) => [e.id, e])), [employees]);
 
@@ -245,7 +236,7 @@ export default function BhDashboardPage() {
     if (!logoEmp) {
       const cnpjs = [...new Set(balancesUltimoMes.map((b) => b.empresa_cnpj).filter(Boolean))];
       if (cnpjs.length === 1) {
-        logoEmp = localStorage.getItem(`bh:logo:${cnpjs[0]}`) || '';
+        logoEmp = await fetchBhEmpresaLogo(cnpjs[0] as string);
       }
     }
     const reportBytes = await exportPdf(reportRows, {
