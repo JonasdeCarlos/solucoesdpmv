@@ -10,6 +10,8 @@ import {
   LineChart, Line, CartesianGrid,
 } from 'recharts';
 import { useBhAll, getDailyMinutes, getTrendThreshold } from '@/hooks/useBancoHorasModulo';
+import { useBhEmpresaConfig, fetchBhEmpresaLogo } from '@/hooks/useBhEmpresaConfig';
+
 import { supabase } from '@/integrations/supabase/client';
 import { PDFDocument } from 'pdf-lib';
 import {
