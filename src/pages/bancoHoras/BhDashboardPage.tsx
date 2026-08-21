@@ -71,12 +71,23 @@ export default function BhDashboardPage() {
 
   const periodoFaixa = useMemo<'verde'|'amarelo'|'laranja'|'vermelho'|'alerta'|null>(() => {
     if (periodoDias == null) return null;
-    if (periodoDias > 180) return 'alerta';
+    if (periodoDias >= 180) return 'alerta';
     if (periodoDias >= 151) return 'vermelho';
     if (periodoDias >= 121) return 'laranja';
     if (periodoDias >= 101) return 'amarelo';
     return 'verde';
   }, [periodoDias]);
+
+  // Dias até o fim do período (negativo = já venceu)
+  const diasParaVencer = useMemo(() => {
+    if (!periodoFim) return null;
+    const fim = new Date(periodoFim + 'T00:00:00');
+    if (isNaN(fim.getTime())) return null;
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    return Math.round((fim.getTime() - hoje.getTime()) / 86400000);
+  }, [periodoFim]);
+
 
   const onPickLogo = async (f: File) => {
     const reader = new FileReader();
