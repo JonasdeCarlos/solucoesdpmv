@@ -1029,6 +1029,36 @@ export type Database = {
         }
         Relationships: []
       }
+      bh_empresa_config: {
+        Row: {
+          created_at: string
+          empresa_cnpj: string
+          empresa_nome: string | null
+          logo_data_url: string | null
+          periodo_fim: string | null
+          periodo_inicio: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          empresa_cnpj: string
+          empresa_nome?: string | null
+          logo_data_url?: string | null
+          periodo_fim?: string | null
+          periodo_inicio?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          empresa_cnpj?: string
+          empresa_nome?: string | null
+          logo_data_url?: string | null
+          periodo_fim?: string | null
+          periodo_inicio?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       bh_imports: {
         Row: {
           competencia: string | null
