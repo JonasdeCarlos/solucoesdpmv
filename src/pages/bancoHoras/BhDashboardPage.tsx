@@ -236,7 +236,7 @@ export default function BhDashboardPage() {
     if (!logoEmp) {
       const cnpjs = [...new Set(balancesUltimoMes.map((b) => b.empresa_cnpj).filter(Boolean))];
       if (cnpjs.length === 1) {
-        logoEmp = localStorage.getItem(`bh:logo:${cnpjs[0]}`) || '';
+        logoEmp = await fetchBhEmpresaLogo(cnpjs[0] as string);
       }
     }
     const reportBytes = await exportPdf(reportRows, {
