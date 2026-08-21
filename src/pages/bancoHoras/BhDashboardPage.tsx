@@ -274,6 +274,11 @@ export default function BhDashboardPage() {
       }),
     });
 
+    const merged = await PDFDocument.create();
+    const reportDoc = await PDFDocument.load(reportBytes);
+    const reportPages = await merged.copyPages(reportDoc, reportDoc.getPageIndices());
+    reportPages.forEach((p) => merged.addPage(p));
+
     // Anexa os PDFs de cartão ponto importados no último mês (filtrados pela empresa se houver)
     const daEmpresa = imports.filter(
       (i) => !!i.file_path && (empresa === 'all' || i.empresa_cnpj === empresa),
