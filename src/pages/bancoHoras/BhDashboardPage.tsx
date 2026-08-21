@@ -493,11 +493,38 @@ export default function BhDashboardPage() {
             <div className="flex items-start gap-3 p-3 rounded border-2 border-red-500 bg-red-50">
               <AlertTriangle className="w-8 h-8 text-yellow-500 fill-yellow-300 flex-shrink-0" strokeWidth={2.5} />
               <div>
-                <p className="text-sm font-bold text-red-700">Atenção — Banco supera 180 dias</p>
-                <p className="text-sm text-red-700">Banco supera 180 dias, verifique a situação.</p>
+                <p className="text-sm font-bold text-red-700">Atenção — Banco atinge/supera 180 dias</p>
+                <p className="text-sm text-red-700">
+                  O período cadastrado tem {periodoDias} dias. O limite legal de compensação é de 180 dias — verifique a situação.
+                </p>
               </div>
             </div>
           )}
+
+          {diasParaVencer != null && diasParaVencer < 0 && (
+            <div className="flex items-start gap-3 p-3 rounded border-2 border-red-500 bg-red-50">
+              <AlertTriangle className="w-8 h-8 text-red-600 flex-shrink-0" strokeWidth={2.5} />
+              <div>
+                <p className="text-sm font-bold text-red-700">Prazo vencido</p>
+                <p className="text-sm text-red-700">
+                  O período encerrou em {new Date(periodoFim + 'T00:00:00').toLocaleDateString('pt-BR')} (há {Math.abs(diasParaVencer)} dia{Math.abs(diasParaVencer) === 1 ? '' : 's'}). Regularize a compensação ou o pagamento dos saldos.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {diasParaVencer != null && diasParaVencer >= 0 && diasParaVencer <= 30 && (
+            <div className="flex items-start gap-3 p-3 rounded border-2 border-orange-400 bg-orange-50">
+              <AlertTriangle className="w-8 h-8 text-orange-500 flex-shrink-0" strokeWidth={2.5} />
+              <div>
+                <p className="text-sm font-bold text-orange-800">Prazo próximo do vencimento</p>
+                <p className="text-sm text-orange-800">
+                  Faltam {diasParaVencer} dia{diasParaVencer === 1 ? '' : 's'} para o fim do período ({new Date(periodoFim + 'T00:00:00').toLocaleDateString('pt-BR')}).
+                </p>
+              </div>
+            </div>
+          )}
+
 
           <div className="flex flex-wrap gap-2 text-[10px] text-muted-foreground">
             <span className="px-2 py-0.5 rounded border bg-green-100 text-green-800 border-green-300">Até 100 dias — Verde</span>
