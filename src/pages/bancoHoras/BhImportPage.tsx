@@ -101,31 +101,22 @@ export default function BhImportPage() {
   const empresaNome = rows[0]?.empresa_nome || '';
   const competenciaLbl = rows[0]?.competencia_label || '';
 
+  const { logo: empresaLogo, save: saveEmpresaConfig } = useBhEmpresaConfig(empresaCnpj, empresaNome);
+
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ rows, hash, fileMeta, duplicates, done }));
   }, [rows, hash, fileMeta, duplicates, done]);
 
-  useEffect(() => {
-    if (!empresaCnpj) { setEmpresaLogo(''); return; }
-    setEmpresaLogo(localStorage.getItem(`bh:logo:${empresaCnpj}`) || '');
-  }, [empresaCnpj]);
-
   const onPickLogo = (f: File) => {
     const reader = new FileReader();
-    reader.onloadend = () => {
-      const data = reader.result as string;
-      setEmpresaLogo(data);
-      if (empresaCnpj) {
-        localStorage.setItem(`bh:logo:${empresaCnpj}`, data);
-        toast.success('Logo salva para esta empresa');
-      }
+    reader.onloadend = async () => {
+      await saveEmpresaConfig({ logo_data_url: reader.result as string });
+      if (empresaCnpj) toast.success('Logo salva para esta empresa');
     };
     reader.readAsDataURL(f);
   };
-  const clearLogo = () => {
-    setEmpresaLogo('');
-    if (empresaCnpj) localStorage.removeItem(`bh:logo:${empresaCnpj}`);
-  };
+  const clearLogo = () => saveEmpresaConfig({ logo_data_url: null });
+
 
   const handleClearBase = async () => {
     setClearing(true);
