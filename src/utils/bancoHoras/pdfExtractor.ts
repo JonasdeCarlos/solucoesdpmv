@@ -231,72 +231,67 @@ function extractFromLines(lines: string[], structured: PLine[], pageNum: number)
   let status: 'ok' | 'pendente' = 'pendente';
   let motivo: string | undefined;
 
-  // Estratégia 1 (preferencial): localizar a coluna BSALDO pelo cabeçalho do PDF
-  // e casar com o item HH:MM da linha TOTAIS mais próximo dessa coordenada X.
-  // Funciona para qualquer layout Secullum, com qualquer número de colunas
-  // e variações de nomenclatura (BSALDO, SALDO, B.SALDO, B SALDO, SDO etc.).
-  const SALDO_ALIASES = /^(B[\s.]*SALDO|SALDO|SDO|B[\s.]*SDO)\.?$/i;
+  // Estratégia 1 (preferencial): localizar a coluna "SALDO BH" pelo cabeçalho
+  // do PDF e casar com o item HH:MM da linha TOTAIS mais próximo dessa coord. X.
+  // O cabeçalho pode vir fragmentado ("SALDO" + "BH"), colado ("SALDOBH",
+  // "BHTOTAL BH SALDO BH") ou com variações (BSALDO, B.SALDO, SDO).
+  const norm = (s: string) => s.toUpperCase().replace(/[^A-Z]/g, '');
+  const isSaldoToken = (s: string) => {
+    const n = norm(s);
+    if (!n) return false;
+    if (/^(B?SALDO|SALDOBH|BHSALDO|BSDO|SDO)$/.test(n)) return true;
+    // Evita casar com DEB/CRED/AJUSTE/TOTAL BH
+    return false;
+  };
+  // Considera apenas linhas de cabeçalho (que tenham DATA/ENTRADA/NORMAIS)
+  const headerLines = structured.filter((l) =>
+    /(NORMAIS|ENTRADA|DATA)/i.test(l.text) && /SALDO|SDO/i.test(l.text),
+  );
   let saldoX: number | null = null;
-  for (const line of structured) {
-    const hit = line.items.find((it) => SALDO_ALIASES.test(it.str.trim()));
-    if (hit) {
-      // Centro da palavra do cabeçalho
-      saldoX = hit.x + (hit.w || 0) / 2;
-      break;
-    }
-  }
-  if (saldoX != null) {
-    const totaisLine = structured.find((l) => /^TOTAIS\b/i.test(l.text));
-    if (totaisLine) {
-      const candidates = totaisLine.items
-        .filter((it) => /^[+\-]?\d{1,4}:\d{2}$/.test(it.str.trim()))
-        .map((it) => ({ it, cx: it.x + (it.w || 0) / 2 }));
-      if (candidates.length > 0) {
-        candidates.sort((a, b) => Math.abs(a.cx - saldoX!) - Math.abs(b.cx - saldoX!));
-        const bs = candidates[0].it.str.trim();
-        const minutes = parseHHMMsigned(bs);
-        if (minutes != null) {
-          bsaldoStr = bs.startsWith('+') || bs.startsWith('-') ? bs : `+${bs}`;
-          if (minutes === 0) bsaldoStr = '00:00';
-          bsaldoMin = minutes;
-          status = 'ok';
-        }
+  for (const line of headerLines.length ? headerLines : structured) {
+    // Última ocorrência da coluna SALDO na linha (a coluna fica no fim do quadro)
+    for (let k = line.items.length - 1; k >= 0; k--) {
+      const it = line.items[k];
+      if (isSaldoToken(it.str)) {
+        let xEnd = it.x + (it.w || 0);
+        // Se o próximo item for "BH", a coluna abrange também esse token
+        const nxt = line.items[k + 1];
+        if (nxt && norm(nxt.str) === 'BH') xEnd = nxt.x + (nxt.w || 0);
+        saldoX = (it.x + xEnd) / 2;
+        break;
       }
     }
+    if (saldoX != null) break;
   }
-
-  // Estratégia 2 (fallback legado): heurística por número de colunas na linha TOTAIS.
-  if (status === 'pendente') {
-  for (const line of lines) {
-    const m = line.match(/^TOTAIS\b\s*(.*)$/i);
-    if (!m) continue;
-    const rest = m[1];
-    const tokens = rest.split(/\s+/).filter(Boolean);
-    // valores HH:MM (com sinal opcional)
-    const hhmm = tokens.filter((t) => /^[+\-]?\d{1,4}:\d{2}$/.test(t));
-    if (hhmm.length >= 7) {
-      // Layout esperado: CARGA NORMAIS DOMINGO FERIADO120 BCRED BDEB BSALDO BTOTAL BAJUS NOT.TOT
-      // BSALDO = índice 6 quando 10 valores; se vierem menos, tenta 4º a partir do final.
-      let bs: string;
-      if (hhmm.length === 10) bs = hhmm[6];
-      else if (hhmm.length >= 4) bs = hhmm[hhmm.length - 4];
-      else bs = hhmm[hhmm.length - 1];
-      const minutes = parseHHMMsigned(bs);
-      if (minutes != null) {
-        bsaldoStr = bs.startsWith('+') || bs.startsWith('-') ? bs : `+${bs}`;
+  const totaisLine = structured.find((l) => /^TOTAIS\b/i.test(l.text));
+  if (totaisLine) {
+    const candidates = totaisLine.items
+      .filter((it) => /^[+\-]?\d{1,4}:\d{2}$/.test(it.str.trim()))
+      .map((it) => ({ it, cx: it.x + (it.w || 0) / 2 }));
+    if (candidates.length > 0) {
+      let chosen: string | null = null;
+      if (saldoX != null) {
+        const sorted = [...candidates].sort(
+          (a, b) => Math.abs(a.cx - saldoX!) - Math.abs(b.cx - saldoX!),
+        );
+        // Só aceita se realmente alinhado à coluna do cabeçalho
+        if (Math.abs(sorted[0].cx - saldoX) <= 40) chosen = sorted[0].it.str.trim();
+      }
+      // Fallback: SALDO BH é, por padrão, a última coluna do quadro
+      if (!chosen) {
+        const last = [...candidates].sort((a, b) => a.cx - b.cx).pop();
+        chosen = last ? last.it.str.trim() : null;
+      }
+      const minutes = chosen != null ? parseHHMMsigned(chosen) : null;
+      if (chosen && minutes != null) {
+        bsaldoStr = chosen.startsWith('+') || chosen.startsWith('-') ? chosen : `+${chosen}`;
         if (minutes === 0) bsaldoStr = '00:00';
         bsaldoMin = minutes;
         status = 'ok';
       }
-    } else if (hhmm.length > 0 && hhmm.every((t) => /^0+:00$/.test(t.replace(/^[+\-]/, '')))) {
-      // TOTAIS 00:00 ... → sem dados, mas considerar 00:00
-      bsaldoStr = '00:00';
-      bsaldoMin = 0;
-      status = 'ok';
     }
-    break;
   }
-  }
+
 
   if (status === 'pendente') motivo = 'BSALDO não localizado na linha TOTAIS';
 
