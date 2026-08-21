@@ -530,8 +530,9 @@ export default function BhDashboardPage() {
             <span className="px-2 py-0.5 rounded border bg-green-100 text-green-800 border-green-300">Até 100 dias — Verde</span>
             <span className="px-2 py-0.5 rounded border bg-yellow-100 text-yellow-900 border-yellow-300">101–120 — Amarelo</span>
             <span className="px-2 py-0.5 rounded border bg-orange-100 text-orange-900 border-orange-300">121–150 — Laranja</span>
-            <span className="px-2 py-0.5 rounded border bg-red-100 text-red-800 border-red-300">151–180 — Vermelho</span>
-            <span className="px-2 py-0.5 rounded border border-red-500 bg-red-50 text-red-700">&gt; 180 — Alerta</span>
+            <span className="px-2 py-0.5 rounded border bg-red-100 text-red-800 border-red-300">151–179 — Vermelho</span>
+            <span className="px-2 py-0.5 rounded border border-red-500 bg-red-50 text-red-700">&ge; 180 — Alerta</span>
+
           </div>
           </>
           )}
