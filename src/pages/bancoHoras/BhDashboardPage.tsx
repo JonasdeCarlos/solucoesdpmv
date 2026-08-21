@@ -274,32 +274,49 @@ export default function BhDashboardPage() {
       }),
     });
 
-    // Anexa os PDFs de cartão ponto importados no último mês (filtrados pela empresa se houver)
     const merged = await PDFDocument.create();
     const reportDoc = await PDFDocument.load(reportBytes);
     const reportPages = await merged.copyPages(reportDoc, reportDoc.getPageIndices());
     reportPages.forEach((p) => merged.addPage(p));
 
-    if (ultimoMes) {
-      const importsUltMes = imports.filter((i) => {
-        if (!i.file_path) return false;
-        if (i.competencia !== ultimoMes) return false;
-        if (empresa !== 'all' && i.empresa_cnpj !== empresa) return false;
-        return true;
-      });
-      for (const imp of importsUltMes) {
-        try {
-          const { data, error } = await supabase.storage.from('ponto-pdfs').download(imp.file_path!);
-          if (error || !data) continue;
-          const buf = await data.arrayBuffer();
-          const pdf = await PDFDocument.load(buf, { ignoreEncryption: true });
-          const pages = await merged.copyPages(pdf, pdf.getPageIndices());
-          pages.forEach((p) => merged.addPage(p));
-        } catch (err) {
-          console.warn('Falha ao anexar ponto:', imp.file_name, err);
-        }
+    // Anexa os PDFs de cartão ponto importados no último mês (filtrados pela empresa se houver)
+    const daEmpresa = imports.filter(
+      (i) => !!i.file_path && (empresa === 'all' || i.empresa_cnpj === empresa),
+    );
+    // competencia no banco é uma data (YYYY-MM-DD) e ultimoMes é YYYY-MM
+    let anexos = ultimoMes
+      ? daEmpresa.filter((i) => (i.competencia || '').slice(0, 7) === ultimoMes)
+      : [];
+    if (anexos.length === 0 && daEmpresa.length > 0) {
+      // fallback: usa a competência mais recente que tenha PDF disponível
+      const maisRecente = [...daEmpresa].sort((a, b) =>
+        (b.competencia || '').localeCompare(a.competencia || '') ||
+        b.imported_at.localeCompare(a.imported_at),
+      )[0];
+      const compRef = (maisRecente.competencia || '').slice(0, 7);
+      anexos = compRef
+        ? daEmpresa.filter((i) => (i.competencia || '').slice(0, 7) === compRef)
+        : [maisRecente];
+    }
+
+    let anexados = 0;
+    for (const imp of anexos) {
+      try {
+        const { data, error } = await supabase.storage.from('ponto-pdfs').download(imp.file_path!);
+        if (error || !data) continue;
+        const buf = await data.arrayBuffer();
+        const pdf = await PDFDocument.load(buf, { ignoreEncryption: true });
+        const pages = await merged.copyPages(pdf, pdf.getPageIndices());
+        pages.forEach((p) => merged.addPage(p));
+        anexados++;
+      } catch (err) {
+        console.warn('Falha ao anexar ponto:', imp.file_name, err);
       }
     }
+    if (anexados === 0) {
+      console.warn('Nenhum PDF de cartão ponto disponível para anexar ao relatório.');
+    }
+
 
     const out = await merged.save();
     const blob = new Blob([out.buffer as ArrayBuffer], { type: 'application/pdf' });
