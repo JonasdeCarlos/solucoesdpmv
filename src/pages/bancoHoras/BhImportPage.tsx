@@ -9,6 +9,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
 import { toast } from 'sonner';
 import { SaldoChip } from '@/components/bancohoras/SaldoChip';
+import { useBhEmpresaConfig } from '@/hooks/useBhEmpresaConfig';
+
 import {
   AlertDialog,
   AlertDialogContent,
