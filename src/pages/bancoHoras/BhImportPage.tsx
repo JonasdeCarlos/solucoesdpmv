@@ -62,7 +62,7 @@ export default function BhImportPage() {
   const [done, setDone] = useState<{ ok: number; pendentes: number; substituidos: number; novos: number } | null>(persisted?.done ?? null);
   const [askClear, setAskClear] = useState(false);
   const [clearing, setClearing] = useState(false);
-  const [empresaLogo, setEmpresaLogo] = useState<string>('');
+  
   const logoInputRef = useRef<HTMLInputElement>(null);
   const [missingImports, setMissingImports] = useState<Array<{ id: string; empresa_nome: string; empresa_cnpj: string; competencia: string | null; file_name: string }>>([]);
   const [reattachId, setReattachId] = useState<string | null>(null);
