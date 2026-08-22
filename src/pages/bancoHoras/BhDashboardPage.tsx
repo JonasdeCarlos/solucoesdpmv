@@ -69,14 +69,6 @@ export default function BhDashboardPage() {
     return Math.floor((b.getTime() - a.getTime()) / 86400000) + 1;
   }, [periodoInicio, periodoFim]);
 
-  const periodoFaixa = useMemo<'verde'|'amarelo'|'laranja'|'vermelho'|'alerta'|null>(() => {
-    if (periodoDias == null) return null;
-    if (periodoDias >= 180) return 'alerta';
-    if (periodoDias >= 151) return 'vermelho';
-    if (periodoDias >= 121) return 'laranja';
-    if (periodoDias >= 101) return 'amarelo';
-    return 'verde';
-  }, [periodoDias]);
 
 
 
@@ -132,6 +124,17 @@ export default function BhDashboardPage() {
     if (isNaN(fim.getTime())) return null;
     return Math.round((fim.getTime() - dataReferencia.getTime()) / 86400000);
   }, [periodoFim, dataReferencia]);
+
+  // Faixa do prazo: medida pela DATA DE REFERÊNCIA (não pela duração do período).
+  // As datas de início/fim são o período LEGAL do banco (registro do acordo) —
+  // a duração em si (ex.: 180 dias ou 12 meses) não gera alerta.
+  const periodoFaixa = useMemo<'verde'|'amarelo'|'laranja'|'vermelho'|'alerta'|null>(() => {
+    if (diasParaVencer == null) return null;
+    if (diasParaVencer < 0) return 'alerta';    // período vencido
+    if (diasParaVencer <= 30) return 'laranja'; // vence em até 30 dias
+    if (diasParaVencer <= 90) return 'amarelo'; // atenção
+    return 'verde';                             // no prazo
+  }, [diasParaVencer]);
 
 
   const balancesUltimoMes = useMemo(
@@ -278,6 +281,8 @@ export default function BhDashboardPage() {
         fim: periodoFim,
         dias: periodoDias,
         faixa: periodoFaixa!,
+        diasParaVencer: diasParaVencer ?? undefined,
+        referenciaLabel: dataReferencia.toLocaleDateString('pt-BR'),
       } : undefined,
       evolucao: memoriaEvolucao,
       distMes: distMes.map((d: any) => ({
@@ -487,31 +492,28 @@ export default function BhDashboardPage() {
             </div>
             <div>
               {periodoDias != null ? (
-                <div className={`rounded border px-3 py-2 text-sm font-medium ${
-                  periodoFaixa === 'verde' ? 'bg-green-100 text-green-800 border-green-300' :
-                  periodoFaixa === 'amarelo' ? 'bg-yellow-100 text-yellow-900 border-yellow-300' :
-                  periodoFaixa === 'laranja' ? 'bg-orange-100 text-orange-900 border-orange-300' :
-                  'bg-red-100 text-red-800 border-red-300'
-                }`}>
-                  {periodoDias} dia{periodoDias === 1 ? '' : 's'} de banco
+                <div className="space-y-1">
+                  <div className="rounded border px-3 py-1.5 text-xs text-muted-foreground bg-muted/30">
+                    Período legal do banco: {periodoDias} dia{periodoDias === 1 ? '' : 's'}
+                  </div>
+                  {periodoFaixa && diasParaVencer != null && (
+                    <div className={`rounded border px-3 py-1.5 text-sm font-medium ${
+                      periodoFaixa === 'verde' ? 'bg-green-100 text-green-800 border-green-300' :
+                      periodoFaixa === 'amarelo' ? 'bg-yellow-100 text-yellow-900 border-yellow-300' :
+                      periodoFaixa === 'laranja' ? 'bg-orange-100 text-orange-900 border-orange-300' :
+                      'bg-red-100 text-red-800 border-red-300'
+                    }`}>
+                      {diasParaVencer < 0
+                        ? `Vencido há ${Math.abs(diasParaVencer)} dia${Math.abs(diasParaVencer) === 1 ? '' : 's'}`
+                        : `${diasParaVencer} dia${diasParaVencer === 1 ? '' : 's'} para o fim do prazo`}
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="text-xs text-muted-foreground">Informe início e fim para calcular.</div>
               )}
             </div>
           </div>
-
-          {periodoFaixa === 'alerta' && (
-            <div className="flex items-start gap-3 p-3 rounded border-2 border-red-500 bg-red-50">
-              <AlertTriangle className="w-8 h-8 text-yellow-500 fill-yellow-300 flex-shrink-0" strokeWidth={2.5} />
-              <div>
-                <p className="text-sm font-bold text-red-700">Atenção — Banco atinge/supera 180 dias</p>
-                <p className="text-sm text-red-700">
-                  O período cadastrado tem {periodoDias} dias. O limite legal de compensação é de 180 dias — verifique a situação.
-                </p>
-              </div>
-            </div>
-          )}
 
           {diasParaVencer != null && diasParaVencer < 0 && (
             <div className="flex items-start gap-3 p-3 rounded border-2 border-red-500 bg-red-50">
@@ -539,13 +541,15 @@ export default function BhDashboardPage() {
 
 
           <div className="flex flex-wrap gap-2 text-[10px] text-muted-foreground">
-            <span className="px-2 py-0.5 rounded border bg-green-100 text-green-800 border-green-300">Até 100 dias — Verde</span>
-            <span className="px-2 py-0.5 rounded border bg-yellow-100 text-yellow-900 border-yellow-300">101–120 — Amarelo</span>
-            <span className="px-2 py-0.5 rounded border bg-orange-100 text-orange-900 border-orange-300">121–150 — Laranja</span>
-            <span className="px-2 py-0.5 rounded border bg-red-100 text-red-800 border-red-300">151–179 — Vermelho</span>
-            <span className="px-2 py-0.5 rounded border border-red-500 bg-red-50 text-red-700">&ge; 180 — Alerta</span>
-
+            <span className="px-2 py-0.5 rounded border bg-green-100 text-green-800 border-green-300">Verde — mais de 90 dias para o fim</span>
+            <span className="px-2 py-0.5 rounded border bg-yellow-100 text-yellow-900 border-yellow-300">Amarelo — até 90 dias</span>
+            <span className="px-2 py-0.5 rounded border bg-orange-100 text-orange-900 border-orange-300">Laranja — até 30 dias</span>
+            <span className="px-2 py-0.5 rounded border border-red-500 bg-red-50 text-red-700">Vermelho — período vencido</span>
           </div>
+          <p className="text-[10px] text-muted-foreground">
+            Início e fim são o <strong>período legal</strong> do banco (registro do acordo) — a duração em si não gera alerta.
+            Os alertas partem da <strong>data de referência</strong> ({dataReferencia.toLocaleDateString('pt-BR')}{ultimoMes ? ` — fim de ${competenciaLabel(ultimoMes)}` : ' — data atual'}).
+          </p>
           </>
           )}
         </CardContent>
