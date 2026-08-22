@@ -69,14 +69,6 @@ export default function BhDashboardPage() {
     return Math.floor((b.getTime() - a.getTime()) / 86400000) + 1;
   }, [periodoInicio, periodoFim]);
 
-  const periodoFaixa = useMemo<'verde'|'amarelo'|'laranja'|'vermelho'|'alerta'|null>(() => {
-    if (periodoDias == null) return null;
-    if (periodoDias >= 180) return 'alerta';
-    if (periodoDias >= 151) return 'vermelho';
-    if (periodoDias >= 121) return 'laranja';
-    if (periodoDias >= 101) return 'amarelo';
-    return 'verde';
-  }, [periodoDias]);
 
 
 
