@@ -78,15 +78,6 @@ export default function BhDashboardPage() {
     return 'verde';
   }, [periodoDias]);
 
-  // Dias até o fim do período (negativo = já venceu)
-  const diasParaVencer = useMemo(() => {
-    if (!periodoFim) return null;
-    const fim = new Date(periodoFim + 'T00:00:00');
-    if (isNaN(fim.getTime())) return null;
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
-    return Math.round((fim.getTime() - hoje.getTime()) / 86400000);
-  }, [periodoFim]);
 
 
   const onPickLogo = async (f: File) => {
@@ -121,6 +112,27 @@ export default function BhDashboardPage() {
     const meses = [...new Set(filteredBalances.map((b) => b.competencia))].sort();
     return meses[meses.length - 1] || null;
   }, [filteredBalances]);
+
+  // Data de referência dos alertas: último dia do mês da competência em questão
+  // (ex.: competência 07/2026 → referência 31/07/2026). Sem competência, usa hoje.
+  const dataReferencia = useMemo(() => {
+    if (ultimoMes) {
+      const [y, m] = ultimoMes.split('-').map(Number);
+      if (y && m) return new Date(y, m, 0); // dia 0 do mês seguinte = último dia do mês
+    }
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    return hoje;
+  }, [ultimoMes]);
+
+  // Dias até o fim do período a partir da data de referência (negativo = em atraso)
+  const diasParaVencer = useMemo(() => {
+    if (!periodoFim) return null;
+    const fim = new Date(periodoFim + 'T00:00:00');
+    if (isNaN(fim.getTime())) return null;
+    return Math.round((fim.getTime() - dataReferencia.getTime()) / 86400000);
+  }, [periodoFim, dataReferencia]);
+
 
   const balancesUltimoMes = useMemo(
     () => filteredBalances.filter((b) => b.competencia === ultimoMes),
@@ -507,7 +519,7 @@ export default function BhDashboardPage() {
               <div>
                 <p className="text-sm font-bold text-red-700">Prazo vencido</p>
                 <p className="text-sm text-red-700">
-                  O período encerrou em {new Date(periodoFim + 'T00:00:00').toLocaleDateString('pt-BR')} (há {Math.abs(diasParaVencer)} dia{Math.abs(diasParaVencer) === 1 ? '' : 's'}). Regularize a compensação ou o pagamento dos saldos.
+                  O período encerrou em {new Date(periodoFim + 'T00:00:00').toLocaleDateString('pt-BR')} — {Math.abs(diasParaVencer)} dia{Math.abs(diasParaVencer) === 1 ? '' : 's'} de atraso em relação à referência {dataReferencia.toLocaleDateString('pt-BR')}{ultimoMes ? ` (fim de ${competenciaLabel(ultimoMes)})` : ''}. Regularize a compensação ou o pagamento dos saldos.
                 </p>
               </div>
             </div>
@@ -519,7 +531,7 @@ export default function BhDashboardPage() {
               <div>
                 <p className="text-sm font-bold text-orange-800">Prazo próximo do vencimento</p>
                 <p className="text-sm text-orange-800">
-                  Faltam {diasParaVencer} dia{diasParaVencer === 1 ? '' : 's'} para o fim do período ({new Date(periodoFim + 'T00:00:00').toLocaleDateString('pt-BR')}).
+                  Faltam {diasParaVencer} dia{diasParaVencer === 1 ? '' : 's'} para o fim do período ({new Date(periodoFim + 'T00:00:00').toLocaleDateString('pt-BR')}), contados da referência {dataReferencia.toLocaleDateString('pt-BR')}{ultimoMes ? ` (fim de ${competenciaLabel(ultimoMes)})` : ''}.
                 </p>
               </div>
             </div>
