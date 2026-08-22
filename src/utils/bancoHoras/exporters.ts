@@ -48,6 +48,8 @@ export interface ReportMeta {
     fim: string;
     dias: number;
     faixa: 'verde' | 'amarelo' | 'laranja' | 'vermelho' | 'alerta';
+    diasParaVencer?: number;
+    referenciaLabel?: string;
   };
 }
 
@@ -320,8 +322,9 @@ export async function exportPdf(rows: ReportRow[], meta: ReportMeta, _filename?:
     };
     const [br, bg, bb] = bgMap[p.faixa];
     const [cr, cg, cb] = colorMap[p.faixa];
-    const boxH = p.faixa === 'alerta' ? 22 : 14;
-    doc.setDrawColor(cr, cg, cb); doc.setLineWidth(p.faixa === 'alerta' ? 0.8 : 0.4);
+    const alertaPrazo = p.faixa === 'alerta' || p.faixa === 'laranja';
+    const boxH = alertaPrazo ? 22 : 14;
+    doc.setDrawColor(cr, cg, cb); doc.setLineWidth(alertaPrazo ? 0.8 : 0.4);
     doc.setFillColor(br, bg, bb);
     doc.roundedRect(14, y, pw - 28, boxH, 2, 2, 'FD');
     const fmtDate = (s: string) => {
@@ -332,10 +335,10 @@ export async function exportPdf(rows: ReportRow[], meta: ReportMeta, _filename?:
     doc.text('PERÍODO DO BANCO DE HORAS', 18, y + 5);
     doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(60);
     doc.text(
-      `Início: ${fmtDate(p.inicio)}   •   Fim: ${fmtDate(p.fim)}   •   Total: ${p.dias} dia${p.dias === 1 ? '' : 's'}`,
+      `Início: ${fmtDate(p.inicio)}   •   Fim: ${fmtDate(p.fim)}   •   Período legal: ${p.dias} dia${p.dias === 1 ? '' : 's'}`,
       18, y + 10,
     );
-    if (p.faixa === 'alerta') {
+    if (alertaPrazo) {
       // triângulo amarelo de advertência com !
       const tx = pw - 32, ty = y + 4;
       doc.setFillColor(234, 179, 8); doc.setDrawColor(60); doc.setLineWidth(0.4);
@@ -343,7 +346,12 @@ export async function exportPdf(rows: ReportRow[], meta: ReportMeta, _filename?:
       doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(0);
       doc.text('!', tx + 7, ty + 10, { align: 'center' });
       doc.setFontSize(9); doc.setTextColor(cr, cg, cb); doc.setFont('helvetica', 'bold');
-      doc.text('Banco supera 180 dias, verifique a situação.', 18, y + 17);
+      const d = p.diasParaVencer;
+      const ref = p.referenciaLabel ? ` — referência ${p.referenciaLabel}` : '';
+      const msg = p.faixa === 'alerta'
+        ? `Período vencido${d != null ? ` há ${Math.abs(d)} dia${Math.abs(d) === 1 ? '' : 's'}` : ''}${ref}. Regularize a compensação/pagamento.`
+        : `Prazo próximo do vencimento${d != null ? ` — faltam ${d} dia${d === 1 ? '' : 's'}` : ''}${ref}.`;
+      doc.text(msg, 18, y + 17);
     }
     doc.setTextColor(0); doc.setFont('helvetica', 'normal');
     y += boxH + 6;
