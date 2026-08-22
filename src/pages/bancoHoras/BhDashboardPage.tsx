@@ -113,6 +113,27 @@ export default function BhDashboardPage() {
     return meses[meses.length - 1] || null;
   }, [filteredBalances]);
 
+  // Data de referência dos alertas: último dia do mês da competência em questão
+  // (ex.: competência 07/2026 → referência 31/07/2026). Sem competência, usa hoje.
+  const dataReferencia = useMemo(() => {
+    if (ultimoMes) {
+      const [y, m] = ultimoMes.split('-').map(Number);
+      if (y && m) return new Date(y, m, 0); // dia 0 do mês seguinte = último dia do mês
+    }
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    return hoje;
+  }, [ultimoMes]);
+
+  // Dias até o fim do período a partir da data de referência (negativo = em atraso)
+  const diasParaVencer = useMemo(() => {
+    if (!periodoFim) return null;
+    const fim = new Date(periodoFim + 'T00:00:00');
+    if (isNaN(fim.getTime())) return null;
+    return Math.round((fim.getTime() - dataReferencia.getTime()) / 86400000);
+  }, [periodoFim, dataReferencia]);
+
+
   const balancesUltimoMes = useMemo(
     () => filteredBalances.filter((b) => b.competencia === ultimoMes),
     [filteredBalances, ultimoMes],
