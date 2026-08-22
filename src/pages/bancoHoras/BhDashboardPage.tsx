@@ -519,7 +519,7 @@ export default function BhDashboardPage() {
               <div>
                 <p className="text-sm font-bold text-red-700">Prazo vencido</p>
                 <p className="text-sm text-red-700">
-                  O período encerrou em {new Date(periodoFim + 'T00:00:00').toLocaleDateString('pt-BR')} (há {Math.abs(diasParaVencer)} dia{Math.abs(diasParaVencer) === 1 ? '' : 's'}). Regularize a compensação ou o pagamento dos saldos.
+                  O período encerrou em {new Date(periodoFim + 'T00:00:00').toLocaleDateString('pt-BR')} — {Math.abs(diasParaVencer)} dia{Math.abs(diasParaVencer) === 1 ? '' : 's'} de atraso em relação à referência {dataReferencia.toLocaleDateString('pt-BR')}{ultimoMes ? ` (fim de ${competenciaLabel(ultimoMes)})` : ''}. Regularize a compensação ou o pagamento dos saldos.
                 </p>
               </div>
             </div>
@@ -531,7 +531,7 @@ export default function BhDashboardPage() {
               <div>
                 <p className="text-sm font-bold text-orange-800">Prazo próximo do vencimento</p>
                 <p className="text-sm text-orange-800">
-                  Faltam {diasParaVencer} dia{diasParaVencer === 1 ? '' : 's'} para o fim do período ({new Date(periodoFim + 'T00:00:00').toLocaleDateString('pt-BR')}).
+                  Faltam {diasParaVencer} dia{diasParaVencer === 1 ? '' : 's'} para o fim do período ({new Date(periodoFim + 'T00:00:00').toLocaleDateString('pt-BR')}), contados da referência {dataReferencia.toLocaleDateString('pt-BR')}{ultimoMes ? ` (fim de ${competenciaLabel(ultimoMes)})` : ''}.
                 </p>
               </div>
             </div>
