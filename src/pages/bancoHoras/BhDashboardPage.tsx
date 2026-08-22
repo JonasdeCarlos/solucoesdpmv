@@ -78,15 +78,6 @@ export default function BhDashboardPage() {
     return 'verde';
   }, [periodoDias]);
 
-  // Dias até o fim do período (negativo = já venceu)
-  const diasParaVencer = useMemo(() => {
-    if (!periodoFim) return null;
-    const fim = new Date(periodoFim + 'T00:00:00');
-    if (isNaN(fim.getTime())) return null;
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
-    return Math.round((fim.getTime() - hoje.getTime()) / 86400000);
-  }, [periodoFim]);
 
 
   const onPickLogo = async (f: File) => {
