@@ -125,6 +125,17 @@ export default function BhDashboardPage() {
     return Math.round((fim.getTime() - dataReferencia.getTime()) / 86400000);
   }, [periodoFim, dataReferencia]);
 
+  // Faixa do prazo: medida pela DATA DE REFERÊNCIA (não pela duração do período).
+  // As datas de início/fim são o período LEGAL do banco (registro do acordo) —
+  // a duração em si (ex.: 180 dias ou 12 meses) não gera alerta.
+  const periodoFaixa = useMemo<'verde'|'amarelo'|'laranja'|'vermelho'|'alerta'|null>(() => {
+    if (diasParaVencer == null) return null;
+    if (diasParaVencer < 0) return 'alerta';    // período vencido
+    if (diasParaVencer <= 30) return 'laranja'; // vence em até 30 dias
+    if (diasParaVencer <= 90) return 'amarelo'; // atenção
+    return 'verde';                             // no prazo
+  }, [diasParaVencer]);
+
 
   const balancesUltimoMes = useMemo(
     () => filteredBalances.filter((b) => b.competencia === ultimoMes),
