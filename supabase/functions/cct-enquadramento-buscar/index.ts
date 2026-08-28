@@ -124,16 +124,47 @@ Deno.serve(async (req) => {
     new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
   try {
-    const { municipio, uf, cnae, atividade } = await req.json();
+    const body = await req.json();
+    const { municipio, uf, cnae, atividade } = body;
+    const modo: string = body.modo === 'mte' ? 'mte' : 'geral';
+    const cnpjDigits: string = String(body.cnpj || '').replace(/\D/g, '');
     if (!municipio || !uf) return json({ error: 'Informe município e UF.' }, 400);
 
-    const base = `${atividade || ''} ${cnae || ''} ${municipio} ${uf}`.trim();
-    const queries = [
-      `sindicato patronal ${base}`,
-      `sindicato dos trabalhadores ${base}`,
-      `sindicato ${cnae || atividade || ''} ${uf} CNPJ site oficial`,
-      `convenção coletiva ${base} sindicato`,
-    ];
+    // Enriquecimento opcional pelo CNPJ informado (empresa ou sindicato)
+    let empresa: { razao_social?: string; nome_fantasia?: string; cnae_fiscal_descricao?: string; cnae_fiscal?: string; municipio?: string; uf?: string } | null = null;
+    if (cnpjDigits.length === 14) {
+      try {
+        const r = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpjDigits}`, { signal: AbortSignal.timeout(10000) });
+        if (r.ok) empresa = await r.json();
+      } catch (e) {
+        console.log('brasilapi falhou', String(e));
+      }
+    }
+
+    const cnaeEfetivo = cnae || (empresa ? `${empresa.cnae_fiscal || ''} ${empresa.cnae_fiscal_descricao || ''}`.trim() : '');
+    const atividadeEfetiva = atividade || empresa?.cnae_fiscal_descricao || '';
+    const base = `${atividadeEfetiva} ${cnaeEfetivo} ${municipio} ${uf}`.trim();
+
+    const nomeEmpresa = empresa?.razao_social || empresa?.nome_fantasia || '';
+    const MEDIADOR = 'site:www3.mte.gov.br OR site:mediador.inss.gov.br OR site:sistemas.mte.gov.br OR mediador';
+
+    const queries = modo === 'mte'
+      ? [
+          `${MEDIADOR} convenção coletiva ${base}`,
+          `mediador MTE registro convenção coletiva sindicato ${cnaeEfetivo || atividadeEfetiva} ${municipio} ${uf}`,
+          nomeEmpresa
+            ? `mediador MTE "${nomeEmpresa}" convenção coletiva sindicato`
+            : `"MG${uf === 'MG' ? '' : ''}" instrumento coletivo registrado mediador ${municipio} ${uf} sindicato`,
+          cnpjDigits ? `mediador MTE CNPJ ${cnpjDigits} convenção coletiva sindicato` : `CNES sindicato ${base} registro sindical MTE`,
+        ]
+      : [
+          `sindicato patronal ${base}`,
+          `sindicato dos trabalhadores ${base}`,
+          `sindicato ${cnaeEfetivo || atividadeEfetiva} ${uf} CNPJ site oficial`,
+          cnpjDigits && nomeEmpresa
+            ? `"${nomeEmpresa}" convenção coletiva sindicato ${uf}`
+            : `convenção coletiva ${base} sindicato`,
+        ];
     // r.jina.ai limita requisições concorrentes: buscamos em série com pequena pausa.
     const results: Hit[] = [];
     for (const q of queries) {
@@ -148,7 +179,12 @@ Deno.serve(async (req) => {
 
     const system = `Você é especialista em enquadramento sindical brasileiro (CLT art. 511, categoria econômica x profissional).
 Com base na atividade/CNAE e no município/UF, classifique a categoria e selecione, APENAS entre os resultados de busca fornecidos, os sindicatos patronais (categoria econômica) e laborais (categoria profissional) mais prováveis para a base territorial.
-Regras: nunca invente CNPJ nem site; se não constar nas evidências, deixe vazio. Confiança: alta somente se nome + base territorial + categoria batem claramente. Sempre traga a URL da fonte usada. Máximo 5 candidatos por lista. Responda em pt-BR.`;
+Regras: nunca invente CNPJ nem site; se não constar nas evidências, deixe vazio. Confiança: alta somente se nome + base territorial + categoria batem claramente. Sempre traga a URL da fonte usada. Máximo 5 candidatos por lista. Responda em pt-BR.${
+      modo === 'mte'
+        ? `
+MODO MEDIADOR/MTE: priorize evidências oriundas do Sistema Mediador (mte.gov.br) e de instrumentos coletivos registrados (números de registro MR/XXXX). Cite em observacoes o número de registro do instrumento quando aparecer nas evidências, e oriente a validação final em http://www3.mte.gov.br/sistemas/mediador/ConsultarInstColetivo.`
+        : ''
+    }`;
 
     const semEvidencias = hits.length === 0;
     const systemFinal = semEvidencias
@@ -156,6 +192,7 @@ Regras: nunca invente CNPJ nem site; se não constar nas evidências, deixe vazi
 
 ATENÇÃO: nenhuma evidência de busca foi obtida. Nesse caso, sugira os sindicatos mais prováveis com base no seu conhecimento da estrutura sindical brasileira (nome provável da entidade e base territorial), marcando SEMPRE confianca="baixa", cnpj e site vazios, fonte_url="http://www3.mte.gov.br/sistemas/mediador/ConsultarInstColetivo" e deixando claro em observacoes que as buscas externas falharam e que tudo deve ser confirmado no CNES/Mediador.`
       : system;
+
 
     const resp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -167,7 +204,7 @@ ATENÇÃO: nenhuma evidência de busca foi obtida. Nesse caso, sugira os sindica
           { role: 'system', content: systemFinal },
           {
             role: 'user',
-            content: `Município: ${municipio}\nUF: ${uf}\nCNAE: ${cnae || '(não informado)'}\nAtividade: ${atividade || '(não informada)'}\n\n<resultados_busca>\n${hits
+            content: `Município: ${municipio}\nUF: ${uf}\nCNAE: ${cnaeEfetivo || '(não informado)'}\nAtividade: ${atividadeEfetiva || '(não informada)'}\nCNPJ informado: ${cnpjDigits || '(não informado)'}\nEmpresa (Receita): ${nomeEmpresa || '(não localizada)'}${empresa ? ` — ${empresa.municipio || ''}/${empresa.uf || ''}` : ''}\nModo: ${modo === 'mte' ? 'Mediador/MTE' : 'geral'}\n\n<resultados_busca>\n${hits
               .map((h, i) => `[${i + 1}] ${h.title}\nURL: ${h.url}\n${h.snippet}`)
               .join('\n\n')}\n</resultados_busca>`,
           },
@@ -230,7 +267,21 @@ ATENÇÃO: nenhuma evidência de busca foi obtida. Nesse caso, sugira os sindica
     const data = await resp.json();
     const args = data.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
     const parsed = args ? JSON.parse(args) : { categoria_termos: [], patronais: [], laborais: [] };
-    return json({ ...parsed, fontes_consultadas: hits.length });
+    return json({
+      ...parsed,
+      fontes_consultadas: hits.length,
+      modo,
+      empresa: empresa
+        ? {
+            razao_social: empresa.razao_social,
+            nome_fantasia: empresa.nome_fantasia,
+            cnae: `${empresa.cnae_fiscal || ''} ${empresa.cnae_fiscal_descricao || ''}`.trim(),
+            municipio: empresa.municipio,
+            uf: empresa.uf,
+          }
+        : null,
+      fontes: hits.slice(0, 12).map((h) => ({ titulo: h.title, url: h.url })),
+    });
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : String(e) }, 500);
   }

@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { AlertTriangle, ExternalLink, Loader2, Search } from 'lucide-react';
+import { AlertTriangle, ExternalLink, Landmark, Loader2, Search } from 'lucide-react';
 import { toast } from 'sonner';
 
 const UFS = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
@@ -28,6 +28,9 @@ type Resultado = {
   patronais?: Candidato[];
   laborais?: Candidato[];
   fontes_consultadas?: number;
+  modo?: string;
+  empresa?: { razao_social?: string; nome_fantasia?: string; cnae?: string; municipio?: string; uf?: string } | null;
+  fontes?: { titulo: string; url: string }[];
 };
 
 const confiancaVariant = (c: string) =>
@@ -62,24 +65,39 @@ const CandidatoCard = ({ c }: { c: Candidato }) => (
   </Card>
 );
 
+const maskCnpj = (v: string) =>
+  v.replace(/\D/g, '').slice(0, 14)
+    .replace(/^(\d{2})(\d)/, '$1.$2')
+    .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+    .replace(/\.(\d{3})(\d)/, '.$1/$2')
+    .replace(/(\d{4})(\d)/, '$1-$2');
+
 const CctEnquadramentoPage = () => {
   const [municipio, setMunicipio] = useState('');
   const [uf, setUf] = useState('MG');
   const [cnae, setCnae] = useState('');
+  const [cnpj, setCnpj] = useState('');
   const [atividade, setAtividade] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<false | 'geral' | 'mte'>(false);
   const [resultado, setResultado] = useState<Resultado | null>(null);
 
-  const buscar = async () => {
+  const buscar = async (modo: 'geral' | 'mte') => {
     if (!municipio.trim()) {
       toast.error('Informe o município.');
       return;
     }
-    setLoading(true);
+    setLoading(modo);
     setResultado(null);
     try {
       const { data, error } = await supabase.functions.invoke('cct-enquadramento-buscar', {
-        body: { municipio: municipio.trim(), uf, cnae: cnae.trim(), atividade: atividade.trim() },
+        body: {
+          municipio: municipio.trim(),
+          uf,
+          cnae: cnae.trim(),
+          atividade: atividade.trim(),
+          cnpj: cnpj.replace(/\D/g, ''),
+          modo,
+        },
       });
       if (error) throw error;
       if ((data as { error?: string })?.error) throw new Error((data as { error: string }).error);
@@ -90,6 +108,7 @@ const CctEnquadramentoPage = () => {
       setLoading(false);
     }
   };
+
 
   return (
     <div className="space-y-6">
@@ -127,18 +146,37 @@ const CctEnquadramentoPage = () => {
               </Select>
             </div>
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="cnae">CNAE</Label>
-            <Input id="cnae" value={cnae} onChange={(e) => setCnae(e.target.value)} placeholder="Ex.: 5611-2/01 — Restaurantes" />
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="cnae">CNAE</Label>
+              <Input id="cnae" value={cnae} onChange={(e) => setCnae(e.target.value)} placeholder="Ex.: 5611-2/01 — Restaurantes" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="cnpj">CNPJ de um dos participantes (opcional)</Label>
+              <Input id="cnpj" value={cnpj} onChange={(e) => setCnpj(maskCnpj(e.target.value))} placeholder="00.000.000/0000-00" inputMode="numeric" />
+              <p className="text-xs text-muted-foreground">Empresa ou sindicato — usamos a Receita para enriquecer a busca.</p>
+            </div>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="atividade">Descrição da atividade</Label>
             <Textarea id="atividade" rows={3} value={atividade} onChange={(e) => setAtividade(e.target.value)} placeholder="Descreva a atividade principal da empresa." />
           </div>
-          <Button onClick={buscar} disabled={loading}>
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-            {loading ? 'Buscando sindicatos...' : 'Buscar sindicatos'}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={() => buscar('geral')} disabled={loading !== false}>
+              {loading === 'geral' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+              {loading === 'geral' ? 'Buscando sindicatos...' : 'Buscar sindicatos'}
+            </Button>
+            <Button variant="secondary" onClick={() => buscar('mte')} disabled={loading !== false}>
+              {loading === 'mte' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Landmark className="w-4 h-4" />}
+              {loading === 'mte' ? 'Consultando Mediador...' : 'Buscar no MTE (Mediador)'}
+            </Button>
+            <Button variant="outline" asChild>
+              <a href="http://www3.mte.gov.br/sistemas/mediador/ConsultarInstColetivo" target="_blank" rel="noreferrer">
+                <ExternalLink className="w-4 h-4" /> Abrir Mediador
+              </a>
+            </Button>
+          </div>
+
         </CardContent>
       </Card>
 
@@ -153,8 +191,24 @@ const CctEnquadramentoPage = () => {
 
       {resultado && !loading && (
         <div className="space-y-6">
+          {resultado.empresa && (
+            <Card>
+              <CardHeader><CardTitle className="text-base">Dados do CNPJ informado</CardTitle></CardHeader>
+              <CardContent className="space-y-1 text-sm">
+                <p><span className="text-muted-foreground">Razão social:</span> {resultado.empresa.razao_social || '—'}</p>
+                {resultado.empresa.nome_fantasia && <p><span className="text-muted-foreground">Nome fantasia:</span> {resultado.empresa.nome_fantasia}</p>}
+                <p><span className="text-muted-foreground">CNAE:</span> {resultado.empresa.cnae || '—'}</p>
+                <p><span className="text-muted-foreground">Localidade:</span> {resultado.empresa.municipio || '—'}/{resultado.empresa.uf || '—'}</p>
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
-            <CardHeader><CardTitle className="text-base">Classificação da IA</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="text-base">
+                Classificação da IA {resultado.modo === 'mte' && <Badge variant="secondary" className="ml-2">Mediador/MTE</Badge>}
+              </CardTitle>
+            </CardHeader>
             <CardContent className="space-y-3">
               {resultado.categoria_termos?.length ? (
                 <div className="flex flex-wrap gap-2">
@@ -164,8 +218,10 @@ const CctEnquadramentoPage = () => {
                 <p className="text-sm text-muted-foreground">Nenhum termo de categoria identificado.</p>
               )}
               {resultado.observacoes && <p className="text-sm">{resultado.observacoes}</p>}
+              <p className="text-xs text-muted-foreground">Fontes consultadas: {resultado.fontes_consultadas ?? 0}</p>
             </CardContent>
           </Card>
+
 
           <div className="grid gap-6 lg:grid-cols-2">
             <section className="space-y-3">
@@ -185,6 +241,19 @@ const CctEnquadramentoPage = () => {
               )}
             </section>
           </div>
+
+          {!!resultado.fontes?.length && (
+            <Card>
+              <CardHeader><CardTitle className="text-base">Fontes usadas na busca</CardTitle></CardHeader>
+              <CardContent className="space-y-2">
+                {resultado.fontes.map((f) => (
+                  <a key={f.url} href={f.url} target="_blank" rel="noreferrer" className="block text-sm text-primary hover:underline break-all">
+                    {f.titulo || f.url}
+                  </a>
+                ))}
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
     </div>
