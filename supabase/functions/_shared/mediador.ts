@@ -13,6 +13,7 @@ export type MediadorInstrumento = {
   vigencia_fim?: string;
   vigente: boolean;
   partes: string[];
+  cnpj_registro?: string;
   url_visualizar: string;
   url_download: string;
 };
@@ -105,11 +106,11 @@ export function parseInstrumentos(html: string): { total: number; instrumentos: 
     const tipo = pega(txt, /Tipo do Instrumento\s*\|\s*([^|]+)\|/i);
     const vigIni = pega(txt, /Vig[êe]ncia\s*\|\s*(\d{2}\/\d{2}\/\d{4})/i);
     const vigFim = pega(txt, /Vig[êe]ncia\s*\|\s*\d{2}\/\d{2}\/\d{4}\s*\|?\s*-\s*(\d{2}\/\d{2}\/\d{4})/i);
-    const partesTxt = pega(txt, /Partes\s*\|([\s\S]*?)(?:Download|Visualizar|$)/i);
-    const partes = partesTxt
-      .split('|')
-      .map((p) => p.trim())
-      .filter((p) => p.length > 4 && !/^Download$/i.test(p));
+    const partesHtml = bruto.match(/class="textoConsulta2"[^>]*>([\s\S]*?)<\/td>/i)?.[1] || '';
+    const partes = partesHtml
+      .split(/<br\s*\/?>/i)
+      .map((p) => stripTags(p).replace(/\s*\|\s*/g, ' ').trim())
+      .filter((p) => p.length > 4);
     const fim = paraData(vigFim);
     instrumentos.push({
       numero_registro: registro,
@@ -120,6 +121,7 @@ export function parseInstrumentos(html: string): { total: number; instrumentos: 
       vigencia_fim: vigFim || undefined,
       vigente: fim ? fim >= hoje : true,
       partes,
+      cnpj_registro: bruto.match(/fDownload\('[^']+','(\d{14})'\)/)?.[1] || '',
       url_visualizar: `https://mediador.trabalho.gov.br/sistemas/mediador/Resumo/ResumoVisualizar?NrSolicitacao=${encodeURIComponent(solicitacao)}`,
       url_download: `https://mediador.trabalho.gov.br/sistemas/mediador/Resumo/resumoVisualizarSalvarMsWordDoc?NrSolicitacao=${encodeURIComponent(solicitacao)}`,
     });
