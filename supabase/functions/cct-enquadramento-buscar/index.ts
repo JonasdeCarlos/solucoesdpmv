@@ -226,7 +226,9 @@ Com base na atividade/CNAE e no município/UF, classifique a categoria e selecio
 Regras: nunca invente CNPJ nem site; se não constar nas evidências, deixe vazio. Confiança: alta somente se nome + base territorial + categoria batem claramente. Sempre traga a URL da fonte usada. Máximo 5 candidatos por lista. Responda em pt-BR.${
       modo === 'mte'
         ? `
-MODO MEDIADOR/MTE: priorize evidências oriundas do Sistema Mediador (mte.gov.br) e de instrumentos coletivos registrados (números de registro MR/XXXX). Cite em observacoes o número de registro do instrumento quando aparecer nas evidências, e oriente a validação final em http://www3.mte.gov.br/sistemas/mediador/ConsultarInstColetivo.`
+MODO MEDIADOR/MTE: as evidências vêm da CONSULTA REAL ao Sistema Mediador, filtrada pela BASE TERRITORIAL do município informado (não pelo nome do sindicato). Cada evidência traz tipo do instrumento, nº de registro (UFxxxxx/ANO), nº da solicitação (MRxxxxx/ANO), vigência e as PARTES (sindicato laboral X sindicato patronal ou empresa).
+Regras específicas: identifique como LABORAL a parte que representa trabalhadores/empregados e como PATRONAL a parte que é sindicato de empregadores/categoria econômica (se a outra parte for uma empresa, trata-se de Acordo Coletivo — não classifique a empresa como sindicato).
+Priorize as Convenções Coletivas vigentes cuja categoria bate com a atividade/CNAE. Cite em observacoes os nºs de registro relevantes.`
         : ''
     }`;
 
