@@ -281,12 +281,13 @@ Deno.serve(async (req) => {
 
     const system = `Você é especialista em enquadramento sindical brasileiro (CLT art. 511, categoria econômica x profissional).
 Com base na atividade/CNAE e no município/UF, classifique a categoria e selecione, APENAS entre os resultados de busca fornecidos, os sindicatos patronais (categoria econômica) e laborais (categoria profissional) mais prováveis para a base territorial.
+Regra de aderência de categoria (CRÍTICA): só indique um sindicato se a CATEGORIA que ele representa corresponder à atividade informada. Categorias específicas/diferenciadas (postos de combustíveis, farmácias, hotéis, transportes, construção civil, saúde, ensino, asseio e conservação, indústria etc.) NÃO servem para uma atividade genérica de outro segmento — por exemplo, para comércio varejista o correto é o sindicato do COMÉRCIO (comerciários x sindicato patronal do comércio/lojistas), nunca o de postos de combustíveis. Se nenhuma evidência trouxer sindicato da categoria correta, devolva a lista vazia e explique em observacoes que não houve correspondência de categoria na base territorial — é melhor não responder do que indicar categoria errada.
 Regras: nunca invente CNPJ nem site; se não constar nas evidências, deixe vazio. Confiança: alta somente se nome + base territorial + categoria batem claramente. Sempre traga a URL da fonte usada. Máximo 5 candidatos por lista. Responda em pt-BR.${
       modo === 'mte'
         ? `
 MODO MEDIADOR/MTE: as evidências vêm da CONSULTA REAL ao Sistema Mediador, filtrada pela BASE TERRITORIAL do município informado (não pelo nome do sindicato). Cada evidência traz tipo do instrumento, nº de registro (UFxxxxx/ANO), nº da solicitação (MRxxxxx/ANO), vigência e as PARTES (sindicato laboral X sindicato patronal ou empresa).
 Regras específicas: identifique como LABORAL a parte que representa trabalhadores/empregados e como PATRONAL a parte que é sindicato de empregadores/categoria econômica (se a outra parte for uma empresa, trata-se de Acordo Coletivo — não classifique a empresa como sindicato).
-Priorize as Convenções Coletivas vigentes cuja categoria bate com a atividade/CNAE. Cite em observacoes os nºs de registro relevantes.`
+As evidências vêm ORDENADAS por aderência à atividade, mas ainda podem conter categorias de outros segmentos: descarte-as. Priorize as Convenções Coletivas vigentes cuja categoria bate com a atividade/CNAE. Cite em observacoes os nºs de registro relevantes.`
         : ''
     }`;
 
