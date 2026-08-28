@@ -241,6 +241,19 @@ const CctEnquadramentoPage = () => {
               )}
             </section>
           </div>
+
+          {!!resultado.fontes?.length && (
+            <Card>
+              <CardHeader><CardTitle className="text-base">Fontes usadas na busca</CardTitle></CardHeader>
+              <CardContent className="space-y-2">
+                {resultado.fontes.map((f) => (
+                  <a key={f.url} href={f.url} target="_blank" rel="noreferrer" className="block text-sm text-primary hover:underline break-all">
+                    {f.titulo || f.url}
+                  </a>
+                ))}
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
     </div>
