@@ -156,38 +156,94 @@ Deno.serve(async (req) => {
     let instrumentosMediador: MediadorInstrumento[] = [];
     let mediadorInfo: { municipio_ibge: string | null; categoria_usada: string; total: number } | null = null;
 
+    const semAcento = (s: string) =>
+      s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+
+    // Sinônimos por segmento: ajudam a montar a categoria de busca e a pontuar as partes.
+    const SEGMENTOS: { termos: string[]; sinonimos: string[] }[] = [
+      { termos: ['COMERCIO', 'COMERCIAL', 'VAREJO', 'VAREJISTA', 'ATACADO', 'ATACADISTA', 'LOJA', 'MERCADO', 'SUPERMERCADO'], sinonimos: ['COMERCIO', 'COMERCIARIOS', 'VAREJISTA', 'ATACADISTA', 'LOJISTAS'] },
+      { termos: ['HOTEL', 'HOTELARIA', 'POUSADA', 'RESTAURANTE', 'BAR', 'ALIMENTACAO', 'TURISMO'], sinonimos: ['HOTEIS', 'HOTELARIA', 'TURISMO', 'HOSPEDAGEM', 'ALIMENTACAO'] },
+      { termos: ['CONSTRUCAO', 'OBRA', 'OBRAS', 'EDIFICACOES', 'ENGENHARIA'], sinonimos: ['CONSTRUCAO CIVIL', 'CONSTRUCAO'] },
+      { termos: ['TRANSPORTE', 'TRANSPORTES', 'LOGISTICA', 'CARGA', 'RODOVIARIO'], sinonimos: ['TRANSPORTES', 'RODOVIARIOS'] },
+      { termos: ['SAUDE', 'CLINICA', 'HOSPITAL', 'MEDIC', 'ODONTO'], sinonimos: ['SAUDE', 'HOSPITAIS', 'ESTABELECIMENTOS DE SAUDE'] },
+      { termos: ['INDUSTRIA', 'INDUSTRIAL', 'FABRICACAO', 'METALURG', 'CONFECCAO', 'ALIMENTOS'], sinonimos: ['INDUSTRIA'] },
+      { termos: ['ENSINO', 'ESCOLA', 'EDUCACAO', 'EDUCACIONAL'], sinonimos: ['ENSINO', 'ESTABELECIMENTOS DE ENSINO'] },
+      { termos: ['COMBUSTIVEL', 'COMBUSTIVEIS', 'POSTO', 'POSTOS'], sinonimos: ['POSTOS DE COMBUSTIVEIS', 'COMBUSTIVEIS'] },
+      { termos: ['FARMACIA', 'FARMACEUTIC', 'DROGARIA'], sinonimos: ['FARMACIAS'] },
+      { termos: ['LIMPEZA', 'ASSEIO', 'CONSERVACAO', 'PORTARIA', 'VIGILANCIA', 'SEGURANCA'], sinonimos: ['ASSEIO E CONSERVACAO', 'VIGILANCIA'] },
+      { termos: ['CONTABIL', 'CONTABILIDADE', 'ESCRITORIO', 'ASSESSORIA', 'CONSULTORIA'], sinonimos: ['EMPRESAS DE SERVICOS CONTABEIS', 'CONTABEIS'] },
+      { termos: ['AGRIC', 'RURAL', 'AGROPECU', 'PLANTIO', 'CAFE'], sinonimos: ['RURAL', 'AGRICULTURA'] },
+    ];
+
+    const atividadeNorm = semAcento(`${atividadeEfetiva} ${cnaeEfetivo}`);
+    const segmentosAtivos = SEGMENTOS.filter((s) => s.termos.some((t) => atividadeNorm.includes(t)));
+    // Categorias especializadas que NÃO combinam com a atividade informada: penalizam o resultado.
+    const termosProibidos = SEGMENTOS.filter((s) => !segmentosAtivos.includes(s))
+      .flatMap((s) => s.termos)
+      .filter((t) => !atividadeNorm.includes(t));
+    const termosPositivos = [
+      ...new Set([
+        ...segmentosAtivos.flatMap((s) => [...s.termos, ...s.sinonimos.map(semAcento)]),
+        ...atividadeNorm.split(' ').filter((w) => w.length > 4),
+      ]),
+    ];
+
+    const pontuar = (i: MediadorInstrumento) => {
+      const txt = semAcento(i.partes.join(' '));
+      let p = 0;
+      for (const t of termosPositivos) if (txt.includes(t)) p += 3;
+      for (const t of termosProibidos) if (txt.includes(t)) p -= 4;
+      if (/CONVENCAO/.test(semAcento(i.tipo))) p += 1;
+      if (i.vigente) p += 1;
+      return p;
+    };
+
     if (modo === 'mte') {
       const mun = await resolverCodigoIbge(String(municipio), String(uf));
-      const palavras = `${atividadeEfetiva} ${cnaeEfetivo}`
-        .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase()
-        .replace(/[^A-Z0-9 ]/g, ' ')
+      const palavras = atividadeNorm
         .split(/\s+/)
-        .filter((w) => w.length > 3 && !['PARA', 'COMO', 'OUTROS', 'DEMAIS', 'ATIVIDADES', 'SERVICOS', 'LTDA'].includes(w));
-      const categorias = [...new Set(palavras)].slice(0, 3);
-      let categoriaUsada = '';
-      for (const cat of [...categorias, '']) {
+        .filter((w) => w.length > 3 && !['PARA', 'COMO', 'OUTROS', 'DEMAIS', 'ATIVIDADES', 'SERVICOS', 'LTDA', 'ESPECIALIZADO', 'ESPECIALIZADOS'].includes(w));
+      // Prioriza os sinônimos do segmento identificado (ex.: comércio -> COMERCIARIOS / VAREJISTA).
+      const categorias = [
+        ...new Set([...segmentosAtivos.flatMap((s) => s.sinonimos.map(semAcento)), ...palavras]),
+      ].slice(0, 4);
+
+      const acumulado = new Map<string, MediadorInstrumento>();
+      const categoriasUsadas: string[] = [];
+      for (const cat of categorias) {
         try {
-          const r = await consultarMediador({
-            uf,
-            codigoIbge: mun?.codigo,
-            categoria: cat || undefined,
-            apenasVigentes,
-            tipos,
-          });
+          const r = await consultarMediador({ uf, codigoIbge: mun?.codigo, categoria: cat, apenasVigentes, tipos });
           if (r.instrumentos.length) {
-            instrumentosMediador = r.instrumentos;
-            categoriaUsada = cat;
-            mediadorInfo = { municipio_ibge: mun?.codigo || null, categoria_usada: cat || '(sem filtro de categoria)', total: r.total };
-            break;
+            categoriasUsadas.push(cat);
+            for (const i of r.instrumentos) acumulado.set(i.numero_solicitacao, i);
           }
         } catch (e) {
           console.log('mediador falhou', cat, String(e));
         }
+        if (acumulado.size >= 40) break;
       }
-      // Limita o volume enviado à IA
-      instrumentosMediador = instrumentosMediador.slice(0, 60);
-      console.log('mediador instrumentos', instrumentosMediador.length, 'categoria', categoriaUsada);
+      // Fallback: sem filtro de categoria, mas classificando por aderência à atividade.
+      if (!acumulado.size) {
+        try {
+          const r = await consultarMediador({ uf, codigoIbge: mun?.codigo, apenasVigentes, tipos });
+          for (const i of r.instrumentos) acumulado.set(i.numero_solicitacao, i);
+          if (r.instrumentos.length) categoriasUsadas.push('(sem filtro de categoria)');
+        } catch (e) {
+          console.log('mediador fallback falhou', String(e));
+        }
+      }
+
+      const lista = [...acumulado.values()].map((i) => ({ i, p: pontuar(i) })).sort((a, b) => b.p - a.p);
+      const positivos = lista.filter((x) => x.p > 0);
+      instrumentosMediador = (positivos.length ? positivos : lista).slice(0, 40).map((x) => x.i);
+      mediadorInfo = {
+        municipio_ibge: mun?.codigo || null,
+        categoria_usada: categoriasUsadas.join(', ') || '(nenhuma)',
+        total: instrumentosMediador.length,
+      };
+      console.log('mediador instrumentos', instrumentosMediador.length, 'categorias', categoriasUsadas.join('|'));
     }
+
 
     const queries = modo === 'mte'
       ? (instrumentosMediador.length
@@ -225,12 +281,13 @@ Deno.serve(async (req) => {
 
     const system = `Você é especialista em enquadramento sindical brasileiro (CLT art. 511, categoria econômica x profissional).
 Com base na atividade/CNAE e no município/UF, classifique a categoria e selecione, APENAS entre os resultados de busca fornecidos, os sindicatos patronais (categoria econômica) e laborais (categoria profissional) mais prováveis para a base territorial.
+Regra de aderência de categoria (CRÍTICA): só indique um sindicato se a CATEGORIA que ele representa corresponder à atividade informada. Categorias específicas/diferenciadas (postos de combustíveis, farmácias, hotéis, transportes, construção civil, saúde, ensino, asseio e conservação, indústria etc.) NÃO servem para uma atividade genérica de outro segmento — por exemplo, para comércio varejista o correto é o sindicato do COMÉRCIO (comerciários x sindicato patronal do comércio/lojistas), nunca o de postos de combustíveis. Se nenhuma evidência trouxer sindicato da categoria correta, devolva a lista vazia e explique em observacoes que não houve correspondência de categoria na base territorial — é melhor não responder do que indicar categoria errada.
 Regras: nunca invente CNPJ nem site; se não constar nas evidências, deixe vazio. Confiança: alta somente se nome + base territorial + categoria batem claramente. Sempre traga a URL da fonte usada. Máximo 5 candidatos por lista. Responda em pt-BR.${
       modo === 'mte'
         ? `
 MODO MEDIADOR/MTE: as evidências vêm da CONSULTA REAL ao Sistema Mediador, filtrada pela BASE TERRITORIAL do município informado (não pelo nome do sindicato). Cada evidência traz tipo do instrumento, nº de registro (UFxxxxx/ANO), nº da solicitação (MRxxxxx/ANO), vigência e as PARTES (sindicato laboral X sindicato patronal ou empresa).
 Regras específicas: identifique como LABORAL a parte que representa trabalhadores/empregados e como PATRONAL a parte que é sindicato de empregadores/categoria econômica (se a outra parte for uma empresa, trata-se de Acordo Coletivo — não classifique a empresa como sindicato).
-Priorize as Convenções Coletivas vigentes cuja categoria bate com a atividade/CNAE. Cite em observacoes os nºs de registro relevantes.`
+As evidências vêm ORDENADAS por aderência à atividade, mas ainda podem conter categorias de outros segmentos: descarte-as. Priorize as Convenções Coletivas vigentes cuja categoria bate com a atividade/CNAE. Cite em observacoes os nºs de registro relevantes.`
         : ''
     }`;
 
