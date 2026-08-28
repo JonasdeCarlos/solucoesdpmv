@@ -263,7 +263,7 @@ const CctEnquadramentoPage = () => {
               {loading === 'mte' ? 'Consultando Mediador...' : 'Buscar no MTE (Mediador)'}
             </Button>
             <Button variant="outline" asChild>
-              <a href="http://www3.mte.gov.br/sistemas/mediador/ConsultarInstColetivo" target="_blank" rel="noreferrer">
+              <a href="https://mediador.trabalho.gov.br/sistemas/mediador/ConsultarInstColetivo" target="_blank" rel="noreferrer">
                 <ExternalLink className="w-4 h-4" /> Abrir Mediador
               </a>
             </Button>
