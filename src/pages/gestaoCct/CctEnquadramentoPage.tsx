@@ -11,6 +11,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AlertTriangle, ExternalLink, FileDown, Landmark, Loader2, Search } from 'lucide-react';
 import { toast } from 'sonner';
 
+const TIPOS_INSTRUMENTO = [
+  'Convenção Coletiva de Trabalho',
+  'Acordo Coletivo de Trabalho',
+  'Termo Aditivo a Convenção Coletiva de Trabalho',
+  'Termo Aditivo a Acordo Coletivo de Trabalho',
+];
+
 const UFS = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
 
 type Candidato = {
@@ -45,7 +52,7 @@ type Resultado = {
   modo?: string;
   empresa?: { razao_social?: string; nome_fantasia?: string; cnae?: string; municipio?: string; uf?: string } | null;
   fontes?: { titulo: string; url: string }[];
-  mediador?: { municipio_ibge: string | null; categoria_usada: string; total: number } | null;
+  mediador?: { municipio_ibge: string | null; categoria_usada: string; total: number; tipos?: string[]; apenas_vigentes?: boolean } | null;
   instrumentos_mediador?: Instrumento[];
 };
 
@@ -76,7 +83,13 @@ const InstrumentoItem = ({ i }: { i: Instrumento }) => (
 );
 
 
-const CandidatoCard = ({ c, municipio, uf }: { c: Candidato; municipio: string; uf: string }) => {
+const CandidatoCard = ({
+  c,
+  municipio,
+  uf,
+  tipos,
+  apenasVigentes,
+}: { c: Candidato; municipio: string; uf: string; tipos: string[]; apenasVigentes: boolean }) => {
   const [buscando, setBuscando] = useState(false);
   const [instrumentos, setInstrumentos] = useState<Instrumento[] | null>(null);
   const [obs, setObs] = useState('');
@@ -86,7 +99,7 @@ const CandidatoCard = ({ c, municipio, uf }: { c: Candidato; municipio: string; 
     setInstrumentos(null);
     try {
       const { data, error } = await supabase.functions.invoke('cct-mediador-instrumento', {
-        body: { sindicato: c.nome, cnpj: c.cnpj || '', municipio, uf },
+        body: { sindicato: c.nome, cnpj: c.cnpj || '', municipio, uf, tipos, apenasVigentes },
       });
       if (error) throw error;
       if ((data as { error?: string })?.error) throw new Error((data as { error: string }).error);
@@ -170,6 +183,8 @@ const CctEnquadramentoPage = () => {
   const [cnae, setCnae] = useState('');
   const [cnpj, setCnpj] = useState('');
   const [atividade, setAtividade] = useState('');
+  const [tipoInstrumento, setTipoInstrumento] = useState('todos');
+  const [apenasVigentes, setApenasVigentes] = useState(true);
   const [loading, setLoading] = useState<false | 'geral' | 'mte'>(false);
   const [resultado, setResultado] = useState<Resultado | null>(null);
 
@@ -188,6 +203,8 @@ const CctEnquadramentoPage = () => {
           cnae: cnae.trim(),
           atividade: atividade.trim(),
           cnpj: cnpj.replace(/\D/g, ''),
+          tipos: tipoInstrumento === 'todos' ? [] : [tipoInstrumento],
+          apenasVigentes,
           modo,
         },
       });
@@ -252,6 +269,28 @@ const CctEnquadramentoPage = () => {
           <div className="space-y-1.5">
             <Label htmlFor="atividade">Descrição da atividade</Label>
             <Textarea id="atividade" rows={3} value={atividade} onChange={(e) => setAtividade(e.target.value)} placeholder="Descreva a atividade principal da empresa." />
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label>Tipo de instrumento (Mediador)</Label>
+              <Select value={tipoInstrumento} onValueChange={setTipoInstrumento}>
+                <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos os instrumentos</SelectItem>
+                  {TIPOS_INSTRUMENTO.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Vigência</Label>
+              <Select value={apenasVigentes ? 'vigentes' : 'todas'} onValueChange={(v) => setApenasVigentes(v === 'vigentes')}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="vigentes">Somente vigentes</SelectItem>
+                  <SelectItem value="todas">Todas as vigências</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button onClick={() => buscar('geral')} disabled={loading !== false}>
@@ -325,6 +364,8 @@ const CctEnquadramentoPage = () => {
                 <p className="text-xs text-muted-foreground">
                   Consulta direta ao Sistema Mediador pelo município (código IBGE {resultado.mediador?.municipio_ibge || '—'})
                   {resultado.mediador?.categoria_usada ? ` · filtro de categoria: ${resultado.mediador.categoria_usada}` : ''}
+                  {resultado.mediador?.tipos?.length ? ` · tipo: ${resultado.mediador.tipos.join(', ')}` : ''}
+                  {resultado.mediador?.apenas_vigentes === false ? ' · todas as vigências' : ' · somente vigentes'}
                   {typeof resultado.mediador?.total === 'number' ? ` · ${resultado.mediador.total} encontrados` : ''}
                 </p>
                 <div className="space-y-2 max-h-[26rem] overflow-auto pr-1">
@@ -341,7 +382,9 @@ const CctEnquadramentoPage = () => {
             <section className="space-y-3">
               <h2 className="font-semibold">Sindicato patronal (candidatos)</h2>
               {resultado.patronais?.length ? (
-                resultado.patronais.map((c, i) => <CandidatoCard key={`p-${i}`} c={c} municipio={municipio} uf={uf} />)
+                resultado.patronais.map((c, i) => (
+                  <CandidatoCard key={`p-${i}`} c={c} municipio={municipio} uf={uf} tipos={tipoInstrumento === 'todos' ? [] : [tipoInstrumento]} apenasVigentes={apenasVigentes} />
+                ))
               ) : (
                 <p className="text-sm text-muted-foreground">Nenhum candidato encontrado.</p>
               )}
@@ -349,7 +392,9 @@ const CctEnquadramentoPage = () => {
             <section className="space-y-3">
               <h2 className="font-semibold">Sindicato laboral (candidatos)</h2>
               {resultado.laborais?.length ? (
-                resultado.laborais.map((c, i) => <CandidatoCard key={`l-${i}`} c={c} municipio={municipio} uf={uf} />)
+                resultado.laborais.map((c, i) => (
+                  <CandidatoCard key={`l-${i}`} c={c} municipio={municipio} uf={uf} tipos={tipoInstrumento === 'todos' ? [] : [tipoInstrumento]} apenasVigentes={apenasVigentes} />
+                ))
               ) : (
                 <p className="text-sm text-muted-foreground">Nenhum candidato encontrado.</p>
               )}
