@@ -314,6 +314,28 @@ const CctEnquadramentoPage = () => {
             </CardContent>
           </Card>
 
+          {!!resultado.instrumentos_mediador?.length && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">
+                  Instrumentos registrados no Mediador — base territorial de {municipio}/{uf}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-xs text-muted-foreground">
+                  Consulta direta ao Sistema Mediador pelo município (código IBGE {resultado.mediador?.municipio_ibge || '—'})
+                  {resultado.mediador?.categoria_usada ? ` · filtro de categoria: ${resultado.mediador.categoria_usada}` : ''}
+                  {typeof resultado.mediador?.total === 'number' ? ` · ${resultado.mediador.total} encontrados` : ''}
+                </p>
+                <div className="space-y-2 max-h-[26rem] overflow-auto pr-1">
+                  {resultado.instrumentos_mediador.map((i, idx) => (
+                    <InstrumentoItem key={`${i.url}-${idx}`} i={i} />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
 
           <div className="grid gap-6 lg:grid-cols-2">
             <section className="space-y-3">
