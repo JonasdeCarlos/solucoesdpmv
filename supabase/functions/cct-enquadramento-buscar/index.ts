@@ -327,6 +327,18 @@ ATENÇÃO: nenhuma evidência de busca foi obtida. Nesse caso, sugira os sindica
           }
         : null,
       fontes: hits.slice(0, 12).map((h) => ({ titulo: h.title, url: h.url })),
+      mediador: mediadorInfo,
+      instrumentos_mediador: instrumentosMediador.slice(0, 30).map((i) => ({
+        titulo: `${i.tipo} ${i.numero_registro}`,
+        tipo: i.tipo,
+        numero_registro: i.numero_registro,
+        numero_solicitacao: i.numero_solicitacao,
+        vigencia: i.vigencia,
+        vigente: i.vigente,
+        partes: i.partes,
+        url: i.url_visualizar,
+        url_download: i.url_download,
+      })),
     });
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : String(e) }, 500);
