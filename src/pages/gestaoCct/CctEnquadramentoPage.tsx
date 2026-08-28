@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { AlertTriangle, ExternalLink, Landmark, Loader2, Search } from 'lucide-react';
+import { AlertTriangle, ExternalLink, FileDown, Landmark, Loader2, Search } from 'lucide-react';
 import { toast } from 'sonner';
 
 const UFS = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
@@ -304,7 +304,7 @@ const CctEnquadramentoPage = () => {
             <section className="space-y-3">
               <h2 className="font-semibold">Sindicato patronal (candidatos)</h2>
               {resultado.patronais?.length ? (
-                resultado.patronais.map((c, i) => <CandidatoCard key={`p-${i}`} c={c} />)
+                resultado.patronais.map((c, i) => <CandidatoCard key={`p-${i}`} c={c} municipio={municipio} uf={uf} />)
               ) : (
                 <p className="text-sm text-muted-foreground">Nenhum candidato encontrado.</p>
               )}
@@ -312,7 +312,7 @@ const CctEnquadramentoPage = () => {
             <section className="space-y-3">
               <h2 className="font-semibold">Sindicato laboral (candidatos)</h2>
               {resultado.laborais?.length ? (
-                resultado.laborais.map((c, i) => <CandidatoCard key={`l-${i}`} c={c} />)
+                resultado.laborais.map((c, i) => <CandidatoCard key={`l-${i}`} c={c} municipio={municipio} uf={uf} />)
               ) : (
                 <p className="text-sm text-muted-foreground">Nenhum candidato encontrado.</p>
               )}
