@@ -146,18 +146,37 @@ const CctEnquadramentoPage = () => {
               </Select>
             </div>
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="cnae">CNAE</Label>
-            <Input id="cnae" value={cnae} onChange={(e) => setCnae(e.target.value)} placeholder="Ex.: 5611-2/01 — Restaurantes" />
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="cnae">CNAE</Label>
+              <Input id="cnae" value={cnae} onChange={(e) => setCnae(e.target.value)} placeholder="Ex.: 5611-2/01 — Restaurantes" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="cnpj">CNPJ de um dos participantes (opcional)</Label>
+              <Input id="cnpj" value={cnpj} onChange={(e) => setCnpj(maskCnpj(e.target.value))} placeholder="00.000.000/0000-00" inputMode="numeric" />
+              <p className="text-xs text-muted-foreground">Empresa ou sindicato — usamos a Receita para enriquecer a busca.</p>
+            </div>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="atividade">Descrição da atividade</Label>
             <Textarea id="atividade" rows={3} value={atividade} onChange={(e) => setAtividade(e.target.value)} placeholder="Descreva a atividade principal da empresa." />
           </div>
-          <Button onClick={buscar} disabled={loading}>
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-            {loading ? 'Buscando sindicatos...' : 'Buscar sindicatos'}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={() => buscar('geral')} disabled={loading !== false}>
+              {loading === 'geral' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+              {loading === 'geral' ? 'Buscando sindicatos...' : 'Buscar sindicatos'}
+            </Button>
+            <Button variant="secondary" onClick={() => buscar('mte')} disabled={loading !== false}>
+              {loading === 'mte' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Landmark className="w-4 h-4" />}
+              {loading === 'mte' ? 'Consultando Mediador...' : 'Buscar no MTE (Mediador)'}
+            </Button>
+            <Button variant="outline" asChild>
+              <a href="http://www3.mte.gov.br/sistemas/mediador/ConsultarInstColetivo" target="_blank" rel="noreferrer">
+                <ExternalLink className="w-4 h-4" /> Abrir Mediador
+              </a>
+            </Button>
+          </div>
+
         </CardContent>
       </Card>
 
