@@ -150,15 +150,50 @@ Deno.serve(async (req) => {
     const nomeEmpresa = empresa?.razao_social || empresa?.nome_fantasia || '';
     const MEDIADOR = 'site:www3.mte.gov.br OR site:mediador.inss.gov.br OR site:sistemas.mte.gov.br OR mediador';
 
+    // ---- MODO MEDIADOR: consulta direta no Sistema Mediador por base territorial (município) ----
+    let instrumentosMediador: MediadorInstrumento[] = [];
+    let mediadorInfo: { municipio_ibge: string | null; categoria_usada: string; total: number } | null = null;
+
+    if (modo === 'mte') {
+      const mun = await resolverCodigoIbge(String(municipio), String(uf));
+      const palavras = `${atividadeEfetiva} ${cnaeEfetivo}`
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase()
+        .replace(/[^A-Z0-9 ]/g, ' ')
+        .split(/\s+/)
+        .filter((w) => w.length > 3 && !['PARA', 'COMO', 'OUTROS', 'DEMAIS', 'ATIVIDADES', 'SERVICOS', 'LTDA'].includes(w));
+      const categorias = [...new Set(palavras)].slice(0, 3);
+      let categoriaUsada = '';
+      for (const cat of [...categorias, '']) {
+        try {
+          const r = await consultarMediador({
+            uf,
+            codigoIbge: mun?.codigo,
+            categoria: cat || undefined,
+            cnpj: cnpjDigits.length === 14 ? undefined : undefined,
+            apenasVigentes: true,
+          });
+          if (r.instrumentos.length) {
+            instrumentosMediador = r.instrumentos;
+            categoriaUsada = cat;
+            mediadorInfo = { municipio_ibge: mun?.codigo || null, categoria_usada: cat || '(sem filtro de categoria)', total: r.total };
+            break;
+          }
+        } catch (e) {
+          console.log('mediador falhou', cat, String(e));
+        }
+      }
+      // Limita o volume enviado à IA
+      instrumentosMediador = instrumentosMediador.slice(0, 60);
+      console.log('mediador instrumentos', instrumentosMediador.length, 'categoria', categoriaUsada);
+    }
+
     const queries = modo === 'mte'
-      ? [
-          `${MEDIADOR} convenção coletiva ${base}`,
-          `mediador MTE registro convenção coletiva sindicato ${cnaeEfetivo || atividadeEfetiva} ${municipio} ${uf}`,
-          nomeEmpresa
-            ? `mediador MTE "${nomeEmpresa}" convenção coletiva sindicato`
-            : `"MG${uf === 'MG' ? '' : ''}" instrumento coletivo registrado mediador ${municipio} ${uf} sindicato`,
-          cnpjDigits ? `mediador MTE CNPJ ${cnpjDigits} convenção coletiva sindicato` : `CNES sindicato ${base} registro sindical MTE`,
-        ]
+      ? (instrumentosMediador.length
+          ? []
+          : [
+              `${MEDIADOR} convenção coletiva ${base}`,
+              `mediador MTE registro convenção coletiva sindicato ${cnaeEfetivo || atividadeEfetiva} ${municipio} ${uf}`,
+            ])
       : [
           `sindicato patronal ${base}`,
           `sindicato dos trabalhadores ${base}`,
@@ -174,7 +209,14 @@ Deno.serve(async (req) => {
       await new Promise((r) => setTimeout(r, 900));
     }
     const seen = new Set<string>();
-    const hits = results.filter((h) => (seen.has(h.url) ? false : (seen.add(h.url), true))).slice(0, 28);
+    const hitsWeb = results.filter((h) => (seen.has(h.url) ? false : (seen.add(h.url), true))).slice(0, 28);
+    const hitsMediador: Hit[] = instrumentosMediador.map((i) => ({
+      title: `${i.tipo} ${i.numero_registro} (solicitação ${i.numero_solicitacao}) — vigência ${i.vigencia}`,
+      url: i.url_visualizar,
+      snippet: `Partes: ${i.partes.join(' X ')}`,
+    }));
+    const hits = [...hitsMediador, ...hitsWeb];
+
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) return json({ error: 'LOVABLE_API_KEY ausente.' }, 500);
