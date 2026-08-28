@@ -22,6 +22,20 @@ type Candidato = {
   justificativa?: string;
 };
 
+type Instrumento = {
+  titulo: string;
+  tipo?: string;
+  numero_registro?: string;
+  numero_solicitacao?: string;
+  vigencia?: string;
+  vigente?: boolean;
+  partes?: string[];
+  url: string;
+  url_download?: string;
+  is_pdf?: boolean;
+  fonte?: string;
+};
+
 type Resultado = {
   categoria_termos?: string[];
   observacoes?: string;
@@ -31,21 +45,36 @@ type Resultado = {
   modo?: string;
   empresa?: { razao_social?: string; nome_fantasia?: string; cnae?: string; municipio?: string; uf?: string } | null;
   fontes?: { titulo: string; url: string }[];
+  mediador?: { municipio_ibge: string | null; categoria_usada: string; total: number } | null;
+  instrumentos_mediador?: Instrumento[];
 };
 
 const confiancaVariant = (c: string) =>
   c === 'alta' ? 'default' : c === 'media' ? 'secondary' : 'outline';
 
-type Instrumento = {
-  titulo: string;
-  tipo?: string;
-  numero_registro?: string;
-  vigencia?: string;
-  vigente?: boolean;
-  url: string;
-  is_pdf?: boolean;
-  fonte?: string;
-};
+const InstrumentoItem = ({ i }: { i: Instrumento }) => (
+  <div className="space-y-0.5 border-b last:border-0 pb-2 last:pb-0">
+    <div className="flex items-center gap-2 flex-wrap">
+      <span className="text-sm font-medium">{i.titulo}</span>
+      {i.vigente && <Badge className="text-[10px]">vigente</Badge>}
+    </div>
+    <p className="text-xs text-muted-foreground">
+      {[i.tipo, i.numero_registro && `Registro ${i.numero_registro}`, i.numero_solicitacao, i.vigencia].filter(Boolean).join(' · ')}
+    </p>
+    {!!i.partes?.length && <p className="text-xs text-muted-foreground">Partes: {i.partes.join(' × ')}</p>}
+    <div className="flex gap-3 flex-wrap">
+      <a href={i.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
+        <ExternalLink className="w-3 h-3 shrink-0" /> Visualizar instrumento
+      </a>
+      {i.url_download && (
+        <a href={i.url_download} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
+          <FileDown className="w-3 h-3 shrink-0" /> Baixar documento
+        </a>
+      )}
+    </div>
+  </div>
+);
+
 
 const CandidatoCard = ({ c, municipio, uf }: { c: Candidato; municipio: string; uf: string }) => {
   const [buscando, setBuscando] = useState(false);
