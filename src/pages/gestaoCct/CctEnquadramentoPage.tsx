@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { AlertTriangle, ExternalLink, FileDown, Landmark, Loader2, Search } from 'lucide-react';
+import { AlertTriangle, ExternalLink, FileDown, Landmark, Loader2, Search, Send } from 'lucide-react';
 import { toast } from 'sonner';
 
 const TIPOS_INSTRUMENTO = [
@@ -59,28 +60,65 @@ type Resultado = {
 const confiancaVariant = (c: string) =>
   c === 'alta' ? 'default' : c === 'media' ? 'secondary' : 'outline';
 
-const InstrumentoItem = ({ i }: { i: Instrumento }) => (
-  <div className="space-y-0.5 border-b last:border-0 pb-2 last:pb-0">
-    <div className="flex items-center gap-2 flex-wrap">
-      <span className="text-sm font-medium">{i.titulo}</span>
-      {i.vigente && <Badge className="text-[10px]">vigente</Badge>}
-    </div>
-    <p className="text-xs text-muted-foreground">
-      {[i.tipo, i.numero_registro && `Registro ${i.numero_registro}`, i.numero_solicitacao, i.vigencia].filter(Boolean).join(' · ')}
-    </p>
-    {!!i.partes?.length && <p className="text-xs text-muted-foreground">Partes: {i.partes.join(' × ')}</p>}
-    <div className="flex gap-3 flex-wrap">
-      <a href={i.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
-        <ExternalLink className="w-3 h-3 shrink-0" /> Visualizar instrumento
-      </a>
-      {i.url_download && (
-        <a href={i.url_download} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
-          <FileDown className="w-3 h-3 shrink-0" /> Baixar documento
+const InstrumentoItem = ({ i }: { i: Instrumento }) => {
+  const nav = useNavigate();
+  const [enviando, setEnviando] = useState(false);
+
+  const enviarParaGestao = async () => {
+    setEnviando(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('cct-mediador-importar', {
+        body: {
+          titulo: `${i.tipo || 'Instrumento'} ${i.numero_registro || i.numero_solicitacao || ''}`.trim(),
+          tipo: i.tipo,
+          numero_registro: i.numero_registro,
+          numero_solicitacao: i.numero_solicitacao,
+          vigencia: i.vigencia,
+          partes: i.partes,
+          url: i.url,
+          url_download: i.url_download,
+        },
+      });
+      if (error) throw error;
+      const res = data as { id?: string; error?: string; observacao?: string; arquivo_importado?: boolean };
+      if (res?.error) throw new Error(res.error);
+      if (!res?.id) throw new Error('Não foi possível criar a CCT.');
+      toast[res.arquivo_importado ? 'success' : 'warning'](res.observacao || 'Enviado para a Gestão de CCT.');
+      nav(`/gestao-cct/${res.id}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Falha ao enviar para a Gestão de CCT.');
+    } finally {
+      setEnviando(false);
+    }
+  };
+
+  return (
+    <div className="space-y-1 border-b last:border-0 pb-2 last:pb-0">
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-sm font-medium">{i.titulo}</span>
+        {i.vigente && <Badge className="text-[10px]">vigente</Badge>}
+      </div>
+      <p className="text-xs text-muted-foreground">
+        {[i.tipo, i.numero_registro && `Registro ${i.numero_registro}`, i.numero_solicitacao, i.vigencia].filter(Boolean).join(' · ')}
+      </p>
+      {!!i.partes?.length && <p className="text-xs text-muted-foreground">Partes: {i.partes.join(' × ')}</p>}
+      <div className="flex gap-3 flex-wrap items-center">
+        <a href={i.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
+          <ExternalLink className="w-3 h-3 shrink-0" /> Visualizar instrumento
         </a>
-      )}
+        {i.url_download && (
+          <a href={i.url_download} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
+            <FileDown className="w-3 h-3 shrink-0" /> Baixar documento
+          </a>
+        )}
+        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={enviarParaGestao} disabled={enviando}>
+          {enviando ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+          {enviando ? 'Enviando...' : 'Enviar para Gestão de CCT'}
+        </Button>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 
 const CandidatoCard = ({
