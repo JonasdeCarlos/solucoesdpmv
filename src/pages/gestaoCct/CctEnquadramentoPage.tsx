@@ -137,27 +137,13 @@ const CandidatoCard = ({ c, municipio, uf }: { c: Candidato; municipio: string; 
         {instrumentos && (
           <div className="rounded-md border p-3 space-y-2">
             {instrumentos.length ? (
-              instrumentos.map((i, idx) => (
-                <div key={`${i.url}-${idx}`} className="space-y-0.5">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-medium">{i.titulo}</span>
-                    {i.vigente && <Badge className="text-[10px]">vigente</Badge>}
-                    {i.is_pdf && <Badge variant="outline" className="text-[10px]">PDF</Badge>}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {[i.tipo, i.numero_registro && `Registro ${i.numero_registro}`, i.vigencia].filter(Boolean).join(' · ') || '—'}
-                  </p>
-                  <a href={i.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline break-all">
-                    <ExternalLink className="w-3 h-3 shrink-0" /> Baixar / abrir documento
-                  </a>
-                </div>
-              ))
+              instrumentos.map((i, idx) => <InstrumentoItem key={`${i.url}-${idx}`} i={i} />)
             ) : (
               <p className="text-sm text-muted-foreground">Nenhum instrumento localizado.</p>
             )}
             {obs && <p className="text-xs text-muted-foreground">{obs}</p>}
             <a
-              href="http://www3.mte.gov.br/sistemas/mediador/ConsultarInstColetivo"
+              href="https://mediador.trabalho.gov.br/sistemas/mediador/ConsultarInstColetivo"
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
