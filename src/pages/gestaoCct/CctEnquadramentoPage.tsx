@@ -191,8 +191,24 @@ const CctEnquadramentoPage = () => {
 
       {resultado && !loading && (
         <div className="space-y-6">
+          {resultado.empresa && (
+            <Card>
+              <CardHeader><CardTitle className="text-base">Dados do CNPJ informado</CardTitle></CardHeader>
+              <CardContent className="space-y-1 text-sm">
+                <p><span className="text-muted-foreground">Razão social:</span> {resultado.empresa.razao_social || '—'}</p>
+                {resultado.empresa.nome_fantasia && <p><span className="text-muted-foreground">Nome fantasia:</span> {resultado.empresa.nome_fantasia}</p>}
+                <p><span className="text-muted-foreground">CNAE:</span> {resultado.empresa.cnae || '—'}</p>
+                <p><span className="text-muted-foreground">Localidade:</span> {resultado.empresa.municipio || '—'}/{resultado.empresa.uf || '—'}</p>
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
-            <CardHeader><CardTitle className="text-base">Classificação da IA</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="text-base">
+                Classificação da IA {resultado.modo === 'mte' && <Badge variant="secondary" className="ml-2">Mediador/MTE</Badge>}
+              </CardTitle>
+            </CardHeader>
             <CardContent className="space-y-3">
               {resultado.categoria_termos?.length ? (
                 <div className="flex flex-wrap gap-2">
@@ -202,8 +218,10 @@ const CctEnquadramentoPage = () => {
                 <p className="text-sm text-muted-foreground">Nenhum termo de categoria identificado.</p>
               )}
               {resultado.observacoes && <p className="text-sm">{resultado.observacoes}</p>}
+              <p className="text-xs text-muted-foreground">Fontes consultadas: {resultado.fontes_consultadas ?? 0}</p>
             </CardContent>
           </Card>
+
 
           <div className="grid gap-6 lg:grid-cols-2">
             <section className="space-y-3">
