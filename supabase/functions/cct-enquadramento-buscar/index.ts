@@ -267,7 +267,21 @@ ATENÇÃO: nenhuma evidência de busca foi obtida. Nesse caso, sugira os sindica
     const data = await resp.json();
     const args = data.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
     const parsed = args ? JSON.parse(args) : { categoria_termos: [], patronais: [], laborais: [] };
-    return json({ ...parsed, fontes_consultadas: hits.length });
+    return json({
+      ...parsed,
+      fontes_consultadas: hits.length,
+      modo,
+      empresa: empresa
+        ? {
+            razao_social: empresa.razao_social,
+            nome_fantasia: empresa.nome_fantasia,
+            cnae: `${empresa.cnae_fiscal || ''} ${empresa.cnae_fiscal_descricao || ''}`.trim(),
+            municipio: empresa.municipio,
+            uf: empresa.uf,
+          }
+        : null,
+      fontes: hits.slice(0, 12).map((h) => ({ titulo: h.title, url: h.url })),
+    });
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : String(e) }, 500);
   }
