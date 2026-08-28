@@ -65,24 +65,39 @@ const CandidatoCard = ({ c }: { c: Candidato }) => (
   </Card>
 );
 
+const maskCnpj = (v: string) =>
+  v.replace(/\D/g, '').slice(0, 14)
+    .replace(/^(\d{2})(\d)/, '$1.$2')
+    .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+    .replace(/\.(\d{3})(\d)/, '.$1/$2')
+    .replace(/(\d{4})(\d)/, '$1-$2');
+
 const CctEnquadramentoPage = () => {
   const [municipio, setMunicipio] = useState('');
   const [uf, setUf] = useState('MG');
   const [cnae, setCnae] = useState('');
+  const [cnpj, setCnpj] = useState('');
   const [atividade, setAtividade] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<false | 'geral' | 'mte'>(false);
   const [resultado, setResultado] = useState<Resultado | null>(null);
 
-  const buscar = async () => {
+  const buscar = async (modo: 'geral' | 'mte') => {
     if (!municipio.trim()) {
       toast.error('Informe o município.');
       return;
     }
-    setLoading(true);
+    setLoading(modo);
     setResultado(null);
     try {
       const { data, error } = await supabase.functions.invoke('cct-enquadramento-buscar', {
-        body: { municipio: municipio.trim(), uf, cnae: cnae.trim(), atividade: atividade.trim() },
+        body: {
+          municipio: municipio.trim(),
+          uf,
+          cnae: cnae.trim(),
+          atividade: atividade.trim(),
+          cnpj: cnpj.replace(/\D/g, ''),
+          modo,
+        },
       });
       if (error) throw error;
       if ((data as { error?: string })?.error) throw new Error((data as { error: string }).error);
@@ -93,6 +108,7 @@ const CctEnquadramentoPage = () => {
       setLoading(false);
     }
   };
+
 
   return (
     <div className="space-y-6">
