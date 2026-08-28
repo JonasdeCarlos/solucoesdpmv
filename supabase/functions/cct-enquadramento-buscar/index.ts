@@ -169,7 +169,6 @@ Deno.serve(async (req) => {
             uf,
             codigoIbge: mun?.codigo,
             categoria: cat || undefined,
-            cnpj: cnpjDigits.length === 14 ? undefined : undefined,
             apenasVigentes: true,
           });
           if (r.instrumentos.length) {
