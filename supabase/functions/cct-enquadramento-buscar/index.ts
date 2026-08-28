@@ -204,7 +204,7 @@ ATENÇÃO: nenhuma evidência de busca foi obtida. Nesse caso, sugira os sindica
           { role: 'system', content: systemFinal },
           {
             role: 'user',
-            content: `Município: ${municipio}\nUF: ${uf}\nCNAE: ${cnae || '(não informado)'}\nAtividade: ${atividade || '(não informada)'}\n\n<resultados_busca>\n${hits
+            content: `Município: ${municipio}\nUF: ${uf}\nCNAE: ${cnaeEfetivo || '(não informado)'}\nAtividade: ${atividadeEfetiva || '(não informada)'}\nCNPJ informado: ${cnpjDigits || '(não informado)'}\nEmpresa (Receita): ${nomeEmpresa || '(não localizada)'}${empresa ? ` — ${empresa.municipio || ''}/${empresa.uf || ''}` : ''}\nModo: ${modo === 'mte' ? 'Mediador/MTE' : 'geral'}\n\n<resultados_busca>\n${hits
               .map((h, i) => `[${i + 1}] ${h.title}\nURL: ${h.url}\n${h.snippet}`)
               .join('\n\n')}\n</resultados_busca>`,
           },
