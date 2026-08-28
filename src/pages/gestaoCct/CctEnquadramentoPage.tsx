@@ -28,6 +28,9 @@ type Resultado = {
   patronais?: Candidato[];
   laborais?: Candidato[];
   fontes_consultadas?: number;
+  modo?: string;
+  empresa?: { razao_social?: string; nome_fantasia?: string; cnae?: string; municipio?: string; uf?: string } | null;
+  fontes?: { titulo: string; url: string }[];
 };
 
 const confiancaVariant = (c: string) =>
