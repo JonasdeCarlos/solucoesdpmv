@@ -137,7 +137,29 @@ export type ConsultaMediador = {
   cnpj?: string;
   apenasVigentes?: boolean;
   pagina?: number;
+  /** Filtra pelo tipo do instrumento, conforme o portal do MTE (ex.: 'Convenção Coletiva de Trabalho'). */
+  tipos?: string[];
 };
+
+/** Tipos de instrumento disponíveis no Sistema Mediador. */
+export const TIPOS_INSTRUMENTO = [
+  'Convenção Coletiva de Trabalho',
+  'Acordo Coletivo de Trabalho',
+  'Termo Aditivo a Convenção Coletiva de Trabalho',
+  'Termo Aditivo a Acordo Coletivo de Trabalho',
+] as const;
+
+const chaveTipo = (s: string) =>
+  s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+
+export function filtrarPorTipo(instrumentos: MediadorInstrumento[], tipos?: string[]) {
+  const alvos = (tipos || []).map(chaveTipo).filter(Boolean);
+  if (!alvos.length) return instrumentos;
+  return instrumentos.filter((i) => {
+    const t = chaveTipo(i.tipo || '');
+    return alvos.some((a) => t === a || t.startsWith(a) || a.startsWith(t));
+  });
+}
 
 export async function consultarMediador(p: ConsultaMediador): Promise<{ total: number; instrumentos: MediadorInstrumento[] }> {
   const jar: Cookies = {};
@@ -171,5 +193,7 @@ export async function consultarMediador(p: ConsultaMediador): Promise<{ total: n
   body.set('qtdTotalRegistro', '-1');
 
   const html = await req(jar, '/getConsultaAvancada', body.toString());
-  return parseInstrumentos(html);
+  const r = parseInstrumentos(html);
+  const instrumentos = filtrarPorTipo(r.instrumentos, p.tipos);
+  return { total: p.tipos?.length ? instrumentos.length : r.total, instrumentos };
 }
