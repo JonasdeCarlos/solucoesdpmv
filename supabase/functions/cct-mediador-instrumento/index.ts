@@ -25,7 +25,10 @@ Deno.serve(async (req) => {
     new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
   try {
-    const { sindicato, cnpj, municipio, uf } = await req.json();
+    const body = await req.json();
+    const { sindicato, cnpj, municipio, uf } = body;
+    const tipos: string[] = Array.isArray(body.tipos) ? body.tipos.filter(Boolean) : [];
+    const apenasVigentes: boolean = body.apenasVigentes !== false;
     if (!sindicato && !cnpj) return json({ error: 'Informe o sindicato ou o CNPJ.' }, 400);
     if (!uf) return json({ error: 'Informe a UF.' }, 400);
 
@@ -34,13 +37,13 @@ Deno.serve(async (req) => {
 
     const tentativas: { rotulo: string; params: Parameters<typeof consultarMediador>[0] }[] = [];
     if (cnpjDigits.length === 14) {
-      tentativas.push({ rotulo: 'CNPJ + município', params: { uf, cnpj: cnpjDigits, codigoIbge: mun?.codigo } });
-      tentativas.push({ rotulo: 'CNPJ (UF)', params: { uf, cnpj: cnpjDigits } });
+      tentativas.push({ rotulo: 'CNPJ + município', params: { uf, cnpj: cnpjDigits, codigoIbge: mun?.codigo, tipos, apenasVigentes } });
+      tentativas.push({ rotulo: 'CNPJ (UF)', params: { uf, cnpj: cnpjDigits, tipos, apenasVigentes } });
     }
     const nucleo = nucleoNome(String(sindicato || ''));
     if (nucleo) {
-      tentativas.push({ rotulo: 'Razão social + município', params: { uf, razaoSocial: nucleo, codigoIbge: mun?.codigo } });
-      tentativas.push({ rotulo: 'Razão social (UF)', params: { uf, razaoSocial: nucleo } });
+      tentativas.push({ rotulo: 'Razão social + município', params: { uf, razaoSocial: nucleo, codigoIbge: mun?.codigo, tipos, apenasVigentes } });
+      tentativas.push({ rotulo: 'Razão social (UF)', params: { uf, razaoSocial: nucleo, tipos, apenasVigentes } });
     }
 
     let instrumentos: MediadorInstrumento[] = [];
@@ -81,7 +84,7 @@ Deno.serve(async (req) => {
       estrategia,
       municipio_ibge: mun?.codigo || null,
       observacoes: instrumentos.length
-        ? `Consulta direta no Sistema Mediador (${estrategia}). O download abre o documento oficial registrado.`
+        ? `Consulta direta no Sistema Mediador (${estrategia})${tipos.length ? ` · tipo: ${tipos.join(', ')}` : ''}${apenasVigentes ? ' · apenas vigentes' : ''}. O download abre o documento oficial registrado.`
         : `Nenhum instrumento localizado no Mediador para os filtros informados.${erros.length ? ` (${erros.join(' | ')})` : ''}`,
       mediador_url: MEDIADOR_URL,
     });

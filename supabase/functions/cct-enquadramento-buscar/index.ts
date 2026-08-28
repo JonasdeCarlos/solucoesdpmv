@@ -130,6 +130,8 @@ Deno.serve(async (req) => {
     const { municipio, uf, cnae, atividade } = body;
     const modo: string = body.modo === 'mte' ? 'mte' : 'geral';
     const cnpjDigits: string = String(body.cnpj || '').replace(/\D/g, '');
+    const tipos: string[] = Array.isArray(body.tipos) ? body.tipos.filter(Boolean) : [];
+    const apenasVigentes: boolean = body.apenasVigentes !== false;
     if (!municipio || !uf) return json({ error: 'Informe município e UF.' }, 400);
 
     // Enriquecimento opcional pelo CNPJ informado (empresa ou sindicato)
@@ -169,7 +171,8 @@ Deno.serve(async (req) => {
             uf,
             codigoIbge: mun?.codigo,
             categoria: cat || undefined,
-            apenasVigentes: true,
+            apenasVigentes,
+            tipos,
           });
           if (r.instrumentos.length) {
             instrumentosMediador = r.instrumentos;
@@ -326,7 +329,7 @@ ATENÇÃO: nenhuma evidência de busca foi obtida. Nesse caso, sugira os sindica
           }
         : null,
       fontes: hits.slice(0, 12).map((h) => ({ titulo: h.title, url: h.url })),
-      mediador: mediadorInfo,
+      mediador: mediadorInfo ? { ...mediadorInfo, tipos, apenas_vigentes: apenasVigentes } : null,
       instrumentos_mediador: instrumentosMediador.slice(0, 30).map((i) => ({
         titulo: `${i.tipo} ${i.numero_registro}`,
         tipo: i.tipo,
