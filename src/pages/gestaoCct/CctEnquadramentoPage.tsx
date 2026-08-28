@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { AlertTriangle, ExternalLink, Landmark, Loader2, Search } from 'lucide-react';
+import { AlertTriangle, ExternalLink, FileDown, Landmark, Loader2, Search } from 'lucide-react';
 import { toast } from 'sonner';
 
 const UFS = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
@@ -36,34 +36,111 @@ type Resultado = {
 const confiancaVariant = (c: string) =>
   c === 'alta' ? 'default' : c === 'media' ? 'secondary' : 'outline';
 
-const CandidatoCard = ({ c }: { c: Candidato }) => (
-  <Card>
-    <CardContent className="pt-4 space-y-2">
-      <div className="flex items-start justify-between gap-2">
-        <p className="font-medium leading-snug">{c.nome}</p>
-        <Badge variant={confiancaVariant(c.confianca) as never} className="shrink-0 capitalize">
-          {c.confianca}
-        </Badge>
-      </div>
-      <p className="text-sm text-muted-foreground">
-        CNPJ: {c.cnpj?.trim() ? c.cnpj : 'não encontrado'}
-      </p>
-      <p className="text-sm text-muted-foreground break-all">
-        Site: {c.site?.trim() ? (
-          <a href={c.site.startsWith('http') ? c.site : `https://${c.site}`} target="_blank" rel="noreferrer" className="text-primary hover:underline">
-            {c.site}
+type Instrumento = {
+  titulo: string;
+  tipo?: string;
+  numero_registro?: string;
+  vigencia?: string;
+  vigente?: boolean;
+  url: string;
+  is_pdf?: boolean;
+  fonte?: string;
+};
+
+const CandidatoCard = ({ c, municipio, uf }: { c: Candidato; municipio: string; uf: string }) => {
+  const [buscando, setBuscando] = useState(false);
+  const [instrumentos, setInstrumentos] = useState<Instrumento[] | null>(null);
+  const [obs, setObs] = useState('');
+
+  const puxarCct = async () => {
+    setBuscando(true);
+    setInstrumentos(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('cct-mediador-instrumento', {
+        body: { sindicato: c.nome, cnpj: c.cnpj || '', municipio, uf },
+      });
+      if (error) throw error;
+      if ((data as { error?: string })?.error) throw new Error((data as { error: string }).error);
+      const res = data as { instrumentos?: Instrumento[]; observacoes?: string };
+      setInstrumentos(res.instrumentos || []);
+      setObs(res.observacoes || '');
+      if (!res.instrumentos?.length) toast.info('Nenhum instrumento localizado — confirme direto no Mediador.');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Falha ao puxar a CCT do Mediador.');
+    } finally {
+      setBuscando(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardContent className="pt-4 space-y-2">
+        <div className="flex items-start justify-between gap-2">
+          <p className="font-medium leading-snug">{c.nome}</p>
+          <Badge variant={confiancaVariant(c.confianca) as never} className="shrink-0 capitalize">
+            {c.confianca}
+          </Badge>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          CNPJ: {c.cnpj?.trim() ? c.cnpj : 'não encontrado'}
+        </p>
+        <p className="text-sm text-muted-foreground break-all">
+          Site: {c.site?.trim() ? (
+            <a href={c.site.startsWith('http') ? c.site : `https://${c.site}`} target="_blank" rel="noreferrer" className="text-primary hover:underline">
+              {c.site}
+            </a>
+          ) : 'não encontrado'}
+        </p>
+        {c.justificativa && <p className="text-sm">{c.justificativa}</p>}
+        {c.fonte_url && (
+          <a href={c.fonte_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-sm text-primary hover:underline break-all">
+            <ExternalLink className="w-3.5 h-3.5 shrink-0" /> Fonte
           </a>
-        ) : 'não encontrado'}
-      </p>
-      {c.justificativa && <p className="text-sm">{c.justificativa}</p>}
-      {c.fonte_url && (
-        <a href={c.fonte_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-sm text-primary hover:underline break-all">
-          <ExternalLink className="w-3.5 h-3.5 shrink-0" /> Fonte
-        </a>
-      )}
-    </CardContent>
-  </Card>
-);
+        )}
+
+        <div className="pt-1">
+          <Button size="sm" variant="secondary" onClick={puxarCct} disabled={buscando}>
+            {buscando ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
+            {buscando ? 'Buscando CCT...' : 'Puxar CCT vigente (Mediador)'}
+          </Button>
+        </div>
+
+        {instrumentos && (
+          <div className="rounded-md border p-3 space-y-2">
+            {instrumentos.length ? (
+              instrumentos.map((i, idx) => (
+                <div key={`${i.url}-${idx}`} className="space-y-0.5">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-medium">{i.titulo}</span>
+                    {i.vigente && <Badge className="text-[10px]">vigente</Badge>}
+                    {i.is_pdf && <Badge variant="outline" className="text-[10px]">PDF</Badge>}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {[i.tipo, i.numero_registro && `Registro ${i.numero_registro}`, i.vigencia].filter(Boolean).join(' · ') || '—'}
+                  </p>
+                  <a href={i.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline break-all">
+                    <ExternalLink className="w-3 h-3 shrink-0" /> Baixar / abrir documento
+                  </a>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground">Nenhum instrumento localizado.</p>
+            )}
+            {obs && <p className="text-xs text-muted-foreground">{obs}</p>}
+            <a
+              href="http://www3.mte.gov.br/sistemas/mediador/ConsultarInstColetivo"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+            >
+              <ExternalLink className="w-3 h-3" /> Conferir no Mediador oficial
+            </a>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
 
 const maskCnpj = (v: string) =>
   v.replace(/\D/g, '').slice(0, 14)
@@ -227,7 +304,7 @@ const CctEnquadramentoPage = () => {
             <section className="space-y-3">
               <h2 className="font-semibold">Sindicato patronal (candidatos)</h2>
               {resultado.patronais?.length ? (
-                resultado.patronais.map((c, i) => <CandidatoCard key={`p-${i}`} c={c} />)
+                resultado.patronais.map((c, i) => <CandidatoCard key={`p-${i}`} c={c} municipio={municipio} uf={uf} />)
               ) : (
                 <p className="text-sm text-muted-foreground">Nenhum candidato encontrado.</p>
               )}
@@ -235,7 +312,7 @@ const CctEnquadramentoPage = () => {
             <section className="space-y-3">
               <h2 className="font-semibold">Sindicato laboral (candidatos)</h2>
               {resultado.laborais?.length ? (
-                resultado.laborais.map((c, i) => <CandidatoCard key={`l-${i}`} c={c} />)
+                resultado.laborais.map((c, i) => <CandidatoCard key={`l-${i}`} c={c} municipio={municipio} uf={uf} />)
               ) : (
                 <p className="text-sm text-muted-foreground">Nenhum candidato encontrado.</p>
               )}
