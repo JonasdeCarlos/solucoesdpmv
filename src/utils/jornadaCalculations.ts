@@ -184,5 +184,42 @@ export function analisarJornada(dias: JornadaDiaConfig[], params: JornadaParams)
     saldoMin,
     statusGeral,
     apontamentos,
+    tempoParcial: avaliarTempoParcial(totalSemanalMin),
+  };
+}
+
+// Art. 58-A da CLT: tempo parcial = até 30h/semana sem horas suplementares,
+// ou até 26h/semana com acréscimo de até 6 horas suplementares semanais.
+export function avaliarTempoParcial(totalSemanalMin: number): import('@/types/jornada').TempoParcialAnalise {
+  const total = minutesToHHMM(totalSemanalMin);
+  if (totalSemanalMin === 0) {
+    return {
+      elegivel: false,
+      modalidade: null,
+      titulo: 'Não avaliado',
+      detalhe: 'Não há marcações suficientes para avaliar o enquadramento em contrato a tempo parcial (art. 58-A da CLT).',
+    };
+  }
+  if (totalSemanalMin <= 26 * 60) {
+    return {
+      elegivel: true,
+      modalidade: '26h',
+      titulo: 'Passível de contrato a tempo parcial',
+      detalhe: `A jornada semanal apurada (${total}) não excede 26 horas, enquadrando-se no art. 58-A, caput, da CLT (modalidade de até 26h semanais, com possibilidade de acréscimo de até 6 horas suplementares por semana, pagas com adicional mínimo de 50%).`,
+    };
+  }
+  if (totalSemanalMin <= 30 * 60) {
+    return {
+      elegivel: true,
+      modalidade: '30h',
+      titulo: 'Passível de contrato a tempo parcial',
+      detalhe: `A jornada semanal apurada (${total}) não excede 30 horas, enquadrando-se no art. 58-A, caput, da CLT (modalidade de até 30h semanais, vedada a realização de horas suplementares).`,
+    };
+  }
+  return {
+    elegivel: false,
+    modalidade: null,
+    titulo: 'Não passível de contrato a tempo parcial',
+    detalhe: `A jornada semanal apurada (${total}) supera o limite de 30 horas previsto no art. 58-A da CLT, não sendo cabível a celebração de contrato a tempo parcial. Deve ser mantido o regime de jornada integral.`,
   };
 }
