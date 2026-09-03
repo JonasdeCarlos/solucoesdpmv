@@ -421,6 +421,11 @@ const JornadaPage: React.FC = () => {
             </div>
           )}
 
+          <div className={`rounded p-4 border ${analise.tempoParcial.elegivel ? 'border-primary/40 bg-primary/5' : 'bg-muted/40'}`}>
+            <p className="text-sm font-semibold">Contrato a tempo parcial (art. 58-A da CLT): {analise.tempoParcial.titulo}</p>
+            <p className="text-sm text-muted-foreground mt-1">{analise.tempoParcial.detalhe}</p>
+          </div>
+
           {analise.statusGeral === 'ok' && (
             <div className="bg-green-50 dark:bg-green-950/20 rounded p-4">
               <p className="text-sm text-green-800 dark:text-green-300">
