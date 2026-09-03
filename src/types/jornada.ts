@@ -35,6 +35,13 @@ export interface JornadaDiaResultado {
   alertas: string[];
 }
 
+export interface TempoParcialAnalise {
+  elegivel: boolean;
+  modalidade: '30h' | '26h' | null;
+  titulo: string;
+  detalhe: string;
+}
+
 export interface JornadaAnalise {
   dias: JornadaDiaResultado[];
   totalSemanalMin: number;
@@ -42,6 +49,7 @@ export interface JornadaAnalise {
   saldoMin: number;
   statusGeral: 'ok' | 'atencao' | 'critico';
   apontamentos: string[];
+  tempoParcial: TempoParcialAnalise;
 }
 
 export function createDefaultParams(): JornadaParams {
