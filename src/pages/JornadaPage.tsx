@@ -199,6 +199,11 @@ const JornadaPage: React.FC = () => {
 
       ${apontamentosHtml}
 
+      <div style="margin-top:10px;border:1px solid #628E3F;border-radius:4px;padding:8px">
+        <div style="font-weight:bold;color:#628E3F">CONTRATO A TEMPO PARCIAL (ART. 58-A DA CLT)</div>
+        <div style="font-size:11px;margin-top:3px"><strong>${analise.tempoParcial.titulo}.</strong> ${analise.tempoParcial.detalhe}</div>
+      </div>
+
       <div class="signatures">
         <div class="sig-line"><hr/> Responsável / Analista</div>
         <div class="sig-line"><hr/> Empresa / Representante</div>
