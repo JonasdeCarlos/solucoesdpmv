@@ -212,7 +212,21 @@ export function gerarParecerPdf(opts: PdfOptions): jsPDF {
     });
   }
 
-  y += 4;
+  y += 6;
+
+  // TEMPO PARCIAL (art. 58-A CLT)
+  checkPage(30);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.text('CONTRATO A TEMPO PARCIAL (ART. 58-A DA CLT)', mx, y);
+  y += 5;
+  doc.setFontSize(9);
+  doc.text(`${analise.tempoParcial.titulo}.`, mx, y);
+  y += 5;
+  doc.setFont('helvetica', 'normal');
+  const tpLines = doc.splitTextToSize(analise.tempoParcial.detalhe, contentW);
+  doc.text(tpLines, mx, y);
+  y += tpLines.length * 4.5 + 4;
 
   // OBSERVAÇÕES DO ANALISTA
   if (observacoesAnalista.trim()) {
