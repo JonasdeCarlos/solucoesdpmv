@@ -199,6 +199,11 @@ const JornadaPage: React.FC = () => {
 
       ${apontamentosHtml}
 
+      <div style="margin-top:10px;border:1px solid #628E3F;border-radius:4px;padding:8px">
+        <div style="font-weight:bold;color:#628E3F">CONTRATO A TEMPO PARCIAL (ART. 58-A DA CLT)</div>
+        <div style="font-size:11px;margin-top:3px"><strong>${analise.tempoParcial.titulo}.</strong> ${analise.tempoParcial.detalhe}</div>
+      </div>
+
       <div class="signatures">
         <div class="sig-line"><hr/> Responsável / Analista</div>
         <div class="sig-line"><hr/> Empresa / Representante</div>
@@ -415,6 +420,11 @@ const JornadaPage: React.FC = () => {
               </ul>
             </div>
           )}
+
+          <div className={`rounded p-4 border ${analise.tempoParcial.elegivel ? 'border-primary/40 bg-primary/5' : 'bg-muted/40'}`}>
+            <p className="text-sm font-semibold">Contrato a tempo parcial (art. 58-A da CLT): {analise.tempoParcial.titulo}</p>
+            <p className="text-sm text-muted-foreground mt-1">{analise.tempoParcial.detalhe}</p>
+          </div>
 
           {analise.statusGeral === 'ok' && (
             <div className="bg-green-50 dark:bg-green-950/20 rounded p-4">
