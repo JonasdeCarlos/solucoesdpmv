@@ -266,20 +266,20 @@ export function gerarMemoriaExperiencia(input: CustoMensalInput, e: RescisaoExpe
   const g = 'Rescisão ao fim da experiência';
   const cppAplicavel = !(input.simplesNacional && !input.recolheCPP);
   const linhas: MemoriaLinha[] = [
-    { item: `Salários do período (${e.dias} dias)`, base: formatBRL(input.baseCalculo), aliquota: `${e.dias}/30`, valor: formatBRL(e.salariosPeriodo), grupo: g },
+    { item: `Saldo de salário (${e.diasSaldo} dias)`, base: formatBRL(input.baseCalculo), aliquota: `${e.diasSaldo}/30`, valor: formatBRL(e.saldoSalario), grupo: g },
     { item: '13º proporcional', base: formatBRL(input.baseCalculo), aliquota: `${e.avos}/12`, valor: formatBRL(e.decimo13Prop), grupo: g },
     { item: 'Férias proporcionais', base: formatBRL(input.baseCalculo), aliquota: `${e.avos}/12`, valor: formatBRL(e.feriasProp), grupo: g },
     { item: '1/3 constitucional', base: formatBRL(e.feriasProp), aliquota: '1/3', valor: formatBRL(e.tercoFerias), grupo: g },
-    { item: 'FGTS s/ salários', base: formatBRL(e.salariosPeriodo), aliquota: formatPct(input.fgtsPct), valor: formatBRL(e.fgtsSalarios), grupo: g },
+    { item: 'FGTS s/ saldo', base: formatBRL(e.saldoSalario), aliquota: formatPct(input.fgtsPct), valor: formatBRL(e.fgtsSalarios), grupo: g },
     { item: 'FGTS s/ 13º', base: formatBRL(e.decimo13Prop), aliquota: formatPct(input.fgtsPct), valor: formatBRL(e.fgtsDecimo13), grupo: g },
   ];
   if (cppAplicavel) {
-    linhas.push({ item: 'CPP s/ salários', base: formatBRL(e.salariosPeriodo), aliquota: '20,00%', valor: formatBRL(e.cppPeriodo), grupo: g });
+    linhas.push({ item: 'CPP s/ saldo', base: formatBRL(e.saldoSalario), aliquota: '20,00%', valor: formatBRL(e.cppPeriodo), grupo: g });
   } else {
-    linhas.push({ item: 'CPP s/ salários', base: '—', aliquota: 'Simples (isento)', valor: formatBRL(0), grupo: g });
+    linhas.push({ item: 'CPP s/ saldo', base: '—', aliquota: 'Simples (isento)', valor: formatBRL(0), grupo: g });
   }
-  linhas.push({ item: 'RAT s/ salários', base: formatBRL(e.salariosPeriodo), aliquota: formatPct(input.ratPct), valor: formatBRL(e.ratPeriodo), grupo: g });
-  linhas.push({ item: 'Terceiros s/ salários', base: formatBRL(e.salariosPeriodo), aliquota: formatPct(input.terceirosPct), valor: formatBRL(e.terceirosPeriodo), grupo: g });
+  linhas.push({ item: 'RAT s/ saldo', base: formatBRL(e.saldoSalario), aliquota: formatPct(input.ratPct), valor: formatBRL(e.ratPeriodo), grupo: g });
+  linhas.push({ item: 'Terceiros s/ saldo', base: formatBRL(e.saldoSalario), aliquota: formatPct(input.terceirosPct), valor: formatBRL(e.terceirosPeriodo), grupo: g });
   linhas.push({ item: 'Encargos s/ 13º', base: formatBRL(e.decimo13Prop), aliquota: formatPct((cppAplicavel ? 20 : 0) + input.ratPct + input.terceirosPct), valor: formatBRL(e.encargosDecimo13), grupo: g });
   return linhas;
 }
