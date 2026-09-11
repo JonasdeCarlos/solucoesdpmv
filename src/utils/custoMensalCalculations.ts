@@ -216,7 +216,7 @@ export function gerarMemoriaCustoTotalContrato(
   const cppAplicavel = !(input.simplesNacional && !input.recolheCPP);
   const linhas: MemoriaLinha[] = [];
 
-  if (c.salarioPrimeiroMes > 0 && c.salarioPrimeiroMes < input.baseCalculo) {
+  if (c.salarioPrimeiroMes > 0) {
     linhas.push({
       item: `Salário 1º mês (${c.diasPrimeiroMes} dias)`,
       base: formatBRL(input.baseCalculo),
