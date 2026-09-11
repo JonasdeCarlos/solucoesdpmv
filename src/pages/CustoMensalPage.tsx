@@ -28,6 +28,8 @@ const defaultInput: CustoMensalInput = {
   fgtsPct: 8,
   multaFgtsPct: 40,
   competencia: '',
+  simularExperiencia: false,
+  diasExperiencia: 90,
 };
 
 const STORAGE_KEY = 'custo_mensal_state_v1';
@@ -78,6 +80,9 @@ const CustoMensalPage: React.FC = () => {
 
   const result = useMemo(() => calcularCustoMensal(input), [input]);
   const memoria = useMemo(() => gerarMemoriaCalculo(input, result), [input, result]);
+  const experiencia = useMemo(() => calcularRescisaoExperiencia(input), [input]);
+  const memoriaExp = useMemo(() => gerarMemoriaExperiencia(input, experiencia), [input, experiencia]);
+  const mostrarExp = !!input.simularExperiencia;
 
   const handleCalcular = () => {
     if (input.baseCalculo <= 0) {
