@@ -217,6 +217,31 @@ const CustoMensalPage: React.FC = () => {
             )}
           </div>
 
+          {/* Rescisão na experiência */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 rounded-lg border border-border p-3 bg-muted/30">
+            <div className="flex items-center gap-3">
+              <Switch
+                checked={!!input.simularExperiencia}
+                onCheckedChange={(v) => { setInput(prev => ({ ...prev, simularExperiencia: v })); setCalculado(false); }}
+              />
+              <Label>Simular rescisão no fim do contrato de experiência</Label>
+            </div>
+            {input.simularExperiencia && (
+              <div>
+                <Label>Duração da experiência (dias)</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  step="1"
+                  value={input.diasExperiencia ?? 90}
+                  onChange={(e) => { const n = parseInt(e.target.value) || 0; setInput(prev => ({ ...prev, diasExperiencia: n })); setCalculado(false); }}
+                />
+                <p className="text-xs text-muted-foreground mt-1">Ex.: 45 + 45 = 90 dias</p>
+              </div>
+            )}
+          </div>
+
+
           {/* Alíquotas */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div>
