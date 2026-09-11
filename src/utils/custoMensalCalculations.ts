@@ -147,20 +147,10 @@ export function calcularCustoTotalContrato(
     : ultimoDiaPrimeiroMes - inicio.getDate() + 1;
   const salarioPrimeiroMes = primeiroMesCompleto ? base : (base / 30) * diasPrimeiroMes;
 
-  // Meses completos entre o primeiro e o último mês
-  let mesesCompletos = 0;
-  let cursorMes = inicio.getMonth() + (primeiroMesCompleto ? 1 : 1);
-  let cursorAno = inicio.getFullYear();
-  const ultimoMes = fim.getMonth();
-  const ultimoAno = fim.getFullYear();
-  while (cursorAno < ultimoAno || (cursorAno === ultimoAno && cursorMes < ultimoMes)) {
-    mesesCompletos++;
-    cursorMes++;
-    if (cursorMes > 11) {
-      cursorMes = 0;
-      cursorAno++;
-    }
-  }
+  // Meses completos entre o primeiro e o último mês (índice absoluto ano*12+mês)
+  const idxInicio = inicio.getFullYear() * 12 + inicio.getMonth();
+  const idxFim = fim.getFullYear() * 12 + fim.getMonth();
+  const mesesCompletos = Math.max(0, idxFim - idxInicio - 1);
   const salarioMesesCompletos = base * mesesCompletos;
 
   // Último mês reaproveita o saldo de salário da rescisão
