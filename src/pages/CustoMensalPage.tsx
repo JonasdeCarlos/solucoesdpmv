@@ -93,30 +93,51 @@ const CustoMensalPage: React.FC = () => {
   };
 
   const handleCopiar = useCallback(() => {
-    const txt = gerarTextoCopiavel(input, result);
+    let txt = gerarTextoCopiavel(input, result);
+    if (input.simularExperiencia) {
+      txt += `\n=== RESCISÃO AO FIM DA EXPERIÊNCIA (${experiencia.dias} dias) ===\n`;
+      for (const l of memoriaExp) {
+        txt += `${l.item.padEnd(28)} | Base: ${l.base.padEnd(14)} | ${l.aliquota.padEnd(14)} | ${l.valor}\n`;
+      }
+      txt += `CUSTO TOTAL AO DEMITIR NO FIM DA EXPERIÊNCIA: ${formatBRL(experiencia.custoTotal)}\n`;
+    }
     navigator.clipboard.writeText(txt);
     toast({ title: 'Demonstrativo copiado!' });
-  }, [input, result, toast]);
+  }, [input, result, experiencia, memoriaExp, toast]);
+
 
   const handlePrint = () => {
     if (!printRef.current) return;
     const w = window.open('', '_blank');
     if (!w) return;
+    const logoUrl = `${window.location.origin}/images/logo-monte-verde-pdf.png`;
     w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Custo Mensal de Contratação</title>
 <style>
-  body { font-family: Arial, sans-serif; font-size: 11px; margin: 20px; color: #111; }
-  h2 { font-size: 15px; margin-bottom: 4px; }
-  h3 { font-size: 12px; margin: 12px 0 4px; border-bottom: 1px solid #ccc; padding-bottom: 2px; }
+  body { font-family: 'Source Sans 3', Arial, sans-serif; font-size: 11px; margin: 24px; color: #393421; }
+  .brand-header { display: flex; align-items: center; gap: 14px; border-bottom: 3px solid #628E3F; padding-bottom: 10px; margin-bottom: 14px; }
+  .brand-header img { height: 54px; object-fit: contain; }
+  .brand-title { font-size: 17px; font-weight: 700; color: #628E3F; letter-spacing: .3px; }
+  .brand-sub { font-size: 10px; color: #6b6a5e; margin-top: 2px; }
+  h2 { font-size: 15px; margin-bottom: 4px; color: #393421; }
+  h3 { font-size: 12px; margin: 14px 0 5px; color: #628E3F; text-transform: uppercase; letter-spacing: .4px; border-bottom: 1px solid #E1E8F2; padding-bottom: 3px; }
   table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-  th, td { border: 1px solid #999; padding: 3px 6px; text-align: left; }
-  th { background: #e5e7eb; font-weight: 600; }
+  th, td { border: 1px solid #dfe4ea; padding: 4px 7px; text-align: left; }
+  th { background: #393421; color: #fff; font-weight: 600; }
+  tbody tr:nth-child(even) td { background: #F5F7FA; }
   .right { text-align: right; }
-  .total-row { font-weight: 700; background: #f3f4f6; }
-  .grand-total { font-size: 13px; font-weight: 700; background: #d1fae5; }
-  .disclaimer { margin-top: 16px; font-size: 10px; color: #666; border-top: 1px solid #ccc; padding-top: 6px; }
-  .meta { margin-bottom: 12px; }
+  .total-row { font-weight: 700; background: #E1E8F2 !important; }
+  .grand-total td { font-size: 13px; font-weight: 700; background: #E8F0DE !important; color: #3f5c28; border-top: 2px solid #628E3F; }
+  .disclaimer { margin-top: 16px; font-size: 10px; color: #6b6a5e; border-top: 1px solid #E1E8F2; padding-top: 6px; }
+  .meta { margin-bottom: 12px; background: #F5F7FA; border-left: 3px solid #628E3F; padding: 8px 10px; }
   .meta span { margin-right: 20px; }
-</style></head><body>`);
+</style></head><body>
+<div class="brand-header">
+  <img src="${logoUrl}" alt="Monte Verde Contabilidade" />
+  <div>
+    <div class="brand-title">Monte Verde Contabilidade</div>
+    <div class="brand-sub">Departamento Pessoal • Emitido em ${new Date().toLocaleDateString('pt-BR')}</div>
+  </div>
+</div>`);
     w.document.write(printRef.current.innerHTML);
     w.document.write('</body></html>');
     w.document.close();
