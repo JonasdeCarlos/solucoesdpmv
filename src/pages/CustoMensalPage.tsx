@@ -10,7 +10,9 @@ import { useToast } from '@/hooks/use-toast';
 import {
   type CustoMensalInput,
   calcularCustoMensal,
+  calcularRescisaoExperiencia,
   gerarMemoriaCalculo,
+  gerarMemoriaExperiencia,
   gerarTextoCopiavel,
   formatBRL,
   formatPct,
