@@ -10,7 +10,9 @@ import { useToast } from '@/hooks/use-toast';
 import {
   type CustoMensalInput,
   calcularCustoMensal,
+  calcularRescisaoExperiencia,
   gerarMemoriaCalculo,
+  gerarMemoriaExperiencia,
   gerarTextoCopiavel,
   formatBRL,
   formatPct,
@@ -26,6 +28,8 @@ const defaultInput: CustoMensalInput = {
   fgtsPct: 8,
   multaFgtsPct: 40,
   competencia: '',
+  simularExperiencia: false,
+  diasExperiencia: 90,
 };
 
 const STORAGE_KEY = 'custo_mensal_state_v1';
@@ -76,6 +80,9 @@ const CustoMensalPage: React.FC = () => {
 
   const result = useMemo(() => calcularCustoMensal(input), [input]);
   const memoria = useMemo(() => gerarMemoriaCalculo(input, result), [input, result]);
+  const experiencia = useMemo(() => calcularRescisaoExperiencia(input), [input]);
+  const memoriaExp = useMemo(() => gerarMemoriaExperiencia(input, experiencia), [input, experiencia]);
+  const mostrarExp = !!input.simularExperiencia;
 
   const handleCalcular = () => {
     if (input.baseCalculo <= 0) {
@@ -86,30 +93,51 @@ const CustoMensalPage: React.FC = () => {
   };
 
   const handleCopiar = useCallback(() => {
-    const txt = gerarTextoCopiavel(input, result);
+    let txt = gerarTextoCopiavel(input, result);
+    if (input.simularExperiencia) {
+      txt += `\n=== RESCISÃO AO FIM DA EXPERIÊNCIA (${experiencia.dias} dias) ===\n`;
+      for (const l of memoriaExp) {
+        txt += `${l.item.padEnd(28)} | Base: ${l.base.padEnd(14)} | ${l.aliquota.padEnd(14)} | ${l.valor}\n`;
+      }
+      txt += `CUSTO TOTAL AO DEMITIR NO FIM DA EXPERIÊNCIA: ${formatBRL(experiencia.custoTotal)}\n`;
+    }
     navigator.clipboard.writeText(txt);
     toast({ title: 'Demonstrativo copiado!' });
-  }, [input, result, toast]);
+  }, [input, result, experiencia, memoriaExp, toast]);
+
 
   const handlePrint = () => {
     if (!printRef.current) return;
     const w = window.open('', '_blank');
     if (!w) return;
+    const logoUrl = `${window.location.origin}/images/logo-monte-verde-pdf.png`;
     w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Custo Mensal de Contratação</title>
 <style>
-  body { font-family: Arial, sans-serif; font-size: 11px; margin: 20px; color: #111; }
-  h2 { font-size: 15px; margin-bottom: 4px; }
-  h3 { font-size: 12px; margin: 12px 0 4px; border-bottom: 1px solid #ccc; padding-bottom: 2px; }
+  body { font-family: 'Source Sans 3', Arial, sans-serif; font-size: 11px; margin: 24px; color: #393421; }
+  .brand-header { display: flex; align-items: center; gap: 14px; border-bottom: 3px solid #628E3F; padding-bottom: 10px; margin-bottom: 14px; }
+  .brand-header img { height: 54px; object-fit: contain; }
+  .brand-title { font-size: 17px; font-weight: 700; color: #628E3F; letter-spacing: .3px; }
+  .brand-sub { font-size: 10px; color: #6b6a5e; margin-top: 2px; }
+  h2 { font-size: 15px; margin-bottom: 4px; color: #393421; }
+  h3 { font-size: 12px; margin: 14px 0 5px; color: #628E3F; text-transform: uppercase; letter-spacing: .4px; border-bottom: 1px solid #E1E8F2; padding-bottom: 3px; }
   table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-  th, td { border: 1px solid #999; padding: 3px 6px; text-align: left; }
-  th { background: #e5e7eb; font-weight: 600; }
+  th, td { border: 1px solid #dfe4ea; padding: 4px 7px; text-align: left; }
+  th { background: #393421; color: #fff; font-weight: 600; }
+  tbody tr:nth-child(even) td { background: #F5F7FA; }
   .right { text-align: right; }
-  .total-row { font-weight: 700; background: #f3f4f6; }
-  .grand-total { font-size: 13px; font-weight: 700; background: #d1fae5; }
-  .disclaimer { margin-top: 16px; font-size: 10px; color: #666; border-top: 1px solid #ccc; padding-top: 6px; }
-  .meta { margin-bottom: 12px; }
+  .total-row { font-weight: 700; background: #E1E8F2 !important; }
+  .grand-total td { font-size: 13px; font-weight: 700; background: #E8F0DE !important; color: #3f5c28; border-top: 2px solid #628E3F; }
+  .disclaimer { margin-top: 16px; font-size: 10px; color: #6b6a5e; border-top: 1px solid #E1E8F2; padding-top: 6px; }
+  .meta { margin-bottom: 12px; background: #F5F7FA; border-left: 3px solid #628E3F; padding: 8px 10px; }
   .meta span { margin-right: 20px; }
-</style></head><body>`);
+</style></head><body>
+<div class="brand-header">
+  <img src="${logoUrl}" alt="Monte Verde Contabilidade" />
+  <div>
+    <div class="brand-title">Monte Verde Contabilidade</div>
+    <div class="brand-sub">Departamento Pessoal • Emitido em ${new Date().toLocaleDateString('pt-BR')}</div>
+  </div>
+</div>`);
     w.document.write(printRef.current.innerHTML);
     w.document.write('</body></html>');
     w.document.close();
@@ -188,6 +216,31 @@ const CustoMensalPage: React.FC = () => {
               </div>
             )}
           </div>
+
+          {/* Rescisão na experiência */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 rounded-lg border border-border p-3 bg-muted/30">
+            <div className="flex items-center gap-3">
+              <Switch
+                checked={!!input.simularExperiencia}
+                onCheckedChange={(v) => { setInput(prev => ({ ...prev, simularExperiencia: v })); setCalculado(false); }}
+              />
+              <Label>Simular rescisão no fim do contrato de experiência</Label>
+            </div>
+            {input.simularExperiencia && (
+              <div>
+                <Label>Duração da experiência (dias)</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  step="1"
+                  value={input.diasExperiencia ?? 90}
+                  onChange={(e) => { const n = parseInt(e.target.value) || 0; setInput(prev => ({ ...prev, diasExperiencia: n })); setCalculado(false); }}
+                />
+                <p className="text-xs text-muted-foreground mt-1">Ex.: 45 + 45 = 90 dias</p>
+              </div>
+            )}
+          </div>
+
 
           {/* Alíquotas */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -308,6 +361,64 @@ const CustoMensalPage: React.FC = () => {
         </Card>
       )}
 
+      {/* Rescisão na experiência */}
+      {calculado && mostrarExp && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Rescisão ao fim do contrato de experiência ({experiencia.dias} dias)</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Item</TableHead>
+                  <TableHead className="text-right">Base</TableHead>
+                  <TableHead className="text-right">Alíquota/Ref</TableHead>
+                  <TableHead className="text-right">Valor (R$)</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {memoriaExp.map((l, i) => (
+                  <TableRow key={i}>
+                    <TableCell className="font-medium">{l.item}</TableCell>
+                    <TableCell className="text-right">{l.base}</TableCell>
+                    <TableCell className="text-right">{l.aliquota}</TableCell>
+                    <TableCell className="text-right font-mono">{l.valor}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+              <div className="flex justify-between p-2 bg-muted/50 rounded">
+                <span>Verbas (salários + 13º + férias + 1/3)</span>
+                <span className="font-mono font-semibold">{formatBRL(experiencia.totalVerbas)}</span>
+              </div>
+              <div className="flex justify-between p-2 bg-muted/50 rounded">
+                <span>Depósitos de FGTS no período</span>
+                <span className="font-mono font-semibold">{formatBRL(experiencia.fgtsTotal)}</span>
+              </div>
+              <div className="flex justify-between p-2 bg-muted/50 rounded">
+                <span>Encargos (CPP/RAT/Terceiros)</span>
+                <span className="font-mono font-semibold">{formatBRL(experiencia.encargosPeriodo + experiencia.encargosDecimo13)}</span>
+              </div>
+              <div className="flex justify-between p-2 bg-muted/50 rounded">
+                <span>Avos de 13º e férias</span>
+                <span className="font-mono font-semibold">{experiencia.avos}/12</span>
+              </div>
+            </div>
+
+            <div className="flex justify-between items-center p-3 bg-primary/10 rounded-lg border border-primary/30 text-base font-bold">
+              <span>CUSTO TOTAL AO DEMITIR NO FIM DA EXPERIÊNCIA</span>
+              <span className="font-mono text-lg">{formatBRL(experiencia.custoTotal)}</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Término no prazo ajustado: sem aviso prévio e sem multa de 40% do FGTS.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Print view (hidden) */}
       <div ref={printRef} className="hidden">
         <h2>Custo Mensal de Contratação</h2>
@@ -357,6 +468,32 @@ const CustoMensalPage: React.FC = () => {
             <tr><td>Percentual efetivo sobre base</td><td className="right">{formatPct(result.percentualEfetivo)}</td></tr>
           </tbody>
         </table>
+
+        {mostrarExp && (
+          <>
+            <h3>Rescisão ao fim do contrato de experiência ({experiencia.dias} dias)</h3>
+            <table>
+              <thead>
+                <tr><th>Item</th><th className="right">Base</th><th className="right">Alíquota/Ref</th><th className="right">Valor (R$)</th></tr>
+              </thead>
+              <tbody>
+                {memoriaExp.map((l, i) => (
+                  <tr key={i}>
+                    <td>{l.item}</td>
+                    <td className="right">{l.base}</td>
+                    <td className="right">{l.aliquota}</td>
+                    <td className="right">{l.valor}</td>
+                  </tr>
+                ))}
+                <tr className="total-row"><td>Verbas (salários + 13º + férias + 1/3)</td><td className="right" colSpan={3}>{formatBRL(experiencia.totalVerbas)}</td></tr>
+                <tr className="total-row"><td>Depósitos de FGTS</td><td className="right" colSpan={3}>{formatBRL(experiencia.fgtsTotal)}</td></tr>
+                <tr className="total-row"><td>Encargos patronais</td><td className="right" colSpan={3}>{formatBRL(experiencia.encargosPeriodo + experiencia.encargosDecimo13)}</td></tr>
+                <tr className="grand-total"><td>CUSTO TOTAL AO DEMITIR NO FIM DA EXPERIÊNCIA</td><td className="right" colSpan={3}>{formatBRL(experiencia.custoTotal)}</td></tr>
+              </tbody>
+            </table>
+            <p style={{ fontSize: 10, color: '#6b6a5e' }}>Término no prazo ajustado: sem aviso prévio e sem multa de 40% do FGTS.</p>
+          </>
+        )}
 
         <div className="disclaimer">
           ⚠️ Cálculo estimativo. Alíquotas variam por CNAE/FPAS/FAP, regras do Simples/CPP, CCT e particularidades do contrato.
