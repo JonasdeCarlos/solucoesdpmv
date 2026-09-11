@@ -139,28 +139,23 @@ export function calcularCustoTotalContrato(
   const cppAplicavel = !(input.simplesNacional && !input.recolheCPP);
   const fgtsPctDec = input.fgtsPct / 100;
 
-  // Primeiro mês
+  // Índices absolutos (ano*12+mês) para saber se início e fim caem no mesmo mês
+  const idxInicio = inicio.getFullYear() * 12 + inicio.getMonth();
+  const idxFim = fim.getFullYear() * 12 + fim.getMonth();
+  const mesmoMes = idxInicio === idxFim;
+
+  // Primeiro mês (quando início e fim são no mesmo mês, ele já é o saldo de rescisão)
   const primeiroMesCompleto = inicio.getDate() === 1;
   const ultimoDiaPrimeiroMes = new Date(inicio.getFullYear(), inicio.getMonth() + 1, 0).getDate();
-  const diasPrimeiroMes = primeiroMesCompleto
-    ? ultimoDiaPrimeiroMes
-    : ultimoDiaPrimeiroMes - inicio.getDate() + 1;
-  const salarioPrimeiroMes = primeiroMesCompleto ? base : (base / 30) * diasPrimeiroMes;
+  const diasPrimeiroMes = mesmoMes
+    ? 0
+    : primeiroMesCompleto
+      ? 30
+      : ultimoDiaPrimeiroMes - inicio.getDate() + 1;
+  const salarioPrimeiroMes = mesmoMes ? 0 : (base / 30) * diasPrimeiroMes;
 
   // Meses completos entre o primeiro e o último mês
-  let mesesCompletos = 0;
-  let cursorMes = inicio.getMonth() + (primeiroMesCompleto ? 1 : 1);
-  let cursorAno = inicio.getFullYear();
-  const ultimoMes = fim.getMonth();
-  const ultimoAno = fim.getFullYear();
-  while (cursorAno < ultimoAno || (cursorAno === ultimoAno && cursorMes < ultimoMes)) {
-    mesesCompletos++;
-    cursorMes++;
-    if (cursorMes > 11) {
-      cursorMes = 0;
-      cursorAno++;
-    }
-  }
+  const mesesCompletos = Math.max(0, idxFim - idxInicio - 1);
   const salarioMesesCompletos = base * mesesCompletos;
 
   // Último mês reaproveita o saldo de salário da rescisão
@@ -221,7 +216,7 @@ export function gerarMemoriaCustoTotalContrato(
   const cppAplicavel = !(input.simplesNacional && !input.recolheCPP);
   const linhas: MemoriaLinha[] = [];
 
-  if (c.salarioPrimeiroMes > 0 && c.salarioPrimeiroMes < input.baseCalculo) {
+  if (c.salarioPrimeiroMes > 0) {
     linhas.push({
       item: `Salário 1º mês (${c.diasPrimeiroMes} dias)`,
       base: formatBRL(input.baseCalculo),
