@@ -9,14 +9,18 @@ export interface CustoMensalInput {
   multaFgtsPct: number;
   competencia: string; // yyyy-MM (optional display)
   simularExperiencia?: boolean;
-  diasExperiencia?: number; // duração total do contrato de experiência (dias)
+  dataInicioExperiencia?: string; // yyyy-MM-dd
+  dataFimExperiencia?: string; // yyyy-MM-dd
 }
 
 export interface RescisaoExperienciaResult {
+  dataInicio: string;
+  dataFim: string;
   dias: number;
+  diasSaldo: number; // dias trabalhados no mês da rescisão
   mesesInteiros: number;
   avos: number;
-  salariosPeriodo: number;
+  saldoSalario: number;
   cppPeriodo: number;
   ratPeriodo: number;
   terceirosPeriodo: number;
@@ -32,19 +36,45 @@ export interface RescisaoExperienciaResult {
   custoTotal: number;
 }
 
+function parseISO(d?: string): Date | null {
+  if (!d) return null;
+  const [y, m, dd] = d.split('-').map(Number);
+  if (!y || !m || !dd) return null;
+  return new Date(y, m - 1, dd);
+}
+
 export function calcularRescisaoExperiencia(input: CustoMensalInput): RescisaoExperienciaResult {
   const base = input.baseCalculo;
-  const dias = Math.max(0, input.diasExperiencia ?? 90);
+  const inicio = parseISO(input.dataInicioExperiencia);
+  const fim = parseISO(input.dataFimExperiencia);
+
+  let dias = 0;
+  if (inicio && fim && fim >= inicio) {
+    dias = Math.round((fim.getTime() - inicio.getTime()) / 86400000) + 1;
+  }
+
+  // Dias trabalhados no mês da rescisão (saldo de salário)
+  let diasSaldo = 0;
+  if (inicio && fim && fim >= inicio) {
+    const mesmoMes = inicio.getFullYear() === fim.getFullYear() && inicio.getMonth() === fim.getMonth();
+    const primeiroDiaDoMes = mesmoMes ? inicio.getDate() : 1;
+    diasSaldo = fim.getDate() - primeiroDiaDoMes + 1;
+    if (fim.getDate() === new Date(fim.getFullYear(), fim.getMonth() + 1, 0).getDate()) {
+      // mês fechado: CLT considera 30 dias
+      diasSaldo = mesmoMes ? diasSaldo : 30;
+    }
+  }
+
   const mesesInteiros = Math.floor(dias / 30);
   const resto = dias - mesesInteiros * 30;
   const avos = Math.min(12, mesesInteiros + (resto >= 15 ? 1 : 0));
 
-  const salariosPeriodo = (base / 30) * dias;
+  const saldoSalario = (base / 30) * diasSaldo;
 
   const cppAplicavel = !(input.simplesNacional && !input.recolheCPP);
-  const cppPeriodo = cppAplicavel ? salariosPeriodo * 0.2 : 0;
-  const ratPeriodo = salariosPeriodo * (input.ratPct / 100);
-  const terceirosPeriodo = salariosPeriodo * (input.terceirosPct / 100);
+  const cppPeriodo = cppAplicavel ? saldoSalario * 0.2 : 0;
+  const ratPeriodo = saldoSalario * (input.ratPct / 100);
+  const terceirosPeriodo = saldoSalario * (input.terceirosPct / 100);
   const encargosPeriodo = cppPeriodo + ratPeriodo + terceirosPeriodo;
 
   const decimo13Prop = (base / 12) * avos;
@@ -52,23 +82,27 @@ export function calcularRescisaoExperiencia(input: CustoMensalInput): RescisaoEx
   const tercoFerias = feriasProp / 3;
 
   const fgtsPctDec = input.fgtsPct / 100;
-  const fgtsSalarios = salariosPeriodo * fgtsPctDec;
+  const fgtsSalarios = saldoSalario * fgtsPctDec;
   const fgtsDecimo13 = decimo13Prop * fgtsPctDec;
   const fgtsTotal = fgtsSalarios + fgtsDecimo13;
 
   const encargosDecimo13 = decimo13Prop * ((cppAplicavel ? 20 : 0) + input.ratPct + input.terceirosPct) / 100;
 
-  const totalVerbas = salariosPeriodo + decimo13Prop + feriasProp + tercoFerias;
+  const totalVerbas = saldoSalario + decimo13Prop + feriasProp + tercoFerias;
   const custoTotal = totalVerbas + fgtsTotal + encargosPeriodo + encargosDecimo13;
 
   return {
-    dias, mesesInteiros, avos,
-    salariosPeriodo, cppPeriodo, ratPeriodo, terceirosPeriodo, encargosPeriodo,
+    dataInicio: input.dataInicioExperiencia ?? '',
+    dataFim: input.dataFimExperiencia ?? '',
+    dias, diasSaldo, mesesInteiros, avos,
+    saldoSalario,
+    cppPeriodo, ratPeriodo, terceirosPeriodo, encargosPeriodo,
     decimo13Prop, feriasProp, tercoFerias,
     fgtsSalarios, fgtsDecimo13, fgtsTotal, encargosDecimo13,
     totalVerbas, custoTotal,
   };
 }
+
 
 export interface CustoMensalResult {
   base: number;
@@ -232,20 +266,20 @@ export function gerarMemoriaExperiencia(input: CustoMensalInput, e: RescisaoExpe
   const g = 'Rescisão ao fim da experiência';
   const cppAplicavel = !(input.simplesNacional && !input.recolheCPP);
   const linhas: MemoriaLinha[] = [
-    { item: `Salários do período (${e.dias} dias)`, base: formatBRL(input.baseCalculo), aliquota: `${e.dias}/30`, valor: formatBRL(e.salariosPeriodo), grupo: g },
+    { item: `Saldo de salário (${e.diasSaldo} dias)`, base: formatBRL(input.baseCalculo), aliquota: `${e.diasSaldo}/30`, valor: formatBRL(e.saldoSalario), grupo: g },
     { item: '13º proporcional', base: formatBRL(input.baseCalculo), aliquota: `${e.avos}/12`, valor: formatBRL(e.decimo13Prop), grupo: g },
     { item: 'Férias proporcionais', base: formatBRL(input.baseCalculo), aliquota: `${e.avos}/12`, valor: formatBRL(e.feriasProp), grupo: g },
     { item: '1/3 constitucional', base: formatBRL(e.feriasProp), aliquota: '1/3', valor: formatBRL(e.tercoFerias), grupo: g },
-    { item: 'FGTS s/ salários', base: formatBRL(e.salariosPeriodo), aliquota: formatPct(input.fgtsPct), valor: formatBRL(e.fgtsSalarios), grupo: g },
+    { item: 'FGTS s/ saldo', base: formatBRL(e.saldoSalario), aliquota: formatPct(input.fgtsPct), valor: formatBRL(e.fgtsSalarios), grupo: g },
     { item: 'FGTS s/ 13º', base: formatBRL(e.decimo13Prop), aliquota: formatPct(input.fgtsPct), valor: formatBRL(e.fgtsDecimo13), grupo: g },
   ];
   if (cppAplicavel) {
-    linhas.push({ item: 'CPP s/ salários', base: formatBRL(e.salariosPeriodo), aliquota: '20,00%', valor: formatBRL(e.cppPeriodo), grupo: g });
+    linhas.push({ item: 'CPP s/ saldo', base: formatBRL(e.saldoSalario), aliquota: '20,00%', valor: formatBRL(e.cppPeriodo), grupo: g });
   } else {
-    linhas.push({ item: 'CPP s/ salários', base: '—', aliquota: 'Simples (isento)', valor: formatBRL(0), grupo: g });
+    linhas.push({ item: 'CPP s/ saldo', base: '—', aliquota: 'Simples (isento)', valor: formatBRL(0), grupo: g });
   }
-  linhas.push({ item: 'RAT s/ salários', base: formatBRL(e.salariosPeriodo), aliquota: formatPct(input.ratPct), valor: formatBRL(e.ratPeriodo), grupo: g });
-  linhas.push({ item: 'Terceiros s/ salários', base: formatBRL(e.salariosPeriodo), aliquota: formatPct(input.terceirosPct), valor: formatBRL(e.terceirosPeriodo), grupo: g });
+  linhas.push({ item: 'RAT s/ saldo', base: formatBRL(e.saldoSalario), aliquota: formatPct(input.ratPct), valor: formatBRL(e.ratPeriodo), grupo: g });
+  linhas.push({ item: 'Terceiros s/ saldo', base: formatBRL(e.saldoSalario), aliquota: formatPct(input.terceirosPct), valor: formatBRL(e.terceirosPeriodo), grupo: g });
   linhas.push({ item: 'Encargos s/ 13º', base: formatBRL(e.decimo13Prop), aliquota: formatPct((cppAplicavel ? 20 : 0) + input.ratPct + input.terceirosPct), valor: formatBRL(e.encargosDecimo13), grupo: g });
   return linhas;
 }

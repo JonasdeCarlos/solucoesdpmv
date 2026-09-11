@@ -29,7 +29,8 @@ const defaultInput: CustoMensalInput = {
   multaFgtsPct: 40,
   competencia: '',
   simularExperiencia: false,
-  diasExperiencia: 90,
+  dataInicioExperiencia: '',
+  dataFimExperiencia: '',
 };
 
 const STORAGE_KEY = 'custo_mensal_state_v1';
@@ -95,7 +96,7 @@ const CustoMensalPage: React.FC = () => {
   const handleCopiar = useCallback(() => {
     let txt = gerarTextoCopiavel(input, result);
     if (input.simularExperiencia) {
-      txt += `\n=== RESCISÃO AO FIM DA EXPERIÊNCIA (${experiencia.dias} dias) ===\n`;
+      txt += `\n=== RESCISÃO AO FIM DA EXPERIÊNCIA (${experiencia.dias} dias de contrato) ===\n`;
       for (const l of memoriaExp) {
         txt += `${l.item.padEnd(28)} | Base: ${l.base.padEnd(14)} | ${l.aliquota.padEnd(14)} | ${l.valor}\n`;
       }
@@ -227,16 +228,24 @@ const CustoMensalPage: React.FC = () => {
               <Label>Simular rescisão no fim do contrato de experiência</Label>
             </div>
             {input.simularExperiencia && (
-              <div>
-                <Label>Duração da experiência (dias)</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  step="1"
-                  value={input.diasExperiencia ?? 90}
-                  onChange={(e) => { const n = parseInt(e.target.value) || 0; setInput(prev => ({ ...prev, diasExperiencia: n })); setCalculado(false); }}
-                />
-                <p className="text-xs text-muted-foreground mt-1">Ex.: 45 + 45 = 90 dias</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Início do contrato</Label>
+                  <Input
+                    type="date"
+                    value={input.dataInicioExperiencia ?? ''}
+                    onChange={(e) => { const v = e.target.value; setInput(prev => ({ ...prev, dataInicioExperiencia: v })); setCalculado(false); }}
+                  />
+                </div>
+                <div>
+                  <Label>Data da rescisão</Label>
+                  <Input
+                    type="date"
+                    value={input.dataFimExperiencia ?? ''}
+                    onChange={(e) => { const v = e.target.value; setInput(prev => ({ ...prev, dataFimExperiencia: v })); setCalculado(false); }}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">Somente o saldo de salário do mês da rescisão é pago</p>
+                </div>
               </div>
             )}
           </div>
@@ -365,7 +374,7 @@ const CustoMensalPage: React.FC = () => {
       {calculado && mostrarExp && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Rescisão ao fim do contrato de experiência ({experiencia.dias} dias)</CardTitle>
+            <CardTitle className="text-base">Rescisão ao fim do contrato de experiência ({experiencia.dias} dias de contrato)</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <Table>
@@ -391,7 +400,7 @@ const CustoMensalPage: React.FC = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
               <div className="flex justify-between p-2 bg-muted/50 rounded">
-                <span>Verbas (salários + 13º + férias + 1/3)</span>
+                <span>Verbas (saldo de salário + 13º + férias + 1/3)</span>
                 <span className="font-mono font-semibold">{formatBRL(experiencia.totalVerbas)}</span>
               </div>
               <div className="flex justify-between p-2 bg-muted/50 rounded">
@@ -471,7 +480,7 @@ const CustoMensalPage: React.FC = () => {
 
         {mostrarExp && (
           <>
-            <h3>Rescisão ao fim do contrato de experiência ({experiencia.dias} dias)</h3>
+            <h3>Rescisão ao fim do contrato de experiência ({experiencia.dias} dias de contrato)</h3>
             <table>
               <thead>
                 <tr><th>Item</th><th className="right">Base</th><th className="right">Alíquota/Ref</th><th className="right">Valor (R$)</th></tr>
@@ -485,7 +494,7 @@ const CustoMensalPage: React.FC = () => {
                     <td className="right">{l.valor}</td>
                   </tr>
                 ))}
-                <tr className="total-row"><td>Verbas (salários + 13º + férias + 1/3)</td><td className="right" colSpan={3}>{formatBRL(experiencia.totalVerbas)}</td></tr>
+                <tr className="total-row"><td>Verbas (saldo de salário + 13º + férias + 1/3)</td><td className="right" colSpan={3}>{formatBRL(experiencia.totalVerbas)}</td></tr>
                 <tr className="total-row"><td>Depósitos de FGTS</td><td className="right" colSpan={3}>{formatBRL(experiencia.fgtsTotal)}</td></tr>
                 <tr className="total-row"><td>Encargos patronais</td><td className="right" colSpan={3}>{formatBRL(experiencia.encargosPeriodo + experiencia.encargosDecimo13)}</td></tr>
                 <tr className="grand-total"><td>CUSTO TOTAL AO DEMITIR NO FIM DA EXPERIÊNCIA</td><td className="right" colSpan={3}>{formatBRL(experiencia.custoTotal)}</td></tr>
