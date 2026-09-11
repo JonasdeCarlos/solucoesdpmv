@@ -41,8 +41,14 @@ async function prepareLogo(url: string, maxWpx = 400, maxHpx = 400): Promise<Log
   const hit = cache.get(key);
   if (hit) return hit;
 
-  const raw = await fetchAsDataUrl(url);
-  const img = await loadImg(raw);
+  // Try fetch->dataURL first; if CORS blocks fetch, load the image directly
+  // (Supabase storage serves images with permissive CORS for <img>).
+  let img: HTMLImageElement;
+  try {
+    img = await loadImg(await fetchAsDataUrl(url));
+  } catch {
+    img = await loadImg(url);
+  }
   const aspect = img.naturalWidth / img.naturalHeight;
   let w = img.naturalWidth;
   let h = img.naturalHeight;
@@ -98,6 +104,16 @@ export async function drawBrandLogo(
     doc.addImage(logo.dataUrl, logo.fmt, dx, dy, drawW, drawH, undefined, 'FAST');
     return { w: drawW, h: drawH };
   } catch {
+    // Last-resort fallback: office logo bundled with the app (same origin,
+    // never blocked). Avoids a header with no logo at all.
+    const FALLBACK = '/images/logo-monte-verde-pdf.png';
+    if (url !== FALLBACK) {
+      try {
+        return await drawBrandLogo(doc, FALLBACK, x, y, maxW, maxH, opts);
+      } catch {
+        return { w: 0, h: 0 };
+      }
+    }
     return { w: 0, h: 0 };
   }
 }
