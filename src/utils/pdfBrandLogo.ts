@@ -104,6 +104,16 @@ export async function drawBrandLogo(
     doc.addImage(logo.dataUrl, logo.fmt, dx, dy, drawW, drawH, undefined, 'FAST');
     return { w: drawW, h: drawH };
   } catch {
+    // Last-resort fallback: office logo bundled with the app (same origin,
+    // never blocked). Avoids a header with no logo at all.
+    const FALLBACK = '/images/logo-monte-verde-pdf.png';
+    if (url !== FALLBACK) {
+      try {
+        return await drawBrandLogo(doc, FALLBACK, x, y, maxW, maxH, opts);
+      } catch {
+        return { w: 0, h: 0 };
+      }
+    }
     return { w: 0, h: 0 };
   }
 }
