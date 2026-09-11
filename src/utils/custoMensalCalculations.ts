@@ -8,6 +8,66 @@ export interface CustoMensalInput {
   fgtsPct: number;
   multaFgtsPct: number;
   competencia: string; // yyyy-MM (optional display)
+  simularExperiencia?: boolean;
+  diasExperiencia?: number; // duração total do contrato de experiência (dias)
+}
+
+export interface RescisaoExperienciaResult {
+  dias: number;
+  mesesInteiros: number;
+  avos: number;
+  salariosPeriodo: number;
+  cppPeriodo: number;
+  ratPeriodo: number;
+  terceirosPeriodo: number;
+  encargosPeriodo: number;
+  decimo13Prop: number;
+  feriasProp: number;
+  tercoFerias: number;
+  fgtsSalarios: number;
+  fgtsDecimo13: number;
+  fgtsTotal: number;
+  encargosDecimo13: number;
+  totalVerbas: number;
+  custoTotal: number;
+}
+
+export function calcularRescisaoExperiencia(input: CustoMensalInput): RescisaoExperienciaResult {
+  const base = input.baseCalculo;
+  const dias = Math.max(0, input.diasExperiencia ?? 90);
+  const mesesInteiros = Math.floor(dias / 30);
+  const resto = dias - mesesInteiros * 30;
+  const avos = Math.min(12, mesesInteiros + (resto >= 15 ? 1 : 0));
+
+  const salariosPeriodo = (base / 30) * dias;
+
+  const cppAplicavel = !(input.simplesNacional && !input.recolheCPP);
+  const cppPeriodo = cppAplicavel ? salariosPeriodo * 0.2 : 0;
+  const ratPeriodo = salariosPeriodo * (input.ratPct / 100);
+  const terceirosPeriodo = salariosPeriodo * (input.terceirosPct / 100);
+  const encargosPeriodo = cppPeriodo + ratPeriodo + terceirosPeriodo;
+
+  const decimo13Prop = (base / 12) * avos;
+  const feriasProp = (base / 12) * avos;
+  const tercoFerias = feriasProp / 3;
+
+  const fgtsPctDec = input.fgtsPct / 100;
+  const fgtsSalarios = salariosPeriodo * fgtsPctDec;
+  const fgtsDecimo13 = decimo13Prop * fgtsPctDec;
+  const fgtsTotal = fgtsSalarios + fgtsDecimo13;
+
+  const encargosDecimo13 = decimo13Prop * ((cppAplicavel ? 20 : 0) + input.ratPct + input.terceirosPct) / 100;
+
+  const totalVerbas = salariosPeriodo + decimo13Prop + feriasProp + tercoFerias;
+  const custoTotal = totalVerbas + fgtsTotal + encargosPeriodo + encargosDecimo13;
+
+  return {
+    dias, mesesInteiros, avos,
+    salariosPeriodo, cppPeriodo, ratPeriodo, terceirosPeriodo, encargosPeriodo,
+    decimo13Prop, feriasProp, tercoFerias,
+    fgtsSalarios, fgtsDecimo13, fgtsTotal, encargosDecimo13,
+    totalVerbas, custoTotal,
+  };
 }
 
 export interface CustoMensalResult {
