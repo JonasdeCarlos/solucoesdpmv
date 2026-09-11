@@ -41,8 +41,14 @@ async function prepareLogo(url: string, maxWpx = 400, maxHpx = 400): Promise<Log
   const hit = cache.get(key);
   if (hit) return hit;
 
-  const raw = await fetchAsDataUrl(url);
-  const img = await loadImg(raw);
+  // Try fetch->dataURL first; if CORS blocks fetch, load the image directly
+  // (Supabase storage serves images with permissive CORS for <img>).
+  let img: HTMLImageElement;
+  try {
+    img = await loadImg(await fetchAsDataUrl(url));
+  } catch {
+    img = await loadImg(url);
+  }
   const aspect = img.naturalWidth / img.naturalHeight;
   let w = img.naturalWidth;
   let h = img.naturalHeight;
