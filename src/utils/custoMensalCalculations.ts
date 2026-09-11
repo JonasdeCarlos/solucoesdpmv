@@ -139,17 +139,22 @@ export function calcularCustoTotalContrato(
   const cppAplicavel = !(input.simplesNacional && !input.recolheCPP);
   const fgtsPctDec = input.fgtsPct / 100;
 
-  // Primeiro mês
-  const primeiroMesCompleto = inicio.getDate() === 1;
-  const ultimoDiaPrimeiroMes = new Date(inicio.getFullYear(), inicio.getMonth() + 1, 0).getDate();
-  const diasPrimeiroMes = primeiroMesCompleto
-    ? ultimoDiaPrimeiroMes
-    : ultimoDiaPrimeiroMes - inicio.getDate() + 1;
-  const salarioPrimeiroMes = primeiroMesCompleto ? base : (base / 30) * diasPrimeiroMes;
-
-  // Meses completos entre o primeiro e o último mês (índice absoluto ano*12+mês)
+  // Índices absolutos (ano*12+mês) para saber se início e fim caem no mesmo mês
   const idxInicio = inicio.getFullYear() * 12 + inicio.getMonth();
   const idxFim = fim.getFullYear() * 12 + fim.getMonth();
+  const mesmoMes = idxInicio === idxFim;
+
+  // Primeiro mês (quando início e fim são no mesmo mês, ele já é o saldo de rescisão)
+  const primeiroMesCompleto = inicio.getDate() === 1;
+  const ultimoDiaPrimeiroMes = new Date(inicio.getFullYear(), inicio.getMonth() + 1, 0).getDate();
+  const diasPrimeiroMes = mesmoMes
+    ? 0
+    : primeiroMesCompleto
+      ? 30
+      : ultimoDiaPrimeiroMes - inicio.getDate() + 1;
+  const salarioPrimeiroMes = mesmoMes ? 0 : (base / 30) * diasPrimeiroMes;
+
+  // Meses completos entre o primeiro e o último mês
   const mesesCompletos = Math.max(0, idxFim - idxInicio - 1);
   const salarioMesesCompletos = base * mesesCompletos;
 
