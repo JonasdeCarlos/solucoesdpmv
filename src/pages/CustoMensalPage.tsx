@@ -11,8 +11,10 @@ import {
   type CustoMensalInput,
   calcularCustoMensal,
   calcularRescisaoExperiencia,
+  calcularCustoTotalContrato,
   gerarMemoriaCalculo,
   gerarMemoriaExperiencia,
+  gerarMemoriaCustoTotalContrato,
   gerarTextoCopiavel,
   formatBRL,
   formatPct,
@@ -83,6 +85,11 @@ const CustoMensalPage: React.FC = () => {
   const memoria = useMemo(() => gerarMemoriaCalculo(input, result), [input, result]);
   const experiencia = useMemo(() => calcularRescisaoExperiencia(input), [input]);
   const memoriaExp = useMemo(() => gerarMemoriaExperiencia(input, experiencia), [input, experiencia]);
+  const custoTotalContrato = useMemo(() => calcularCustoTotalContrato(input, experiencia), [input, experiencia]);
+  const memoriaCustoTotal = useMemo(
+    () => (custoTotalContrato ? gerarMemoriaCustoTotalContrato(input, experiencia, custoTotalContrato) : []),
+    [input, experiencia, custoTotalContrato]
+  );
   const mostrarExp = !!input.simularExperiencia;
 
   const handleCalcular = () => {
@@ -101,10 +108,18 @@ const CustoMensalPage: React.FC = () => {
         txt += `${l.item.padEnd(28)} | Base: ${l.base.padEnd(14)} | ${l.aliquota.padEnd(14)} | ${l.valor}\n`;
       }
       txt += `CUSTO TOTAL AO DEMITIR NO FIM DA EXPERIÊNCIA: ${formatBRL(experiencia.custoTotal)}\n`;
+
+      if (custoTotalContrato) {
+        txt += `\n=== CUSTO TOTAL DO CONTRATO DE EXPERIÊNCIA (${experiencia.dias} dias) ===\n`;
+        for (const l of memoriaCustoTotal) {
+          txt += `${l.item.padEnd(28)} | Base: ${l.base.padEnd(14)} | ${l.aliquota.padEnd(14)} | ${l.valor}\n`;
+        }
+        txt += `CUSTO TOTAL GASTO COM O CONTRATO: ${formatBRL(custoTotalContrato.custoTotal)}\n`;
+      }
     }
     navigator.clipboard.writeText(txt);
     toast({ title: 'Demonstrativo copiado!' });
-  }, [input, result, experiencia, memoriaExp, toast]);
+  }, [input, result, experiencia, memoriaExp, custoTotalContrato, memoriaCustoTotal, toast]);
 
 
   const handlePrint = () => {
@@ -428,6 +443,64 @@ const CustoMensalPage: React.FC = () => {
         </Card>
       )}
 
+      {/* Custo total do contrato de experiência */}
+      {calculado && mostrarExp && custoTotalContrato && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Custo total do contrato de experiência ({experiencia.dias} dias)</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Item</TableHead>
+                  <TableHead className="text-right">Base</TableHead>
+                  <TableHead className="text-right">Alíquota/Ref</TableHead>
+                  <TableHead className="text-right">Valor (R$)</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {memoriaCustoTotal.map((l, i) => (
+                  <TableRow key={i}>
+                    <TableCell className="font-medium">{l.item}</TableCell>
+                    <TableCell className="text-right">{l.base}</TableCell>
+                    <TableCell className="text-right">{l.aliquota}</TableCell>
+                    <TableCell className="text-right font-mono">{l.valor}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+              <div className="flex justify-between p-2 bg-muted/50 rounded">
+                <span>Total de salários pagos</span>
+                <span className="font-mono font-semibold">{formatBRL(custoTotalContrato.totalSalarios)}</span>
+              </div>
+              <div className="flex justify-between p-2 bg-muted/50 rounded">
+                <span>Verbas rescisórias (13º + férias + 1/3)</span>
+                <span className="font-mono font-semibold">{formatBRL(custoTotalContrato.decimo13Prop + custoTotalContrato.feriasProp + custoTotalContrato.tercoFerias)}</span>
+              </div>
+              <div className="flex justify-between p-2 bg-muted/50 rounded">
+                <span>Depósitos de FGTS no período</span>
+                <span className="font-mono font-semibold">{formatBRL(custoTotalContrato.fgtsTotal)}</span>
+              </div>
+              <div className="flex justify-between p-2 bg-muted/50 rounded">
+                <span>Encargos patronais no período</span>
+                <span className="font-mono font-semibold">{formatBRL(custoTotalContrato.totalEncargos)}</span>
+              </div>
+            </div>
+
+            <div className="flex justify-between items-center p-3 bg-primary/10 rounded-lg border border-primary/30 text-base font-bold">
+              <span>CUSTO TOTAL GASTO COM O CONTRATO DE EXPERIÊNCIA</span>
+              <span className="font-mono text-lg">{formatBRL(custoTotalContrato.custoTotal)}</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Soma de todos os salários, verbas, FGTS e encargos pagos ao longo de {experiencia.dias} dias de contrato.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Print view (hidden) */}
       <div ref={printRef} className="hidden">
         <h2>Custo Mensal de Contratação</h2>
@@ -501,6 +574,33 @@ const CustoMensalPage: React.FC = () => {
               </tbody>
             </table>
             <p style={{ fontSize: 10, color: '#6b6a5e' }}>Término no prazo ajustado: sem aviso prévio e sem multa de 40% do FGTS.</p>
+
+            {custoTotalContrato && (
+              <>
+                <h3>Custo total do contrato de experiência ({experiencia.dias} dias)</h3>
+                <table>
+                  <thead>
+                    <tr><th>Item</th><th className="right">Base</th><th className="right">Alíquota/Ref</th><th className="right">Valor (R$)</th></tr>
+                  </thead>
+                  <tbody>
+                    {memoriaCustoTotal.map((l, i) => (
+                      <tr key={i}>
+                        <td>{l.item}</td>
+                        <td className="right">{l.base}</td>
+                        <td className="right">{l.aliquota}</td>
+                        <td className="right">{l.valor}</td>
+                      </tr>
+                    ))}
+                    <tr className="total-row"><td>Total de salários pagos</td><td className="right" colSpan={3}>{formatBRL(custoTotalContrato.totalSalarios)}</td></tr>
+                    <tr className="total-row"><td>Verbas rescisórias (13º + férias + 1/3)</td><td className="right" colSpan={3}>{formatBRL(custoTotalContrato.decimo13Prop + custoTotalContrato.feriasProp + custoTotalContrato.tercoFerias)}</td></tr>
+                    <tr className="total-row"><td>Depósitos de FGTS</td><td className="right" colSpan={3}>{formatBRL(custoTotalContrato.fgtsTotal)}</td></tr>
+                    <tr className="total-row"><td>Encargos patronais</td><td className="right" colSpan={3}>{formatBRL(custoTotalContrato.totalEncargos)}</td></tr>
+                    <tr className="grand-total"><td>CUSTO TOTAL GASTO COM O CONTRATO DE EXPERIÊNCIA</td><td className="right" colSpan={3}>{formatBRL(custoTotalContrato.custoTotal)}</td></tr>
+                  </tbody>
+                </table>
+                <p style={{ fontSize: 10, color: '#6b6a5e' }}>Soma de todos os salários, verbas, FGTS e encargos pagos ao longo de {experiencia.dias} dias de contrato.</p>
+              </>
+            )}
           </>
         )}
 
