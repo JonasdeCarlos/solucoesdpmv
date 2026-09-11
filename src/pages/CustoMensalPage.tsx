@@ -469,6 +469,32 @@ const CustoMensalPage: React.FC = () => {
           </tbody>
         </table>
 
+        {mostrarExp && (
+          <>
+            <h3>Rescisão ao fim do contrato de experiência ({experiencia.dias} dias)</h3>
+            <table>
+              <thead>
+                <tr><th>Item</th><th className="right">Base</th><th className="right">Alíquota/Ref</th><th className="right">Valor (R$)</th></tr>
+              </thead>
+              <tbody>
+                {memoriaExp.map((l, i) => (
+                  <tr key={i}>
+                    <td>{l.item}</td>
+                    <td className="right">{l.base}</td>
+                    <td className="right">{l.aliquota}</td>
+                    <td className="right">{l.valor}</td>
+                  </tr>
+                ))}
+                <tr className="total-row"><td>Verbas (salários + 13º + férias + 1/3)</td><td className="right" colSpan={3}>{formatBRL(experiencia.totalVerbas)}</td></tr>
+                <tr className="total-row"><td>Depósitos de FGTS</td><td className="right" colSpan={3}>{formatBRL(experiencia.fgtsTotal)}</td></tr>
+                <tr className="total-row"><td>Encargos patronais</td><td className="right" colSpan={3}>{formatBRL(experiencia.encargosPeriodo + experiencia.encargosDecimo13)}</td></tr>
+                <tr className="grand-total"><td>CUSTO TOTAL AO DEMITIR NO FIM DA EXPERIÊNCIA</td><td className="right" colSpan={3}>{formatBRL(experiencia.custoTotal)}</td></tr>
+              </tbody>
+            </table>
+            <p style={{ fontSize: 10, color: '#6b6a5e' }}>Término no prazo ajustado: sem aviso prévio e sem multa de 40% do FGTS.</p>
+          </>
+        )}
+
         <div className="disclaimer">
           ⚠️ Cálculo estimativo. Alíquotas variam por CNAE/FPAS/FAP, regras do Simples/CPP, CCT e particularidades do contrato.
         </div>
