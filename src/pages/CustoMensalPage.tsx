@@ -361,6 +361,64 @@ const CustoMensalPage: React.FC = () => {
         </Card>
       )}
 
+      {/* Rescisão na experiência */}
+      {calculado && mostrarExp && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Rescisão ao fim do contrato de experiência ({experiencia.dias} dias)</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Item</TableHead>
+                  <TableHead className="text-right">Base</TableHead>
+                  <TableHead className="text-right">Alíquota/Ref</TableHead>
+                  <TableHead className="text-right">Valor (R$)</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {memoriaExp.map((l, i) => (
+                  <TableRow key={i}>
+                    <TableCell className="font-medium">{l.item}</TableCell>
+                    <TableCell className="text-right">{l.base}</TableCell>
+                    <TableCell className="text-right">{l.aliquota}</TableCell>
+                    <TableCell className="text-right font-mono">{l.valor}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+              <div className="flex justify-between p-2 bg-muted/50 rounded">
+                <span>Verbas (salários + 13º + férias + 1/3)</span>
+                <span className="font-mono font-semibold">{formatBRL(experiencia.totalVerbas)}</span>
+              </div>
+              <div className="flex justify-between p-2 bg-muted/50 rounded">
+                <span>Depósitos de FGTS no período</span>
+                <span className="font-mono font-semibold">{formatBRL(experiencia.fgtsTotal)}</span>
+              </div>
+              <div className="flex justify-between p-2 bg-muted/50 rounded">
+                <span>Encargos (CPP/RAT/Terceiros)</span>
+                <span className="font-mono font-semibold">{formatBRL(experiencia.encargosPeriodo + experiencia.encargosDecimo13)}</span>
+              </div>
+              <div className="flex justify-between p-2 bg-muted/50 rounded">
+                <span>Avos de 13º e férias</span>
+                <span className="font-mono font-semibold">{experiencia.avos}/12</span>
+              </div>
+            </div>
+
+            <div className="flex justify-between items-center p-3 bg-primary/10 rounded-lg border border-primary/30 text-base font-bold">
+              <span>CUSTO TOTAL AO DEMITIR NO FIM DA EXPERIÊNCIA</span>
+              <span className="font-mono text-lg">{formatBRL(experiencia.custoTotal)}</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Término no prazo ajustado: sem aviso prévio e sem multa de 40% do FGTS.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Print view (hidden) */}
       <div ref={printRef} className="hidden">
         <h2>Custo Mensal de Contratação</h2>
