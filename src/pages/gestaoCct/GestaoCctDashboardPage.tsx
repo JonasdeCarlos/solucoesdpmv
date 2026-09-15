@@ -54,6 +54,7 @@ export default function GestaoCctDashboardPage() {
   const [q, setQ] = useState('');
   const [tab, setTab] = useState<'analises' | 'vinculos'>('analises');
   const [statusF, setStatusF] = useState<'todos' | 'vigente' | 'vencendo' | 'vencida' | 'sem'>('todos');
+  const [alvoBusca, setAlvoBusca] = useState<BuscarNovaCctAlvo | null>(null);
 
   useEffect(() => {
     (async () => {
