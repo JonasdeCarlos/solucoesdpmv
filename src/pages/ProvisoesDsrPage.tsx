@@ -4,6 +4,7 @@ import DsrVerbasTab from '@/components/dsr/DsrVerbasTab';
 import DsrEntriesTab from '@/components/dsr/DsrEntriesTab';
 import DsrCalendarTab from '@/components/dsr/DsrCalendarTab';
 import DsrApuracaoTab from '@/components/dsr/DsrApuracaoTab';
+import DsrPrevisaoTab from '@/components/dsr/DsrPrevisaoTab';
 
 const STORAGE_KEY = 'provisoes_dsr_filters_v1';
 
