@@ -222,6 +222,17 @@ export default function GestaoCctDashboardPage() {
                     <TableCell><Badge variant={b.variant}>{b.label}</Badge></TableCell>
                     <TableCell>{a.confidence_score != null ? `${Number(a.confidence_score).toFixed(2)}` : '—'}</TableCell>
                     <TableCell className="text-xs">{new Date(a.created_at).toLocaleDateString('pt-BR')}</TableCell>
+                    <TableCell className="text-right">
+                      <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setAlvoBusca({
+                        clientCctId: a.client_cct_id,
+                        sindicato: (a.unions as any)?.sindicato_laboral || (a.unions as any)?.laboral || (a.identification as any)?.sindicato || a.title || '',
+                        uf: (a.territorial_base as any)?.uf || (a.identification as any)?.uf || '',
+                        municipio: (a.territorial_base as any)?.municipio || '',
+                        vigenciaFim: (a.identification as any)?.vigencia_fim || null,
+                      }); }}>
+                        <SearchCheck className="w-4 h-4 mr-1" />Buscar nova CCT
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 );
               })}
