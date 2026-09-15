@@ -329,6 +329,8 @@ export function exportarCsvPrevisao(meses: PrevisaoMes[]): string {
       [
         m.competencia,
         m.diasUteis,
+        m.domingos,
+        m.feriadosNaoUteis,
         m.diasDsr,
         m.salarioBase.toFixed(2).replace('.', ','),
         m.totalVerbas.toFixed(2).replace('.', ','),
