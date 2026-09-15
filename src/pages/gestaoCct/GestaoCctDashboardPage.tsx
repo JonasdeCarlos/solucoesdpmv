@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Radar, Search, AlertTriangle, CheckCircle2, XCircle, FileText, Plus, ArrowRightLeft, Bell, Loader2, Check } from 'lucide-react';
+import { Radar, Search, SearchCheck, AlertTriangle, CheckCircle2, XCircle, FileText, Plus, ArrowRightLeft, Bell, Loader2, Check } from 'lucide-react';
+import BuscarNovaCctDialog, { type BuscarNovaCctAlvo } from '@/components/gestaoCct/BuscarNovaCctDialog';
 import { useCctAnalyses, type CctAnalysis } from '@/hooks/cct/useCctAnalyses';
 import { useCctAlerts } from '@/hooks/cct/useCctAlerts';
 import { toast } from 'sonner';
@@ -16,6 +17,7 @@ type LinkedRow = {
   id: string;
   client_id: string;
   sindicato: string;
+  union_base?: string;
   uf: string;
   validity_end: string | null;
   data_base: string;
@@ -53,13 +55,14 @@ export default function GestaoCctDashboardPage() {
   const [q, setQ] = useState('');
   const [tab, setTab] = useState<'analises' | 'vinculos'>('analises');
   const [statusF, setStatusF] = useState<'todos' | 'vigente' | 'vencendo' | 'vencida' | 'sem'>('todos');
+  const [alvoBusca, setAlvoBusca] = useState<BuscarNovaCctAlvo | null>(null);
 
   useEffect(() => {
     (async () => {
       setLoadingR(true);
       const { data } = await supabase
         .from('client_ccts' as any)
-        .select('id, client_id, sindicato, uf, data_base, validity_end, cct_analysis_id, is_active, deleted_at, clientes:client_id(nome, codigo_cliente)')
+        .select('id, client_id, sindicato, union_base, uf, data_base, validity_end, cct_analysis_id, is_active, deleted_at, clientes:client_id(nome, codigo_cliente)')
         .order('validity_end', { ascending: true, nullsFirst: false });
       const list: LinkedRow[] = ((data || []) as any[])
         .filter((c) => !c.deleted_at && c.is_active !== false)
@@ -67,6 +70,7 @@ export default function GestaoCctDashboardPage() {
           id: c.id,
           client_id: c.client_id,
           sindicato: c.sindicato,
+          union_base: c.union_base || '',
           uf: c.uf,
           validity_end: c.validity_end,
           data_base: c.data_base,
@@ -205,6 +209,7 @@ export default function GestaoCctDashboardPage() {
               <TableHead>Status</TableHead>
               <TableHead>Confiança</TableHead>
               <TableHead>Criada em</TableHead>
+              <TableHead className="text-right">Nova CCT</TableHead>
             </TableRow></TableHeader>
             <TableBody>
               {loadingA ? (
@@ -221,6 +226,17 @@ export default function GestaoCctDashboardPage() {
                     <TableCell><Badge variant={b.variant}>{b.label}</Badge></TableCell>
                     <TableCell>{a.confidence_score != null ? `${Number(a.confidence_score).toFixed(2)}` : '—'}</TableCell>
                     <TableCell className="text-xs">{new Date(a.created_at).toLocaleDateString('pt-BR')}</TableCell>
+                    <TableCell className="text-right">
+                      <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setAlvoBusca({
+                        clientCctId: a.client_cct_id,
+                        sindicato: (a.unions as any)?.sindicato_laboral || (a.unions as any)?.laboral || (a.identification as any)?.sindicato || a.title || '',
+                        uf: (a.territorial_base as any)?.uf || (a.identification as any)?.uf || '',
+                        municipio: (a.territorial_base as any)?.municipio || '',
+                        vigenciaFim: (a.identification as any)?.vigencia_fim || null,
+                      }); }}>
+                        <SearchCheck className="w-4 h-4 mr-1" />Buscar nova CCT
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 );
               })}
@@ -237,12 +253,13 @@ export default function GestaoCctDashboardPage() {
               <TableHead>Data-base</TableHead>
               <TableHead>Vigência</TableHead>
               <TableHead>Raio-X</TableHead>
+              <TableHead className="text-right">Nova CCT</TableHead>
             </TableRow></TableHeader>
             <TableBody>
               {loadingR ? (
-                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Carregando…</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Carregando…</TableCell></TableRow>
               ) : filteredRows.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Nenhum vínculo.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum vínculo.</TableCell></TableRow>
               ) : filteredRows.map((r) => {
                 const st = statusVigencia(r.validity_end);
                 const variant = st.tone === 'ok' ? 'default' : st.tone === 'soon' ? 'outline' : st.tone === 'expired' ? 'destructive' : 'secondary';
@@ -260,6 +277,17 @@ export default function GestaoCctDashboardPage() {
                         <span className="text-xs text-muted-foreground">Sem análise</span>
                       )}
                     </TableCell>
+                    <TableCell className="text-right">
+                      <Button size="sm" variant="outline" onClick={() => setAlvoBusca({
+                        clientCctId: r.id,
+                        sindicato: r.sindicato || '',
+                        uf: r.uf || '',
+                        municipio: r.union_base || '',
+                        vigenciaFim: r.validity_end,
+                      })}>
+                        <SearchCheck className="w-4 h-4 mr-1" />Buscar nova CCT
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 );
               })}
@@ -267,6 +295,8 @@ export default function GestaoCctDashboardPage() {
           </Table>
         </CardContent></Card>
       )}
+
+      <BuscarNovaCctDialog open={!!alvoBusca} onOpenChange={(v) => { if (!v) setAlvoBusca(null); }} alvo={alvoBusca} />
     </div>
   );
 }
