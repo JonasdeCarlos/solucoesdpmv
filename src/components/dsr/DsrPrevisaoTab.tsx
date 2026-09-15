@@ -416,7 +416,7 @@ export default function DsrPrevisaoTab({ competencia }: Props) {
             <Button variant="outline" onClick={downloadCsv}>
               <FileDown className="w-4 h-4 mr-1" />Exportar CSV
             </Button>
-            <Button variant="outline" onClick={() => window.print()}>
+            <Button variant="outline" onClick={imprimirRelatorio}>
               <FileDown className="w-4 h-4 mr-1" />Imprimir / PDF
             </Button>
           </div>
