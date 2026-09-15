@@ -205,6 +205,7 @@ export default function GestaoCctDashboardPage() {
               <TableHead>Status</TableHead>
               <TableHead>Confiança</TableHead>
               <TableHead>Criada em</TableHead>
+              <TableHead className="text-right">Nova CCT</TableHead>
             </TableRow></TableHeader>
             <TableBody>
               {loadingA ? (
