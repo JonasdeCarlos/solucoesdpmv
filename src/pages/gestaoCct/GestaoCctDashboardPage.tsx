@@ -275,6 +275,17 @@ export default function GestaoCctDashboardPage() {
                         <span className="text-xs text-muted-foreground">Sem análise</span>
                       )}
                     </TableCell>
+                    <TableCell className="text-right">
+                      <Button size="sm" variant="outline" onClick={() => setAlvoBusca({
+                        clientCctId: r.id,
+                        sindicato: r.sindicato || '',
+                        uf: r.uf || '',
+                        municipio: r.union_base || '',
+                        vigenciaFim: r.validity_end,
+                      })}>
+                        <SearchCheck className="w-4 h-4 mr-1" />Buscar nova CCT
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 );
               })}
@@ -282,6 +293,8 @@ export default function GestaoCctDashboardPage() {
           </Table>
         </CardContent></Card>
       )}
+
+      <BuscarNovaCctDialog open={!!alvoBusca} onOpenChange={(v) => { if (!v) setAlvoBusca(null); }} alvo={alvoBusca} />
     </div>
   );
 }
