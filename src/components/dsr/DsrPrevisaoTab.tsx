@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,14 +8,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { FileDown, Plus, Trash2 } from 'lucide-react';
 import { useFeriadosExtendidos } from '@/hooks/useDsrModule';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   calcularPrevisaoAno,
   calcularPrevisaoMes,
   criarVerbaPrevisao,
   exportarCsvPrevisao,
+  filtrarFeriadosPrevisao,
+  gerarHtmlPrevisao,
   parseHoras,
+  type ConfigLocalPrevisao,
   type VerbaPrevisao,
 } from '@/utils/previsaoRecebimento';
+
+const CFG_KEY = 'dsr-previsao-config-local';
 
 const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -30,19 +36,54 @@ export default function DsrPrevisaoTab({ competencia }: Props) {
   const [sabadoUtil, setSabadoUtil] = useState(true);
   const [anual, setAnual] = useState(false);
   const [verbas, setVerbas] = useState<VerbaPrevisao[]>([criarVerbaPrevisao()]);
+  const [cfg, setCfg] = useState<ConfigLocalPrevisao>({ municipio: '', uf: '', sindicaisSelecionados: [] });
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(CFG_KEY);
+      if (raw) setCfg({ municipio: '', uf: '', sindicaisSelecionados: [], ...JSON.parse(raw) });
+    } catch { /* ignore */ }
+  }, []);
+
+  const salvarCfg = (patch: Partial<ConfigLocalPrevisao>) => {
+    setCfg((prev) => {
+      const next = { ...prev, ...patch };
+      try { localStorage.setItem(CFG_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+  };
 
   const comp = competencia || new Date().toISOString().slice(0, 7);
   const ano = Number(comp.split('-')[0]);
   const opts = { salarioBase, jornadaMensal, considerarSabadoUtil: sabadoUtil };
 
+  const municipiosDisponiveis = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          feriados
+            .filter((f) => f.escopo === 'municipal' && f.municipio)
+            .map((f) => `${f.municipio}${f.uf ? ` / ${f.uf}` : ''}`),
+        ),
+      ).sort(),
+    [feriados],
+  );
+
+  const feriadosSindicais = useMemo(
+    () => feriados.filter((f) => f.escopo === 'sindical'),
+    [feriados],
+  );
+
+  const feriadosAplicaveis = useMemo(() => filtrarFeriadosPrevisao(feriados, cfg), [feriados, cfg]);
+
   const mes = useMemo(
-    () => calcularPrevisaoMes(comp, verbas, opts, feriados, overrides),
-    [comp, verbas, salarioBase, jornadaMensal, sabadoUtil, feriados, overrides],
+    () => calcularPrevisaoMes(comp, verbas, opts, feriadosAplicaveis, overrides),
+    [comp, verbas, salarioBase, jornadaMensal, sabadoUtil, feriadosAplicaveis, overrides],
   );
 
   const meses = useMemo(
-    () => (anual ? calcularPrevisaoAno(ano, verbas, opts, feriados, overrides) : []),
-    [anual, ano, verbas, salarioBase, jornadaMensal, sabadoUtil, feriados, overrides],
+    () => (anual ? calcularPrevisaoAno(ano, verbas, opts, feriadosAplicaveis, overrides) : []),
+    [anual, ano, verbas, salarioBase, jornadaMensal, sabadoUtil, feriadosAplicaveis, overrides],
   );
 
   const totaisAno = useMemo(
@@ -71,6 +112,16 @@ export default function DsrPrevisaoTab({ competencia }: Props) {
     a.download = `previsao-recebimento-${anual ? ano : comp}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const imprimirRelatorio = () => {
+    const html = gerarHtmlPrevisao(anual ? meses : [mes], cfg, opts);
+    const w = window.open('', '_blank');
+    if (!w) return;
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    setTimeout(() => w.print(), 400);
   };
 
   return (
@@ -111,6 +162,75 @@ export default function DsrPrevisaoTab({ competencia }: Props) {
             Valor-hora = salário base ÷ jornada mensal. O DSR é recalculado mês a mês conforme dias úteis e
             domingos/feriados do calendário.
           </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Localidade da empresa e feriados considerados</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-3">
+            <div>
+              <Label>Município da empresa</Label>
+              <Input
+                list="municipios-previsao"
+                placeholder="Ex.: Camanducaia"
+                value={cfg.municipio}
+                onChange={(e) => salvarCfg({ municipio: e.target.value })}
+              />
+              <datalist id="municipios-previsao">
+                {municipiosDisponiveis.map((m) => (
+                  <option key={m} value={m.split(' / ')[0]} />
+                ))}
+              </datalist>
+            </div>
+            <div>
+              <Label>UF</Label>
+              <Input
+                maxLength={2}
+                placeholder="MG"
+                value={cfg.uf}
+                onChange={(e) => salvarCfg({ uf: e.target.value.toUpperCase() })}
+              />
+            </div>
+            <div className="text-xs text-muted-foreground self-end">
+              Somente os feriados municipais desta cidade entram no cálculo do DSR.
+            </div>
+          </div>
+
+          <div>
+            <Label className="text-sm">Feriados sindicais / de convenção a considerar</Label>
+            {feriadosSindicais.length === 0 ? (
+              <p className="text-xs text-muted-foreground mt-1">
+                Nenhum feriado com escopo sindical cadastrado no calendário.
+              </p>
+            ) : (
+              <div className="grid gap-2 md:grid-cols-2 mt-2">
+                {feriadosSindicais.map((f) => {
+                  const checked = cfg.sindicaisSelecionados.includes(f.id);
+                  return (
+                    <label key={f.id} className="flex items-center gap-2 text-sm border rounded-md p-2">
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={(c) =>
+                          salvarCfg({
+                            sindicaisSelecionados: c
+                              ? [...cfg.sindicaisSelecionados, f.id]
+                              : cfg.sindicaisSelecionados.filter((id) => id !== f.id),
+                          })
+                        }
+                      />
+                      <span>
+                        {f.data.split('-').reverse().join('/')} — {f.nome}
+                        {f.municipio ? ` (${f.municipio}${f.uf ? `/${f.uf}` : ''})` : ''}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -201,6 +321,23 @@ export default function DsrPrevisaoTab({ competencia }: Props) {
                 <Stat label="Salário base" value={fmtBRL(mes.salarioBase)} />
                 <Stat label="Bruto previsto" value={fmtBRL(mes.totalBruto)} highlight />
               </div>
+              <div className="mb-4 border rounded-md p-3 bg-muted/20">
+                <div className="text-sm font-medium mb-1">
+                  Composição dos {mes.diasDsr} dias de DSR — {mes.domingos} domingo(s) e {mes.feriadosNaoUteis} feriado(s)
+                </div>
+                {mes.feriadosDetalhe.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Sem feriados no mês.</p>
+                ) : (
+                  <ul className="text-xs text-muted-foreground space-y-0.5">
+                    {mes.feriadosDetalhe.map((f) => (
+                      <li key={`${f.data}-${f.nome}`}>
+                        {f.data.split('-').reverse().join('/')} — {f.nome} ({f.escopo}
+                        {f.contaDsr ? '' : ', não conta DSR'})
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -279,7 +416,7 @@ export default function DsrPrevisaoTab({ competencia }: Props) {
             <Button variant="outline" onClick={downloadCsv}>
               <FileDown className="w-4 h-4 mr-1" />Exportar CSV
             </Button>
-            <Button variant="outline" onClick={() => window.print()}>
+            <Button variant="outline" onClick={imprimirRelatorio}>
               <FileDown className="w-4 h-4 mr-1" />Imprimir / PDF
             </Button>
           </div>
