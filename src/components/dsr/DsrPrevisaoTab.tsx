@@ -8,14 +8,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { FileDown, Plus, Trash2 } from 'lucide-react';
 import { useFeriadosExtendidos } from '@/hooks/useDsrModule';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   calcularPrevisaoAno,
   calcularPrevisaoMes,
   criarVerbaPrevisao,
   exportarCsvPrevisao,
+  filtrarFeriadosPrevisao,
+  gerarHtmlPrevisao,
   parseHoras,
+  type ConfigLocalPrevisao,
   type VerbaPrevisao,
 } from '@/utils/previsaoRecebimento';
+
+const CFG_KEY = 'dsr-previsao-config-local';
 
 const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
