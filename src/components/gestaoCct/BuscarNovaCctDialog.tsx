@@ -74,11 +74,20 @@ export default function BuscarNovaCctDialog({
     const { data, error } = await supabase.functions.invoke('cct-radar-scan', {
       body: { client_cct_id: alvo.clientCctId, notify: false },
     });
+    if (error) { setLoadingRadar(false); toast.error(error.message || 'Falha na busca.'); return; }
+    const { data: rows } = await supabase
+      .from('cct_radar_findings' as any)
+      .select('id, title, source_url, source_name, source_type, confidence, finding_type')
+      .eq('client_cct_id', alvo.clientCctId)
+      .order('created_at', { ascending: false })
+      .limit(20);
     setLoadingRadar(false);
-    if (error) { toast.error(error.message || 'Falha na busca.'); return; }
-    const novos = ((data as any)?.novos || []) as Finding[];
-    setFindings(novos);
-    setRadarMsg(novos.length ? `${novos.length} evidência(s) encontrada(s).` : 'Nenhuma evidência nova encontrada nas fontes web/oficiais.');
+    const list = ((rows || []) as any[]) as Finding[];
+    setFindings(list);
+    const novos = (data as any)?.novos ?? 0;
+    setRadarMsg(list.length
+      ? `${novos} nova(s) evidência(s) nesta varredura · ${list.length} registrada(s) no radar.`
+      : 'Nenhuma evidência encontrada nas fontes web/oficiais.');
   };
 
   const buscarNoMediador = async () => {
