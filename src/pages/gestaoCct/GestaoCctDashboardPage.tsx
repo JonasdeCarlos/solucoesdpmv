@@ -17,6 +17,7 @@ type LinkedRow = {
   id: string;
   client_id: string;
   sindicato: string;
+  union_base?: string;
   uf: string;
   validity_end: string | null;
   data_base: string;
