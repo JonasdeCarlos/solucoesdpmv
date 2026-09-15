@@ -36,19 +36,54 @@ export default function DsrPrevisaoTab({ competencia }: Props) {
   const [sabadoUtil, setSabadoUtil] = useState(true);
   const [anual, setAnual] = useState(false);
   const [verbas, setVerbas] = useState<VerbaPrevisao[]>([criarVerbaPrevisao()]);
+  const [cfg, setCfg] = useState<ConfigLocalPrevisao>({ municipio: '', uf: '', sindicaisSelecionados: [] });
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(CFG_KEY);
+      if (raw) setCfg({ municipio: '', uf: '', sindicaisSelecionados: [], ...JSON.parse(raw) });
+    } catch { /* ignore */ }
+  }, []);
+
+  const salvarCfg = (patch: Partial<ConfigLocalPrevisao>) => {
+    setCfg((prev) => {
+      const next = { ...prev, ...patch };
+      try { localStorage.setItem(CFG_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+  };
 
   const comp = competencia || new Date().toISOString().slice(0, 7);
   const ano = Number(comp.split('-')[0]);
   const opts = { salarioBase, jornadaMensal, considerarSabadoUtil: sabadoUtil };
 
+  const municipiosDisponiveis = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          feriados
+            .filter((f) => f.escopo === 'municipal' && f.municipio)
+            .map((f) => `${f.municipio}${f.uf ? ` / ${f.uf}` : ''}`),
+        ),
+      ).sort(),
+    [feriados],
+  );
+
+  const feriadosSindicais = useMemo(
+    () => feriados.filter((f) => f.escopo === 'sindical'),
+    [feriados],
+  );
+
+  const feriadosAplicaveis = useMemo(() => filtrarFeriadosPrevisao(feriados, cfg), [feriados, cfg]);
+
   const mes = useMemo(
-    () => calcularPrevisaoMes(comp, verbas, opts, feriados, overrides),
-    [comp, verbas, salarioBase, jornadaMensal, sabadoUtil, feriados, overrides],
+    () => calcularPrevisaoMes(comp, verbas, opts, feriadosAplicaveis, overrides),
+    [comp, verbas, salarioBase, jornadaMensal, sabadoUtil, feriadosAplicaveis, overrides],
   );
 
   const meses = useMemo(
-    () => (anual ? calcularPrevisaoAno(ano, verbas, opts, feriados, overrides) : []),
-    [anual, ano, verbas, salarioBase, jornadaMensal, sabadoUtil, feriados, overrides],
+    () => (anual ? calcularPrevisaoAno(ano, verbas, opts, feriadosAplicaveis, overrides) : []),
+    [anual, ano, verbas, salarioBase, jornadaMensal, sabadoUtil, feriadosAplicaveis, overrides],
   );
 
   const totaisAno = useMemo(
