@@ -114,6 +114,16 @@ export default function DsrPrevisaoTab({ competencia }: Props) {
     URL.revokeObjectURL(url);
   };
 
+  const imprimirRelatorio = () => {
+    const html = gerarHtmlPrevisao(anual ? meses : [mes], cfg, opts);
+    const w = window.open('', '_blank');
+    if (!w) return;
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    setTimeout(() => w.print(), 400);
+  };
+
   return (
     <div className="space-y-6">
       <Card>
