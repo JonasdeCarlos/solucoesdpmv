@@ -62,7 +62,7 @@ export default function GestaoCctDashboardPage() {
       setLoadingR(true);
       const { data } = await supabase
         .from('client_ccts' as any)
-        .select('id, client_id, sindicato, uf, data_base, validity_end, cct_analysis_id, is_active, deleted_at, clientes:client_id(nome, codigo_cliente)')
+        .select('id, client_id, sindicato, union_base, uf, data_base, validity_end, cct_analysis_id, is_active, deleted_at, clientes:client_id(nome, codigo_cliente)')
         .order('validity_end', { ascending: true, nullsFirst: false });
       const list: LinkedRow[] = ((data || []) as any[])
         .filter((c) => !c.deleted_at && c.is_active !== false)
@@ -70,6 +70,7 @@ export default function GestaoCctDashboardPage() {
           id: c.id,
           client_id: c.client_id,
           sindicato: c.sindicato,
+          union_base: c.union_base || '',
           uf: c.uf,
           validity_end: c.validity_end,
           data_base: c.data_base,
