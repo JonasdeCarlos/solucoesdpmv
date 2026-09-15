@@ -321,6 +321,23 @@ export default function DsrPrevisaoTab({ competencia }: Props) {
                 <Stat label="Salário base" value={fmtBRL(mes.salarioBase)} />
                 <Stat label="Bruto previsto" value={fmtBRL(mes.totalBruto)} highlight />
               </div>
+              <div className="mb-4 border rounded-md p-3 bg-muted/20">
+                <div className="text-sm font-medium mb-1">
+                  Composição dos {mes.diasDsr} dias de DSR — {mes.domingos} domingo(s) e {mes.feriadosNaoUteis} feriado(s)
+                </div>
+                {mes.feriadosDetalhe.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Sem feriados no mês.</p>
+                ) : (
+                  <ul className="text-xs text-muted-foreground space-y-0.5">
+                    {mes.feriadosDetalhe.map((f) => (
+                      <li key={`${f.data}-${f.nome}`}>
+                        {f.data.split('-').reverse().join('/')} — {f.nome} ({f.escopo}
+                        {f.contaDsr ? '' : ', não conta DSR'})
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
               <Table>
                 <TableHeader>
                   <TableRow>
