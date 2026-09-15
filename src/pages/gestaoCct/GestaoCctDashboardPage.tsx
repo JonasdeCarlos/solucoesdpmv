@@ -251,12 +251,13 @@ export default function GestaoCctDashboardPage() {
               <TableHead>Data-base</TableHead>
               <TableHead>Vigência</TableHead>
               <TableHead>Raio-X</TableHead>
+              <TableHead className="text-right">Nova CCT</TableHead>
             </TableRow></TableHeader>
             <TableBody>
               {loadingR ? (
-                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Carregando…</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Carregando…</TableCell></TableRow>
               ) : filteredRows.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Nenhum vínculo.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum vínculo.</TableCell></TableRow>
               ) : filteredRows.map((r) => {
                 const st = statusVigencia(r.validity_end);
                 const variant = st.tone === 'ok' ? 'default' : st.tone === 'soon' ? 'outline' : st.tone === 'expired' ? 'destructive' : 'secondary';
