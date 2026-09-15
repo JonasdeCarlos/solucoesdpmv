@@ -166,6 +166,75 @@ export default function DsrPrevisaoTab({ competencia }: Props) {
       </Card>
 
       <Card>
+        <CardHeader>
+          <CardTitle>Localidade da empresa e feriados considerados</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-3">
+            <div>
+              <Label>Município da empresa</Label>
+              <Input
+                list="municipios-previsao"
+                placeholder="Ex.: Camanducaia"
+                value={cfg.municipio}
+                onChange={(e) => salvarCfg({ municipio: e.target.value })}
+              />
+              <datalist id="municipios-previsao">
+                {municipiosDisponiveis.map((m) => (
+                  <option key={m} value={m.split(' / ')[0]} />
+                ))}
+              </datalist>
+            </div>
+            <div>
+              <Label>UF</Label>
+              <Input
+                maxLength={2}
+                placeholder="MG"
+                value={cfg.uf}
+                onChange={(e) => salvarCfg({ uf: e.target.value.toUpperCase() })}
+              />
+            </div>
+            <div className="text-xs text-muted-foreground self-end">
+              Somente os feriados municipais desta cidade entram no cálculo do DSR.
+            </div>
+          </div>
+
+          <div>
+            <Label className="text-sm">Feriados sindicais / de convenção a considerar</Label>
+            {feriadosSindicais.length === 0 ? (
+              <p className="text-xs text-muted-foreground mt-1">
+                Nenhum feriado com escopo sindical cadastrado no calendário.
+              </p>
+            ) : (
+              <div className="grid gap-2 md:grid-cols-2 mt-2">
+                {feriadosSindicais.map((f) => {
+                  const checked = cfg.sindicaisSelecionados.includes(f.id);
+                  return (
+                    <label key={f.id} className="flex items-center gap-2 text-sm border rounded-md p-2">
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={(c) =>
+                          salvarCfg({
+                            sindicaisSelecionados: c
+                              ? [...cfg.sindicaisSelecionados, f.id]
+                              : cfg.sindicaisSelecionados.filter((id) => id !== f.id),
+                          })
+                        }
+                      />
+                      <span>
+                        {f.data.split('-').reverse().join('/')} — {f.nome}
+                        {f.municipio ? ` (${f.municipio}${f.uf ? `/${f.uf}` : ''})` : ''}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
         <CardHeader className="flex-row items-center justify-between">
           <CardTitle>Verbas variáveis</CardTitle>
           <Button size="sm" variant="outline" onClick={() => setVerbas((p) => [...p, criarVerbaPrevisao()])}>
