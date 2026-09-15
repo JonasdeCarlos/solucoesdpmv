@@ -31,12 +31,55 @@ export interface PrevisaoMes {
   competencia: string;
   diasUteis: number;
   diasDsr: number;
+  domingos: number;
+  feriadosNaoUteis: number;
+  feriadosDetalhe: { data: string; nome: string; escopo: string; contaDsr: boolean }[];
   salarioBase: number;
   verbas: LinhaPrevisaoVerba[];
   totalVerbas: number;
   totalDsr: number;
   totalBruto: number;
   erro?: string;
+}
+
+export interface ConfigLocalPrevisao {
+  /** município da empresa (para feriados municipais) */
+  municipio: string;
+  uf: string;
+  /** ids de feriados de escopo sindical selecionados */
+  sindicaisSelecionados: string[];
+}
+
+const norm = (s: string) =>
+  (s || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
+
+/**
+ * Filtra o calendário de feriados conforme o município da empresa e os
+ * feriados sindicais expressamente selecionados.
+ */
+export function filtrarFeriadosPrevisao(
+  feriados: FeriadoExtendido[],
+  cfg: ConfigLocalPrevisao,
+): FeriadoExtendido[] {
+  const cidade = norm(cfg.municipio);
+  const uf = norm(cfg.uf);
+  const sind = new Set(cfg.sindicaisSelecionados || []);
+
+  return feriados.filter((f) => {
+    if (f.escopo === 'sindical') return sind.has(f.id);
+    if (f.escopo === 'municipal') {
+      if (!cidade) return false;
+      if (norm(f.municipio) !== cidade) return false;
+      if (uf && norm(f.uf) && norm(f.uf) !== uf) return false;
+      return true;
+    }
+    if (f.escopo === 'estadual') return !uf || !norm(f.uf) || norm(f.uf) === uf;
+    return true; // nacional / interno
+  });
 }
 
 /** Converte "7:20" ou "7,33" ou "7.33" em horas centesimais. */
