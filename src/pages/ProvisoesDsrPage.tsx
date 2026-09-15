@@ -40,11 +40,12 @@ export default function ProvisoesDsrPage() {
       </div>
 
       <Tabs defaultValue="lancamentos" className="w-full">
-        <TabsList className="grid grid-cols-2 md:grid-cols-4 w-full">
+        <TabsList className="grid grid-cols-2 md:grid-cols-5 w-full">
           <TabsTrigger value="verbas">Verbas</TabsTrigger>
           <TabsTrigger value="lancamentos">Lançamentos</TabsTrigger>
           <TabsTrigger value="calendario">Calendário</TabsTrigger>
           <TabsTrigger value="apuracao">Apuração DSR</TabsTrigger>
+          <TabsTrigger value="previsao">Previsão de recebimento</TabsTrigger>
         </TabsList>
 
         <TabsContent value="verbas" className="mt-4">
@@ -63,6 +64,9 @@ export default function ProvisoesDsrPage() {
         </TabsContent>
         <TabsContent value="apuracao" className="mt-4">
           <DsrApuracaoTab empresa={empresa} competencia={competencia} />
+        </TabsContent>
+        <TabsContent value="previsao" className="mt-4">
+          <DsrPrevisaoTab competencia={competencia} />
         </TabsContent>
       </Tabs>
     </div>
