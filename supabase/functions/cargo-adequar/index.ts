@@ -221,8 +221,12 @@ Responda SOMENTE com JSON válido no formato exato:
       } else if (!canon && candidatos.length) {
         // Ancoragem na base oficial: título idêntico ao nome do cargo vence a sugestão da IA
         const alvo = norm(nomeCargo);
-        const exato = candidatos.find((c) => norm(c.titulo) === alvo)
-          || candidatos.find((c) => norm(c.titulo).startsWith(alvo) || alvo.startsWith(norm(c.titulo)));
+        const generico = ehTituloGenerico(nomeCargo);
+        const compativel = (c: { titulo: string }) => !conflitaComSetor(c.titulo, setorCtx);
+        const exato = generico
+          ? null
+          : candidatos.filter(compativel).find((c) => norm(c.titulo) === alvo)
+            || candidatos.filter(compativel).find((c) => norm(c.titulo).startsWith(alvo) || alvo.startsWith(norm(c.titulo)));
         if (exato && out.cbo !== exato.cbo) {
           if (out.cbo) {
             out.cbo_alternativas = [{ cbo: out.cbo, titulo: out.titulo_cbo, quando_usar: "Sugestão original da IA" }, ...out.cbo_alternativas];
