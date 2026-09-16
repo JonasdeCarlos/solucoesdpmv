@@ -171,11 +171,10 @@ async function consultarMte(cbo: string, nome?: string) {
     body: new URLSearchParams(fields),
   });
 
-  const somenteLetras = (v = "") => v.replace(/[^A-Za-zÀ-ÿ\s]/g, " ").replace(/\s+/g, " ").trim();
   const termos = Array.from(new Set([
-    somenteLetras(await tituloDeReferencia(digits)),
-    somenteLetras(nome || ""),
-  ].filter((t) => t.length >= 3)));
+    ...variacoesDeTermo(await tituloDeReferencia(digits)),
+    ...variacoesDeTermo(nome || ""),
+  ]));
 
   let resultado: { text: string; url: string } | null = null;
   let formResultado = { html: "", action: "" };
