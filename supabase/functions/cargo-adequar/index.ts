@@ -22,16 +22,17 @@ Deno.serve(async (req) => {
     ].filter(Boolean).join("\n");
 
     // ── Grounding: busca REAL de candidatos na base oficial do MTE (busca por título) ──
+    const setorCtx = [setor, empresa, contextoUsuario, descricao_sumaria].filter(Boolean).map(String).join(" ");
     let candidatos: { cbo: string; titulo: string; tipo: string }[] = [];
     if (!cbo_confirmado) {
       try {
-        candidatos = await buscarCandidatosMte(nomeCargo, String(contextoUsuario || descricao_sumaria || ""));
+        candidatos = await buscarCandidatosMte(nomeCargo, String(contextoUsuario || descricao_sumaria || ""), setorCtx);
       } catch (e) {
         console.error("cargo-adequar MTE candidatos falhou", e instanceof Error ? e.message : e);
       }
     }
     const blocoCandidatos = candidatos.length
-      ? `\nCANDIDATOS REAIS RETORNADOS PELA BASE OFICIAL DO MTE (busca por título/sinônimo com o nome do cargo e termos derivados). Estes códigos EXISTEM e são a única fonte confiável:\n${candidatos.map((c) => `- ${c.cbo} — ${c.titulo} (${c.tipo})`).join("\n")}\n
+      ? `\nCANDIDATOS REAIS RETORNADOS PELA BASE OFICIAL DO MTE (busca por título/sinônimo com o nome do cargo e termos derivados). Estes códigos EXISTEM e são a única fonte confiável:\n${candidatos.map((c) => `- ${c.cbo} — ${c.titulo} (${c.tipo})${conflitaComSetor(c.titulo, setorCtx) ? " ⚠ OCUPAÇÃO DE OUTRO RAMO INDUSTRIAL — NÃO USE, incompatível com o setor da empresa" : ""}`).join("\n")}\n
 REGRA ABSOLUTA DE ESCOLHA:
 1. Escolha o "cbo" OBRIGATORIAMENTE dentro desta lista de candidatos, salvo se NENHUM deles corresponder à ocupação realmente descrita — nesse caso explique o motivo em "cbo_justificativa" e só então use outro código.
 2. Prefira candidatos do tipo "Ocupação" ao tipo "Sinônimo"; se escolher um sinônimo, use o código de 6 dígitos dele e informe em "titulo_cbo" o TÍTULO OFICIAL da ocupação (não o sinônimo).
@@ -65,6 +66,9 @@ REGRAS DURAS PARA CLASSIFICAÇÃO CBO (CBO 2002 - MTE):
   • Produtor audiovisual → 261610 — Produtor de audiovisual
   • Analista de departamento pessoal / Analista de DP / Analista de RH / Analista de folha de pagamento → 252405 — Analista de recursos humanos
   • Assistente/Auxiliar de departamento pessoal / Auxiliar de pessoal / Auxiliar de folha de pagamento → 411005 — Auxiliar de pessoal (assistente administrativo de pessoal)
+- TÍTULOS GENÉRICOS + SETOR DA EMPRESA (regra crítica): cargos como "Auxiliar de produção", "Operador de produção", "Ajudante de produção", "Auxiliar de fábrica", "Auxiliar operacional", "Assistente de produção" NÃO possuem ocupação única na CBO. Eles DEVEM ser classificados pela ATIVIDADE ECONÔMICA da empresa (setor informado acima) e pelo produto fabricado. Escolha a família da indústria correspondente (ex.: chocolates/doces/confeitaria → família 8484 e correlatas de fabricação de massas, doces e chocolates; laticínios → 8483; bebidas → 8482; abate e carnes → 8485/848105 apenas se a empresa realmente abate/processa carnes; metalurgia, plásticos, têxtil, calçados etc. conforme o caso).
+- É ERRO GRAVE classificar "Auxiliar de produção" de uma CHOCOLATERIA, padaria, confeitaria ou fábrica de doces como "Abatedor" (848105) ou qualquer ocupação de abate/frigorífico apenas porque "auxiliar de produção" consta como SINÔNIMO daquela ocupação na base do MTE. Sinônimo genérico NUNCA prevalece sobre o setor real da empresa.
+- Antes de responder, confronte o "titulo_cbo" com o setor/produto da empresa: se a ocupação pertencer a outro ramo industrial, descarte-a e escolha a da indústria correta, registrando o descarte em "cbo_justificativa".
 - Antes de responder, faça uma CONFERÊNCIA FINAL: leia o "titulo_cbo" que você escolheu e pergunte-se "uma pessoa contratada com o título informado pelo usuário exerceria exatamente esta ocupação no dia a dia?". Se a resposta for não, refaça a classificação. Nunca escolha um código só porque uma palavra do título coincide.
 - Se o usuário já informou um CBO no contexto, valide-o: se estiver coerente, mantenha; se estiver incoerente com a ocupação, corrija e explique.
 - Nunca "chute" um código: se houver mais de uma opção plausível, escolha a mais praticada e liste as demais em "cbo_alternativas".
@@ -217,8 +221,12 @@ Responda SOMENTE com JSON válido no formato exato:
       } else if (!canon && candidatos.length) {
         // Ancoragem na base oficial: título idêntico ao nome do cargo vence a sugestão da IA
         const alvo = norm(nomeCargo);
-        const exato = candidatos.find((c) => norm(c.titulo) === alvo)
-          || candidatos.find((c) => norm(c.titulo).startsWith(alvo) || alvo.startsWith(norm(c.titulo)));
+        const generico = ehTituloGenerico(nomeCargo);
+        const compativel = (c: { titulo: string }) => !conflitaComSetor(c.titulo, setorCtx);
+        const exato = generico
+          ? null
+          : candidatos.filter(compativel).find((c) => norm(c.titulo) === alvo)
+            || candidatos.filter(compativel).find((c) => norm(c.titulo).startsWith(alvo) || alvo.startsWith(norm(c.titulo)));
         if (exato && out.cbo !== exato.cbo) {
           if (out.cbo) {
             out.cbo_alternativas = [{ cbo: out.cbo, titulo: out.titulo_cbo, quando_usar: "Sugestão original da IA" }, ...out.cbo_alternativas];
@@ -268,8 +276,46 @@ function termosBusca(nome: string, descricao: string): string[] {
   return Array.from(new Set(lista.map((t) => t.trim()).filter((t) => t.length >= 3))).slice(0, 6);
 }
 
-async function buscarCandidatosMte(nome: string, descricao: string) {
+// ── Setores industriais: usados para descartar ocupações de outro ramo ──
+const SETORES: { re: RegExp; termos: string[]; titulos: RegExp }[] = [
+  {
+    re: /(chocolate|chocolateria|confeitar|confeiteir|doces|bombon|panific|padaria|biscoit|massas alimenticias|sorvet|bolo)/,
+    termos: ["chocolate", "confeitaria", "doces", "panificação"],
+    titulos: /(chocolate|confeit|doce|bombon|padeir|panific|biscoit|massas|sorvet|balas)/,
+  },
+  { re: /(laticinio|leite|queijo|iogurte)/, termos: ["laticínios", "queijo"], titulos: /(laticinio|leite|queijo)/ },
+  { re: /(cervej|bebida|refrigerante|destilaria|vinho)/, termos: ["bebidas"], titulos: /(bebida|cervej|vinho|refrigerante)/ },
+  { re: /(frigorific|abate|abatedouro|carnes|aves|suino|bovino|pescado)/, termos: ["abate", "carnes"], titulos: /(abate|abatedor|carne|ave|pescado|frigorific)/ },
+  { re: /(metalurg|siderurg|usinagem|solda|fundic)/, termos: ["metalurgia", "usinagem"], titulos: /(metal|solda|fundi|usinag|siderur)/ },
+  { re: /(textil|confeccao|vestuario|costura|malharia)/, termos: ["confecção", "costura"], titulos: /(textil|costur|malha|tecel|vestuario)/ },
+  { re: /(plastic|injecao|polimero|embalagem)/, termos: ["plásticos"], titulos: /(plastic|polimero|injec|embalagem)/ },
+  { re: /(construcao civil|obra|edificac)/, termos: ["construção civil"], titulos: /(obra|construc|pedreir|servente)/ },
+  { re: /(hotel|pousada|restaurante|bar |lanchonete|cozinha industrial)/, termos: ["cozinha", "restaurante"], titulos: /(cozinh|copeir|garcom|camareir|restaurant|hotel)/ },
+];
+
+function setoresDe(ctx: string) {
+  const n = norm(ctx);
+  return SETORES.filter((s) => s.re.test(n));
+}
+
+// Conflita quando o título pertence a outro ramo industrial identificado no contexto
+function conflitaComSetor(titulo: string, ctx: string) {
+  const meus = setoresDe(ctx);
+  if (!meus.length) return false;
+  const t = norm(titulo);
+  const pertence = SETORES.filter((s) => s.titulos.test(t));
+  if (!pertence.length) return false;
+  return !pertence.some((s) => meus.includes(s));
+}
+
+const GENERICOS = /^(auxiliar|ajudante|assistente|operador|operadora|aux\.?|colaborador|trabalhador)\s+(de\s+|da\s+|do\s+)?(producao|produção|fabrica|fábrica|industria|indústria|operacional|operacoes|operações|manufatura|linha)/i;
+function ehTituloGenerico(nome: string) {
+  return GENERICOS.test(norm(nome)) || GENERICOS.test(nome.trim());
+}
+
+async function buscarCandidatosMte(nome: string, descricao: string, setorCtx = "") {
   const termos = termosBusca(nome, descricao);
+  for (const s of setoresDe(setorCtx)) for (const t of s.termos) if (termos.length < 9 && !termos.includes(t)) termos.push(t);
   const resultados = await Promise.all(termos.map((t) => buscarTermoMte(t).catch(() => [])));
   const mapa = new Map<string, { cbo: string; titulo: string; tipo: string }>();
   for (const grupo of resultados) {
@@ -282,10 +328,18 @@ async function buscarCandidatosMte(nome: string, descricao: string) {
   }
   // Relevância: mantém apenas candidatos que compartilham termos significativos com o nome do cargo
   const chaves = norm(nome).split(" ").filter((t) => t.length > 2 && !STOP.has(t));
+  const meus = setoresDe(setorCtx);
+  const generico = ehTituloGenerico(nome);
   const pontuar = (c: { titulo: string; tipo: string }) => {
     const t = norm(c.titulo);
     const hits = chaves.filter((k) => t.includes(k)).length;
-    return hits * 10 + (c.tipo === "Ocupação" ? 3 : 0) + (t === norm(nome) ? 50 : 0);
+    const doSetor = meus.some((s) => s.titulos.test(t));
+    const conflito = conflitaComSetor(c.titulo, setorCtx);
+    return hits * 10
+      + (c.tipo === "Ocupação" ? 3 : 0)
+      + (t === norm(nome) && !generico && !conflito ? 50 : 0)
+      + (doSetor ? 25 : 0)
+      - (conflito ? 60 : 0);
   };
   return Array.from(mapa.values())
     .map((c) => ({ ...c, _p: pontuar(c) }))
