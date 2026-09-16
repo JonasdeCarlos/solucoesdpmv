@@ -276,8 +276,46 @@ function termosBusca(nome: string, descricao: string): string[] {
   return Array.from(new Set(lista.map((t) => t.trim()).filter((t) => t.length >= 3))).slice(0, 6);
 }
 
-async function buscarCandidatosMte(nome: string, descricao: string) {
+// ── Setores industriais: usados para descartar ocupações de outro ramo ──
+const SETORES: { re: RegExp; termos: string[]; titulos: RegExp }[] = [
+  {
+    re: /(chocolate|chocolateria|confeitar|confeiteir|doces|bombon|panific|padaria|biscoit|massas alimenticias|sorvet|bolo)/,
+    termos: ["chocolate", "confeitaria", "doces", "panificação"],
+    titulos: /(chocolate|confeit|doce|bombon|padeir|panific|biscoit|massas|sorvet|balas)/,
+  },
+  { re: /(laticinio|leite|queijo|iogurte)/, termos: ["laticínios", "queijo"], titulos: /(laticinio|leite|queijo)/ },
+  { re: /(cervej|bebida|refrigerante|destilaria|vinho)/, termos: ["bebidas"], titulos: /(bebida|cervej|vinho|refrigerante)/ },
+  { re: /(frigorific|abate|abatedouro|carnes|aves|suino|bovino|pescado)/, termos: ["abate", "carnes"], titulos: /(abate|abatedor|carne|ave|pescado|frigorific)/ },
+  { re: /(metalurg|siderurg|usinagem|solda|fundic)/, termos: ["metalurgia", "usinagem"], titulos: /(metal|solda|fundi|usinag|siderur)/ },
+  { re: /(textil|confeccao|vestuario|costura|malharia)/, termos: ["confecção", "costura"], titulos: /(textil|costur|malha|tecel|vestuario)/ },
+  { re: /(plastic|injecao|polimero|embalagem)/, termos: ["plásticos"], titulos: /(plastic|polimero|injec|embalagem)/ },
+  { re: /(construcao civil|obra|edificac)/, termos: ["construção civil"], titulos: /(obra|construc|pedreir|servente)/ },
+  { re: /(hotel|pousada|restaurante|bar |lanchonete|cozinha industrial)/, termos: ["cozinha", "restaurante"], titulos: /(cozinh|copeir|garcom|camareir|restaurant|hotel)/ },
+];
+
+function setoresDe(ctx: string) {
+  const n = norm(ctx);
+  return SETORES.filter((s) => s.re.test(n));
+}
+
+// Conflita quando o título pertence a outro ramo industrial identificado no contexto
+function conflitaComSetor(titulo: string, ctx: string) {
+  const meus = setoresDe(ctx);
+  if (!meus.length) return false;
+  const t = norm(titulo);
+  const pertence = SETORES.filter((s) => s.titulos.test(t));
+  if (!pertence.length) return false;
+  return !pertence.some((s) => meus.includes(s));
+}
+
+const GENERICOS = /^(auxiliar|ajudante|assistente|operador|operadora|aux\.?|colaborador|trabalhador)\s+(de\s+|da\s+|do\s+)?(producao|produção|fabrica|fábrica|industria|indústria|operacional|operacoes|operações|manufatura|linha)/i;
+function ehTituloGenerico(nome: string) {
+  return GENERICOS.test(norm(nome)) || GENERICOS.test(nome.trim());
+}
+
+async function buscarCandidatosMte(nome: string, descricao: string, setorCtx = "") {
   const termos = termosBusca(nome, descricao);
+  for (const s of setoresDe(setorCtx)) for (const t of s.termos) if (termos.length < 9 && !termos.includes(t)) termos.push(t);
   const resultados = await Promise.all(termos.map((t) => buscarTermoMte(t).catch(() => [])));
   const mapa = new Map<string, { cbo: string; titulo: string; tipo: string }>();
   for (const grupo of resultados) {
