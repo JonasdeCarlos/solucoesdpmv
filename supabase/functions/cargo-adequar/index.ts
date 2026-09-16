@@ -22,10 +22,11 @@ Deno.serve(async (req) => {
     ].filter(Boolean).join("\n");
 
     // ── Grounding: busca REAL de candidatos na base oficial do MTE (busca por título) ──
+    const setorCtx = [setor, empresa, contextoUsuario, descricao_sumaria].filter(Boolean).map(String).join(" ");
     let candidatos: { cbo: string; titulo: string; tipo: string }[] = [];
     if (!cbo_confirmado) {
       try {
-        candidatos = await buscarCandidatosMte(nomeCargo, String(contextoUsuario || descricao_sumaria || ""));
+        candidatos = await buscarCandidatosMte(nomeCargo, String(contextoUsuario || descricao_sumaria || ""), setorCtx);
       } catch (e) {
         console.error("cargo-adequar MTE candidatos falhou", e instanceof Error ? e.message : e);
       }
