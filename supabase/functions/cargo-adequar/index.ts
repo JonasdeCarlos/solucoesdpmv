@@ -328,10 +328,18 @@ async function buscarCandidatosMte(nome: string, descricao: string, setorCtx = "
   }
   // Relevância: mantém apenas candidatos que compartilham termos significativos com o nome do cargo
   const chaves = norm(nome).split(" ").filter((t) => t.length > 2 && !STOP.has(t));
+  const meus = setoresDe(setorCtx);
+  const generico = ehTituloGenerico(nome);
   const pontuar = (c: { titulo: string; tipo: string }) => {
     const t = norm(c.titulo);
     const hits = chaves.filter((k) => t.includes(k)).length;
-    return hits * 10 + (c.tipo === "Ocupação" ? 3 : 0) + (t === norm(nome) ? 50 : 0);
+    const doSetor = meus.some((s) => s.titulos.test(t));
+    const conflito = conflitaComSetor(c.titulo, setorCtx);
+    return hits * 10
+      + (c.tipo === "Ocupação" ? 3 : 0)
+      + (t === norm(nome) && !generico && !conflito ? 50 : 0)
+      + (doSetor ? 25 : 0)
+      - (conflito ? 60 : 0);
   };
   return Array.from(mapa.values())
     .map((c) => ({ ...c, _p: pontuar(c) }))
