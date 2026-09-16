@@ -104,14 +104,37 @@ async function tituloDeReferencia(digits: string): Promise<string> {
     const r = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
     if (!r.ok) return "";
     const html = await r.text();
-    const re = digits.length === 6
-      ? new RegExp(`href="/cbo-mte/${digits}-([a-z0-9-]+)"`, "i")
-      : new RegExp(`href="/cbo-mte/${digits}-([a-z0-9-]+)"`, "i");
-    const slug = html.match(re)?.[1] || "";
+    const slug = html.match(new RegExp(`href="/cbo-mte/${digits}-([a-z0-9-]+)"`, "i"))?.[1] || "";
+    if (!slug) return "";
+    // A página de detalhe traz o título COM acentuação (essencial para a busca do MTE).
+    try {
+      const det = await fetch(`https://www.ocupacoes.com.br/cbo-mte/${digits}-${slug}`, { headers: { "User-Agent": "Mozilla/5.0" } });
+      if (det.ok) {
+        const dh = await det.text();
+        const raw = decodeHtml(dh.match(/<title>([\s\S]*?)<\/title>/i)?.[1] || "");
+        const titulo = raw.replace(/^CBO\s*[\d-]+\s*-\s*/i, "").split(/\s+-\s+Classifica/i)[0].trim();
+        if (titulo) return titulo;
+      }
+    } catch { /* usa o slug abaixo */ }
     return slug.replace(/-/g, " ").trim();
   } catch {
     return "";
   }
+}
+
+// O MTE exige "todas as palavras digitadas": termos longos (ou com a redação
+// diferente da tabela oficial) não retornam nada. Por isso encurtamos o termo
+// progressivamente até restarem apenas as 2 primeiras palavras significativas.
+function variacoesDeTermo(titulo: string): string[] {
+  const limpo = titulo.replace(/\([^)]*\)/g, " ").replace(/[^A-Za-zÀ-ÿ\s]/g, " ").replace(/\s+/g, " ").trim();
+  if (!limpo) return [];
+  const stop = new Set(["de", "da", "do", "das", "dos", "e", "em", "a", "o", "as", "os", "exceto", "para", "com"]);
+  const palavras = limpo.split(" ");
+  const fortes = palavras.filter((p) => p.length > 1 && !stop.has(p.toLowerCase()));
+  const out: string[] = [limpo];
+  for (let n = Math.min(4, fortes.length); n >= 2; n--) out.push(fortes.slice(0, n).join(" "));
+  if (fortes[0]) out.push(fortes[0]);
+  return Array.from(new Set(out.filter((t) => t.length >= 3)));
 }
 
 async function consultarMte(cbo: string, nome?: string) {
