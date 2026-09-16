@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
       }
     }
     const blocoCandidatos = candidatos.length
-      ? `\nCANDIDATOS REAIS RETORNADOS PELA BASE OFICIAL DO MTE (busca por título/sinônimo com o nome do cargo e termos derivados). Estes códigos EXISTEM e são a única fonte confiável:\n${candidatos.map((c) => `- ${c.cbo} — ${c.titulo} (${c.tipo})`).join("\n")}\n
+      ? `\nCANDIDATOS REAIS RETORNADOS PELA BASE OFICIAL DO MTE (busca por título/sinônimo com o nome do cargo e termos derivados). Estes códigos EXISTEM e são a única fonte confiável:\n${candidatos.map((c) => `- ${c.cbo} — ${c.titulo} (${c.tipo})${conflitaComSetor(c.titulo, setorCtx) ? " ⚠ OCUPAÇÃO DE OUTRO RAMO INDUSTRIAL — NÃO USE, incompatível com o setor da empresa" : ""}`).join("\n")}\n
 REGRA ABSOLUTA DE ESCOLHA:
 1. Escolha o "cbo" OBRIGATORIAMENTE dentro desta lista de candidatos, salvo se NENHUM deles corresponder à ocupação realmente descrita — nesse caso explique o motivo em "cbo_justificativa" e só então use outro código.
 2. Prefira candidatos do tipo "Ocupação" ao tipo "Sinônimo"; se escolher um sinônimo, use o código de 6 dígitos dele e informe em "titulo_cbo" o TÍTULO OFICIAL da ocupação (não o sinônimo).
