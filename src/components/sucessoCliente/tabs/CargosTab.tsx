@@ -1191,6 +1191,31 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
                     })}
                     </tbody>
                   </table>
+                  {cols.length > 1 && !isLegacy ? (
+                    <div className="mt-3 rounded-md border p-3 space-y-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="text-sm font-semibold">Percentual de reajuste entre níveis</div>
+                        <Button size="sm" variant="outline" onClick={recalcularPorPercentuais}>
+                          <Sparkles className="w-4 h-4 mr-1"/>Recalcular pelos percentuais
+                        </Button>
+                      </div>
+                      <div className="flex flex-wrap gap-3">
+                        {cols.slice(1).map((cn, i) => (
+                          <div key={cn} className="flex items-center gap-1 text-xs">
+                            <span className="text-muted-foreground">{cols[i]} → {cn}</span>
+                            <DebouncedInput
+                              type="number"
+                              className="h-8 w-24"
+                              value={pctReajuste(cn)}
+                              onCommit={(v)=>setPctReajuste(cn, Number(v) || 0)}
+                            />
+                            <span className="text-muted-foreground">%</span>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">O recálculo parte do primeiro nível de cada cargo e aplica os percentuais em cascata. Os valores continuam editáveis manualmente na tabela.</p>
+                    </div>
+                  ) : null}
                   <p className="text-[11px] text-muted-foreground mt-1">Cada cargo ocupa uma linha. O nível "Referência" corresponde ao salário atualmente praticado; o nível "Inicial" respeita o piso da CCT quando informado.</p>
                 </div>
               );
