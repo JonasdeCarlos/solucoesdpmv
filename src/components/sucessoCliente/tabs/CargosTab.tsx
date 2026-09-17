@@ -1063,7 +1063,14 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-base">Estrutura Salarial</CardTitle>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-muted-foreground">Níveis</span>
+              <Select value={String(colunasNiveis().length || 3)} onValueChange={(v)=>definirQtdNiveis(Number(v))}>
+                <SelectTrigger className="h-8 w-20"><SelectValue/></SelectTrigger>
+                <SelectContent>
+                  {[1,2,3,4].map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
+                </SelectContent>
+              </Select>
               <Button size="sm" variant="outline" onClick={atualizarPisosCCT} disabled={busy === 'pisos-cct'}>
                 <Sparkles className="w-4 h-4 mr-1"/>{busy === 'pisos-cct' ? 'Atualizando…' : 'Atualizar pisos pela CCT'}
               </Button>
