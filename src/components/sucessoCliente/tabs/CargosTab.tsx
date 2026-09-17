@@ -1241,7 +1241,8 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
                           </td>
                         </tr>
                       );
-                    })}
+                      });
+                    })()}
                     </tbody>
                   </table>
                   {cols.length > 1 && !isLegacy ? (
