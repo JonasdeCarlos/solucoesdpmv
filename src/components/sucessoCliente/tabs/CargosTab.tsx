@@ -1816,19 +1816,45 @@ function OrgChart({ nodes, cadastrados, className = 'max-h-[70vh]' }: { nodes: a
     if (!byParent.has(k)) byParent.set(k, []);
     byParent.get(k)!.push(n);
   }
-  const renderNode = (n: any): any => {
+  const getInitials = (nome: string) => nome
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((parte: string) => parte[0]?.toUpperCase())
+    .join('');
+
+  const renderNode = (n: any, depth = 0): any => {
     const children = byParent.get(n.id) || [];
+    const isRoot = depth === 0;
     return (
       <div key={n.id} className="flex min-w-max flex-col items-center">
-        <div className="px-3 py-2 rounded-md border bg-card shadow-sm text-center min-w-[140px]">
-          <div className="text-sm font-semibold">{n.nome}</div>
-          {n.nivel && <div className="text-[10px] text-muted-foreground uppercase">{n.nivel}</div>}
+        <div className={`group w-56 border bg-card p-3 shadow-sm transition-shadow hover:shadow-md ${isRoot ? 'border-2 border-primary rounded-md' : 'rounded-md border-border'}`}>
+          <div className="flex items-center gap-3">
+            <div className={`flex shrink-0 items-center justify-center rounded-full font-semibold ${isRoot ? 'h-10 w-10 bg-primary text-primary-foreground text-sm' : 'h-9 w-9 bg-secondary text-secondary-foreground text-xs'}`}>
+              {getInitials(n.nome) || <Network className="h-4 w-4" />}
+            </div>
+            <div className="min-w-0 flex-1 text-left">
+              {n.nivel && (
+                <div className={`mb-0.5 text-[10px] font-semibold uppercase ${isRoot ? 'text-primary' : 'text-muted-foreground'}`}>
+                  {n.nivel}
+                </div>
+              )}
+              <div className="max-w-[160px] whitespace-normal break-words text-sm font-semibold leading-snug text-foreground">{n.nome}</div>
+              <div className="mt-1 text-[10px] text-muted-foreground">
+                {children.length ? `${children.length} ${children.length === 1 ? 'posição subordinada' : 'posições subordinadas'}` : 'Posição operacional'}
+              </div>
+            </div>
+          </div>
         </div>
         {children.length ? (
           <>
-            <div className="w-px h-4 bg-border" />
-            <div className="flex min-w-max gap-4 items-start pt-2 border-t border-border">
-              {children.map(renderNode)}
+            <div className={`w-px ${isRoot ? 'h-8 bg-primary/60' : 'h-6 bg-border'}`} />
+            <div className={`flex min-w-max items-start gap-6 border-t pt-6 ${isRoot ? 'border-primary/40' : 'border-border'}`}>
+              {children.map((child: any) => (
+                <div key={child.id} className="relative before:absolute before:left-1/2 before:top-[-24px] before:h-6 before:w-px before:-translate-x-1/2 before:bg-border">
+                  {renderNode(child, depth + 1)}
+                </div>
+              ))}
             </div>
           </>
         ) : null}
@@ -1837,10 +1863,10 @@ function OrgChart({ nodes, cadastrados, className = 'max-h-[70vh]' }: { nodes: a
   };
   const roots = byParent.get(null) || [];
   return (
-    <div className={`w-full overflow-auto overscroll-contain ${className}`}>
-      <div className="w-max min-w-full p-4">
-        <div className="flex min-w-max justify-center gap-6 items-start">
-          {roots.map(renderNode)}
+    <div className={`w-full overflow-auto overscroll-contain bg-muted/20 ${className}`}>
+      <div className="w-max min-w-full p-8">
+        <div className="flex min-w-max justify-center gap-10 items-start">
+          {roots.map((root: any) => renderNode(root, 0))}
         </div>
       </div>
     </div>
