@@ -1194,7 +1194,16 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
                       <th className="p-2 w-10"></th>
                     </tr></thead>
                     <tbody>
-                    {faixas.map((f: any, idx: number) => {
+                    {(() => {
+                      const linhas = faixas.map((f: any, idx: number) => ({ f, idx }));
+                      const nomeLinha = (f: any) => String(f.cargo || f.nome || '');
+                      const areaLinha = (f: any) => String(f.area || (f.cargos || []).join(', ') || '');
+                      if (ordenacaoFaixas === 'alfabetica') {
+                        linhas.sort((a, b) => nomeLinha(a.f).localeCompare(nomeLinha(b.f), 'pt-BR'));
+                      } else if (ordenacaoFaixas === 'area') {
+                        linhas.sort((a, b) => areaLinha(a.f).localeCompare(areaLinha(b.f), 'pt-BR') || nomeLinha(a.f).localeCompare(nomeLinha(b.f), 'pt-BR'));
+                      }
+                      return linhas.map(({ f, idx }) => {
                       const niveis = f.niveis || (isLegacy ? [
                         { nome: 'Mínimo', valor: f.min || 0 },
                         { nome: 'Médio', valor: f.mid || 0 },
