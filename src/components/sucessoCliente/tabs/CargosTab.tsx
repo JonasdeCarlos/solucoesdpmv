@@ -628,6 +628,45 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
     persistFaixas(faixas, escala);
   };
 
+  // Percentual de reajuste entre um nível e o anterior (guardado na escala de evolução)
+  const pctReajuste = (nome: string): number => {
+    const e = ((estrutura?.escala_evolucao || []) as any[]).find((x: any) => x?.nome === nome);
+    return Number(e?.percentual_reajuste) || 0;
+  };
+
+  const setPctReajuste = (nome: string, pct: number) => {
+    const cols = colunasNiveis();
+    const antiga = (estrutura?.escala_evolucao || []) as any[];
+    const escala = cols.map((cn, i) => {
+      const base = antiga.find((e: any) => e?.nome === cn) || antiga[i] || {};
+      return { ...base, nome: cn, percentual_reajuste: cn === nome ? pct : (Number(base?.percentual_reajuste) || 0) };
+    });
+    persistFaixas((estrutura?.faixas || []) as any[], escala);
+  };
+
+  const recalcularPorPercentuais = () => {
+    const cols = colunasNiveis();
+    if (cols.length < 2) { toast.error('Cadastre ao menos 2 níveis.'); return; }
+    const pcts = cols.map(cn => pctReajuste(cn));
+    if (!pcts.slice(1).some(p => p > 0)) { toast.error('Informe os percentuais de reajuste entre níveis.'); return; }
+    const faixas = ((estrutura?.faixas || []) as any[]).map((f: any) => {
+      const antigos = niveisDaFaixa(f);
+      let anterior = Number(antigos.find((n: any) => n.nome === cols[0])?.valor) || 0;
+      const niveis = cols.map((cn, i) => {
+        const atual = antigos.find((n: any) => n.nome === cn);
+        if (i === 0) return { nome: cn, valor: anterior, fixo: atual?.fixo === true };
+        const pct = pcts[i];
+        const valor = pct > 0 ? Math.round(anterior * (1 + pct / 100) * 100) / 100 : (Number(atual?.valor) || 0);
+        anterior = valor;
+        return { nome: cn, valor, fixo: atual?.fixo === true };
+      });
+      const { min, mid, max, ...resto } = f;
+      return { ...resto, niveis };
+    });
+    persistFaixas(faixas);
+    toast.success('Níveis recalculados pelos percentuais informados.');
+  };
+
   const recalcularFaixas = () => {
     const escala = (estrutura?.escala_evolucao || []) as any[];
     if (!escala.length) return toast.error('Sem escala de evolução para recalcular.');
@@ -1152,6 +1191,31 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
                     })}
                     </tbody>
                   </table>
+                  {cols.length > 1 && !isLegacy ? (
+                    <div className="mt-3 rounded-md border p-3 space-y-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="text-sm font-semibold">Percentual de reajuste entre níveis</div>
+                        <Button size="sm" variant="outline" onClick={recalcularPorPercentuais}>
+                          <Sparkles className="w-4 h-4 mr-1"/>Recalcular pelos percentuais
+                        </Button>
+                      </div>
+                      <div className="flex flex-wrap gap-3">
+                        {cols.slice(1).map((cn, i) => (
+                          <div key={cn} className="flex items-center gap-1 text-xs">
+                            <span className="text-muted-foreground">{cols[i]} → {cn}</span>
+                            <DebouncedInput
+                              type="number"
+                              className="h-8 w-24"
+                              value={pctReajuste(cn)}
+                              onCommit={(v)=>setPctReajuste(cn, Number(v) || 0)}
+                            />
+                            <span className="text-muted-foreground">%</span>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">O recálculo parte do primeiro nível de cada cargo e aplica os percentuais em cascata. Os valores continuam editáveis manualmente na tabela.</p>
+                    </div>
+                  ) : null}
                   <p className="text-[11px] text-muted-foreground mt-1">Cada cargo ocupa uma linha. O nível "Referência" corresponde ao salário atualmente praticado; o nível "Inicial" respeita o piso da CCT quando informado.</p>
                 </div>
               );
