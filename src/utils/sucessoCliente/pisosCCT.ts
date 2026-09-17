@@ -183,3 +183,88 @@ export function extractPisosCCT(ccts: any[]): PisoCCT[] {
     .filter(p => seen.has(p.label) ? false : (seen.add(p.label), true))
     .sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'));
 }
+// ---------------------------------------------------------------------------
+// Correspondência entre um cargo cadastrado e os pisos evidenciados na CCT.
+// Regra: cargos citados na CCT usam o piso específico; os demais usam sempre
+// o MENOR piso da categoria. A comparação é contextual (gerente, encarregado,
+// auxiliar, recepção etc.), não apenas texto idêntico.
+// ---------------------------------------------------------------------------
+
+const norm = (s = '') =>
+  s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+
+const STOP = new Set(['de','da','do','das','dos','e','ou','em','a','o','as','os','para','com','ao','no','na','geral']);
+
+// Sinônimos/contexto: termos que representam a mesma família ocupacional.
+const FAMILIAS: string[][] = [
+  ['gerente', 'gerencia', 'gestor'],
+  ['encarregado', 'lider', 'supervisor', 'chefe', 'coordenador'],
+  ['auxiliar', 'ajudante', 'assistente', 'apoio'],
+  ['recepcionista', 'recepcao'],
+  ['camareira', 'camareiro', 'arrumadeira'],
+  ['cozinheiro', 'cozinheira', 'cozinha'],
+  ['garcom', 'garconete', 'atendente'],
+  ['faxineira', 'faxineiro', 'servente', 'limpeza'],
+  ['motorista', 'condutor'],
+  ['porteiro', 'vigia', 'seguranca'],
+  ['administrativo', 'escritorio', 'adm'],
+  ['manutencao', 'mantenedor', 'zelador'],
+  ['copeira', 'copeiro'],
+  ['mensageiro', 'office boy'],
+];
+
+const tokens = (s: string) => norm(s).split(' ').filter((t) => t.length > 2 && !STOP.has(t));
+
+const familiaDe = (t: string) => FAMILIAS.findIndex((f) => f.some((x) => t === x || t.startsWith(x) || x.startsWith(t)));
+
+function similares(a: string, b: string) {
+  if (a === b) return true;
+  const fa = familiaDe(a);
+  const fb = familiaDe(b);
+  if (fa >= 0 && fa === fb) return true;
+  return a.length > 4 && b.length > 4 && (a.startsWith(b) || b.startsWith(a));
+}
+
+export interface PisoMatch {
+  valor: number;
+  ref: string;
+  especifico: boolean;
+}
+
+export function pisoMinimoCategoria(pisos: PisoCCT[]): PisoMatch | null {
+  const validos = (pisos || []).filter((p) => Number(p.valor) > 0);
+  if (!validos.length) return null;
+  const menor = validos.reduce((m, p) => (Number(p.valor) < Number(m.valor) ? p : m));
+  const sind = menor.sindicato ? `${menor.sindicato} — ` : '';
+  return { valor: Number(menor.valor), ref: `${sind}menor piso da categoria`, especifico: false };
+}
+
+export function matchPisoCargo(nomeCargo: string, pisos: PisoCCT[]): PisoMatch | null {
+  const validos = (pisos || []).filter((p) => Number(p.valor) > 0);
+  if (!validos.length) return null;
+  const alvo = tokens(nomeCargo);
+  if (!alvo.length) return pisoMinimoCategoria(validos);
+
+  let melhor: { p: PisoCCT; score: number } | null = null;
+  for (const p of validos) {
+    const base = tokens(p.funcao || p.label || '');
+    if (!base.length) continue;
+    let score = 0;
+    for (const t of alvo) {
+      if (base.some((b) => b === t)) score += 3;
+      else if (base.some((b) => similares(b, t))) score += 2;
+    }
+    if (norm(p.funcao || '') === norm(nomeCargo)) score += 6;
+    // penaliza correspondências em títulos muito genéricos/longos
+    score -= Math.max(0, base.length - alvo.length) * 0.25;
+    if (score >= 2 && (!melhor || score > melhor.score || (score === melhor.score && Number(p.valor) < Number(melhor.p.valor)))) {
+      melhor = { p, score };
+    }
+  }
+
+  if (melhor) {
+    return { valor: Number(melhor.p.valor), ref: melhor.p.ref || melhor.p.label, especifico: true };
+  }
+  return pisoMinimoCategoria(validos);
+}
