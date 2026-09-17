@@ -1558,18 +1558,31 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
       </Dialog>
 
       <Dialog open={orgEditOpen} onOpenChange={setOrgEditOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-auto">
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-auto">
           <DialogHeader><DialogTitle>Editar Organograma</DialogTitle></DialogHeader>
-          <OrgEditor
-            nodes={estrutura?.organograma || []}
-            cargos={items}
-            onChange={saveOrganograma}
-          />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="min-w-0">
+              <OrgEditor
+                nodes={estrutura?.organograma || []}
+                cargos={items}
+                onChange={saveOrganograma}
+              />
+            </div>
+            <div className="min-w-0 border rounded-md bg-muted/30">
+              <div className="px-3 py-2 text-xs font-semibold border-b">Pré-visualização</div>
+              {(estrutura?.organograma || []).length ? (
+                <OrgChart nodes={estrutura?.organograma || []} cadastrados={items.map((i:any)=>i.nome)} />
+              ) : (
+                <p className="p-4 text-xs text-muted-foreground">Adicione cargos para visualizar o organograma.</p>
+              )}
+            </div>
+          </div>
           <DialogFooter>
             <Button onClick={()=>setOrgEditOpen(false)}>Concluir</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
 
       <Dialog open={importOpen} onOpenChange={setImportOpen}>
         <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
