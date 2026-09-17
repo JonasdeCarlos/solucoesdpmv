@@ -932,6 +932,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
   const [orgEditOpen, setOrgEditOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [importResult, setImportResult] = useState<any>(null);
+  const [ordenacaoFaixas, setOrdenacaoFaixas] = useState<'padrao' | 'alfabetica' | 'area'>('padrao');
 
   const handleImportExtrato = async (file: File) => {
     if (!file) return;
