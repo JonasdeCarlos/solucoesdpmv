@@ -1145,6 +1145,15 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
                   {[1,2,3,4].map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
                 </SelectContent>
               </Select>
+              <span className="text-xs text-muted-foreground">Ordenar</span>
+              <Select value={ordenacaoFaixas} onValueChange={(v)=>setOrdenacaoFaixas(v as 'padrao'|'alfabetica'|'area')}>
+                <SelectTrigger className="h-8 w-40"><SelectValue/></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="padrao">Padrão (cadastro)</SelectItem>
+                  <SelectItem value="alfabetica">Ordem alfabética</SelectItem>
+                  <SelectItem value="area">Por área</SelectItem>
+                </SelectContent>
+              </Select>
               <Button size="sm" variant="outline" onClick={atualizarPisosCCT} disabled={busy === 'pisos-cct'}>
                 <Sparkles className="w-4 h-4 mr-1"/>{busy === 'pisos-cct' ? 'Atualizando…' : 'Atualizar pisos pela CCT'}
               </Button>
