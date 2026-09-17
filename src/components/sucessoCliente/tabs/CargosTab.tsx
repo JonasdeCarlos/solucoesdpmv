@@ -1564,10 +1564,10 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
       </Dialog>
 
       <Dialog open={orgOpen} onOpenChange={setOrgOpen}>
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-auto">
+        <DialogContent className="w-[96vw] max-w-[96vw] max-h-[94vh] overflow-hidden">
           <DialogHeader><DialogTitle>Organograma sugerido</DialogTitle></DialogHeader>
           {(estrutura?.organograma || []).length ? (
-            <OrgChart nodes={estrutura.organograma} cadastrados={items.map((i:any)=>i.nome)} />
+            <OrgChart nodes={estrutura.organograma} cadastrados={items.map((i:any)=>i.nome)} className="h-[78vh]" />
           ) : (
             <p className="text-sm text-muted-foreground">Nenhum organograma disponível. Clique em "Sugerir Estrutura Salarial" para gerar.</p>
           )}
@@ -1575,10 +1575,10 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
       </Dialog>
 
       <Dialog open={orgEditOpen} onOpenChange={setOrgEditOpen}>
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-auto">
+        <DialogContent className="w-[96vw] max-w-[96vw] max-h-[94vh] overflow-hidden">
           <DialogHeader><DialogTitle>Editar Organograma</DialogTitle></DialogHeader>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div className="min-w-0">
+          <div className="grid min-h-0 grid-cols-1 gap-4 overflow-y-auto lg:grid-cols-[minmax(520px,42%)_minmax(0,58%)]">
+            <div className="min-w-0 max-h-[72vh] overflow-y-auto pr-1">
               <OrgEditor
                 nodes={organogramaDraft}
                 cargos={items}
@@ -1588,7 +1588,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
             <div className="min-w-0 border rounded-md bg-muted/30">
               <div className="px-3 py-2 text-xs font-semibold border-b">Pré-visualização</div>
               {organogramaDraft.length ? (
-                <OrgChart nodes={organogramaDraft} cadastrados={items.map((i:any)=>i.nome)} />
+                <OrgChart nodes={organogramaDraft} cadastrados={items.map((i:any)=>i.nome)} className="h-[66vh]" />
               ) : (
                 <p className="p-4 text-xs text-muted-foreground">Adicione cargos para visualizar o organograma.</p>
               )}
@@ -1806,7 +1806,7 @@ function OrgEditor({ nodes, cargos, onChange }: { nodes: any[]; cargos: any[]; o
   );
 }
 
-function OrgChart({ nodes, cadastrados }: { nodes: any[]; cadastrados: string[] }) {
+function OrgChart({ nodes, cadastrados, className = 'max-h-[70vh]' }: { nodes: any[]; cadastrados: string[]; className?: string }) {
   // Mantém todos os cargos visíveis mesmo se dados antigos tiverem IDs repetidos ou ciclos.
   const cleaned = normalizeOrganograma(nodes);
 
@@ -1819,7 +1819,7 @@ function OrgChart({ nodes, cadastrados }: { nodes: any[]; cadastrados: string[] 
   const renderNode = (n: any): any => {
     const children = byParent.get(n.id) || [];
     return (
-      <div key={n.id} className="flex flex-col items-center">
+      <div key={n.id} className="flex min-w-max flex-col items-center">
         <div className="px-3 py-2 rounded-md border bg-card shadow-sm text-center min-w-[140px]">
           <div className="text-sm font-semibold">{n.nome}</div>
           {n.nivel && <div className="text-[10px] text-muted-foreground uppercase">{n.nivel}</div>}
@@ -1827,7 +1827,7 @@ function OrgChart({ nodes, cadastrados }: { nodes: any[]; cadastrados: string[] 
         {children.length ? (
           <>
             <div className="w-px h-4 bg-border" />
-            <div className="flex gap-4 items-start pt-2 border-t border-border">
+            <div className="flex min-w-max gap-4 items-start pt-2 border-t border-border">
               {children.map(renderNode)}
             </div>
           </>
@@ -1837,9 +1837,11 @@ function OrgChart({ nodes, cadastrados }: { nodes: any[]; cadastrados: string[] 
   };
   const roots = byParent.get(null) || [];
   return (
-    <div className="overflow-auto p-4">
-      <div className="flex gap-6 justify-center items-start">
-        {roots.map(renderNode)}
+    <div className={`w-full overflow-auto overscroll-contain ${className}`}>
+      <div className="w-max min-w-full p-4">
+        <div className="flex min-w-max justify-center gap-6 items-start">
+          {roots.map(renderNode)}
+        </div>
       </div>
     </div>
   );
