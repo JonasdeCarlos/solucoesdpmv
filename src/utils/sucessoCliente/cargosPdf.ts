@@ -323,7 +323,7 @@ export async function generateCargosPdf(params: {
     const pageW = doc.internal.pageSize.getWidth();
     const pageH = doc.internal.pageSize.getHeight();
     doc.setDrawColor(pr,pg,pb); doc.setLineWidth(0.7); doc.line(MARGIN, 46, pageW - MARGIN, 46);
-    await drawBrandLogo(doc, branding?.logo_url, MARGIN, 12, 64, 28, { centerY: true });
+    await drawBrandLogo(doc, branding?.logo_url || '/images/logo-monte-verde-pdf.png', MARGIN, 12, 64, 28, { centerY: true });
     doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(sr,sg,sb);
     doc.text('PLANO DE CARGOS E SALÁRIOS', pageW - MARGIN, 30, { align: 'right' });
     doc.setFillColor(sr,sg,sb); doc.rect(0, pageH - 27, pageW, 27, 'F');
