@@ -932,6 +932,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
   const [orgEditOpen, setOrgEditOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [importResult, setImportResult] = useState<any>(null);
+  const [ordenacaoFaixas, setOrdenacaoFaixas] = useState<'padrao' | 'alfabetica' | 'area'>('padrao');
 
   const handleImportExtrato = async (file: File) => {
     if (!file) return;
@@ -1144,6 +1145,15 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
                   {[1,2,3,4].map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
                 </SelectContent>
               </Select>
+              <span className="text-xs text-muted-foreground">Ordenar</span>
+              <Select value={ordenacaoFaixas} onValueChange={(v)=>setOrdenacaoFaixas(v as 'padrao'|'alfabetica'|'area')}>
+                <SelectTrigger className="h-8 w-40"><SelectValue/></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="padrao">Padrão (cadastro)</SelectItem>
+                  <SelectItem value="alfabetica">Ordem alfabética</SelectItem>
+                  <SelectItem value="area">Por área</SelectItem>
+                </SelectContent>
+              </Select>
               <Button size="sm" variant="outline" onClick={atualizarPisosCCT} disabled={busy === 'pisos-cct'}>
                 <Sparkles className="w-4 h-4 mr-1"/>{busy === 'pisos-cct' ? 'Atualizando…' : 'Atualizar pisos pela CCT'}
               </Button>
@@ -1184,7 +1194,16 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
                       <th className="p-2 w-10"></th>
                     </tr></thead>
                     <tbody>
-                    {faixas.map((f: any, idx: number) => {
+                    {(() => {
+                      const linhas = faixas.map((f: any, idx: number) => ({ f, idx }));
+                      const nomeLinha = (f: any) => String(f.cargo || f.nome || '');
+                      const areaLinha = (f: any) => String(f.area || (f.cargos || []).join(', ') || '');
+                      if (ordenacaoFaixas === 'alfabetica') {
+                        linhas.sort((a, b) => nomeLinha(a.f).localeCompare(nomeLinha(b.f), 'pt-BR'));
+                      } else if (ordenacaoFaixas === 'area') {
+                        linhas.sort((a, b) => areaLinha(a.f).localeCompare(areaLinha(b.f), 'pt-BR') || nomeLinha(a.f).localeCompare(nomeLinha(b.f), 'pt-BR'));
+                      }
+                      return linhas.map(({ f, idx }) => {
                       const niveis = f.niveis || (isLegacy ? [
                         { nome: 'Mínimo', valor: f.min || 0 },
                         { nome: 'Médio', valor: f.mid || 0 },
@@ -1222,7 +1241,8 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
                           </td>
                         </tr>
                       );
-                    })}
+                      });
+                    })()}
                     </tbody>
                   </table>
                   {cols.length > 1 && !isLegacy ? (
