@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Sparkles, Plus, Trash2, Copy, Pencil, FileDown, Loader2, Network, X, Pencil as PencilIcon, Upload, AlertTriangle, MessagesSquare } from 'lucide-react';
+import { Sparkles, Plus, Trash2, Copy, Pencil, FileDown, Loader2, Network, X, Pencil as PencilIcon, Upload, AlertTriangle, MessagesSquare, ListPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useCargos, useEstruturaSalarial } from '@/hooks/useCargos';
@@ -492,6 +492,39 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
       organograma: estrutura?.organograma || [],
       criterios_manuais: estrutura?.criterios_manuais || [],
     });
+  };
+
+  const incluirNaEstrutura = (c: any) => {
+    const faixasAtuais = (estrutura?.faixas || []) as any[];
+    const jaExiste = faixasAtuais.some((f: any) =>
+      (f.cargo || f.nome || '').trim().toLowerCase() === (c.nome || '').trim().toLowerCase()
+    );
+    if (jaExiste) return toast.info('Este cargo já está na estrutura salarial.');
+    // Usa as colunas de níveis já configuradas; se não houver, inicia com 3 níveis padrão.
+    const cols = colunasNiveis();
+    const nomes = cols.length ? cols : NIVEIS_PADRAO.slice(0, 3);
+    const piso = Number(c.piso_salarial) || 0;
+    const atual = Number(c.salario_atual) || 0;
+    const base = piso || atual;
+    const topo = atual || piso;
+    const total = nomes.length;
+    const niveis = nomes.map((nome, i) => {
+      let valor = 0;
+      if (base > 0 && topo > 0) {
+        valor = total > 1 ? base + ((topo - base) * i) / (total - 1) : topo;
+      } else if (topo > 0) {
+        valor = total > 1 ? topo * (0.75 + (0.25 * i) / (total - 1)) : topo;
+      }
+      return { nome, valor: Math.round(valor * 100) / 100 };
+    });
+    persistFaixas([...faixasAtuais, {
+      cargo: c.nome,
+      area: c.area || '',
+      piso_cct: piso || null,
+      piso_referencia: c.piso_referencia || null,
+      niveis,
+    }]);
+    toast.success(`"${c.nome}" incluído na estrutura salarial.`);
   };
 
   const updateNivel = (faixaIdx: number, nivelIdx: number, valor: number) => {
@@ -1088,6 +1121,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
                 </div>
               </div>
               <div className="flex gap-1">
+                <Button size="icon" variant="ghost" title="Incluir na estrutura salarial" onClick={()=>incluirNaEstrutura(c)}><ListPlus className="w-4 h-4"/></Button>
                 <Button size="icon" variant="ghost" onClick={()=>openEdit(c)}><Pencil className="w-4 h-4"/></Button>
                 <Button size="icon" variant="ghost" onClick={()=>duplicate(c)}><Copy className="w-4 h-4"/></Button>
                 <Button size="icon" variant="ghost" title="Gerar PDF do cargo" onClick={async()=>{ try { await generateCargoDetalhePdf({ cargo: c, empresa: cliente?.nome }); toast.success('PDF do cargo gerado.'); } catch(e:any){ toast.error('Falha: '+e.message); } }}><FileDown className="w-4 h-4"/></Button>
