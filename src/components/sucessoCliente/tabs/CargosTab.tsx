@@ -15,7 +15,7 @@ import { useCCTs } from '@/hooks/useSucessoCliente';
 import { generateCargosPdf } from '@/utils/sucessoCliente/cargosPdf';
 import { generateCargoDetalhePdf } from '@/utils/sucessoCliente/cargoDetalhePdf';
 import { DebouncedInput } from '@/components/sucessoCliente/DebouncedField';
-import { extractPisosCCT } from '@/utils/sucessoCliente/pisosCCT';
+import { extractPisosCCT, matchPisoCargo } from '@/utils/sucessoCliente/pisosCCT';
 import CargosChat from '@/components/sucessoCliente/tabs/CargosChat';
 
 const NIVEIS = [
