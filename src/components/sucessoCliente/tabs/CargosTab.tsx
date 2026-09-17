@@ -584,6 +584,69 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
     toast.success('Faixas recalculadas pela escala de evolução (travas manuais liberadas).');
   };
 
+  // Salva explicitamente a estrutura salarial digitada no quadro
+  const salvarEstruturaManual = async () => {
+    setBusy('salvar-estrutura');
+    try {
+      await saveEstrutura({
+        faixas: estrutura?.faixas || [],
+        escala_evolucao: estrutura?.escala_evolucao || [],
+        cargos_sugeridos: estrutura?.cargos_sugeridos || [],
+        organograma: estrutura?.organograma || [],
+        criterios_manuais: estrutura?.criterios_manuais || [],
+      });
+      toast.success('Estrutura salarial salva.');
+    } catch (e: any) {
+      toast.error('Falha ao salvar: ' + e.message);
+    } finally { setBusy(null); }
+  };
+
+  // Recalcula a escala de evolução a partir da média real das faixas consolidadas
+  const recalcularEscala = async () => {
+    const faixas = (estrutura?.faixas || []) as any[];
+    const etapas: string[] = [];
+    for (const f of faixas) for (const n of (f.niveis || [])) if (!etapas.includes(n.nome)) etapas.push(n.nome);
+    if (etapas.length < 2) return toast.error('Cadastre ao menos dois níveis nas faixas para recalcular a escala.');
+
+    const somas = etapas.map(() => ({ soma: 0, qtd: 0 }));
+    for (const f of faixas) {
+      const niveis = (f.niveis || []) as any[];
+      const valores = niveis.map((n) => Number(n.valor) || 0);
+      const ref = Number(niveis.find((n) => /refer/i.test(n.nome || ''))?.valor) || Math.max(0, ...valores);
+      if (!ref) continue;
+      etapas.forEach((et, i) => {
+        const v = Number(niveis.find((n) => n.nome === et)?.valor) || 0;
+        if (v > 0) { somas[i].soma += (v / ref) * 100; somas[i].qtd += 1; }
+      });
+    }
+    if (!somas.some((s) => s.qtd > 0)) return toast.error('Sem valores salariais preenchidos para calcular a média.');
+
+    const antiga = (estrutura?.escala_evolucao || []) as any[];
+    const escala_evolucao = etapas.map((et, i) => {
+      const anterior = antiga.find((e: any) => (e.etapa || '').toLowerCase() === et.toLowerCase());
+      const media = somas[i].qtd ? somas[i].soma / somas[i].qtd : Number(anterior?.percentual_base) || 0;
+      return {
+        etapa: et,
+        percentual_base: Math.round(media * 10) / 10,
+        descricao: anterior?.descricao || `Média praticada nos cargos para o nível ${et}.`,
+      };
+    });
+
+    setBusy('escala');
+    try {
+      await saveEstrutura({
+        faixas,
+        escala_evolucao,
+        cargos_sugeridos: estrutura?.cargos_sugeridos || [],
+        organograma: estrutura?.organograma || [],
+        criterios_manuais: estrutura?.criterios_manuais || [],
+      });
+      toast.success('Escala de evolução recalculada pela média real dos cargos.');
+    } catch (e: any) {
+      toast.error('Falha: ' + e.message);
+    } finally { setBusy(null); }
+  };
+
   const removeSugestao = (idx: number) => {
     const cargos_sugeridos = (estrutura?.cargos_sugeridos || []).filter((_:any,i:number)=> i!==idx);
     saveEstrutura({
@@ -962,6 +1025,11 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
                 </div>
               );
             })()}
+            <div className="flex justify-end">
+              <Button size="sm" onClick={salvarEstruturaManual} disabled={busy === 'salvar-estrutura'}>
+                {busy === 'salvar-estrutura' ? 'Salvando…' : 'Salvar estrutura salarial'}
+              </Button>
+            </div>
             {(estrutura.cargos_sugeridos || []).length ? (
               <div>
                 <div className="text-sm font-semibold mb-1">Cargos sugeridos pela IA (não cadastrados)</div>
@@ -982,12 +1050,18 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
                 </div>
               </div>
             ) : null}
-            {estrutura.escala_evolucao?.length ? (
+            {(estrutura.escala_evolucao?.length || estrutura.faixas?.length) ? (
               <div>
-                <div className="text-sm font-semibold mb-1">Escala de evolução</div>
-                <p className="text-[11px] text-muted-foreground mb-2">O percentual indica quanto cada etapa representa do <strong>salário de Referência</strong> (teto, equivalente ao salário atualmente praticado). Ex.: 75% = salário inicial é 75% do teto do cargo.</p>
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <div className="text-sm font-semibold">Escala de evolução</div>
+                  <Button size="sm" variant="outline" onClick={recalcularEscala} disabled={busy === 'escala'}>
+                    <Sparkles className="w-4 h-4 mr-1"/>
+                    {busy === 'escala' ? 'Recalculando…' : 'Recalcular escala pela estrutura salarial'}
+                  </Button>
+                </div>
+                <p className="text-[11px] text-muted-foreground mb-2">O percentual indica quanto cada etapa representa do <strong>salário de Referência</strong> (teto, equivalente ao salário atualmente praticado). O recálculo usa a média real dos cargos cadastrados.</p>
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
-                  {estrutura.escala_evolucao.map((e:any,i:number) => (
+                  {(estrutura.escala_evolucao || []).map((e:any,i:number) => (
                     <Card key={i}><CardContent className="p-2 text-center">
                       <div className="text-xs text-muted-foreground">{e.etapa}</div>
                       <div className="text-xl font-bold">{e.percentual_base}%</div>
