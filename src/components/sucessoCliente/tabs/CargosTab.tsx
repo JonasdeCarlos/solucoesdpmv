@@ -556,6 +556,78 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
     });
   };
 
+  // ---- Configuração de níveis da estrutura salarial (quantidade e nomes) ----
+  const NIVEIS_PADRAO = ['Inicial', 'Intermediário', 'Referência', 'Sênior'];
+
+  const niveisDaFaixa = (f: any): any[] => {
+    if (Array.isArray(f?.niveis) && f.niveis.length) return f.niveis;
+    if (f?.min != null || f?.max != null) {
+      return [
+        { nome: 'Mínimo', valor: Number(f.min) || 0 },
+        { nome: 'Médio', valor: Number(f.mid) || 0 },
+        { nome: 'Máximo', valor: Number(f.max) || 0 },
+      ];
+    }
+    return [];
+  };
+
+  const colunasNiveis = (): string[] => {
+    const nomes: string[] = [];
+    for (const f of (estrutura?.faixas || []) as any[]) {
+      for (const n of niveisDaFaixa(f)) if (n?.nome && !nomes.includes(n.nome)) nomes.push(n.nome);
+    }
+    return nomes;
+  };
+
+  const persistFaixas = (faixas: any[], escala?: any[]) => {
+    saveEstrutura({
+      faixas,
+      escala_evolucao: escala ?? (estrutura?.escala_evolucao || []),
+      cargos_sugeridos: estrutura?.cargos_sugeridos || [],
+      organograma: estrutura?.organograma || [],
+      criterios_manuais: estrutura?.criterios_manuais || [],
+    });
+  };
+
+  const definirQtdNiveis = (qtd: number) => {
+    const atuais = colunasNiveis();
+    let nomes = atuais.slice(0, qtd);
+    while (nomes.length < qtd) {
+      const sugerido = NIVEIS_PADRAO.find(n => !nomes.includes(n)) || `Nível ${nomes.length + 1}`;
+      nomes.push(sugerido);
+    }
+    const faixas = ((estrutura?.faixas || []) as any[]).map((f: any) => {
+      const antigos = niveisDaFaixa(f);
+      const niveis = nomes.map((nome, i) => {
+        const achado = antigos.find((n: any) => n.nome === nome) || antigos[i];
+        return { nome, valor: Number(achado?.valor) || 0, fixo: achado?.fixo === true };
+      });
+      const { min, mid, max, ...resto } = f;
+      return { ...resto, niveis };
+    });
+    const escalaAntiga = (estrutura?.escala_evolucao || []) as any[];
+    const escala = nomes.map((nome, i) => {
+      const achado = escalaAntiga.find((e: any) => e?.nome === nome) || escalaAntiga[i];
+      return { ...(achado || {}), nome };
+    });
+    persistFaixas(faixas, escala);
+    toast.success(`Estrutura ajustada para ${qtd} nível(is).`);
+  };
+
+  const renomearNivel = (antigo: string, novo: string) => {
+    const nome = (novo || '').trim();
+    if (!nome || nome === antigo) return;
+    const faixas = ((estrutura?.faixas || []) as any[]).map((f: any) => {
+      const niveis = niveisDaFaixa(f).map((n: any) => (n.nome === antigo ? { ...n, nome } : n));
+      const { min, mid, max, ...resto } = f;
+      return { ...resto, niveis };
+    });
+    const escala = ((estrutura?.escala_evolucao || []) as any[]).map((e: any) =>
+      e?.nome === antigo ? { ...e, nome } : e
+    );
+    persistFaixas(faixas, escala);
+  };
+
   const recalcularFaixas = () => {
     const escala = (estrutura?.escala_evolucao || []) as any[];
     if (!escala.length) return toast.error('Sem escala de evolução para recalcular.');
@@ -991,7 +1063,14 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-base">Estrutura Salarial</CardTitle>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-muted-foreground">Níveis</span>
+              <Select value={String(colunasNiveis().length || 3)} onValueChange={(v)=>definirQtdNiveis(Number(v))}>
+                <SelectTrigger className="h-8 w-20"><SelectValue/></SelectTrigger>
+                <SelectContent>
+                  {[1,2,3,4].map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
+                </SelectContent>
+              </Select>
               <Button size="sm" variant="outline" onClick={atualizarPisosCCT} disabled={busy === 'pisos-cct'}>
                 <Sparkles className="w-4 h-4 mr-1"/>{busy === 'pisos-cct' ? 'Atualizando…' : 'Atualizar pisos pela CCT'}
               </Button>
@@ -1020,7 +1099,15 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
                       <th className="p-2 text-left">Cargo</th>
                       <th className="p-2 text-left">Área</th>
                       <th className="p-2 text-right">Piso CCT</th>
-                      {cols.map(c => <th key={c} className="p-2 text-right">{c}</th>)}
+                      {cols.map(c => (
+                        <th key={c} className="p-2 text-right">
+                          <DebouncedInput
+                            value={c}
+                            className="h-7 text-xs text-right"
+                            onCommit={(v)=>renomearNivel(c, String(v))}
+                          />
+                        </th>
+                      ))}
                       <th className="p-2 w-10"></th>
                     </tr></thead>
                     <tbody>
