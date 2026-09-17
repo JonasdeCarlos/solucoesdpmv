@@ -184,30 +184,26 @@ export async function generateCargosPdf(params: {
       }
     };
 
-    // Forest: place each root side by side, total width
-    let totalW = roots.reduce((a, r) => a + measure(r), 0) + H_GAP * Math.max(0, roots.length - 1);
-    let startLeft = Math.max(20, (W - totalW) / 2);
-    let scale = 1;
-    const available = W - 40;
-    if (totalW > available) {
-      scale = available / totalW;
-      startLeft = 20;
-    }
-    let cursor = startLeft / scale;
+    // Layout em coordenadas locais (origem 0,0); escala e deslocamento aplicados na hora de desenhar
+    const totalW = roots.reduce((a, r) => a + measure(r), 0) + H_GAP * Math.max(0, roots.length - 1);
+    let cursor = 0;
     for (const r of roots) {
       const rw = measure(r);
-      place(r, cursor, y / scale);
+      place(r, cursor, 0);
       cursor += rw + H_GAP;
     }
 
-    // Compute bounds
-    const maxY = positions.reduce((m, p) => Math.max(m, p.y + BOX_H), y / scale);
-    // If too tall for one page, just render at scale (scaled). We won't paginate the tree.
-    const availH = 800 - y;
-    const treeH = (maxY - y / scale) * scale;
-    if (treeH > availH) {
-      scale = Math.min(scale, availH / (maxY - y / scale));
-    }
+    // Bounds locais
+    const localH = positions.reduce((m, p) => Math.max(m, p.y + BOX_H), BOX_H);
+    const availW = W - 40;
+    const availH = H - 60 - y;
+    const scale = Math.min(1, availW / Math.max(totalW, 1), availH / Math.max(localH, 1));
+    const treeW = totalW * scale;
+    const treeH = localH * scale;
+    const offX = Math.max(20, (W - treeW) / 2);
+    const offY = y;
+    const TX = (v: number) => offX + v * scale;
+    const TY = (v: number) => offY + v * scale;
 
     // Draw connectors (parent bottom → children top with elbow)
     doc.setDrawColor(pr, pg, pb);
@@ -217,22 +213,21 @@ export async function generateCargosPdf(params: {
     for (const p of positions) {
       const children = byParent.get(p.node.id) || [];
       if (!children.length) continue;
-      const parentBottomX = (p.x + BOX_W / 2) * scale;
-      const parentBottomY = (p.y + BOX_H) * scale;
-      const childTopY = (p.y + BOX_H + V_GAP) * scale;
+      const parentBottomX = TX(p.x + BOX_W / 2);
+      const parentBottomY = TY(p.y + BOX_H);
+      const childTopY = TY(p.y + BOX_H + V_GAP);
       const midY = (parentBottomY + childTopY) / 2;
-      // vertical from parent
       doc.line(parentBottomX, parentBottomY, parentBottomX, midY);
       const childCenters = children
         .map(c => posById.get(c.id))
         .filter(Boolean)
-        .map(cp => (cp!.x + BOX_W / 2) * scale);
+        .map(cp => TX(cp!.x + BOX_W / 2));
       if (childCenters.length) {
         const minX = Math.min(...childCenters);
         const maxX = Math.max(...childCenters);
         doc.line(minX, midY, maxX, midY);
         for (const cx of childCenters) {
-          doc.line(cx, midY, cx, (p.y + BOX_H + V_GAP) * scale);
+          doc.line(cx, midY, cx, childTopY);
         }
       }
     }
@@ -240,8 +235,8 @@ export async function generateCargosPdf(params: {
     // Draw boxes
     doc.setLineWidth(0.6);
     for (const p of positions) {
-      const x = p.x * scale;
-      const yy = p.y * scale;
+      const x = TX(p.x);
+      const yy = TY(p.y);
       const w = BOX_W * scale;
       const h = BOX_H * scale;
       doc.setDrawColor(pr, pg, pb);
@@ -249,12 +244,12 @@ export async function generateCargosPdf(params: {
       doc.roundedRect(x, yy, w, h, 3 * scale, 3 * scale, 'FD');
       doc.setTextColor(40, 40, 40);
       doc.setFont('helvetica', 'bold');
-      const fontSize = Math.max(6, 8 * scale);
+      const fontSize = Math.max(5, 8 * scale);
       doc.setFontSize(fontSize);
-      const nameLines = doc.splitTextToSize(p.node.nome || '—', w - 8).slice(0, 2);
+      const nameLines = doc.splitTextToSize(p.node.nome || '—', w - 6).slice(0, 2);
       const lineH = fontSize * 1.1;
       const nivelLabel = p.node.nivel ? (NIVEL_LABEL[p.node.nivel] || p.node.nivel).toUpperCase() : '';
-      const nivelSize = Math.max(5, 6.5 * scale);
+      const nivelSize = Math.max(4.5, 6.5 * scale);
       const blockH = nameLines.length * lineH + (nivelLabel ? nivelSize + 2 : 0);
       let ty = yy + (h - blockH) / 2 + fontSize * 0.8;
       for (const ln of nameLines) {
@@ -269,7 +264,7 @@ export async function generateCargosPdf(params: {
       }
     }
     doc.setFont('helvetica', 'normal');
-    y = y + treeH + 16;
+    y = offY + treeH + 16;
   }
 
   const total = doc.getNumberOfPages();
