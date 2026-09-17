@@ -1099,7 +1099,15 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
                       <th className="p-2 text-left">Cargo</th>
                       <th className="p-2 text-left">Área</th>
                       <th className="p-2 text-right">Piso CCT</th>
-                      {cols.map(c => <th key={c} className="p-2 text-right">{c}</th>)}
+                      {cols.map(c => (
+                        <th key={c} className="p-2 text-right">
+                          <DebouncedInput
+                            value={c}
+                            className="h-7 text-xs text-right"
+                            onCommit={(v)=>renomearNivel(c, String(v))}
+                          />
+                        </th>
+                      ))}
                       <th className="p-2 w-10"></th>
                     </tr></thead>
                     <tbody>
