@@ -1773,11 +1773,10 @@ function OrgEditor({ nodes, cargos, onChange }: { nodes: any[]; cargos: any[]; o
 }
 
 function OrgChart({ nodes, cadastrados }: { nodes: any[]; cadastrados: string[] }) {
-  const norm = (s: string) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'');
-  const allow = new Set((cadastrados || []).map(norm));
-  const filtered = nodes.filter(n => allow.has(norm(n.nome)));
-  const allowedIds = new Set(filtered.map(n => n.id));
-  const cleaned = filtered.map(n => ({ ...n, parent_id: n.parent_id && allowedIds.has(n.parent_id) ? n.parent_id : null }));
+  // Mostra o organograma exatamente como editado (sem filtrar por cargos cadastrados)
+  const allowedIds = new Set(nodes.map(n => n.id));
+  const cleaned = nodes.map(n => ({ ...n, parent_id: n.parent_id && allowedIds.has(n.parent_id) ? n.parent_id : null }));
+
   const byParent = new Map<string | null, any[]>();
   for (const n of cleaned) {
     const k = n.parent_id ?? null;

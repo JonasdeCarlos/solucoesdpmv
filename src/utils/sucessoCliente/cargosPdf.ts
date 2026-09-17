@@ -131,14 +131,11 @@ export async function generateCargosPdf(params: {
 
   if (consideracoes) { section('Considerações Finais'); para(consideracoes); }
 
-  // Organograma sugerido (visual tree, igual à pré-visualização "Gerar Organograma")
-  // Filtra para conter APENAS cargos cadastrados (segurança caso a IA sugira extras)
-  const norm = (s: string) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'');
-  const cadastradosSet = new Set(cargos.map(c => norm(c.nome)));
+  // Organograma (exatamente como editado em "Editar Organograma")
   const allOrg: any[] = estrutura?.organograma || [];
-  const orgNodes = allOrg.filter(n => cadastradosSet.has(norm(n.nome)));
+  const orgNodes = allOrg.map(n => ({ ...n }));
   const allowedIds = new Set(orgNodes.map(n => n.id));
-  // Limpa parent_id que aponte para nós removidos
+  // Limpa parent_id que aponte para nós inexistentes
   for (const n of orgNodes) {
     if (n.parent_id && !allowedIds.has(n.parent_id)) n.parent_id = null;
   }
@@ -146,8 +143,9 @@ export async function generateCargosPdf(params: {
     doc.addPage(); y = 60;
     section('Organograma Sugerido');
     doc.setFontSize(8); doc.setTextColor(90,90,90);
-    para('Estrutura hierárquica baseada exclusivamente nos cargos cadastrados pela empresa.');
+    para('Estrutura hierárquica conforme organograma definido pela empresa.');
     doc.setTextColor(0,0,0);
+
 
     const byParent = new Map<string|null, any[]>();
     for (const n of orgNodes) {
