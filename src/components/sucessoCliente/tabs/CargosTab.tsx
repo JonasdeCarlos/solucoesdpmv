@@ -991,9 +991,14 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-base">Estrutura Salarial</CardTitle>
-            <Button size="sm" variant="outline" onClick={recalcularFaixas}>
-              <Sparkles className="w-4 h-4 mr-1"/>Recalcular faixas
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" onClick={atualizarPisosCCT} disabled={busy === 'pisos-cct'}>
+                <Sparkles className="w-4 h-4 mr-1"/>{busy === 'pisos-cct' ? 'Atualizando…' : 'Atualizar pisos pela CCT'}
+              </Button>
+              <Button size="sm" variant="outline" onClick={recalcularFaixas}>
+                <Sparkles className="w-4 h-4 mr-1"/>Recalcular faixas
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
             {(() => {
