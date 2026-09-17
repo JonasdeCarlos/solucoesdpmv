@@ -584,6 +584,45 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
     toast.success('Faixas recalculadas pela escala de evolução (travas manuais liberadas).');
   };
 
+  // Reaplica os pisos da CCT vigente aos cargos e às faixas da estrutura salarial.
+  // Cargo citado na CCT → piso específico; cargo não citado → menor piso da categoria.
+  const atualizarPisosCCT = async () => {
+    if (!pisosCCT.length) return toast.error('Nenhum piso evidenciado na CCT cadastrada do cliente.');
+    setBusy('pisos-cct');
+    try {
+      let cargosAtualizados = 0;
+      for (const c of items) {
+        const m = matchPisoCargo(c.nome || '', pisosCCT);
+        if (!m) continue;
+        if (Number(c.piso_salarial) === m.valor && c.piso_referencia === m.ref) continue;
+        await save({ id: c.id, piso_salarial: m.valor, piso_referencia: m.ref });
+        cargosAtualizados++;
+      }
+
+      const faixas = (estrutura?.faixas || []).map((f: any) => {
+        const nome = f.cargo || f.nome || '';
+        const m = matchPisoCargo(nome, pisosCCT);
+        if (!m) return f;
+        const niveis = (f.niveis || []).map((n: any, j: number) =>
+          j === 0 && !n.fixo && Number(n.valor) < m.valor ? { ...n, valor: m.valor } : n
+        );
+        return { ...f, piso_cct: m.valor, piso_cct_ref: m.ref, niveis };
+      });
+
+      await saveEstrutura({
+        faixas,
+        escala_evolucao: estrutura?.escala_evolucao || [],
+        cargos_sugeridos: estrutura?.cargos_sugeridos || [],
+        organograma: estrutura?.organograma || [],
+        criterios_manuais: estrutura?.criterios_manuais || [],
+      });
+      await reload();
+      toast.success(`Pisos atualizados pela CCT (${cargosAtualizados} cargo(s) e ${faixas.length} linha(s) da estrutura).`);
+    } catch (e: any) {
+      toast.error('Falha ao atualizar pisos: ' + e.message);
+    } finally { setBusy(null); }
+  };
+
   // Salva explicitamente a estrutura salarial digitada no quadro
   const salvarEstruturaManual = async () => {
     setBusy('salvar-estrutura');
