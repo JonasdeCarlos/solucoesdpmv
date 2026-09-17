@@ -1025,6 +1025,11 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
                 </div>
               );
             })()}
+            <div className="flex justify-end">
+              <Button size="sm" onClick={salvarEstruturaManual} disabled={busy === 'salvar-estrutura'}>
+                {busy === 'salvar-estrutura' ? 'Salvando…' : 'Salvar estrutura salarial'}
+              </Button>
+            </div>
             {(estrutura.cargos_sugeridos || []).length ? (
               <div>
                 <div className="text-sm font-semibold mb-1">Cargos sugeridos pela IA (não cadastrados)</div>
