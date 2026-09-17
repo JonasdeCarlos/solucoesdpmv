@@ -1050,12 +1050,18 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
                 </div>
               </div>
             ) : null}
-            {estrutura.escala_evolucao?.length ? (
+            {(estrutura.escala_evolucao?.length || estrutura.faixas?.length) ? (
               <div>
-                <div className="text-sm font-semibold mb-1">Escala de evolução</div>
-                <p className="text-[11px] text-muted-foreground mb-2">O percentual indica quanto cada etapa representa do <strong>salário de Referência</strong> (teto, equivalente ao salário atualmente praticado). Ex.: 75% = salário inicial é 75% do teto do cargo.</p>
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <div className="text-sm font-semibold">Escala de evolução</div>
+                  <Button size="sm" variant="outline" onClick={recalcularEscala} disabled={busy === 'escala'}>
+                    <Sparkles className="w-4 h-4 mr-1"/>
+                    {busy === 'escala' ? 'Recalculando…' : 'Recalcular escala pela estrutura salarial'}
+                  </Button>
+                </div>
+                <p className="text-[11px] text-muted-foreground mb-2">O percentual indica quanto cada etapa representa do <strong>salário de Referência</strong> (teto, equivalente ao salário atualmente praticado). O recálculo usa a média real dos cargos cadastrados.</p>
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
-                  {estrutura.escala_evolucao.map((e:any,i:number) => (
+                  {(estrutura.escala_evolucao || []).map((e:any,i:number) => (
                     <Card key={i}><CardContent className="p-2 text-center">
                       <div className="text-xs text-muted-foreground">{e.etapa}</div>
                       <div className="text-xl font-bold">{e.percentual_base}%</div>
