@@ -91,6 +91,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
   const [filterNivel, setFilterNivel] = useState('all');
   const [chatOpen, setChatOpen] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const [organogramaDraft, setOrganogramaDraft] = useState<any[]>([]);
 
   const pisosCCT = useMemo(() => extractPisosCCT(ccts as any[]), [ccts]);
 
@@ -1055,14 +1056,28 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
     setOrgOpen(true);
   };
 
-  const saveOrganograma = (organograma: any[]) => {
-    saveEstrutura({
-      faixas: estrutura?.faixas || [],
-      escala_evolucao: estrutura?.escala_evolucao || [],
-      cargos_sugeridos: estrutura?.cargos_sugeridos || [],
-      organograma,
-      criterios_manuais: estrutura?.criterios_manuais || [],
-    });
+  const openOrganogramaEditor = () => {
+    setOrganogramaDraft((estrutura?.organograma || []).map((node: any) => ({ ...node })));
+    setOrgEditOpen(true);
+  };
+
+  const concluirEdicaoOrganograma = async () => {
+    setBusy('organograma');
+    try {
+      await saveEstrutura({
+        faixas: estrutura?.faixas || [],
+        escala_evolucao: estrutura?.escala_evolucao || [],
+        cargos_sugeridos: estrutura?.cargos_sugeridos || [],
+        organograma: organogramaDraft,
+        criterios_manuais: estrutura?.criterios_manuais || [],
+      });
+      setOrgEditOpen(false);
+      toast.success('Organograma salvo conforme a edição.');
+    } catch (e: any) {
+      toast.error('Falha ao salvar organograma: ' + (e?.message || e));
+    } finally {
+      setBusy(null);
+    }
   };
 
   return (
@@ -1089,7 +1104,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
           <Button variant="outline" onClick={sugerirEstrutura} disabled={busy==='estrutura'}>{busy==='estrutura' ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <Sparkles className="w-4 h-4 mr-2"/>}Sugerir Estrutura Salarial</Button>
           <Button variant={chatOpen ? 'default' : 'outline'} onClick={()=>setChatOpen(v=>!v)}><MessagesSquare className="w-4 h-4 mr-2"/>Consultor IA</Button>
           <Button variant="outline" onClick={gerarOrganograma} disabled={busy==='estrutura'}><Network className="w-4 h-4 mr-2"/>Gerar Organograma</Button>
-          <Button variant="outline" onClick={()=>setOrgEditOpen(true)}><PencilIcon className="w-4 h-4 mr-2"/>Editar Organograma</Button>
+          <Button variant="outline" onClick={openOrganogramaEditor}><PencilIcon className="w-4 h-4 mr-2"/>Editar Organograma</Button>
           <Button variant="outline" onClick={exportarPdf} disabled={busy==='pdf'}>{busy==='pdf' ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <FileDown className="w-4 h-4 mr-2"/>}Gerar Relatório Final</Button>
           <Button variant="outline" onClick={limparCargos} disabled={busy==='limpar' || items.length===0} className="text-destructive hover:text-destructive">
             {busy==='limpar' ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <Trash2 className="w-4 h-4 mr-2"/>}Limpar cargos
@@ -1563,22 +1578,26 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div className="min-w-0">
               <OrgEditor
-                nodes={estrutura?.organograma || []}
+                nodes={organogramaDraft}
                 cargos={items}
-                onChange={saveOrganograma}
+                onChange={setOrganogramaDraft}
               />
             </div>
             <div className="min-w-0 border rounded-md bg-muted/30">
               <div className="px-3 py-2 text-xs font-semibold border-b">Pré-visualização</div>
-              {(estrutura?.organograma || []).length ? (
-                <OrgChart nodes={estrutura?.organograma || []} cadastrados={items.map((i:any)=>i.nome)} />
+              {organogramaDraft.length ? (
+                <OrgChart nodes={organogramaDraft} cadastrados={items.map((i:any)=>i.nome)} />
               ) : (
                 <p className="p-4 text-xs text-muted-foreground">Adicione cargos para visualizar o organograma.</p>
               )}
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={()=>setOrgEditOpen(false)}>Concluir</Button>
+            <Button variant="ghost" onClick={()=>setOrgEditOpen(false)} disabled={busy === 'organograma'}>Cancelar</Button>
+            <Button onClick={concluirEdicaoOrganograma} disabled={busy === 'organograma'}>
+              {busy === 'organograma' && <Loader2 className="w-4 h-4 mr-2 animate-spin"/>}
+              Salvar e concluir
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
