@@ -1694,11 +1694,11 @@ function OrgEditor({ nodes, cargos, onChange }: { nodes: any[]; cargos: any[]; o
   };
 
   const remove = (id: string) => {
-    if (!confirm('Remover este cargo do organograma?')) return;
-    // remove e re-aponta filhos para null
+    // remove e re-aponta filhos para null (sem confirmação, para agilidade)
     const next = nodes.filter(n => n.id !== id).map(n => n.parent_id === id ? { ...n, parent_id: null } : n);
     onChange(next);
   };
+
 
   const addCargoCadastrado = (nome: string) => {
     if (nodes.some(n => (n.nome || '').toLowerCase() === nome.toLowerCase())) return;
