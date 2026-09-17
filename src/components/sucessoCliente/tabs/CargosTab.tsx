@@ -17,6 +17,7 @@ import { generateCargoDetalhePdf } from '@/utils/sucessoCliente/cargoDetalhePdf'
 import { DebouncedInput } from '@/components/sucessoCliente/DebouncedField';
 import { extractPisosCCT, matchPisoCargo } from '@/utils/sucessoCliente/pisosCCT';
 import CargosChat from '@/components/sucessoCliente/tabs/CargosChat';
+import { normalizeOrganograma } from '@/utils/sucessoCliente/organograma';
 
 const NIVEIS = [
   { v:'operacional', l:'Operacional' },
@@ -1064,11 +1065,12 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
   const concluirEdicaoOrganograma = async () => {
     setBusy('organograma');
     try {
+      const organogramaNormalizado = normalizeOrganograma(organogramaDraft);
       await saveEstrutura({
         faixas: estrutura?.faixas || [],
         escala_evolucao: estrutura?.escala_evolucao || [],
         cargos_sugeridos: estrutura?.cargos_sugeridos || [],
-        organograma: organogramaDraft,
+        organograma: organogramaNormalizado,
         criterios_manuais: estrutura?.criterios_manuais || [],
       });
       setOrgEditOpen(false);
@@ -1805,9 +1807,8 @@ function OrgEditor({ nodes, cargos, onChange }: { nodes: any[]; cargos: any[]; o
 }
 
 function OrgChart({ nodes, cadastrados }: { nodes: any[]; cadastrados: string[] }) {
-  // Mostra o organograma exatamente como editado (sem filtrar por cargos cadastrados)
-  const allowedIds = new Set(nodes.map(n => n.id));
-  const cleaned = nodes.map(n => ({ ...n, parent_id: n.parent_id && allowedIds.has(n.parent_id) ? n.parent_id : null }));
+  // Mantém todos os cargos visíveis mesmo se dados antigos tiverem IDs repetidos ou ciclos.
+  const cleaned = normalizeOrganograma(nodes);
 
   const byParent = new Map<string | null, any[]>();
   for (const n of cleaned) {

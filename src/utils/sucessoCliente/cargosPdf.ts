@@ -3,6 +3,7 @@ import autoTable from 'jspdf-autotable';
 import { loadBranding } from './perfilPdf';
 import { drawBrandLogo } from '@/utils/pdfBrandLogo';
 import { withPcsCapa, nextPcsRevision } from './pcsCapaTemplate';
+import { normalizeOrganograma } from './organograma';
 
 const NIVEL_LABEL: Record<string,string> = {
   operacional:'Operacional', tecnico:'Técnico', analista:'Analista',
@@ -132,13 +133,7 @@ export async function generateCargosPdf(params: {
   if (consideracoes) { section('Considerações Finais'); para(consideracoes); }
 
   // Organograma (exatamente como editado em "Editar Organograma")
-  const allOrg: any[] = estrutura?.organograma || [];
-  const orgNodes = allOrg.map(n => ({ ...n }));
-  const allowedIds = new Set(orgNodes.map(n => n.id));
-  // Limpa parent_id que aponte para nós inexistentes
-  for (const n of orgNodes) {
-    if (n.parent_id && !allowedIds.has(n.parent_id)) n.parent_id = null;
-  }
+  const orgNodes = normalizeOrganograma(estrutura?.organograma || []);
   if (orgNodes.length && incluirOrganograma) {
     doc.addPage(); y = 60;
     section('Organograma Sugerido');
