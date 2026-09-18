@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -93,6 +93,14 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
   const [chatOpen, setChatOpen] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [organogramaDraft, setOrganogramaDraft] = useState<any[]>([]);
+  const atividadeKey = `cargos_atividade_empresa_${client_id}`;
+  const [atividadeEmpresa, setAtividadeEmpresa] = useState<string>(() => {
+    try { return localStorage.getItem(`cargos_atividade_empresa_${client_id}`) || ''; } catch { return ''; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem(atividadeKey, atividadeEmpresa); } catch { /* ignore */ }
+  }, [atividadeKey, atividadeEmpresa]);
+  const setorEmpresa = [atividadeEmpresa.trim(), cliente?.segmento || cliente?.cnae || ''].filter(Boolean).join(' — ');
 
   const pisosCCT = useMemo(() => extractPisosCCT(ccts as any[]), [ccts]);
 
@@ -172,7 +180,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
         body: {
           nome: draft.nome,
           empresa: cliente?.nome,
-          setor: cliente?.segmento || cliente?.cnae || '',
+          setor: setorEmpresa,
           descricao_sumaria: draft.descricao_sumaria || '',
           atividades: draft.atividades || [],
           contexto: draft.contexto_ia || '',
@@ -203,7 +211,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
     setBusy('adequar');
     try {
       const { data, error } = await supabase.functions.invoke('cargo-adequar', {
-        body: { nome: draft.nome, empresa: cliente?.nome, setor: cliente?.segmento || cliente?.cnae || '' },
+        body: { nome: draft.nome, empresa: cliente?.nome, setor: setorEmpresa },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -277,7 +285,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
         body: {
           nome: draft.nome || tituloOficial,
           empresa: cliente?.nome,
-          setor: cliente?.segmento || cliente?.cnae || '',
+          setor: setorEmpresa,
           cbo: code,
           titulo_cbo: tituloOficial,
           cbo_confirmado: true,
@@ -329,7 +337,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
         body: {
           nome: draft.nome,
           empresa: cliente?.nome,
-          setor: cliente?.segmento || cliente?.cnae || '',
+          setor: setorEmpresa,
           cbo: opts.cbo ?? (draft.cbo || ''),
           titulo_cbo: opts.titulo_cbo || '',
           cbo_confirmado: !!opts.cbo_confirmado,
@@ -435,7 +443,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
       const { data, error } = await supabase.functions.invoke('estrutura-salarial-sugerir', {
         body: {
           empresa: cliente?.nome,
-          setor: cliente?.segmento || cliente?.cnae || '',
+          setor: setorEmpresa,
           cargos: items.map(i => ({
             nome: i.nome, cbo: i.cbo, area: i.area, nivel: i.nivel,
             salario_atual: i.salario_atual, piso_salarial: i.piso_salarial,
@@ -951,7 +959,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
       }
       const b64 = btoa(bin);
       const { data, error } = await supabase.functions.invoke('cargos-importar-extrato', {
-        body: { pdf_base64: b64, mime: file.type || 'application/pdf', setor: cliente?.segmento || cliente?.cnae || '' },
+        body: { pdf_base64: b64, mime: file.type || 'application/pdf', setor: setorEmpresa },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -1084,6 +1092,21 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
 
   return (
     <div className="space-y-4">
+      <Card>
+        <CardContent className="p-3 space-y-1">
+          <Label htmlFor="atividade-empresa">Atividade que a empresa exerce</Label>
+          <Input
+            id="atividade-empresa"
+            value={atividadeEmpresa}
+            onChange={(e) => setAtividadeEmpresa(e.target.value)}
+            placeholder="Ex.: pousada e hospedagem com restaurante próprio, em Camanducaia/MG"
+          />
+          <p className="text-xs text-muted-foreground">
+            Quanto mais específica a atividade, mais precisas ficam as sugestões de CBO, descrição e estrutura.
+          </p>
+        </CardContent>
+      </Card>
+
       <div className="flex flex-wrap gap-2 items-center justify-between">
         <div className="flex gap-2 items-center flex-wrap">
           <Select value={filterArea} onValueChange={setFilterArea}>
@@ -1117,7 +1140,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
       {chatOpen && (
         <CargosChat
           empresa={cliente?.nome}
-          setor={cliente?.segmento || cliente?.cnae || ''}
+          setor={setorEmpresa}
           cargos={items}
           estrutura={estrutura}
           pisos={pisosCCT}
