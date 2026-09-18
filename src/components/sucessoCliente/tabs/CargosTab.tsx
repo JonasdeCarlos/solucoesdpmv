@@ -172,7 +172,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
         body: {
           nome: draft.nome,
           empresa: cliente?.nome,
-          setor: cliente?.segmento || cliente?.cnae || '',
+          setor: setorEmpresa,
           descricao_sumaria: draft.descricao_sumaria || '',
           atividades: draft.atividades || [],
           contexto: draft.contexto_ia || '',
@@ -203,7 +203,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
     setBusy('adequar');
     try {
       const { data, error } = await supabase.functions.invoke('cargo-adequar', {
-        body: { nome: draft.nome, empresa: cliente?.nome, setor: cliente?.segmento || cliente?.cnae || '' },
+        body: { nome: draft.nome, empresa: cliente?.nome, setor: setorEmpresa },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -277,7 +277,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
         body: {
           nome: draft.nome || tituloOficial,
           empresa: cliente?.nome,
-          setor: cliente?.segmento || cliente?.cnae || '',
+          setor: setorEmpresa,
           cbo: code,
           titulo_cbo: tituloOficial,
           cbo_confirmado: true,
@@ -329,7 +329,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
         body: {
           nome: draft.nome,
           empresa: cliente?.nome,
-          setor: cliente?.segmento || cliente?.cnae || '',
+          setor: setorEmpresa,
           cbo: opts.cbo ?? (draft.cbo || ''),
           titulo_cbo: opts.titulo_cbo || '',
           cbo_confirmado: !!opts.cbo_confirmado,
@@ -435,7 +435,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
       const { data, error } = await supabase.functions.invoke('estrutura-salarial-sugerir', {
         body: {
           empresa: cliente?.nome,
-          setor: cliente?.segmento || cliente?.cnae || '',
+          setor: setorEmpresa,
           cargos: items.map(i => ({
             nome: i.nome, cbo: i.cbo, area: i.area, nivel: i.nivel,
             salario_atual: i.salario_atual, piso_salarial: i.piso_salarial,
@@ -951,7 +951,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
       }
       const b64 = btoa(bin);
       const { data, error } = await supabase.functions.invoke('cargos-importar-extrato', {
-        body: { pdf_base64: b64, mime: file.type || 'application/pdf', setor: cliente?.segmento || cliente?.cnae || '' },
+        body: { pdf_base64: b64, mime: file.type || 'application/pdf', setor: setorEmpresa },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -1117,7 +1117,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
       {chatOpen && (
         <CargosChat
           empresa={cliente?.nome}
-          setor={cliente?.segmento || cliente?.cnae || ''}
+          setor={setorEmpresa}
           cargos={items}
           estrutura={estrutura}
           pisos={pisosCCT}
