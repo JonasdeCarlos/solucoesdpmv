@@ -31,6 +31,7 @@ const NIVEIS = [
 const emptyDraft = () => ({
   nome: '', cbo: '', area: '', nivel: 'analista', entrevista: '',
   contexto_ia: '',
+  pontos_obrigatorios: '',
   descricao_sumaria: '', atividades: [] as string[],
   requisitos: { escolaridade: '', experiencia: '', competencias: [] as string[] },
   salario_atual: '' as any,
@@ -54,6 +55,7 @@ const sanitizeCargoDraft = (cargo: any = {}) => ({
   nivel: cargo?.nivel || '',
   entrevista: cargo?.entrevista || '',
   contexto_ia: cargo?.contexto_ia || '',
+  pontos_obrigatorios: cargo?.pontos_obrigatorios || '',
   descricao_sumaria: cargo?.descricao_sumaria || '',
   atividades: Array.isArray(cargo?.atividades) ? cargo.atividades.map((s: any) => String(s || '').trim()).filter(Boolean) : [],
   requisitos: {
