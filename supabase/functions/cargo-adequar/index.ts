@@ -485,6 +485,13 @@ const CANONICOS: { re: RegExp; cbo: string; titulo: string; familia: string; jus
     justificativa: "Rotinas de admissão, folha de pagamento, eSocial, férias e rescisão enquadram-se na família 2524 (profissionais de recursos humanos).",
   },
   {
+    re: /(chefe|chefia|coordenador(a)?|supervisor(a)?|encarregad[oa]|lider|gerente)\s+(de\s+|da\s+|do\s+)?(recepcao|recepcionistas|front ?office|front ?desk)/,
+    cbo: "420125",
+    titulo: "Coordenador de recepção",
+    familia: "4201 — Supervisores de atendimento ao público e de pesquisa",
+    justificativa: "Chefia da recepção (atendimento a clientes/hóspedes) é sinônimo oficial de Coordenador de recepção (4201-25); não se confunde com gerência de comunicação (1423-10).",
+  },
+  {
     re: /(auxiliar|assistente|aux\.?)\s+(de\s+)?(departamento pessoal|dep\.? pessoal|dp\b|pessoal|folha de pagamento|recursos humanos|rh\b)/,
     cbo: "411005",
     titulo: "Auxiliar de pessoal",
