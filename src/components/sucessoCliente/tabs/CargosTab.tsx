@@ -424,7 +424,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
 
   const salvar = async () => {
     if (!draft.nome) return toast.error('Informe o nome do cargo.');
-    const allowed = ['id','nome','cbo','area','nivel','entrevista','descricao_sumaria','atividades','requisitos','salario_atual','piso_salarial','piso_referencia','adequacao'];
+    const allowed = ['id','nome','cbo','area','nivel','entrevista','pontos_obrigatorios','descricao_sumaria','atividades','requisitos','salario_atual','piso_salarial','piso_referencia','adequacao'];
     const payload: any = {};
     for (const k of allowed) if (k in draft) payload[k] = (draft as any)[k];
     payload.salario_atual = draft.salario_atual === '' || draft.salario_atual == null ? null : Number(draft.salario_atual);
