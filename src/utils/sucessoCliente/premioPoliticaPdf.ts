@@ -60,6 +60,7 @@ export async function generatePremioPoliticaPdf(d: PoliticaPdfData) {
   const hex = (h: string) => [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)] as [number,number,number];
   const [pr,pg,pb] = hex(primary);
   const [sr,sg,sb] = hex(secondary);
+  const remuneracaoVariavelAtiva = d.remuneracao_variavel?.ativo === true || Boolean(d.hotelaria) || Boolean(d.metas_mes);
 
   const ensure = (need: number, y: number) => {
     if (y + need > H - 50) { doc.addPage(); return 60; }
@@ -442,7 +443,9 @@ export async function generatePremioPoliticaPdf(d: PoliticaPdfData) {
   // Termo de ciência
   bandTitle('Termo de Ciência e Concordância', [pr,pg,pb], [255,255,255]);
   doc.setFont('helvetica','normal'); doc.setFontSize(9);
-  const termo = `Declaro estar ciente e de acordo com a política de ${d.verba_label} acima descrita, compreendendo seus objetivos, critérios de apuração, pesos atribuídos e regras de elegibilidade. Reconheço que a verba é variável, condicionada ao atingimento dos critérios, não integra a remuneração para fins de habitualidade e poderá ser revista, suspensa ou alterada pelo empregador a qualquer tempo, mediante comunicação prévia.`;
+  const termo = remuneracaoVariavelAtiva
+    ? `Declaro estar ciente e de acordo com a política de ${d.verba_label} acima descrita, compreendendo seus objetivos, critérios de apuração, pesos atribuídos e regras de elegibilidade. Reconheço que a verba é variável, condicionada ao atingimento dos critérios, não integra a remuneração para fins de habitualidade e poderá ser revista, suspensa ou alterada pelo empregador a qualquer tempo, mediante comunicação prévia.`
+    : `Declaro estar ciente e de acordo com a política de ${d.verba_label} acima descrita, compreendendo seus objetivos, critérios de apuração, pesos atribuídos e regras de elegibilidade. Reconheço que a concessão da verba depende do cumprimento dos critérios estabelecidos nesta política e poderá ser revista, suspensa ou alterada pelo empregador a qualquer tempo, mediante comunicação prévia.`;
   const tw = doc.splitTextToSize(termo, W-80);
   for (const w of tw) { y = ensure(12, y); doc.text(w, 46, y); y += 12; }
   y += 8;

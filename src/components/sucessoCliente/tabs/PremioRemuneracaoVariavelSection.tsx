@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -34,6 +34,10 @@ export default function PremioRemuneracaoVariavelSection({
   const [observ, setObserv] = useState(policy.rv_observacoes || '');
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    setEnabled(policy.remuneracao_variavel === true);
+  }, [policy.remuneracao_variavel]);
+
   // Simulador
   const [simValor, setSimValor] = useState<number>(0);
 
@@ -50,6 +54,16 @@ export default function PremioRemuneracaoVariavelSection({
   const removeTier = (i: number) => setTiers(tiers.filter((_, idx) => idx !== i));
   const updateTier = (i: number, patch: Partial<Tier>) =>
     setTiers(tiers.map((t, idx) => (idx === i ? { ...t, ...patch } : t)));
+
+  const toggleEnabled = async (checked: boolean) => {
+    setEnabled(checked);
+    setSaving(true);
+    try {
+      await onUpdate({ remuneracao_variavel: checked });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const save = async () => {
     if (enabled) {
@@ -84,7 +98,7 @@ export default function PremioRemuneracaoVariavelSection({
           <TrendingUp className="w-4 h-4"/> Prêmio com remuneração variável
         </h4>
         <div className="flex items-center gap-2">
-          <Switch checked={enabled} onCheckedChange={setEnabled}/>
+          <Switch checked={enabled} onCheckedChange={toggleEnabled} disabled={saving}/>
           <span className="text-xs text-muted-foreground">Ativar</span>
         </div>
       </div>
