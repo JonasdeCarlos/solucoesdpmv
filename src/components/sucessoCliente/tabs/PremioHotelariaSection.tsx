@@ -151,15 +151,17 @@ export default function PremioHotelariaSection({ policy, cliente, onUpdate, onDr
     try {
       let objetivoAtual = policy.objetivo;
       let regraAtual = (policy as any).regra_premiacao;
+      let remuneracaoVariavelAtual = !!policy.remuneracao_variavel;
       try {
         const { data: fresh } = await supabase
           .from('prize_policies' as any)
-          .select('objetivo, regra_premiacao')
+          .select('objetivo, regra_premiacao, remuneracao_variavel')
           .eq('id', policy.id)
           .maybeSingle();
         if (fresh) {
           objetivoAtual = (fresh as any).objetivo ?? objetivoAtual;
           regraAtual = (fresh as any).regra_premiacao ?? regraAtual;
+          remuneracaoVariavelAtual = (fresh as any).remuneracao_variavel === true;
         }
       } catch { /* mantém valores locais */ }
       const legacy: Record<string, number> = ((policy as any).hotelaria_pontos as any) || {};
@@ -179,7 +181,7 @@ export default function PremioHotelariaSection({ policy, cliente, onUpdate, onDr
         criterios: criteriosBase,
         participantes: participantes.map(p => ({ nome: p.nome, cpf: p.cpf, cargo: p.cargo, matricula: p.matricula })),
         remuneracao_variavel: null,
-        hotelaria: {
+        hotelaria: remuneracaoVariavelAtual ? {
           split_coletivo: config.split_coletivo,
           split_individual: config.split_individual,
           criterios: config.criterios,
@@ -188,8 +190,8 @@ export default function PremioHotelariaSection({ policy, cliente, onUpdate, onDr
             nome: p.nome, cargo: p.cargo,
             pontos: Number((p as any).pontos ?? legacy[p.id] ?? 0),
           })),
-        },
-        metas_mes: { competencia: mes, ...metasMap[mes] },
+        } : null,
+        metas_mes: remuneracaoVariavelAtual ? { competencia: mes, ...metasMap[mes] } : null,
       });
       toast.success(`PDF da política de ${labelMes(mes)} gerado.`);
     } catch (e: any) {

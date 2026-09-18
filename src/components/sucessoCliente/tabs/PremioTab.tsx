@@ -538,7 +538,7 @@ export function CriteriaSection({ policy, cliente }: { policy: PrizePolicy; clie
           observacoes: rvObservacoesAtual,
           criterios_individuais: items.map(c => ({ nome: c.nome, peso: c.peso })),
         } : null,
-        hotelaria: (policy as any).modelo_template === 'hotelaria' ? (() => {
+        hotelaria: remuneracaoVariavelAtual && (policy as any).modelo_template === 'hotelaria' ? (() => {
           const cfg = (policy as any).hotelaria_config || HOTELARIA_CONFIG;
           const legacy: Record<string, number> = ((policy as any).hotelaria_pontos as any) || {};
           const pontos = (participantes || []).filter(p => p.ativo).map(p => ({
@@ -554,7 +554,7 @@ export function CriteriaSection({ policy, cliente }: { policy: PrizePolicy; clie
             pontos,
           };
         })() : null,
-        metas_mes: isHotelaria && metasMap[mesPdf] ? { competencia: mesPdf, ...metasMap[mesPdf] } : null,
+        metas_mes: remuneracaoVariavelAtual && isHotelaria && metasMap[mesPdf] ? { competencia: mesPdf, ...metasMap[mesPdf] } : null,
       });
       toast.success('PDF gerado.');
     } catch (e: any) {
