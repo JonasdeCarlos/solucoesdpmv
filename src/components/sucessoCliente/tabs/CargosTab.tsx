@@ -129,6 +129,36 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
     finally { setBusy(null); }
   };
 
+  const gerarDescricao = async () => {
+    if (!draft.nome?.trim()) return toast.error('Informe o nome do cargo.');
+    if (!draft.pontos_obrigatorios?.trim() && !draft.entrevista?.trim()) {
+      return toast.error('Informe o que não pode faltar na descrição.');
+    }
+    setBusy('descricao');
+    try {
+      const { data, error } = await supabase.functions.invoke('cargo-descricao-gerar', {
+        body: {
+          nome: draft.nome, cbo: draft.cbo, area: draft.area, nivel: draft.nivel,
+          empresa: cliente?.nome, setor: setorEmpresa,
+          pontos_obrigatorios: draft.pontos_obrigatorios,
+          descricao_sumaria: draft.descricao_sumaria,
+          entrevista: draft.entrevista,
+        },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      setDraft((d: any) => ({
+        ...d,
+        descricao_sumaria: (data as any)?.descricao_sumaria || d.descricao_sumaria,
+        atividades: Array.isArray((data as any)?.atividades) && (data as any).atividades.length
+          ? Array.from(new Set([...(d.atividades || []), ...(data as any).atividades]))
+          : d.atividades,
+      }));
+      toast.success('Descrição gerada com os pontos informados.');
+    } catch (e: any) { toast.error('Falha: ' + (e?.message || e)); }
+    finally { setBusy(null); }
+  };
+
   const buscarMTE = async () => {
     if (!draft.cbo?.trim()) return toast.error('Informe o código CBO.');
     setBusy('mte');
