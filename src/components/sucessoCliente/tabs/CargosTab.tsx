@@ -31,6 +31,7 @@ const NIVEIS = [
 const emptyDraft = () => ({
   nome: '', cbo: '', area: '', nivel: 'analista', entrevista: '',
   contexto_ia: '',
+  pontos_obrigatorios: '',
   descricao_sumaria: '', atividades: [] as string[],
   requisitos: { escolaridade: '', experiencia: '', competencias: [] as string[] },
   salario_atual: '' as any,
@@ -54,6 +55,7 @@ const sanitizeCargoDraft = (cargo: any = {}) => ({
   nivel: cargo?.nivel || '',
   entrevista: cargo?.entrevista || '',
   contexto_ia: cargo?.contexto_ia || '',
+  pontos_obrigatorios: cargo?.pontos_obrigatorios || '',
   descricao_sumaria: cargo?.descricao_sumaria || '',
   atividades: Array.isArray(cargo?.atividades) ? cargo.atividades.map((s: any) => String(s || '').trim()).filter(Boolean) : [],
   requisitos: {
@@ -124,6 +126,36 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
       setDraft((d:any) => ({ ...d, descricao_sumaria: data?.descricao_sumaria || d.descricao_sumaria, atividades: data?.atividades || d.atividades, requisitos: data?.requisitos || d.requisitos }));
       toast.success('Cargo formalizado.');
     } catch (e:any) { toast.error('Falha: '+e.message); }
+    finally { setBusy(null); }
+  };
+
+  const gerarDescricao = async () => {
+    if (!draft.nome?.trim()) return toast.error('Informe o nome do cargo.');
+    if (!draft.pontos_obrigatorios?.trim() && !draft.entrevista?.trim()) {
+      return toast.error('Informe o que não pode faltar na descrição.');
+    }
+    setBusy('descricao');
+    try {
+      const { data, error } = await supabase.functions.invoke('cargo-descricao-gerar', {
+        body: {
+          nome: draft.nome, cbo: draft.cbo, area: draft.area, nivel: draft.nivel,
+          empresa: cliente?.nome, setor: setorEmpresa,
+          pontos_obrigatorios: draft.pontos_obrigatorios,
+          descricao_sumaria: draft.descricao_sumaria,
+          entrevista: draft.entrevista,
+        },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      setDraft((d: any) => ({
+        ...d,
+        descricao_sumaria: (data as any)?.descricao_sumaria || d.descricao_sumaria,
+        atividades: Array.isArray((data as any)?.atividades) && (data as any).atividades.length
+          ? Array.from(new Set([...(d.atividades || []), ...(data as any).atividades]))
+          : d.atividades,
+      }));
+      toast.success('Descrição gerada com os pontos informados.');
+    } catch (e: any) { toast.error('Falha: ' + (e?.message || e)); }
     finally { setBusy(null); }
   };
 
@@ -422,7 +454,7 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
 
   const salvar = async () => {
     if (!draft.nome) return toast.error('Informe o nome do cargo.');
-    const allowed = ['id','nome','cbo','area','nivel','entrevista','descricao_sumaria','atividades','requisitos','salario_atual','piso_salarial','piso_referencia','adequacao'];
+    const allowed = ['id','nome','cbo','area','nivel','entrevista','pontos_obrigatorios','descricao_sumaria','atividades','requisitos','salario_atual','piso_salarial','piso_referencia','adequacao'];
     const payload: any = {};
     for (const k of allowed) if (k in draft) payload[k] = (draft as any)[k];
     payload.salario_atual = draft.salario_atual === '' || draft.salario_atual == null ? null : Number(draft.salario_atual);
@@ -1572,7 +1604,29 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
             <div className="md:col-span-2 flex justify-end">
               <Button variant="outline" onClick={formalizar} disabled={busy==='formalizar'}>{busy==='formalizar' ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <Sparkles className="w-4 h-4 mr-2"/>}Formalizar com IA</Button>
             </div>
-            <div className="md:col-span-2"><Label className="text-xs">Descrição sumária</Label><Textarea rows={4} value={draft.descricao_sumaria} onChange={e=>setDraft({...draft,descricao_sumaria:e.target.value})}/></div>
+            <div className="md:col-span-2 rounded-md border p-3 space-y-2">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <Label className="text-xs font-semibold">Descrição sumária</Label>
+                <Button type="button" size="sm" variant="outline" onClick={gerarDescricao} disabled={busy==='descricao'}>
+                  {busy==='descricao' ? <Loader2 className="w-3 h-3 mr-1 animate-spin"/> : <Sparkles className="w-3 h-3 mr-1"/>}
+                  Gerar descrição
+                </Button>
+              </div>
+              <div>
+                <Label className="text-xs">O que não pode faltar na descrição</Label>
+                <Textarea
+                  rows={3}
+                  value={draft.pontos_obrigatorios || ''}
+                  onChange={e=>setDraft({...draft, pontos_obrigatorios: e.target.value})}
+                  placeholder="Ex.: auxiliar no café da manhã; apoiar a limpeza das áreas comuns; atender hóspedes na recepção"
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">Aponte os pontos essenciais; ao gerar, o sistema desdobra cada um em todas as etapas (montagem, execução, desmontagem, higienização etc.).</p>
+              </div>
+              <div>
+                <Label className="text-xs">Texto da descrição</Label>
+                <Textarea rows={5} value={draft.descricao_sumaria} onChange={e=>setDraft({...draft,descricao_sumaria:e.target.value})}/>
+              </div>
+            </div>
             <div className="md:col-span-2">
               <div className="flex items-center justify-between mb-1">
                 <Label className="text-xs">Atividades (uma por linha)</Label>
