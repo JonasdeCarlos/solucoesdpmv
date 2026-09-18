@@ -1160,6 +1160,7 @@ export type Database = {
           nome: string
           piso_referencia: string | null
           piso_salarial: number | null
+          pontos_obrigatorios: string | null
           requisitos: Json | null
           salario_atual: number | null
           updated_at: string
@@ -1178,6 +1179,7 @@ export type Database = {
           nome: string
           piso_referencia?: string | null
           piso_salarial?: number | null
+          pontos_obrigatorios?: string | null
           requisitos?: Json | null
           salario_atual?: number | null
           updated_at?: string
@@ -1196,6 +1198,7 @@ export type Database = {
           nome?: string
           piso_referencia?: string | null
           piso_salarial?: number | null
+          pontos_obrigatorios?: string | null
           requisitos?: Json | null
           salario_atual?: number | null
           updated_at?: string
