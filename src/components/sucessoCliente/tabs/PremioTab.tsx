@@ -489,18 +489,32 @@ export function CriteriaSection({ policy, cliente }: { policy: PrizePolicy; clie
     if (items.length === 0) { toast.error('Cadastre ao menos um critério antes de exportar.'); return; }
     setExporting(true);
     try {
-      // busca os textos mais recentes (objetivo / regra) direto do banco
+      // Busca o estado mais recente para não exportar configurações antigas.
       let objetivoAtual = policy.objetivo;
       let regraAtual = (policy as any).regra_premiacao;
+      let remuneracaoVariavelAtual = !!policy.remuneracao_variavel;
+      let rvBaseAtual = (policy as any).rv_base;
+      let rvBaseLabelAtual = (policy as any).rv_base_label;
+      let rvTiersAtual = (policy as any).rv_tiers || [];
+      let rvPctIndividualAtual = (policy as any).rv_pct_individual;
+      let rvPctIgualitarioAtual = (policy as any).rv_pct_igualitario;
+      let rvObservacoesAtual = (policy as any).rv_observacoes;
       try {
         const { data: fresh } = await supabase
           .from('prize_policies' as any)
-          .select('objetivo, regra_premiacao')
+          .select('objetivo, regra_premiacao, remuneracao_variavel, rv_base, rv_base_label, rv_tiers, rv_pct_individual, rv_pct_igualitario, rv_observacoes')
           .eq('id', policy.id)
           .maybeSingle();
         if (fresh) {
           objetivoAtual = (fresh as any).objetivo ?? objetivoAtual;
           regraAtual = (fresh as any).regra_premiacao ?? regraAtual;
+          remuneracaoVariavelAtual = (fresh as any).remuneracao_variavel === true;
+          rvBaseAtual = (fresh as any).rv_base;
+          rvBaseLabelAtual = (fresh as any).rv_base_label;
+          rvTiersAtual = (fresh as any).rv_tiers || [];
+          rvPctIndividualAtual = (fresh as any).rv_pct_individual;
+          rvPctIgualitarioAtual = (fresh as any).rv_pct_igualitario;
+          rvObservacoesAtual = (fresh as any).rv_observacoes;
         }
       } catch { /* mantém valores locais */ }
       await generatePremioPoliticaPdf({
@@ -514,14 +528,14 @@ export function CriteriaSection({ policy, cliente }: { policy: PrizePolicy; clie
         valor_base: policy.valor_base,
         criterios: items.map(c => ({ nome: c.nome, descricao: c.descricao, peso: c.peso, essencial: c.essencial })),
         participantes: (participantes || []).filter(p => p.ativo).map(p => ({ nome: p.nome, cpf: p.cpf, cargo: p.cargo, matricula: p.matricula })),
-        remuneracao_variavel: policy.remuneracao_variavel ? {
-          ativo: !!policy.remuneracao_variavel,
-          base: (policy as any).rv_base,
-          base_label: (policy as any).rv_base_label,
-          tiers: (policy as any).rv_tiers || [],
-          pct_individual: (policy as any).rv_pct_individual,
-          pct_igualitario: (policy as any).rv_pct_igualitario,
-          observacoes: (policy as any).rv_observacoes,
+        remuneracao_variavel: remuneracaoVariavelAtual ? {
+          ativo: true,
+          base: rvBaseAtual,
+          base_label: rvBaseLabelAtual,
+          tiers: rvTiersAtual,
+          pct_individual: rvPctIndividualAtual,
+          pct_igualitario: rvPctIgualitarioAtual,
+          observacoes: rvObservacoesAtual,
           criterios_individuais: items.map(c => ({ nome: c.nome, peso: c.peso })),
         } : null,
         hotelaria: (policy as any).modelo_template === 'hotelaria' ? (() => {
