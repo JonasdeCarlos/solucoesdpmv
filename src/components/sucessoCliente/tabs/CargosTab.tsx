@@ -1604,7 +1604,29 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
             <div className="md:col-span-2 flex justify-end">
               <Button variant="outline" onClick={formalizar} disabled={busy==='formalizar'}>{busy==='formalizar' ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <Sparkles className="w-4 h-4 mr-2"/>}Formalizar com IA</Button>
             </div>
-            <div className="md:col-span-2"><Label className="text-xs">Descrição sumária</Label><Textarea rows={4} value={draft.descricao_sumaria} onChange={e=>setDraft({...draft,descricao_sumaria:e.target.value})}/></div>
+            <div className="md:col-span-2 rounded-md border p-3 space-y-2">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <Label className="text-xs font-semibold">Descrição sumária</Label>
+                <Button type="button" size="sm" variant="outline" onClick={gerarDescricao} disabled={busy==='descricao'}>
+                  {busy==='descricao' ? <Loader2 className="w-3 h-3 mr-1 animate-spin"/> : <Sparkles className="w-3 h-3 mr-1"/>}
+                  Gerar descrição
+                </Button>
+              </div>
+              <div>
+                <Label className="text-xs">O que não pode faltar na descrição</Label>
+                <Textarea
+                  rows={3}
+                  value={draft.pontos_obrigatorios || ''}
+                  onChange={e=>setDraft({...draft, pontos_obrigatorios: e.target.value})}
+                  placeholder="Ex.: auxiliar no café da manhã; apoiar a limpeza das áreas comuns; atender hóspedes na recepção"
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">Aponte os pontos essenciais; ao gerar, o sistema desdobra cada um em todas as etapas (montagem, execução, desmontagem, higienização etc.).</p>
+              </div>
+              <div>
+                <Label className="text-xs">Texto da descrição</Label>
+                <Textarea rows={5} value={draft.descricao_sumaria} onChange={e=>setDraft({...draft,descricao_sumaria:e.target.value})}/>
+              </div>
+            </div>
             <div className="md:col-span-2">
               <div className="flex items-center justify-between mb-1">
                 <Label className="text-xs">Atividades (uma por linha)</Label>
