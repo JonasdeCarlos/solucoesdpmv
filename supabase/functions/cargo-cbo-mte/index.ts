@@ -125,8 +125,14 @@ async function tituloDeReferencia(digits: string): Promise<string> {
 // O MTE exige "todas as palavras digitadas": termos longos (ou com a redação
 // diferente da tabela oficial) não retornam nada. Por isso encurtamos o termo
 // progressivamente até restarem apenas as 2 primeiras palavras significativas.
+// O formulário do MTE roda em ISO-8859-1: termos acentuados enviados em UTF-8
+// não retornam nenhum resultado. Por isso removemos a acentuação antes de buscar.
+function semAcento(value: string) {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
 function variacoesDeTermo(titulo: string): string[] {
-  const limpo = titulo.replace(/\([^)]*\)/g, " ").replace(/[^A-Za-zÀ-ÿ\s]/g, " ").replace(/\s+/g, " ").trim();
+  const limpo = semAcento(titulo).replace(/\([^)]*\)/g, " ").replace(/[^A-Za-z\s]/g, " ").replace(/\s+/g, " ").trim();
   if (!limpo) return [];
   const stop = new Set(["de", "da", "do", "das", "dos", "e", "em", "a", "o", "as", "os", "exceto", "para", "com"]);
   const palavras = limpo.split(" ");
