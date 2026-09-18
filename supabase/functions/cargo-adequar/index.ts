@@ -290,7 +290,11 @@ const SETORES: { re: RegExp; termos: string[]; titulos: RegExp }[] = [
   { re: /(textil|confeccao|vestuario|costura|malharia)/, termos: ["confecção", "costura"], titulos: /(textil|costur|malha|tecel|vestuario)/ },
   { re: /(plastic|injecao|polimero|embalagem)/, termos: ["plásticos"], titulos: /(plastic|polimero|injec|embalagem)/ },
   { re: /(construcao civil|obra|edificac)/, termos: ["construção civil"], titulos: /(obra|construc|pedreir|servente)/ },
-  { re: /(hotel|pousada|restaurante|bar |lanchonete|cozinha industrial)/, termos: ["cozinha", "restaurante"], titulos: /(cozinh|copeir|garcom|camareir|restaurant|hotel)/ },
+  {
+    re: /(hotel|hotelaria|pousada|resort|hostel|motel|restaurante|bar |lanchonete|cozinha industrial|meios de hospedagem)/,
+    termos: ["recepção", "hospedagem", "cozinha", "restaurante"],
+    titulos: /(cozinh|copeir|garcom|camareir|restaurant|hotel|recepc|hospedag|governant|mensageir|concierge|reserva)/,
+  },
 ];
 
 function setoresDe(ctx: string) {
