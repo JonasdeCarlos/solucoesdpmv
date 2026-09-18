@@ -694,20 +694,35 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
     if (!pcts.slice(1).some(p => p > 0)) { toast.error('Informe os percentuais de reajuste entre níveis.'); return; }
     const faixas = ((estrutura?.faixas || []) as any[]).map((f: any) => {
       const antigos = niveisDaFaixa(f);
-      let anterior = Number(antigos.find((n: any) => n.nome === cols[0])?.valor) || 0;
-      const niveis = cols.map((cn, i) => {
-        const atual = antigos.find((n: any) => n.nome === cn);
-        if (i === 0) return { nome: cn, valor: anterior, fixo: atual?.fixo === true };
+      const atuais = cols.map(cn => antigos.find((n: any) => n.nome === cn));
+      // Âncora: último nível informado manualmente (travado). Sem trava, parte do primeiro nível.
+      let ancora = 0;
+      for (let i = cols.length - 1; i >= 0; i--) {
+        if (atuais[i]?.fixo === true && Number(atuais[i]?.valor) > 0) { ancora = i; break; }
+      }
+      const valores: number[] = new Array(cols.length).fill(0);
+      valores[ancora] = Number(atuais[ancora]?.valor) || 0;
+      // Para trás: divide pelo percentual do nível seguinte
+      for (let i = ancora - 1; i >= 0; i--) {
+        const pct = pcts[i + 1];
+        valores[i] = pct > 0
+          ? Math.round((valores[i + 1] / (1 + pct / 100)) * 100) / 100
+          : (Number(atuais[i]?.valor) || 0);
+      }
+      // Para frente: aplica o percentual do próprio nível
+      for (let i = ancora + 1; i < cols.length; i++) {
         const pct = pcts[i];
-        const valor = pct > 0 ? Math.round(anterior * (1 + pct / 100) * 100) / 100 : (Number(atual?.valor) || 0);
-        anterior = valor;
-        return { nome: cn, valor, fixo: atual?.fixo === true };
-      });
+        valores[i] = pct > 0
+          ? Math.round(valores[i - 1] * (1 + pct / 100) * 100) / 100
+          : (Number(atuais[i]?.valor) || 0);
+      }
+      const niveis = cols.map((cn, i) => ({ nome: cn, valor: valores[i], fixo: i === ancora && atuais[i]?.fixo === true }));
       const { min, mid, max, ...resto } = f;
       return { ...resto, niveis };
     });
     persistFaixas(faixas);
-    toast.success('Níveis recalculados pelos percentuais informados.');
+    toast.success('Níveis recalculados a partir do valor informado manualmente.');
+
   };
 
   const recalcularFaixas = () => {
