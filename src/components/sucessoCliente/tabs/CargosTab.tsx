@@ -93,6 +93,14 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
   const [chatOpen, setChatOpen] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [organogramaDraft, setOrganogramaDraft] = useState<any[]>([]);
+  const atividadeKey = `cargos_atividade_empresa_${client_id}`;
+  const [atividadeEmpresa, setAtividadeEmpresa] = useState<string>(() => {
+    try { return localStorage.getItem(`cargos_atividade_empresa_${client_id}`) || ''; } catch { return ''; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem(atividadeKey, atividadeEmpresa); } catch { /* ignore */ }
+  }, [atividadeKey, atividadeEmpresa]);
+  const setorEmpresa = [atividadeEmpresa.trim(), cliente?.segmento || cliente?.cnae || ''].filter(Boolean).join(' — ');
 
   const pisosCCT = useMemo(() => extractPisosCCT(ccts as any[]), [ccts]);
 
