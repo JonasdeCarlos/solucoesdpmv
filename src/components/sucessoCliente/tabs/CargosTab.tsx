@@ -1092,6 +1092,21 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
 
   return (
     <div className="space-y-4">
+      <Card>
+        <CardContent className="p-3 space-y-1">
+          <Label htmlFor="atividade-empresa">Atividade que a empresa exerce</Label>
+          <Input
+            id="atividade-empresa"
+            value={atividadeEmpresa}
+            onChange={(e) => setAtividadeEmpresa(e.target.value)}
+            placeholder="Ex.: pousada e hospedagem com restaurante próprio, em Camanducaia/MG"
+          />
+          <p className="text-xs text-muted-foreground">
+            Quanto mais específica a atividade, mais precisas ficam as sugestões de CBO, descrição e estrutura.
+          </p>
+        </CardContent>
+      </Card>
+
       <div className="flex flex-wrap gap-2 items-center justify-between">
         <div className="flex gap-2 items-center flex-wrap">
           <Select value={filterArea} onValueChange={setFilterArea}>
