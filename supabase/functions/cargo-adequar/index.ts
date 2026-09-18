@@ -495,6 +495,13 @@ const CANONICOS: { re: RegExp; cbo: string; titulo: string; familia: string; jus
     justificativa: "Chefia da recepção (atendimento a clientes/hóspedes) é sinônimo oficial de Coordenador de recepção (4201-25); não se confunde com gerência de comunicação (1423-10).",
   },
   {
+    re: /(gerente|gerencia|subgerente|administrador(a)?|diretor(a)?)\s+(geral\s+)?(de\s+|da\s+|do\s+)?(hotel|pousada|resort|hotel fazenda|hostel|motel|hospedagem|hotelaria|meio de hospedagem)/,
+    cbo: "141505",
+    titulo: "Gerente de hotel",
+    familia: "1415 — Gerentes de operações de serviços em empresa de turismo, de alojamento e alimentação",
+    justificativa: "Gerência de meio de hospedagem (hotel, pousada, resort) é a ocupação 1415-05 — Gerente de hotel; não pertence à família 1414 nem a gerências de comunicação/marketing.",
+  },
+  {
     re: /(auxiliar|assistente|aux\.?)\s+(de\s+)?(departamento pessoal|dep\.? pessoal|dp\b|pessoal|folha de pagamento|recursos humanos|rh\b)/,
     cbo: "411005",
     titulo: "Auxiliar de pessoal",
