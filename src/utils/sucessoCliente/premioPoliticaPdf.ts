@@ -120,7 +120,7 @@ export async function generatePremioPoliticaPdf(d: PoliticaPdfData) {
   };
 
   // Identificação
-  bandTitle('IDENTIFICAÇÃO DA POLÍTICA', [245,245,245]);
+  bandTitle('Identificação da Política', [pr,pg,pb], [255,255,255]);
   doc.setFont('helvetica','normal'); doc.setFontSize(9);
   const idLines = [
     `Nome da política: ${d.politica_nome}`,
@@ -131,7 +131,7 @@ export async function generatePremioPoliticaPdf(d: PoliticaPdfData) {
 
   // Objetivo
   if (d.objetivo) {
-    bandTitle('OBJETIVO', [245,245,245]);
+    bandTitle('Objetivo', [pr,pg,pb], [255,255,255]);
     doc.setFont('helvetica','normal'); doc.setFontSize(9);
     const wrap = doc.splitTextToSize(d.objetivo, W-92);
     for (let i = 0; i < wrap.length; i++) { const w = wrap[i]; y = ensure(14, y); doc.text(w, 46, y, { align: i < wrap.length - 1 && w.includes(' ') ? 'justify' : 'left', maxWidth: W-92 }); y += 14; }
@@ -140,7 +140,7 @@ export async function generatePremioPoliticaPdf(d: PoliticaPdfData) {
 
   // Regra do prêmio / benefício
   if (d.regra_premiacao) {
-    bandTitle('REGRA DE CONCESSÃO', [245,245,245]);
+    bandTitle('Regra de Concessão', [pr,pg,pb], [255,255,255]);
     doc.setFont('helvetica','normal'); doc.setFontSize(9);
     const wrapR = doc.splitTextToSize(d.regra_premiacao, W-92);
     for (let i = 0; i < wrapR.length; i++) { const w = wrapR[i]; y = ensure(14, y); doc.text(w, 46, y, { align: i < wrapR.length - 1 && w.includes(' ') ? 'justify' : 'left', maxWidth: W-92 }); y += 14; }
@@ -189,7 +189,7 @@ export async function generatePremioPoliticaPdf(d: PoliticaPdfData) {
   // Remuneração Variável
   const rv = d.remuneracao_variavel;
   if (rv?.ativo === true) {
-    bandTitle('REMUNERAÇÃO VARIÁVEL — FAIXAS E DISTRIBUIÇÃO', [pr,pg,pb], [255,255,255]);
+    bandTitle('Remuneração Variável — Faixas e Distribuição', [pr,pg,pb], [255,255,255]);
     doc.setFont('helvetica','normal'); doc.setFontSize(9);
 
     const baseLabel = rv.base_label || rv.base || 'faturamento';
@@ -279,7 +279,7 @@ export async function generatePremioPoliticaPdf(d: PoliticaPdfData) {
   // Modelo Hotelaria — Critérios coletivos + distribuição por pontos
   const ht = d.hotelaria;
   if (ht && ht.criterios && ht.criterios.length > 0) {
-    bandTitle('MODELO HOTELARIA — CRITÉRIOS COLETIVOS E DISTRIBUIÇÃO', [pr,pg,pb], [255,255,255]);
+    bandTitle('Modelo Hotelaria — Critérios Coletivos e Distribuição', [pr,pg,pb], [255,255,255]);
     doc.setFont('helvetica','normal'); doc.setFontSize(9);
     const introHt =
       `Este modelo aplica divisão ${ht.split_coletivo}% coletiva / ${ht.split_individual}% individual. IMPORTANTE: para fins desta política, considera-se como "faturamento" exclusivamente o FATURAMENTO DE VENDAS DIRETAS (reservas fechadas diretamente com o hotel/pousada, sem intermediação de OTAs/canais terceiros). A parcela coletiva é composta pelos critérios abaixo, cada um com peso próprio sobre o faturamento de vendas diretas e faixas de atingimento (Piso / Meta 0 / Meta 1 / Meta 2). O valor apurado em cada critério é distribuído entre os colaboradores participantes de forma proporcional aos pontos atribuídos no cadastro. A parcela individual segue a escala de avaliação abaixo.`;
@@ -390,7 +390,7 @@ export async function generatePremioPoliticaPdf(d: PoliticaPdfData) {
     const [ano, mes] = (mm.competencia || '').split('-');
     const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
     const nomeMes = mes ? `${MESES[Number(mes)-1] || mes}/${ano}` : (mm.competencia || '');
-    bandTitle(`METAS DO MÊS — ${nomeMes.toUpperCase()}`, [pr,pg,pb], [255,255,255]);
+    bandTitle(`Metas do Mês — ${nomeMes}`, [pr,pg,pb], [255,255,255]);
     doc.setFont('helvetica','normal'); doc.setFontSize(9);
     const introM = `As metas abaixo são específicas da competência ${nomeMes} e vigoram durante o período indicado. Servem como referência diária (valor de FATURAMENTO DE VENDAS DIRETAS por dia) para o enquadramento dos critérios coletivos desta política.`;
     const iwM = doc.splitTextToSize(introM, W-80);
@@ -440,7 +440,7 @@ export async function generatePremioPoliticaPdf(d: PoliticaPdfData) {
   }
 
   // Termo de ciência
-  bandTitle('TERMO DE CIÊNCIA E CONCORDÂNCIA', [245,245,245]);
+  bandTitle('Termo de Ciência e Concordância', [pr,pg,pb], [255,255,255]);
   doc.setFont('helvetica','normal'); doc.setFontSize(9);
   const termo = `Declaro estar ciente e de acordo com a política de ${d.verba_label} acima descrita, compreendendo seus objetivos, critérios de apuração, pesos atribuídos e regras de elegibilidade. Reconheço que a verba é variável, condicionada ao atingimento dos critérios, não integra a remuneração para fins de habitualidade e poderá ser revista, suspensa ou alterada pelo empregador a qualquer tempo, mediante comunicação prévia.`;
   const tw = doc.splitTextToSize(termo, W-80);
@@ -448,7 +448,7 @@ export async function generatePremioPoliticaPdf(d: PoliticaPdfData) {
   y += 8;
 
   // Assinaturas dos colaboradores
-  bandTitle('COLABORADORES PARTICIPANTES — ASSINATURAS', [pr,pg,pb], [255,255,255]);
+  bandTitle('Colaboradores Participantes — Assinaturas', [pr,pg,pb], [255,255,255]);
   doc.setFont('helvetica','normal'); doc.setFontSize(8);
 
   // Header columns
@@ -511,10 +511,12 @@ export async function generatePremioPoliticaPdf(d: PoliticaPdfData) {
   const totalPages = (doc as any).internal.getNumberOfPages();
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
-    doc.setDrawColor(pr,pg,pb); doc.setLineWidth(0.7); doc.line(36, 46, W - 36, 46);
-    await drawBrandLogo(doc, branding?.logo_url || '/images/logo-monte-verde-pdf.png', 36, 12, 64, 28, { centerY: true });
-    doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(sr,sg,sb);
-    doc.text(`POLÍTICA DE ${d.verba_label.toUpperCase()}`, W - 36, 30, { align: 'right' });
+    if (i > 1) {
+      doc.setDrawColor(pr,pg,pb); doc.setLineWidth(0.7); doc.line(36, 46, W - 36, 46);
+      await drawBrandLogo(doc, branding?.logo_url || '/images/logo-monte-verde-pdf.png', 36, 12, 64, 28, { centerY: true });
+      doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(sr,sg,sb);
+      doc.text(`POLÍTICA DE ${d.verba_label.toUpperCase()}`, W - 36, 30, { align: 'right' });
+    }
     doc.setFillColor(sr,sg,sb); doc.rect(0, H - 27, W, 27, 'F');
     doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(255,255,255);
     const contact = [branding?.office_name, branding?.phone, branding?.email].filter(Boolean).join('  •  ');
