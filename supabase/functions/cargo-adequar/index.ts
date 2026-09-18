@@ -66,6 +66,10 @@ REGRAS DURAS PARA CLASSIFICAÇÃO CBO (CBO 2002 - MTE):
   • Produtor audiovisual → 261610 — Produtor de audiovisual
   • Analista de departamento pessoal / Analista de DP / Analista de RH / Analista de folha de pagamento → 252405 — Analista de recursos humanos
   • Assistente/Auxiliar de departamento pessoal / Auxiliar de pessoal / Auxiliar de folha de pagamento → 411005 — Auxiliar de pessoal (assistente administrativo de pessoal)
+  • Chefe de recepção / Coordenador de recepção / Supervisor de recepção / Encarregado de recepção / Líder de recepcionistas → 420125 — Coordenador de recepção
+  • Recepcionista de hotel / pousada / atendente de reservas de hospedagem → 422105 — Recepcionista, em geral (use 422105 salvo se a base oficial trouxer ocupação específica de hotelaria)
+  • Gerente de hotel/pousada (responsável pela operação do meio de hospedagem) → 141410 — Gerente de hotel
+- HOTELARIA / MEIOS DE HOSPEDAGEM (hotel, pousada, resort, hostel): cargos de recepção, reservas, hospedagem, governança, camareira, mensageiro e concierge pertencem às famílias de ATENDIMENTO/HOSPEDAGEM (4201, 4221, 5134, 5121 e correlatas) ou de gerência hoteleira (1414). É TERMINANTEMENTE PROIBIDO classificar "Chefe de recepção", "Supervisor de recepção" ou cargos de hospedagem em famílias de COMUNICAÇÃO, MARKETING, PUBLICIDADE ou RELAÇÕES PÚBLICAS (1423 — Gerente de comunicação, 2531, 2534 e correlatas). "Recepção" em hotelaria é atendimento a hóspedes, nunca comunicação corporativa.
 - TÍTULOS GENÉRICOS + SETOR DA EMPRESA (regra crítica): cargos como "Auxiliar de produção", "Operador de produção", "Ajudante de produção", "Auxiliar de fábrica", "Auxiliar operacional", "Assistente de produção" NÃO possuem ocupação única na CBO. Eles DEVEM ser classificados pela ATIVIDADE ECONÔMICA da empresa (setor informado acima) e pelo produto fabricado. Escolha a família da indústria correspondente (ex.: chocolates/doces/confeitaria → família 8484 e correlatas de fabricação de massas, doces e chocolates; laticínios → 8483; bebidas → 8482; abate e carnes → 8485/848105 apenas se a empresa realmente abate/processa carnes; metalurgia, plásticos, têxtil, calçados etc. conforme o caso).
 - É ERRO GRAVE classificar "Auxiliar de produção" de uma CHOCOLATERIA, padaria, confeitaria ou fábrica de doces como "Abatedor" (848105) ou qualquer ocupação de abate/frigorífico apenas porque "auxiliar de produção" consta como SINÔNIMO daquela ocupação na base do MTE. Sinônimo genérico NUNCA prevalece sobre o setor real da empresa.
 - Antes de responder, confronte o "titulo_cbo" com o setor/produto da empresa: se a ocupação pertencer a outro ramo industrial, descarte-a e escolha a da indústria correta, registrando o descarte em "cbo_justificativa".
@@ -290,7 +294,11 @@ const SETORES: { re: RegExp; termos: string[]; titulos: RegExp }[] = [
   { re: /(textil|confeccao|vestuario|costura|malharia)/, termos: ["confecção", "costura"], titulos: /(textil|costur|malha|tecel|vestuario)/ },
   { re: /(plastic|injecao|polimero|embalagem)/, termos: ["plásticos"], titulos: /(plastic|polimero|injec|embalagem)/ },
   { re: /(construcao civil|obra|edificac)/, termos: ["construção civil"], titulos: /(obra|construc|pedreir|servente)/ },
-  { re: /(hotel|pousada|restaurante|bar |lanchonete|cozinha industrial)/, termos: ["cozinha", "restaurante"], titulos: /(cozinh|copeir|garcom|camareir|restaurant|hotel)/ },
+  {
+    re: /(hotel|hotelaria|pousada|resort|hostel|motel|restaurante|bar |lanchonete|cozinha industrial|meios de hospedagem)/,
+    termos: ["recepção", "hospedagem", "cozinha", "restaurante"],
+    titulos: /(cozinh|copeir|garcom|camareir|restaurant|hotel|recepc|hospedag|governant|mensageir|concierge|reserva)/,
+  },
 ];
 
 function setoresDe(ctx: string) {
@@ -475,6 +483,13 @@ const CANONICOS: { re: RegExp; cbo: string; titulo: string; familia: string; jus
     titulo: "Analista de recursos humanos",
     familia: "2524 — Profissionais de recursos humanos",
     justificativa: "Rotinas de admissão, folha de pagamento, eSocial, férias e rescisão enquadram-se na família 2524 (profissionais de recursos humanos).",
+  },
+  {
+    re: /(chefe|chefia|coordenador(a)?|supervisor(a)?|encarregad[oa]|lider|gerente)\s+(de\s+|da\s+|do\s+)?(recepcao|recepcionistas|front ?office|front ?desk)/,
+    cbo: "420125",
+    titulo: "Coordenador de recepção",
+    familia: "4201 — Supervisores de atendimento ao público e de pesquisa",
+    justificativa: "Chefia da recepção (atendimento a clientes/hóspedes) é sinônimo oficial de Coordenador de recepção (4201-25); não se confunde com gerência de comunicação (1423-10).",
   },
   {
     re: /(auxiliar|assistente|aux\.?)\s+(de\s+)?(departamento pessoal|dep\.? pessoal|dp\b|pessoal|folha de pagamento|recursos humanos|rh\b)/,
