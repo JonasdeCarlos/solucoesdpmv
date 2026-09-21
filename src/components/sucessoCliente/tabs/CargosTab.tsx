@@ -199,6 +199,32 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
     } finally { setBusy(null); }
   };
 
+  const revisarAtividades = async () => {
+    const atuais: string[] = Array.isArray(draft.atividades) ? draft.atividades.filter(Boolean) : [];
+    if (!atuais.length) return toast.error('Traga primeiro as atividades do CBO/MTE.');
+    if (!setorEmpresa?.trim()) return toast.error('Informe a atividade que a empresa exerce no topo da aba.');
+    setBusy('revisar-mte');
+    try {
+      const { data, error } = await supabase.functions.invoke('cargo-atividades-revisar', {
+        body: {
+          nome: draft.nome, cbo: draft.cbo, area: draft.area, nivel: draft.nivel,
+          empresa: cliente?.nome, setor: setorEmpresa,
+          descricao_sumaria: draft.descricao_sumaria,
+          pontos_obrigatorios: draft.pontos_obrigatorios,
+          atividades: atuais,
+        },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const novas: string[] = Array.isArray((data as any)?.atividades) ? (data as any).atividades : [];
+      if (!novas.length) throw new Error('Nenhuma atividade revisada.');
+      setDraft((d: any) => ({ ...d, atividades: novas }));
+      const rem = Array.isArray((data as any)?.removidas) ? (data as any).removidas.length : 0;
+      toast.success(`Atividades revisadas para o seu ramo${rem ? ` — ${rem} item(ns) fora do contexto removido(s)` : ''}.`);
+    } catch (e: any) { toast.error('Falha: ' + (e?.message || e)); }
+    finally { setBusy(null); }
+  };
+
   const completarComIA = async () => {
     void 0;
     return _completarComIA();
