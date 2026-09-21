@@ -1656,10 +1656,21 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
             <div className="md:col-span-2">
               <div className="flex items-center justify-between mb-1">
                 <Label className="text-xs">Atividades (uma por linha)</Label>
-                <Button type="button" size="sm" variant="outline" onClick={buscarMTE} disabled={busy==='mte' || !draft.cbo}>
-                  {busy==='mte' ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <Sparkles className="w-4 h-4 mr-2"/>}
-                  Trazer atividades do CBO/MTE
-                </Button>
+                <div className="flex gap-2">
+                  <Button type="button" size="sm" variant="outline" onClick={buscarMTE} disabled={busy==='mte' || !draft.cbo}>
+                    {busy==='mte' ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <Sparkles className="w-4 h-4 mr-2"/>}
+                    Trazer atividades do CBO/MTE
+                  </Button>
+                  <Button
+                    type="button" size="sm" variant="secondary"
+                    onClick={revisarAtividades}
+                    disabled={busy==='revisar-mte' || !(draft.atividades||[]).length}
+                    title="Revisa as atividades do MTE deixando apenas o que se aplica ao seu negócio e ramo de atuação."
+                  >
+                    {busy==='revisar-mte' ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <Sparkles className="w-4 h-4 mr-2"/>}
+                    Revisar atividades para meu ramo
+                  </Button>
+                </div>
               </div>
               <Textarea rows={6} value={(draft.atividades||[]).join('\n')} onChange={e=>setDraft({...draft,atividades:e.target.value.split('\n').filter(Boolean)})}/>
             </div>
