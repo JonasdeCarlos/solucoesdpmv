@@ -50,7 +50,7 @@ export type PoliticaPdfData = {
 
 const BRL = (n: number) => `R$ ${Number(n || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-export async function generatePremioPoliticaPdf(d: PoliticaPdfData) {
+async function buildPoliticaDoc(d: PoliticaPdfData) {
   const branding = await loadBranding();
   const doc = new jsPDF({ unit: 'pt', format: 'a4', compress: true });
   const W = doc.internal.pageSize.getWidth();
