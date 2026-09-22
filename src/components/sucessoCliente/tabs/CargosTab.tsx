@@ -18,6 +18,8 @@ import { DebouncedInput } from '@/components/sucessoCliente/DebouncedField';
 import { extractPisosCCT, matchPisoCargo } from '@/utils/sucessoCliente/pisosCCT';
 import CargosChat from '@/components/sucessoCliente/tabs/CargosChat';
 import { normalizeOrganograma } from '@/utils/sucessoCliente/organograma';
+import SelecionarEmpresaDialog from '@/components/sucessoCliente/SelecionarEmpresaDialog';
+import { Building2 } from 'lucide-react';
 
 const NIVEIS = [
   { v:'operacional', l:'Operacional' },
