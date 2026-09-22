@@ -176,6 +176,21 @@ export default function PerfilTab({ cliente, onClienteSaved }: { cliente: Client
       <Card>
         <CardHeader><CardTitle className="text-base">Identificação</CardTitle></CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="md:col-span-3 flex items-center gap-4 border rounded-md p-3">
+            <div className="w-24 h-16 flex items-center justify-center bg-muted/40 rounded overflow-hidden shrink-0">
+              {(cli as any).logo_url
+                ? <img src={(cli as any).logo_url} alt={`Logo de ${cli.nome}`} className="max-w-full max-h-full object-contain"/>
+                : <span className="text-[10px] text-muted-foreground text-center px-1">Sem logo</span>}
+            </div>
+            <div className="space-y-1">
+              <Label>Logo da empresa</Label>
+              <p className="text-xs text-muted-foreground">Aparece nos documentos gerados (política, relatórios), inclusive no link público.</p>
+              <div className="flex items-center gap-2">
+                <Input type="file" accept="image/*" className="h-8 text-xs" onChange={(e)=>{ onLogoFile(e.target.files?.[0]); e.currentTarget.value=''; }}/>
+                {(cli as any).logo_url && <Button type="button" size="sm" variant="outline" onClick={removerLogo}>Remover</Button>}
+              </div>
+            </div>
+          </div>
           <div><Label>Código</Label><Input value={cli.codigo_cliente || ''} onChange={(e)=>setCli({...cli, codigo_cliente: e.target.value})}/></div>
           <div className="md:col-span-2"><Label>Razão Social *</Label><Input value={cli.nome} onChange={(e)=>setCli({...cli, nome: e.target.value})}/></div>
           <div><Label>Nome Fantasia</Label><Input value={cli.nome_fantasia} onChange={(e)=>setCli({...cli, nome_fantasia: e.target.value})}/></div>
