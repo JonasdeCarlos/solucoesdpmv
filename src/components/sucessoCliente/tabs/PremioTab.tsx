@@ -784,6 +784,47 @@ export function EmployeesSection({ policy, cliente }: { policy: PrizePolicy; cli
   const [bulk, setBulk] = useState('');
   const [showBulk, setShowBulk] = useState(false);
   const [showImport, setShowImport] = useState(false);
+  const [showPolicies, setShowPolicies] = useState(false);
+  const [outrasPoliticas, setOutrasPoliticas] = useState<any[]>([]);
+  const [politicaSel, setPoliticaSel] = useState('');
+  const [politicaEmps, setPoliticaEmps] = useState<any[]>([]);
+  const [loadingPol, setLoadingPol] = useState(false);
+
+  useEffect(() => {
+    if (!showPolicies || !policy.client_id) return;
+    setLoadingPol(true);
+    supabase.from('prize_policies' as any)
+      .select('id,nome,verba_label')
+      .eq('client_id', policy.client_id)
+      .neq('id', policy.id)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => { setOutrasPoliticas((data as any[]) || []); setLoadingPol(false); });
+  }, [showPolicies, policy.client_id, policy.id]);
+
+  useEffect(() => {
+    if (!politicaSel) { setPoliticaEmps([]); return; }
+    supabase.from('prize_employees' as any)
+      .select('*')
+      .eq('policy_id', politicaSel)
+      .order('nome')
+      .then(({ data }) => setPoliticaEmps((data as any[]) || []));
+  }, [politicaSel]);
+
+  const norm = (s: string) => (s || '').trim().toUpperCase();
+  const jaExiste = (e: any) =>
+    items.some(i => (i.cpf && e.cpf && i.cpf.replace(/\D/g,'') === String(e.cpf).replace(/\D/g,'')) || norm(i.nome) === norm(e.nome));
+
+  const importarDePolitica = async (todos: boolean, emp?: any) => {
+    const alvo = todos ? politicaEmps.filter(e => !jaExiste(e)) : [emp];
+    if (!alvo.length) { toast.info('Nenhum colaborador novo para importar.'); return; }
+    const rows = alvo.map(e => ({
+      nome: e.nome, cpf: e.cpf || null, matricula: e.matricula || null, codigo_folha: e.codigo_folha || null,
+      cargo: e.cargo || null, setor: e.setor || null, data_admissao: e.data_admissao || null, ativo: e.ativo !== false,
+    }));
+    const { error } = await createMany(rows as any);
+    if (error) { toast.error('Erro ao importar colaboradores.'); return; }
+    toast.success(`${rows.length} colaborador(es) importado(s).`);
+  };
 
   const empresaNome = (cliente?.nome || cliente?.razao_social || '').trim();
   const empresaEmpregados = empregados.filter(e =>
