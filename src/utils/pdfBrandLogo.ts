@@ -106,6 +106,7 @@ export async function drawBrandLogo(
   } catch {
     // Last-resort fallback: office logo bundled with the app (same origin,
     // never blocked). Avoids a header with no logo at all.
+    if (opts?.fallback === false) return { w: 0, h: 0 };
     const FALLBACK = '/images/logo-monte-verde-pdf.png';
     if (url !== FALLBACK) {
       try {
