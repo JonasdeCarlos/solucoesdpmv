@@ -18,6 +18,7 @@ import PremioRemuneracaoVariavelSection from './PremioRemuneracaoVariavelSection
 import PremioHotelariaSection from './PremioHotelariaSection';
 import { generatePremioPoliticaPdf } from '@/utils/sucessoCliente/premioPoliticaPdf';
 import { supabase } from '@/integrations/supabase/client';
+import { usePrizePublicApi } from '@/hooks/prizePublicContext';
 import { HOTELARIA_CONFIG, HOTELARIA_CRITERIOS_INDIVIDUAIS } from '@/utils/sucessoCliente/premioTemplates';
 import SelecionarEmpresaDialog from '@/components/sucessoCliente/SelecionarEmpresaDialog';
 import { Building2 } from 'lucide-react';
