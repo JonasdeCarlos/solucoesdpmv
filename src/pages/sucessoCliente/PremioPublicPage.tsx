@@ -9,6 +9,7 @@ import PremioHotelariaSection from '@/components/sucessoCliente/tabs/PremioHotel
 import PremioAplicacaoSection from '@/components/sucessoCliente/tabs/PremioAplicacaoSection';
 import { CriteriaSection, EmployeesSection } from '@/components/sucessoCliente/tabs/PremioTab';
 import type { PrizePolicy } from '@/hooks/usePrizePolicies';
+import { setBrandingOverride } from '@/utils/sucessoCliente/perfilPdf';
 
 let PUB_PASSWORD = '';
 export function setPubPassword(p: string) { PUB_PASSWORD = p; }
@@ -42,6 +43,8 @@ export default function PremioPublicPage() {
     const d = await invokePub(policyId, 'get_bundle');
     setPolicy(d.policy);
     setCliente(d.cliente);
+    // Sem login não há acesso à tabela de marca: usa a marca enviada pelo servidor
+    setBrandingOverride(d.branding || undefined);
   }, [policyId]);
 
   useEffect(() => {
