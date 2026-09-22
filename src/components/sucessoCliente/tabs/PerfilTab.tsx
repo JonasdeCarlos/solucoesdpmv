@@ -105,6 +105,48 @@ export default function PerfilTab({ cliente, onClienteSaved }: { cliente: Client
     setEwPwd((data as any) || ''); setEwPwdLoaded(true); setShowEwPwd(true);
   };
 
+  // Converte a imagem enviada em uma versão leve (máx. 420px) embutida no cadastro,
+  // para que apareça também nos documentos abertos por link público.
+  const onLogoFile = async (file: File | undefined) => {
+    if (!file) return;
+    try {
+      const dataUrl: string = await new Promise((res, rej) => {
+        const fr = new FileReader();
+        fr.onload = () => res(fr.result as string);
+        fr.onerror = () => rej(fr.error);
+        fr.readAsDataURL(file);
+      });
+      const img = await new Promise<HTMLImageElement>((res, rej) => {
+        const im = new Image();
+        im.onload = () => res(im);
+        im.onerror = () => rej(new Error('imagem inválida'));
+        im.src = dataUrl;
+      });
+      const MAX = 420;
+      let w = img.naturalWidth, h = img.naturalHeight;
+      const scale = Math.min(1, MAX / Math.max(w, h));
+      w = Math.max(1, Math.round(w * scale)); h = Math.max(1, Math.round(h * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d')!.drawImage(img, 0, 0, w, h);
+      const small = canvas.toDataURL('image/png');
+      const { error } = await supabase.from('clientes' as any).update({ logo_url: small } as any).eq('id', cliente.id);
+      if (error) { toast.error('Erro ao salvar a logo: ' + error.message); return; }
+      setCli((c) => ({ ...c, logo_url: small } as any));
+      toast.success('Logo da empresa atualizada.');
+      onClienteSaved();
+    } catch (e: any) {
+      toast.error('Não foi possível ler a imagem.');
+    }
+  };
+
+  const removerLogo = async () => {
+    const { error } = await supabase.from('clientes' as any).update({ logo_url: null } as any).eq('id', cliente.id);
+    if (error) { toast.error(error.message); return; }
+    setCli((c) => ({ ...c, logo_url: null } as any));
+    onClienteSaved();
+  };
+
   const saveAll = async () => {
     const { error: e1 } = await supabase.from('clientes' as any).update({
       nome: cli.nome, codigo_cliente: cli.codigo_cliente || null, nome_fantasia: cli.nome_fantasia,
