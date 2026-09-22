@@ -253,6 +253,7 @@ function AssessmentEmployeeList({ assessment, policy, cliente, onOpenHistory, on
       await generatePremioRelatorioFinalPdf({
         empresa: cliente?.nome || cliente?.razao_social || '',
         cnpj: cliente?.cnpj || cliente?.documento || '',
+        cliente_logo_url: (cliente as any)?.logo_url || undefined,
         verba_label: policy.verba_label,
         politica_nome: policy.nome,
         competencia: assessment.competencia,

@@ -5,6 +5,7 @@ import { drawBrandLogo } from '@/utils/pdfBrandLogo';
 export type RelatorioFinalData = {
   empresa: string;
   cnpj?: string;
+  cliente_logo_url?: string | null;
   verba_label: string;
   politica_nome: string;
   competencia: string; // MM/YYYY
@@ -41,142 +42,198 @@ export async function generatePremioRelatorioFinalPdf(d: RelatorioFinalData) {
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
   const primary = branding?.primary_color || '#628E3F';
+  const secondary = branding?.secondary_color || '#393421';
   const hex = (h: string) => [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)] as [number,number,number];
   const [pr,pg,pb] = hex(primary);
+  const [sr,sg,sb] = hex(secondary);
+  (doc as any).setCharSpace?.(0);
 
-  // Header
-  doc.setFillColor(pr,pg,pb); doc.rect(0,0,W,95,'F');
-  await drawBrandLogo(doc, branding?.logo_url, 20, 12, 85, 70, { centerY: true });
-  doc.setTextColor(255,255,255); doc.setFontSize(15);
-  doc.text(`RELATÓRIO FINAL DE ${d.verba_label.toUpperCase()}`, 120, 40);
-  doc.setFontSize(10);
-  doc.text(`${d.empresa}${d.cnpj ? ` — CNPJ ${d.cnpj}` : ''}`, 120, 62);
-  doc.text(`Competência: ${d.competencia} • Emitido em ${new Date().toLocaleDateString('pt-BR')}`, 120, 78);
+  // ---------- Cabeçalho (mesma estética da política) ----------
+  const HEADER_H = 126;
+  doc.setFillColor(247,249,245); doc.rect(0,0,W,HEADER_H,'F');
+  doc.setDrawColor(pr,pg,pb); doc.setLineWidth(0.8); doc.line(36, HEADER_H - 1, W - 36, HEADER_H - 1);
 
-  let y = 115; doc.setTextColor(0,0,0);
+  const LOGO_BOX_H = 62;
+  const LOGO_BOX_MAX_W = 105;
+  const LOGO_BOX_Y = (HEADER_H - LOGO_BOX_H) / 2;
+  const off = await drawBrandLogo(doc, branding?.logo_url || '/images/logo-monte-verde-pdf.png', 30, LOGO_BOX_Y, LOGO_BOX_MAX_W, LOGO_BOX_H, { centerY: true });
+  const CLI_BOX_W = 95;
+  const cli = d.cliente_logo_url
+    ? await drawBrandLogo(doc, d.cliente_logo_url, W - 30 - CLI_BOX_W, LOGO_BOX_Y, CLI_BOX_W, LOGO_BOX_H, { align: 'center', centerY: true, fallback: false })
+    : { w: 0, h: 0 };
 
-  const ensure = (need: number) => { if (y + need > H - 60) { doc.addPage(); y = 40; } };
-  const boxTitle = (t: string) => {
-    ensure(20);
+  const TX = 30 + (off.w > 0 ? off.w + 26 : 0);
+  const TITLE_MAX_W = W - TX - 24 - (cli.w > 0 ? CLI_BOX_W + 16 : 0);
+  doc.setTextColor(sr,sg,sb);
+  doc.setFont('helvetica','bold'); doc.setFontSize(15);
+  const titleLines = doc.splitTextToSize(`RELATÓRIO FINAL DE ${d.verba_label.toUpperCase()} — ${d.competencia}`, TITLE_MAX_W);
+  let ty = LOGO_BOX_Y + 22;
+  for (const l of titleLines) { doc.text(l, TX, ty); ty += 17; }
+  doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(70,74,68);
+  doc.text(`${d.empresa}${d.cnpj ? ` — CNPJ ${d.cnpj}` : ''}`, TX, ty + 4, { maxWidth: TITLE_MAX_W });
+  doc.setFontSize(9);
+  doc.text(`Emitido em ${new Date().toLocaleDateString('pt-BR')}`, TX, ty + 20);
+  if (branding?.office_name) doc.text(branding.office_name, TX, ty + 34, { maxWidth: TITLE_MAX_W });
+
+  let y = HEADER_H + 22;
+  doc.setTextColor(0,0,0);
+
+  const ensure = (need: number) => { if (y + need > H - 60) { doc.addPage(); y = 60; } };
+
+  const bandTitle = (text: string) => {
+    ensure(34);
+    doc.setFillColor(pr,pg,pb);
+    doc.roundedRect(40, y, W-80, 22, 3, 3, 'F');
+    doc.setTextColor(255,255,255);
+    (doc as any).setCharSpace?.(0.4);
     doc.setFont('helvetica','bold'); doc.setFontSize(10);
-    doc.setFillColor(pr,pg,pb); doc.setTextColor(255,255,255);
-    doc.rect(40, y, W-80, 16, 'F');
-    doc.text(t, 46, y+11);
-    y += 20; doc.setTextColor(0,0,0);
-  };
-  const line = (l: string, opts?: { bold?: boolean; size?: number }) => {
-    doc.setFont('helvetica', opts?.bold ? 'bold' : 'normal'); doc.setFontSize(opts?.size || 9);
-    const wrap = doc.splitTextToSize(l, W - 80);
-    for (const w of wrap) { ensure(12); doc.text(w, 46, y+9); y += 12; }
+    doc.text(text, 50, y+15);
+    (doc as any).setCharSpace?.(0);
+    doc.setTextColor(0,0,0);
+    y += 34;
   };
 
-  // Identificação
-  boxTitle('IDENTIFICAÇÃO');
-  line(`Colaborador: ${d.colaborador.nome}${d.colaborador.cargo ? ` — ${d.colaborador.cargo}` : ''}`, { bold: true });
+  const line = (l: string, opts?: { bold?: boolean; size?: number; color?: [number,number,number] }) => {
+    doc.setFont('helvetica', opts?.bold ? 'bold' : 'normal');
+    doc.setFontSize(opts?.size || 9);
+    if (opts?.color) doc.setTextColor(opts.color[0], opts.color[1], opts.color[2]);
+    const wrap = doc.splitTextToSize(l, W - 92);
+    for (const w of wrap) { ensure(13); doc.text(w, 46, y + 9); y += 13; }
+    doc.setTextColor(0,0,0);
+  };
+
+  const tableHead = (cols: Array<{ t: string; x: number; align?: 'right' }>) => {
+    ensure(22);
+    doc.setFillColor(235,239,231);
+    doc.rect(40, y, W-80, 16, 'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(sr,sg,sb);
+    for (const c of cols) doc.text(c.t, c.x, y+11, c.align ? { align: c.align } as any : undefined);
+    doc.setTextColor(0,0,0); doc.setFont('helvetica','normal'); doc.setFontSize(9);
+    y += 16;
+  };
+
+  // ---------- Identificação ----------
+  bandTitle('Identificação do Colaborador');
+  line(`${d.colaborador.nome}${d.colaborador.cargo ? ` — ${d.colaborador.cargo}` : ''}`, { bold: true, size: 10 });
   const linhaId = [
     d.colaborador.cpf ? `CPF: ${d.colaborador.cpf}` : '',
     d.colaborador.codigo_folha ? `Cód. folha: ${d.colaborador.codigo_folha}` : '',
     d.colaborador.data_admissao ? `Admissão: ${new Date(d.colaborador.data_admissao).toLocaleDateString('pt-BR')}` : '',
-  ].filter(Boolean).join('   ');
+  ].filter(Boolean).join('    ');
   if (linhaId) line(linhaId);
-  line(`Política: ${d.politica_nome}`);
-  y += 4;
+  line(`Política: ${d.politica_nome}   •   Competência: ${d.competencia}`);
+  y += 10;
 
-  // Demonstrativo coletivo
+  // ---------- Demonstrativo coletivo ----------
   if (d.coletivo) {
-    boxTitle('DEMONSTRATIVO COLETIVO (METAS DA COMPETÊNCIA)');
-    line(`Faturamento total do período: ${BRL(d.coletivo.faturamento_total)} • Dia de referência: ${d.coletivo.dia_referencia} de ${d.coletivo.dias_periodo}`);
-    line(`Referência diária (fat ÷ dia): ${BRL(d.coletivo.valor_referencia_dia)}`);
-    line(`Metas: M0 ${BRL(d.coletivo.meta_0)}/dia • M1 ${BRL(d.coletivo.meta_1)}/dia • M2 ${BRL(d.coletivo.meta_2)}/dia`);
-    y += 4;
+    bandTitle('Demonstrativo Coletivo — Metas da Competência');
+    line(`Faturamento total do período: ${BRL(d.coletivo.faturamento_total)}   •   Dia de referência: ${d.coletivo.dia_referencia} de ${d.coletivo.dias_periodo}`);
+    line(`Referência diária (faturamento ÷ dia): ${BRL(d.coletivo.valor_referencia_dia)}`);
+    line(`Metas: Meta 0 ${BRL(d.coletivo.meta_0)}/dia   •   Meta 1 ${BRL(d.coletivo.meta_1)}/dia   •   Meta 2 ${BRL(d.coletivo.meta_2)}/dia`);
+    y += 8;
 
-    // Tabela
-    ensure(20);
-    doc.setFont('helvetica','bold'); doc.setFontSize(9);
-    doc.setFillColor(235,235,235); doc.rect(40, y, W-80, 14, 'F');
-    doc.text('CRITÉRIO', 46, y+10);
-    doc.text('PESO', W-330, y+10);
-    doc.text('BC', W-285, y+10);
-    doc.text('NÍVEL', W-215, y+10);
-    doc.text('REFERÊNCIA', W-155, y+10);
-    doc.text('VALOR', W-46, y+10, { align: 'right' } as any);
-    y += 14;
-    doc.setFont('helvetica','normal');
-
+    const C1 = 46, C2 = W-330, C3 = W-288, C4 = W-215, C5 = W-150, C6 = W-46;
+    tableHead([
+      { t: 'CRITÉRIO', x: C1 }, { t: 'PESO', x: C2 }, { t: 'BASE', x: C3 },
+      { t: 'NÍVEL', x: C4 }, { t: 'REFERÊNCIA', x: C5 }, { t: 'VALOR', x: C6, align: 'right' },
+    ]);
+    let alt = false;
     for (const l of d.coletivo.linhas) {
-      ensure(14);
-      doc.setDrawColor(230,230,230); doc.line(40, y, W-40, y);
-      doc.text(String(l.nome).slice(0, 28), 46, y+10);
-      doc.text(`${l.peso_pct}%`, W-330, y+10);
-      doc.text(BRL(l.bc), W-285, y+10);
-      doc.text(`${l.nivel.replace('_',' ')} ${l.pct}%`, W-215, y+10);
-      doc.text(String(l.referencia).slice(0, 18), W-155, y+10);
-      doc.text(BRL(l.valor), W-46, y+10, { align: 'right' } as any);
-      y += 14;
+      ensure(16);
+      if (alt) { doc.setFillColor(248,249,246); doc.rect(40, y, W-80, 15, 'F'); }
+      alt = !alt;
+      doc.setDrawColor(232,235,229); doc.line(40, y+15, W-40, y+15);
+      doc.setFontSize(8.5);
+      doc.text(String(l.nome).slice(0, 30), C1, y+10);
+      doc.text(`${l.peso_pct}%`, C2, y+10);
+      doc.text(BRL(l.bc), C3, y+10);
+      doc.text(`${String(l.nivel).replace('_',' ')} ${l.pct}%`, C4, y+10);
+      doc.text(String(l.referencia).slice(0, 16), C5, y+10);
+      doc.text(BRL(l.valor), C6, y+10, { align: 'right' } as any);
+      y += 15;
     }
-    doc.setDrawColor(180,180,180); doc.line(40, y, W-40, y); y += 4;
-    line(`Total coletivo apurado (${d.coletivo.split_coletivo}%): ${BRL(d.coletivo.total_coletivo)}`, { bold: true });
-    line(`Pontos do colaborador: ${d.coletivo.pontos_colab} de ${d.coletivo.soma_pontos} pts • Participação: ${d.coletivo.soma_pontos > 0 ? ((d.coletivo.pontos_colab / d.coletivo.soma_pontos) * 100).toFixed(1) : '0,0'}%`);
-    line(`SHARE COLETIVO DO COLABORADOR: ${BRL(d.coletivo.share_colab)}`, { bold: true });
+    doc.setFontSize(9);
     y += 6;
+    line(`Total coletivo apurado (${d.coletivo.split_coletivo}% do faturamento): ${BRL(d.coletivo.total_coletivo)}`, { bold: true });
+    line(`Pontos do colaborador: ${d.coletivo.pontos_colab} de ${d.coletivo.soma_pontos}   •   Participação: ${d.coletivo.soma_pontos > 0 ? ((d.coletivo.pontos_colab / d.coletivo.soma_pontos) * 100).toFixed(1) : '0,0'}%`);
+    line(`Parcela coletiva do colaborador: ${BRL(d.coletivo.share_colab)}`, { bold: true, color: [pr,pg,pb] });
+    y += 12;
   }
 
-  // Avaliação individual
-  boxTitle('AVALIAÇÃO INDIVIDUAL');
-  line(`Teto individual: ${BRL(d.individual.valor_base_teto)} • Percentual apurado: ${d.individual.percentual_final.toFixed(0)}% • Elegibilidade: ${d.individual.elegibilidade}`);
-  y += 2;
-  ensure(20);
-  doc.setFont('helvetica','bold'); doc.setFontSize(9);
-  doc.setFillColor(235,235,235); doc.rect(40, y, W-80, 14, 'F');
-  doc.text('CRITÉRIO', 46, y+10);
-  doc.text('PESO', W-220, y+10);
-  doc.text('%', W-160, y+10);
-  y += 14;
-  doc.setFont('helvetica','normal');
-  for (const c of d.individual.criterios) {
-    ensure(14);
-    doc.setDrawColor(230,230,230); doc.line(40, y, W-40, y);
-    doc.text(`${c.nome}${c.essencial ? ' *' : ''}`.slice(0, 60), 46, y+10);
-    doc.text(String(c.peso), W-220, y+10);
-    doc.text(`${Number(c.percentual||0).toFixed(0)}%`, W-160, y+10);
-    y += 14;
-    if (c.observacao) { doc.setTextColor(90,90,90); doc.setFontSize(8); line(`obs: ${c.observacao}`); doc.setTextColor(0,0,0); doc.setFontSize(9); }
-    if (c.feedback) { doc.setTextColor(90,90,90); doc.setFontSize(8); line(`feedback: ${c.feedback}`); doc.setTextColor(0,0,0); doc.setFontSize(9); }
-  }
-  y += 2;
-  line(`Valor individual apurado: ${BRL(d.individual.valor_final)}`, { bold: true });
-  if (d.individual.parecer_geral) {
-    y += 4;
-    boxTitle('PARECER / FEEDBACK GERAL');
-    line(d.individual.parecer_geral);
-  }
-
-  // Total final
-  ensure(40);
+  // ---------- Avaliação individual ----------
+  bandTitle('Avaliação Individual');
+  line(`Teto individual: ${BRL(d.individual.valor_base_teto)}   •   Percentual apurado: ${d.individual.percentual_final.toFixed(0)}%   •   Elegibilidade: ${d.individual.elegibilidade}`);
   y += 6;
-  doc.setFillColor(pr,pg,pb); doc.setTextColor(255,255,255);
-  doc.rect(40, y, W-80, 26, 'F');
-  doc.setFont('helvetica','bold'); doc.setFontSize(12);
-  doc.text(`TOTAL FINAL A RECEBER: ${BRL(d.total_geral)}`, 46, y+17);
-  doc.setFontSize(9); doc.setFont('helvetica','normal');
-  const detalhe = d.coletivo
-    ? `(coletivo ${BRL(d.coletivo.share_colab)} + individual ${BRL(d.individual.valor_final)})`
-    : `(individual ${BRL(d.individual.valor_final)})`;
-  doc.text(detalhe, W-46, y+17, { align: 'right' } as any);
-  y += 32; doc.setTextColor(0,0,0);
 
-  // Assinaturas
-  if (y > H - 130) { doc.addPage(); y = H - 130; } else { y = Math.max(y + 20, H - 130); }
-  doc.setDrawColor(120,120,120);
+  const K1 = 46, K2 = W-220, K3 = W-150;
+  tableHead([{ t: 'CRITÉRIO', x: K1 }, { t: 'PESO', x: K2 }, { t: 'ATINGIMENTO', x: K3 }]);
+  let alt2 = false;
+  for (const c of d.individual.criterios) {
+    ensure(16);
+    if (alt2) { doc.setFillColor(248,249,246); doc.rect(40, y, W-80, 15, 'F'); }
+    alt2 = !alt2;
+    doc.setDrawColor(232,235,229); doc.line(40, y+15, W-40, y+15);
+    doc.setFontSize(8.5);
+    doc.text(`${c.nome}${c.essencial ? ' *' : ''}`.slice(0, 62), K1, y+10);
+    doc.text(String(c.peso), K2, y+10);
+    doc.text(`${Number(c.percentual||0).toFixed(0)}%`, K3, y+10);
+    y += 15;
+    doc.setFontSize(9);
+    if (c.observacao) line(`Observação: ${c.observacao}`, { size: 8, color: [95,95,95] });
+    if (c.feedback) line(`Feedback: ${c.feedback}`, { size: 8, color: [95,95,95] });
+  }
+  y += 8;
+  line('* Critérios essenciais zerados impedem o pagamento da verba.', { size: 8, color: [120,120,120] });
+  line(`Parcela individual apurada: ${BRL(d.individual.valor_final)}`, { bold: true, color: [pr,pg,pb] });
+  y += 10;
+
+  if (d.individual.parecer_geral) {
+    bandTitle('Parecer / Feedback Geral');
+    line(d.individual.parecer_geral);
+    y += 10;
+  }
+
+  // ---------- Total ----------
+  ensure(48);
+  doc.setFillColor(pr,pg,pb); doc.roundedRect(40, y, W-80, 30, 3, 3, 'F');
+  doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(12);
+  doc.text(`TOTAL FINAL A RECEBER: ${BRL(d.total_geral)}`, 50, y+19);
+  doc.setFontSize(8.5); doc.setFont('helvetica','normal');
+  const detalhe = d.coletivo
+    ? `coletivo ${BRL(d.coletivo.share_colab)} + individual ${BRL(d.individual.valor_final)}`
+    : `individual ${BRL(d.individual.valor_final)}`;
+  doc.text(detalhe, W-50, y+19, { align: 'right' } as any);
+  y += 40; doc.setTextColor(0,0,0);
+
+  // ---------- Assinaturas ----------
+  ensure(90);
+  y = Math.max(y + 24, H - 130);
+  doc.setDrawColor(150,150,150);
   doc.line(60, y, 260, y);
   doc.line(W-260, y, W-60, y);
-  doc.setFontSize(9); doc.setTextColor(80,80,80);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(80,80,80);
   doc.text('Assinatura do Colaborador', 60, y+12);
-  doc.text(d.colaborador.nome, 60, y+26);
+  doc.text(d.colaborador.nome, 60, y+24);
   doc.text('Assinatura do Responsável (Empregador)', W-260, y+12);
+  doc.text(d.empresa, W-260, y+24);
+  doc.setTextColor(0,0,0);
 
-  doc.setFontSize(8); doc.setTextColor(120,120,120);
-  doc.text(`${branding?.office_name || 'Sucesso do Cliente — DP'} • ${new Date().toLocaleString('pt-BR')}`, 40, H - 20);
+  // ---------- Cabeçalho de continuação + rodapé ----------
+  const totalPages = (doc as any).internal.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    if (i > 1) {
+      doc.setDrawColor(pr,pg,pb); doc.setLineWidth(0.7); doc.line(36, 46, W - 36, 46);
+      await drawBrandLogo(doc, branding?.logo_url || '/images/logo-monte-verde-pdf.png', 36, 12, 64, 28, { centerY: true });
+      doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(sr,sg,sb);
+      doc.text(`RELATÓRIO FINAL DE ${d.verba_label.toUpperCase()}`, W - 36, 30, { align: 'right' });
+    }
+    doc.setFillColor(sr,sg,sb); doc.rect(0, H - 27, W, 27, 'F');
+    doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(255,255,255);
+    const contact = [branding?.office_name, branding?.phone, branding?.email].filter(Boolean).join('  •  ');
+    doc.text(contact || 'Relatório de avaliação', W / 2, H - 10, { align: 'center' });
+    doc.text(`${i}/${totalPages}`, W - 36, H - 10, { align: 'right' });
+  }
 
   const fileName = `relatorio-final-${d.verba_label}-${d.colaborador.nome.replace(/\s+/g,'_')}-${d.competencia.replace(/\//g,'-')}.pdf`;
   doc.save(fileName);
