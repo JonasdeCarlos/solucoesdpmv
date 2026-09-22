@@ -350,6 +350,32 @@ function PolicyCard({ policy, expanded, onToggle, onUpdate, onRemove, cliente }:
     setEditing(false);
   };
 
+  const [replicarOpen, setReplicarOpen] = useState(false);
+  const replicarPolitica = async (targetClientId: string, opts: Record<string, boolean>) => {
+    try {
+      const { data: full, error: e0 } = await supabase.from('prize_policies' as any).select('*').eq('id', policy.id).maybeSingle();
+      if (e0 || !full) throw e0 || new Error('Política não encontrada.');
+      const { id, client_id, created_at, updated_at, created_by, public_password_hash, ...rest } = full as any;
+      const { data: created, error: e1 } = await supabase.from('prize_policies' as any)
+        .insert({ ...rest, client_id: targetClientId } as any).select('id').maybeSingle();
+      if (e1 || !created) throw e1 || new Error('Falha ao criar a política.');
+      const newId = (created as any).id;
+      if (opts.criterios !== false) {
+        const { data: crits } = await supabase.from('prize_criteria' as any).select('*').eq('policy_id', policy.id).order('ordem');
+        const rows = ((crits as any[]) || []).map(({ id: _i, policy_id: _p, created_at: _c, updated_at: _u, ...r }: any) => ({ ...r, policy_id: newId }));
+        if (rows.length) await supabase.from('prize_criteria' as any).insert(rows as any);
+      }
+      if (opts.participantes) {
+        const { data: emps } = await supabase.from('prize_employees' as any).select('*').eq('policy_id', policy.id);
+        const rows = ((emps as any[]) || []).map(({ id: _i, policy_id: _p, created_at: _c, updated_at: _u, ...r }: any) => ({ ...r, policy_id: newId }));
+        if (rows.length) await supabase.from('prize_employees' as any).insert(rows as any);
+      }
+      toast.success('Política replicada para a outra empresa.');
+    } catch (e: any) {
+      toast.error('Falha ao replicar: ' + (e?.message || e));
+    }
+  };
+
   return (
     <Card>
       <CardContent className="p-3 space-y-2">
@@ -384,10 +410,28 @@ function PolicyCard({ policy, expanded, onToggle, onUpdate, onRemove, cliente }:
             }}>
               <KeyRound className="w-3 h-3 mr-1"/>Senha
             </Button>
+            <Button size="sm" variant="outline" onClick={()=>setReplicarOpen(true)}>
+              <Building2 className="w-3 h-3 mr-1"/>Replicar para outra empresa
+            </Button>
             <Button size="sm" variant="outline" onClick={()=>setEditing(e => !e)}><Pencil className="w-3 h-3"/></Button>
             <Button size="sm" variant="ghost" onClick={onRemove}><Trash2 className="w-3 h-3"/></Button>
           </div>
         </div>
+
+        <SelecionarEmpresaDialog
+          open={replicarOpen}
+          onOpenChange={setReplicarOpen}
+          title="Replicar política para outra empresa"
+          description="Cria nesta outra empresa do grupo uma política idêntica (parâmetros e critérios)."
+          confirmLabel="Replicar"
+          excludeIds={[(policy as any).client_id].filter(Boolean)}
+          options={[
+            { key: 'criterios', label: 'Copiar critérios de avaliação', default: true },
+            { key: 'participantes', label: 'Copiar participantes cadastrados', default: false },
+          ]}
+          onConfirm={replicarPolitica}
+        />
+
 
         {editing && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 border-t pt-3">
