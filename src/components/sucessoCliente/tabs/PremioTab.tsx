@@ -18,6 +18,7 @@ import PremioRemuneracaoVariavelSection from './PremioRemuneracaoVariavelSection
 import PremioHotelariaSection from './PremioHotelariaSection';
 import { generatePremioPoliticaPdf } from '@/utils/sucessoCliente/premioPoliticaPdf';
 import { supabase } from '@/integrations/supabase/client';
+import { usePrizePublicApi } from '@/hooks/prizePublicContext';
 import { HOTELARIA_CONFIG, HOTELARIA_CRITERIOS_INDIVIDUAIS } from '@/utils/sucessoCliente/premioTemplates';
 import SelecionarEmpresaDialog from '@/components/sucessoCliente/SelecionarEmpresaDialog';
 import { Building2 } from 'lucide-react';
@@ -517,6 +518,7 @@ function PolicyCard({ policy, expanded, onToggle, onUpdate, onRemove, cliente }:
 export function CriteriaSection({ policy, cliente }: { policy: PrizePolicy; cliente: any }) {
   const { items, create, createMany, update, remove, suggest, explainCriterion } = usePrizeCriteria(policy.id);
   const { items: participantes } = usePrizeEmployees(policy.id);
+  const pubApi = usePrizePublicApi();
   const [novo, setNovo] = useState({ nome: '', descricao: '', peso: 1, essencial: false });
   const [iaCtx, setIaCtx] = useState({ cargo: '', quantidade: 6 });
   const [generating, setGenerating] = useState(false);
@@ -546,6 +548,7 @@ export function CriteriaSection({ policy, cliente }: { policy: PrizePolicy; clie
       let rvPctIgualitarioAtual = (policy as any).rv_pct_igualitario;
       let rvObservacoesAtual = (policy as any).rv_observacoes;
       try {
+        if (pubApi) throw new Error('skip-fresh'); // no link público os dados já vêm da API pública
         const { data: fresh } = await supabase
           .from('prize_policies' as any)
           .select('objetivo, regra_premiacao, remuneracao_variavel, rv_base, rv_base_label, rv_tiers, rv_pct_individual, rv_pct_igualitario, rv_observacoes')
