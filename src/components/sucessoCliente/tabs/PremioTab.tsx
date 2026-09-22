@@ -564,7 +564,7 @@ export function CriteriaSection({ policy, cliente }: { policy: PrizePolicy; clie
         }
       } catch { /* mantém valores locais */ }
       await generatePremioPoliticaPdf({
-        empresa: cliente?.razao_social || cliente?.nome_fantasia || 'Empresa',
+        empresa: cliente?.razao_social || cliente?.nome_fantasia || cliente?.nome || 'Empresa',
         cnpj: cliente?.cnpj || undefined,
         verba_label: policy.verba_label,
         politica_nome: policy.nome,
