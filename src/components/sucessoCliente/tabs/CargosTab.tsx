@@ -1238,6 +1238,9 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
               <span className="cursor-pointer">{busy==='import' ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <Upload className="w-4 h-4 mr-2"/>}Importar Extrato (PDF)</span>
             </Button>
           </label>
+          <Button variant="outline" onClick={()=>setImportEmpresaOpen(true)}>
+            <Building2 className="w-4 h-4 mr-2"/>Importar de outra empresa
+          </Button>
           <Button variant="outline" onClick={sugerirEstrutura} disabled={busy==='estrutura'}>{busy==='estrutura' ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <Sparkles className="w-4 h-4 mr-2"/>}Sugerir Estrutura Salarial</Button>
           <Button variant={chatOpen ? 'default' : 'outline'} onClick={()=>setChatOpen(v=>!v)}><MessagesSquare className="w-4 h-4 mr-2"/>Consultor IA</Button>
           <Button variant="outline" onClick={gerarOrganograma} disabled={busy==='estrutura'}><Network className="w-4 h-4 mr-2"/>Gerar Organograma</Button>
