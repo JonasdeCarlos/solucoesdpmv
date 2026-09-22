@@ -85,7 +85,7 @@ export async function drawBrandLogo(
   y: number,
   maxW: number,
   maxH: number,
-  opts?: { align?: 'left' | 'center'; centerY?: boolean }
+  opts?: { align?: 'left' | 'center'; centerY?: boolean; fallback?: boolean }
 ): Promise<{ w: number; h: number }> {
   if (!url) return { w: 0, h: 0 };
   try {
