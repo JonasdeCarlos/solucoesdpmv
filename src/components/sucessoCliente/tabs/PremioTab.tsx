@@ -19,6 +19,8 @@ import PremioHotelariaSection from './PremioHotelariaSection';
 import { generatePremioPoliticaPdf } from '@/utils/sucessoCliente/premioPoliticaPdf';
 import { supabase } from '@/integrations/supabase/client';
 import { HOTELARIA_CONFIG, HOTELARIA_CRITERIOS_INDIVIDUAIS } from '@/utils/sucessoCliente/premioTemplates';
+import SelecionarEmpresaDialog from '@/components/sucessoCliente/SelecionarEmpresaDialog';
+import { Building2 } from 'lucide-react';
 
 const VERBA_PRESETS = ['Prêmio', 'Benefício', 'Gratificação', 'Bonificação', 'Bônus', 'PLR', 'Adicional de Desempenho'];
 
