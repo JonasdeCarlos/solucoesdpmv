@@ -105,6 +105,48 @@ export default function PerfilTab({ cliente, onClienteSaved }: { cliente: Client
     setEwPwd((data as any) || ''); setEwPwdLoaded(true); setShowEwPwd(true);
   };
 
+  // Converte a imagem enviada em uma versão leve (máx. 420px) embutida no cadastro,
+  // para que apareça também nos documentos abertos por link público.
+  const onLogoFile = async (file: File | undefined) => {
+    if (!file) return;
+    try {
+      const dataUrl: string = await new Promise((res, rej) => {
+        const fr = new FileReader();
+        fr.onload = () => res(fr.result as string);
+        fr.onerror = () => rej(fr.error);
+        fr.readAsDataURL(file);
+      });
+      const img = await new Promise<HTMLImageElement>((res, rej) => {
+        const im = new Image();
+        im.onload = () => res(im);
+        im.onerror = () => rej(new Error('imagem inválida'));
+        im.src = dataUrl;
+      });
+      const MAX = 420;
+      let w = img.naturalWidth, h = img.naturalHeight;
+      const scale = Math.min(1, MAX / Math.max(w, h));
+      w = Math.max(1, Math.round(w * scale)); h = Math.max(1, Math.round(h * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d')!.drawImage(img, 0, 0, w, h);
+      const small = canvas.toDataURL('image/png');
+      const { error } = await supabase.from('clientes' as any).update({ logo_url: small } as any).eq('id', cliente.id);
+      if (error) { toast.error('Erro ao salvar a logo: ' + error.message); return; }
+      setCli((c) => ({ ...c, logo_url: small } as any));
+      toast.success('Logo da empresa atualizada.');
+      onClienteSaved();
+    } catch (e: any) {
+      toast.error('Não foi possível ler a imagem.');
+    }
+  };
+
+  const removerLogo = async () => {
+    const { error } = await supabase.from('clientes' as any).update({ logo_url: null } as any).eq('id', cliente.id);
+    if (error) { toast.error(error.message); return; }
+    setCli((c) => ({ ...c, logo_url: null } as any));
+    onClienteSaved();
+  };
+
   const saveAll = async () => {
     const { error: e1 } = await supabase.from('clientes' as any).update({
       nome: cli.nome, codigo_cliente: cli.codigo_cliente || null, nome_fantasia: cli.nome_fantasia,
@@ -134,6 +176,21 @@ export default function PerfilTab({ cliente, onClienteSaved }: { cliente: Client
       <Card>
         <CardHeader><CardTitle className="text-base">Identificação</CardTitle></CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="md:col-span-3 flex items-center gap-4 border rounded-md p-3">
+            <div className="w-24 h-16 flex items-center justify-center bg-muted/40 rounded overflow-hidden shrink-0">
+              {(cli as any).logo_url
+                ? <img src={(cli as any).logo_url} alt={`Logo de ${cli.nome}`} className="max-w-full max-h-full object-contain"/>
+                : <span className="text-[10px] text-muted-foreground text-center px-1">Sem logo</span>}
+            </div>
+            <div className="space-y-1">
+              <Label>Logo da empresa</Label>
+              <p className="text-xs text-muted-foreground">Aparece nos documentos gerados (política, relatórios), inclusive no link público.</p>
+              <div className="flex items-center gap-2">
+                <Input type="file" accept="image/*" className="h-8 text-xs" onChange={(e)=>{ onLogoFile(e.target.files?.[0]); e.currentTarget.value=''; }}/>
+                {(cli as any).logo_url && <Button type="button" size="sm" variant="outline" onClick={removerLogo}>Remover</Button>}
+              </div>
+            </div>
+          </div>
           <div><Label>Código</Label><Input value={cli.codigo_cliente || ''} onChange={(e)=>setCli({...cli, codigo_cliente: e.target.value})}/></div>
           <div className="md:col-span-2"><Label>Razão Social *</Label><Input value={cli.nome} onChange={(e)=>setCli({...cli, nome: e.target.value})}/></div>
           <div><Label>Nome Fantasia</Label><Input value={cli.nome_fantasia} onChange={(e)=>setCli({...cli, nome_fantasia: e.target.value})}/></div>

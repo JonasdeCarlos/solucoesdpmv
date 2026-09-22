@@ -172,6 +172,7 @@ export default function PremioHotelariaSection({ policy, cliente, onUpdate, onDr
       await generatePremioPoliticaPdf({
         empresa: cliente?.razao_social || cliente?.nome_fantasia || cliente?.nome || 'Empresa',
         cnpj: cliente?.cnpj || undefined,
+        cliente_logo_url: (cliente as any)?.logo_url || undefined,
         verba_label: policy.verba_label,
         politica_nome: policy.nome,
         objetivo: objetivoAtual,

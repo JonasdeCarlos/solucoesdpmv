@@ -78,12 +78,26 @@ async function handle(action: string, policy_id: string, body: any) {
     if (!policy) return json({ error: "Política não encontrada" }, 404);
     delete (policy as any).public_password_hash;
     // Qualquer modelo de política pode ser exposto pelo link público.
-    const [{ data: cliente }, { data: criteria }, { data: employees }] = await Promise.all([
-      s.from("clientes").select("id, nome, cnpj, nome_fantasia").eq("id", policy.client_id).maybeSingle(),
+    const [{ data: cliente }, { data: criteria }, { data: employees }, { data: brandRow }] = await Promise.all([
+      s.from("clientes").select("id, nome, cnpj, nome_fantasia, logo_url").eq("id", policy.client_id).maybeSingle(),
       s.from("prize_criteria").select("*").eq("policy_id", policy_id).order("ordem", { ascending: true }),
       s.from("prize_employees").select("*").eq("policy_id", policy_id).order("nome"),
+      s.from("office_branding").select("*").limit(1).maybeSingle(),
     ]);
-    return json({ policy, cliente: cliente || null, criteria: criteria || [], employees: employees || [] });
+    const b: any = brandRow || {};
+    const contacts = b.contacts || {};
+    const branding = brandRow
+      ? {
+        logo_url: b.logo_url || undefined,
+        primary_color: b.primary_color || undefined,
+        secondary_color: b.text_color || b.secondary_color || undefined,
+        office_name: b.office_name || undefined,
+        phone: contacts.phone || contacts.telefone || "",
+        email: contacts.email || "",
+        site: contacts.site || contacts.website || "",
+      }
+      : null;
+    return json({ policy, cliente: cliente || null, criteria: criteria || [], employees: employees || [], branding });
   }
 
   if (action === "list_criteria") {

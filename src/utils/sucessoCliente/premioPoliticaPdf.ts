@@ -5,6 +5,7 @@ import { drawBrandLogo } from '@/utils/pdfBrandLogo';
 export type PoliticaPdfData = {
   empresa: string;
   cnpj?: string;
+  cliente_logo_url?: string | null;
   verba_label: string;
   politica_nome: string;
   objetivo?: string | null;
@@ -84,8 +85,14 @@ async function buildPoliticaDoc(d: PoliticaPdfData) {
   const drawn = await drawBrandLogo(doc, branding?.logo_url, 30, LOGO_BOX_Y, LOGO_BOX_MAX_W, LOGO_BOX_H, { centerY: true });
   if (drawn.w > 0) { logoBoxW = drawn.w; logoDrawn = true; }
 
+  // Logo da empresa (cliente) no canto direito do cabeçalho
+  const CLI_BOX_W = 95;
+  const cliDrawn = d.cliente_logo_url
+    ? await drawBrandLogo(doc, d.cliente_logo_url, W - 30 - CLI_BOX_W, LOGO_BOX_Y, CLI_BOX_W, LOGO_BOX_H, { align: 'center', centerY: true, fallback: false })
+    : { w: 0, h: 0 };
+
   const TX = 30 + (logoDrawn ? logoBoxW + 26 : 0);
-  const TITLE_MAX_W = W - TX - 24;
+  const TITLE_MAX_W = W - TX - 24 - (cliDrawn.w > 0 ? CLI_BOX_W + 16 : 0);
   doc.setTextColor(sr,sg,sb);
   doc.setFont('helvetica','bold'); doc.setFontSize(16);
   const MESES_ABR = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
