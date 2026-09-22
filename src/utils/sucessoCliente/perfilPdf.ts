@@ -160,7 +160,27 @@ export async function generatePerfilPdf(params: {
   doc.save(`SucessoCliente_${cliente.nome.replace(/\s+/g,'_')}.pdf`);
 }
 
+export type BrandingInfo = {
+  logo_url?: string;
+  primary_color?: string;
+  secondary_color?: string;
+  office_name?: string;
+  phone?: string;
+  email?: string;
+  site?: string;
+};
+
+/**
+ * Marca usada quando não há sessão (links públicos), onde a tabela
+ * office_branding não pode ser lida diretamente pelo navegador.
+ */
+let brandingOverride: BrandingInfo | undefined;
+export function setBrandingOverride(b: BrandingInfo | undefined | null) {
+  brandingOverride = b || undefined;
+}
+
 export async function loadBranding() {
+  if (brandingOverride) return brandingOverride;
   const { data } = await supabase.from('office_branding' as any).select('*').limit(1).maybeSingle();
   if (!data) return undefined;
   const d = data as any;
