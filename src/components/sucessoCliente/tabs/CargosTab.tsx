@@ -108,6 +108,43 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
 
   const pisosCCT = useMemo(() => extractPisosCCT(ccts as any[]), [ccts]);
 
+  const [importEmpresaOpen, setImportEmpresaOpen] = useState(false);
+  const importarDeOutraEmpresa = async (sourceId: string, opts: Record<string, boolean>) => {
+    try {
+      let novos = 0;
+      if (opts.cargos !== false) {
+        const { data, error } = await supabase.from('cargos' as any).select('*').eq('client_id', sourceId);
+        if (error) throw error;
+        const existentes = new Set(items.map((c: any) => String(c.nome || '').trim().toLowerCase()));
+        const rows = ((data as any[]) || [])
+          .filter(c => !existentes.has(String(c.nome || '').trim().toLowerCase()))
+          .map(({ id, client_id, created_at, updated_at, ...rest }: any) => ({ ...rest, client_id }));
+        if (rows.length) {
+          const { error: e2 } = await supabase.from('cargos' as any).insert(rows.map(r => ({ ...r, client_id })) as any);
+          if (e2) throw e2;
+          novos = rows.length;
+        }
+      }
+      if (opts.estrutura) {
+        const { data: est } = await supabase.from('estruturas_salariais' as any)
+          .select('*').eq('client_id', sourceId).order('created_at', { ascending: false }).limit(1).maybeSingle();
+        if (est) {
+          await saveEstrutura({
+            faixas: (est as any).faixas || [],
+            escala_evolucao: (est as any).escala_evolucao || [],
+            cargos_sugeridos: (est as any).cargos_sugeridos || [],
+            organograma: (est as any).organograma || [],
+            criterios_manuais: (est as any).criterios_manuais || [],
+          });
+        }
+      }
+      await reload();
+      toast.success(`Importação concluída. ${novos} cargo(s) copiado(s).`);
+    } catch (e: any) {
+      toast.error('Falha ao importar: ' + (e?.message || e));
+    }
+  };
+
   const areas = useMemo(() => Array.from(new Set(items.map(i => i.area).filter(Boolean))), [items]);
   const filtered = items.filter(i =>
     (filterArea === 'all' || i.area === filterArea) &&
