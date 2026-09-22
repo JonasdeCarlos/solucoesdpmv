@@ -18,6 +18,8 @@ import { DebouncedInput } from '@/components/sucessoCliente/DebouncedField';
 import { extractPisosCCT, matchPisoCargo } from '@/utils/sucessoCliente/pisosCCT';
 import CargosChat from '@/components/sucessoCliente/tabs/CargosChat';
 import { normalizeOrganograma } from '@/utils/sucessoCliente/organograma';
+import SelecionarEmpresaDialog from '@/components/sucessoCliente/SelecionarEmpresaDialog';
+import { Building2 } from 'lucide-react';
 
 const NIVEIS = [
   { v:'operacional', l:'Operacional' },
@@ -105,6 +107,43 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
   const setorEmpresa = [atividadeEmpresa.trim(), cliente?.segmento || cliente?.cnae || ''].filter(Boolean).join(' — ');
 
   const pisosCCT = useMemo(() => extractPisosCCT(ccts as any[]), [ccts]);
+
+  const [importEmpresaOpen, setImportEmpresaOpen] = useState(false);
+  const importarDeOutraEmpresa = async (sourceId: string, opts: Record<string, boolean>) => {
+    try {
+      let novos = 0;
+      if (opts.cargos !== false) {
+        const { data, error } = await supabase.from('cargos' as any).select('*').eq('client_id', sourceId);
+        if (error) throw error;
+        const existentes = new Set(items.map((c: any) => String(c.nome || '').trim().toLowerCase()));
+        const rows = ((data as any[]) || [])
+          .filter(c => !existentes.has(String(c.nome || '').trim().toLowerCase()))
+          .map(({ id, client_id, created_at, updated_at, ...rest }: any) => ({ ...rest, client_id }));
+        if (rows.length) {
+          const { error: e2 } = await supabase.from('cargos' as any).insert(rows.map(r => ({ ...r, client_id })) as any);
+          if (e2) throw e2;
+          novos = rows.length;
+        }
+      }
+      if (opts.estrutura) {
+        const { data: est } = await supabase.from('estruturas_salariais' as any)
+          .select('*').eq('client_id', sourceId).order('created_at', { ascending: false }).limit(1).maybeSingle();
+        if (est) {
+          await saveEstrutura({
+            faixas: (est as any).faixas || [],
+            escala_evolucao: (est as any).escala_evolucao || [],
+            cargos_sugeridos: (est as any).cargos_sugeridos || [],
+            organograma: (est as any).organograma || [],
+            criterios_manuais: (est as any).criterios_manuais || [],
+          });
+        }
+      }
+      await reload();
+      toast.success(`Importação concluída. ${novos} cargo(s) copiado(s).`);
+    } catch (e: any) {
+      toast.error('Falha ao importar: ' + (e?.message || e));
+    }
+  };
 
   const areas = useMemo(() => Array.from(new Set(items.map(i => i.area).filter(Boolean))), [items]);
   const filtered = items.filter(i =>
@@ -1199,6 +1238,9 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
               <span className="cursor-pointer">{busy==='import' ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <Upload className="w-4 h-4 mr-2"/>}Importar Extrato (PDF)</span>
             </Button>
           </label>
+          <Button variant="outline" onClick={()=>setImportEmpresaOpen(true)}>
+            <Building2 className="w-4 h-4 mr-2"/>Importar de outra empresa
+          </Button>
           <Button variant="outline" onClick={sugerirEstrutura} disabled={busy==='estrutura'}>{busy==='estrutura' ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <Sparkles className="w-4 h-4 mr-2"/>}Sugerir Estrutura Salarial</Button>
           <Button variant={chatOpen ? 'default' : 'outline'} onClick={()=>setChatOpen(v=>!v)}><MessagesSquare className="w-4 h-4 mr-2"/>Consultor IA</Button>
           <Button variant="outline" onClick={gerarOrganograma} disabled={busy==='estrutura'}><Network className="w-4 h-4 mr-2"/>Gerar Organograma</Button>
@@ -1209,6 +1251,20 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
           </Button>
         </div>
       </div>
+
+      <SelecionarEmpresaDialog
+        open={importEmpresaOpen}
+        onOpenChange={setImportEmpresaOpen}
+        title="Importar cargos e salários de outra empresa"
+        description="Copie o plano de cargos de outra empresa do grupo para esta. Cargos com nome já existente não são duplicados."
+        confirmLabel="Importar"
+        excludeIds={[client_id]}
+        options={[
+          { key: 'cargos', label: 'Copiar cargos e salários', default: true },
+          { key: 'estrutura', label: 'Copiar estrutura salarial e organograma', default: true },
+        ]}
+        onConfirm={importarDeOutraEmpresa}
+      />
 
       {chatOpen && (
         <CargosChat
