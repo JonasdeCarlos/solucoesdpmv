@@ -527,8 +527,47 @@ async function buildPoliticaDoc(d: PoliticaPdfData) {
     doc.text(`${i}/${totalPages}`, W - 36, H - 10, { align: 'right' });
   }
 
+  return doc;
+}
+
+/**
+ * Gera a política em PDF. Quando há participantes, cada colaborador recebe uma
+ * via individual e completa do documento (com sua própria folha de assinatura),
+ * todas reunidas em um único arquivo PDF para impressão/assinatura.
+ */
+export async function generatePremioPoliticaPdf(d: PoliticaPdfData) {
   const compFile = d.metas_mes?.competencia ? `-${d.metas_mes.competencia}` : '';
-  const fileName = `politica-${d.verba_label}-${d.politica_nome.replace(/\s+/g,'_')}${compFile}.pdf`;
-  doc.save(fileName);
+  const fileName = `politica-${d.verba_label}-${d.politica_nome.replace(/\s+/g, '_')}${compFile}.pdf`;
+
+  const participantes = d.participantes || [];
+
+  if (participantes.length <= 1) {
+    const doc = await buildPoliticaDoc(d);
+    doc.save(fileName);
+    return fileName;
+  }
+
+  const { PDFDocument } = await import('pdf-lib');
+  const merged = await PDFDocument.create();
+
+  for (const p of participantes) {
+    const doc = await buildPoliticaDoc({ ...d, participantes: [p] });
+    const bytes = doc.output('arraybuffer');
+    const src = await PDFDocument.load(bytes);
+    const pages = await merged.copyPages(src, src.getPageIndices());
+    pages.forEach((pg) => merged.addPage(pg));
+  }
+
+  const out = await merged.save();
+  const blob = new Blob([out as unknown as BlobPart], { type: 'application/pdf' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+
   return fileName;
 }
