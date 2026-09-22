@@ -5,6 +5,7 @@ import { drawBrandLogo } from '@/utils/pdfBrandLogo';
 export type PoliticaPdfData = {
   empresa: string;
   cnpj?: string;
+  cliente_logo_url?: string | null;
   verba_label: string;
   politica_nome: string;
   objetivo?: string | null;
