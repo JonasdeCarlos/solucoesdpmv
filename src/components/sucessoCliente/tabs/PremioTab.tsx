@@ -546,6 +546,7 @@ export function CriteriaSection({ policy, cliente }: { policy: PrizePolicy; clie
       let rvPctIgualitarioAtual = (policy as any).rv_pct_igualitario;
       let rvObservacoesAtual = (policy as any).rv_observacoes;
       try {
+        if (pubApi) throw new Error('skip-fresh'); // no link público os dados já vêm da API pública
         const { data: fresh } = await supabase
           .from('prize_policies' as any)
           .select('objetivo, regra_premiacao, remuneracao_variavel, rv_base, rv_base_label, rv_tiers, rv_pct_individual, rv_pct_igualitario, rv_observacoes')
