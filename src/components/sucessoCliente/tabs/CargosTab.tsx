@@ -1252,6 +1252,20 @@ export default function CargosTab({ client_id, cliente }: { client_id: string; c
         </div>
       </div>
 
+      <SelecionarEmpresaDialog
+        open={importEmpresaOpen}
+        onOpenChange={setImportEmpresaOpen}
+        title="Importar cargos e salários de outra empresa"
+        description="Copie o plano de cargos de outra empresa do grupo para esta. Cargos com nome já existente não são duplicados."
+        confirmLabel="Importar"
+        excludeIds={[client_id]}
+        options={[
+          { key: 'cargos', label: 'Copiar cargos e salários', default: true },
+          { key: 'estrutura', label: 'Copiar estrutura salarial e organograma', default: true },
+        ]}
+        onConfirm={importarDeOutraEmpresa}
+      />
+
       {chatOpen && (
         <CargosChat
           empresa={cliente?.nome}
