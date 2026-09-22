@@ -869,11 +869,62 @@ export function EmployeesSection({ policy, cliente }: { policy: PrizePolicy; cli
               <Users className="w-3 h-3 mr-1"/>Importar da empresa ({empresaEmpregados.length})
             </Button>
           )}
+          <Button size="sm" variant="outline" onClick={()=>setShowPolicies(s => !s)}>
+            <Users className="w-3 h-3 mr-1"/>Importar de outra política
+          </Button>
           <Button size="sm" variant="outline" onClick={()=>setShowBulk(s => !s)}>
             <Upload className="w-3 h-3 mr-1"/>Colar lista
           </Button>
         </div>
       </div>
+
+      {showPolicies && (
+        <div className="border rounded-md p-2 bg-muted/20 space-y-2">
+          {loadingPol ? (
+            <p className="text-xs text-muted-foreground flex items-center gap-2"><Loader2 className="w-3 h-3 animate-spin"/>Carregando políticas…</p>
+          ) : outrasPoliticas.length === 0 ? (
+            <p className="text-xs text-muted-foreground">Esta empresa não possui outras políticas cadastradas.</p>
+          ) : (
+            <>
+              <Label className="text-xs">Política de origem</Label>
+              <Select value={politicaSel} onValueChange={setPoliticaSel}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecione a política"/></SelectTrigger>
+                <SelectContent>
+                  {outrasPoliticas.map(p => (
+                    <SelectItem key={p.id} value={p.id}>{p.nome} {p.verba_label ? `(${p.verba_label})` : ''}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {politicaSel && (
+                politicaEmps.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Nenhum colaborador nesta política.</p>
+                ) : (
+                  <>
+                    <div className="flex justify-end">
+                      <Button size="sm" onClick={()=>importarDePolitica(true)}>
+                        Importar todos ({politicaEmps.filter(e => !jaExiste(e)).length})
+                      </Button>
+                    </div>
+                    <div className="max-h-48 overflow-y-auto space-y-1">
+                      {politicaEmps.map(e => {
+                        const dup = jaExiste(e);
+                        return (
+                          <button key={e.id} type="button" disabled={dup} onClick={()=>importarDePolitica(false, e)}
+                            className={`w-full text-left text-xs px-2 py-1 rounded flex justify-between gap-2 ${dup ? 'opacity-50 cursor-not-allowed' : 'hover:bg-muted'}`}>
+                            <span>{e.nome}</span>
+                            <span className="text-muted-foreground">{dup ? 'já incluído' : [e.cargo, e.cpf].filter(Boolean).join(' • ')}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )
+              )}
+            </>
+          )}
+        </div>
+      )}
+
 
       {showImport && empresaEmpregados.length > 0 && (
         <div className="border rounded-md p-2 bg-muted/20 max-h-48 overflow-y-auto space-y-1">
