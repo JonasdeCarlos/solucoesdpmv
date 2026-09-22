@@ -70,10 +70,12 @@ export async function generatePremioRelatorioFinalPdf(d: RelatorioFinalData) {
   let ty = LOGO_BOX_Y + 22;
   for (const l of titleLines) { doc.text(l, TX, ty); ty += 17; }
   doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(70,74,68);
-  doc.text(`${d.empresa}${d.cnpj ? ` — CNPJ ${d.cnpj}` : ''}`, TX, ty + 4, { maxWidth: TITLE_MAX_W });
+  ty += 4;
+  const empresaLines: string[] = doc.splitTextToSize(`${d.empresa}${d.cnpj ? ` — CNPJ ${d.cnpj}` : ''}`, TITLE_MAX_W);
+  for (const l of empresaLines) { doc.text(l, TX, ty); ty += 13; }
   doc.setFontSize(9);
-  doc.text(`Emitido em ${new Date().toLocaleDateString('pt-BR')}`, TX, ty + 20);
-  if (branding?.office_name) doc.text(branding.office_name, TX, ty + 34, { maxWidth: TITLE_MAX_W });
+  doc.text(`Emitido em ${new Date().toLocaleDateString('pt-BR')}`, TX, ty + 3); ty += 16;
+  if (branding?.office_name) doc.text(branding.office_name, TX, ty + 3, { maxWidth: TITLE_MAX_W });
 
   let y = HEADER_H + 22;
   doc.setTextColor(0,0,0);

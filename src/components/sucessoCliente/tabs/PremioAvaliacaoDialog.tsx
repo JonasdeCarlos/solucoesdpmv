@@ -263,6 +263,7 @@ export default function PremioAvaliacaoDialog({
       await generatePremioAlinhamentoPdf({
         empresa: cliente?.nome || '',
         cnpj: cliente?.cnpj || cliente?.documento || '',
+        cliente_logo_url: (cliente as any)?.logo_url || undefined,
         verba_label: policy.verba_label,
         politica_nome: policy.nome,
         competencia,
