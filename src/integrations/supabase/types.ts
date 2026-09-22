@@ -2672,6 +2672,7 @@ export type Database = {
           endereco: string | null
           gestor_carteira: string
           id: string
+          logo_url: string | null
           municipio: string | null
           nome: string
           nome_fantasia: string | null
@@ -2693,6 +2694,7 @@ export type Database = {
           endereco?: string | null
           gestor_carteira?: string
           id?: string
+          logo_url?: string | null
           municipio?: string | null
           nome: string
           nome_fantasia?: string | null
@@ -2714,6 +2716,7 @@ export type Database = {
           endereco?: string | null
           gestor_carteira?: string
           id?: string
+          logo_url?: string | null
           municipio?: string | null
           nome?: string
           nome_fantasia?: string | null
