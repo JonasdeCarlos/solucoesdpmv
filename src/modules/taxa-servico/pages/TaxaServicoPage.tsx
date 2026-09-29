@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Plus } from 'lucide-react';
+import { ArrowLeft, Plus, Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import SaldoCard from '../components/SaldoCard';
 import SaldoExtratoDialog from '../components/SaldoExtratoDialog';
 import StepEmpresa from '../components/StepEmpresa';
@@ -27,6 +28,8 @@ export default function TaxaServicoPage() {
   const [step, setStep] = useState(0);
   const [comp, setComp] = useState<TsCompetencia | null>(null);
   const [extrato, setExtrato] = useState(false);
+  const [busca, setBusca] = useState('');
+  const empresasFiltradas = empresas.filter((e) => e.nome.toLowerCase().includes(busca.toLowerCase().trim()));
 
   const abrir = (c: TsCompetencia | null, s = 0) => { setComp(c); setStep(s); setModo('fluxo'); };
   const refreshComp = async () => {
@@ -47,10 +50,20 @@ export default function TaxaServicoPage() {
 
       {modo === 'lista' && (
         <>
-          <Select value={empresaId || ''} onValueChange={setEmpresaId}>
-            <SelectTrigger className="max-w-md"><SelectValue placeholder="Selecione a empresa" /></SelectTrigger>
-            <SelectContent>{empresas.map((e) => <SelectItem key={e.id} value={e.id}>{e.nome}</SelectItem>)}</SelectContent>
-          </Select>
+          <div className="flex gap-2 items-center max-w-2xl">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 absolute left-2 top-2.5 text-muted-foreground" />
+              <Input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Pesquisar empresa…" className="pl-8" />
+            </div>
+            <Select value={empresaId || ''} onValueChange={setEmpresaId}>
+              <SelectTrigger className="flex-1"><SelectValue placeholder="Selecione a empresa" /></SelectTrigger>
+              <SelectContent>
+                {empresasFiltradas.length === 0
+                  ? <p className="p-2 text-xs text-muted-foreground">Nenhuma empresa encontrada.</p>
+                  : empresasFiltradas.map((e) => <SelectItem key={e.id} value={e.id}>{e.nome}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
           {empresaId && <SaldoCard saldo={saldo} onClick={() => setExtrato(true)} />}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
