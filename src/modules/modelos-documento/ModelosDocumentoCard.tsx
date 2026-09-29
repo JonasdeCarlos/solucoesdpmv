@@ -7,7 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { FileUp, Loader2, Sparkles, Trash2, Eye, FileDown, Pencil, X } from 'lucide-react';
+import { FileUp, Loader2, Sparkles, Trash2, Eye, FileDown, Pencil, X, Copy } from 'lucide-react';
+import ReplicarModeloDialog from './ReplicarModeloDialog';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useModelosDocumento, type ModeloDoc } from './useModelosDocumento';
@@ -35,6 +36,7 @@ export default function ModelosDocumentoCard({ empresaId, escopo, refId, tipos, 
   const [enviando, setEnviando] = useState<TipoModelo | null>(null);
   const [editor, setEditor] = useState<ModeloDoc | null>(null);
   const [gerar, setGerar] = useState<ModeloDoc | null>(null);
+  const [replicar, setReplicar] = useState<ModeloDoc | null>(null);
   const inputs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const enviar = async (tipo: TipoModelo, f: File | undefined) => {
@@ -98,6 +100,7 @@ export default function ModelosDocumentoCard({ empresaId, escopo, refId, tipos, 
                 </Button>
                 {mod && <Button size="sm" variant="outline" onClick={() => setEditor(mod)}><Pencil className="w-3 h-3 mr-1" />Revisar espaços</Button>}
                 {mod && <Button size="sm" onClick={() => setGerar(mod)}><FileDown className="w-3 h-3 mr-1" />Gerar preenchido</Button>}
+                {mod && <Button size="sm" variant="outline" onClick={() => setReplicar(mod)}><Copy className="w-3 h-3 mr-1" />Replicar para outras empresas</Button>}
                 {mod && <Button size="sm" variant="ghost" onClick={async () => { if (confirm('Apagar o modelo da empresa? Volta a usar o do sistema.')) await m.remover(mod.id); }}><Trash2 className="w-3 h-3" /></Button>}
               </div>
             </div>
@@ -109,6 +112,7 @@ export default function ModelosDocumentoCard({ empresaId, escopo, refId, tipos, 
         if (error) toast.error(error.message); else { toast.success('Espaços salvos.'); setEditor(null); }
       }} amostra={pessoas[0] ? montarDados(pessoas[0], { competencia: '', valor: '', pontos: '', observacao: '' }) : {}} />}
       {gerar && <GerarDialog modelo={gerar} pessoas={pessoas} montarDados={montarDados} onClose={() => setGerar(null)} />}
+      {replicar && <ReplicarModeloDialog modelo={replicar} onClose={() => setReplicar(null)} />}
     </CardContent></Card>
   );
 }
