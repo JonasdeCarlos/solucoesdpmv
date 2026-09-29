@@ -23,6 +23,7 @@ export default function ProgramaExcelenciaSection({ clientId, cliente }: { clien
   const [aberto, setAberto] = useState(false);
   const [criando, setCriando] = useState(false);
   const [competencia, setCompetencia] = useState(competenciaAtual());
+  const [linkAberto, setLinkAberto] = useState(false);
   const politica = items.find(p => p.id === selId) || null;
   const cat = usePremiacaoCatalogo(politica);
   const empresaNome = [cliente?.nome, cliente?.cnpj ? `CNPJ ${cliente.cnpj}` : cliente?.cpf ? `CPF ${cliente.cpf}` : ''].filter(Boolean).join(' — ');
@@ -56,6 +57,7 @@ export default function ProgramaExcelenciaSection({ clientId, cliente }: { clien
             </Select>
           )}
           <Button size="sm" variant="outline" onClick={criar} disabled={criando}>{criando ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Plus className="w-3 h-3 mr-1" />}Nova política de pontos</Button>
+          {politica && <Button size="sm" variant="outline" onClick={() => setLinkAberto(true)}><Link2 className="w-3 h-3 mr-1" />Link do gestor</Button>}
           {politica && <Button size="sm" onClick={() => setAberto(v => !v)}>{aberto ? 'Recolher' : 'Abrir'}</Button>}
         </div>
       </div>
