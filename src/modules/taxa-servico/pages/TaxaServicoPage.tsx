@@ -99,7 +99,7 @@ export default function TaxaServicoPage() {
                 {step === 0 && <StepEmpresa empresas={empresas} empresaId={empresaId} onEmpresa={setEmpresaId} config={config} saveConfig={saveConfig} onNext={() => setStep(1)} />}
                 {step === 1 && empresaId && config && <StepValores key={comp?.id || 'novo'} empresaId={empresaId} config={config} comp={comp} onBack={() => setStep(0)} onSaved={async (c) => { setComp(c); await reload(); setStep(2); }} />}
                 {step === 2 && empresaId && <StepFuncionarios empresaId={empresaId} funcionarios={funcionarios} reload={reload} onBack={() => setStep(1)} onNext={() => setStep(3)} />}
-                {step === 3 && comp && <StepRateio comp={comp} funcionarios={funcionarios} onBack={() => setStep(2)} onNext={async () => { await refreshComp(); setStep(4); }} />}
+                {step === 3 && comp && <StepRateio comp={comp} funcionarios={funcionarios} empresaNome={empresas.find((e) => e.id === empresaId)?.nome} onBack={() => setStep(2)} onNext={async () => { await refreshComp(); setStep(4); }} />}
                 {step === 4 && comp && config && <StepExportacao comp={comp} config={config} funcionarios={funcionarios} onBack={() => setStep(3)} onGoValores={() => setStep(1)} onDone={refreshComp} />}
               </TabsContent>
               <TabsContent value="ajuste">
