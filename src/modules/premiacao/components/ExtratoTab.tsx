@@ -64,7 +64,7 @@ export default function ExtratoTab({ politica, cat, competencia, empresa }: { po
       pontosTrofeus = Math.max(0, politica.teto_mensal_pontos - pontosMedalhas);
     const saldo = saldoInicial + pontosMedalhas + pontosTrofeus - pontosDesabonos;
     const referencia = cat.refDe(c);
-    const premiaveis = Math.max(0, saldo - referencia);
+    const premiaveis = saldo > referencia ? saldo : 0;
     return {
       id: oficial?.id || '', colaborador_id: colabId, competencia, saldo_inicial: saldoInicial,
       pontos_medalhas: pontosMedalhas, medalhas_contagem: medalhasContagem, pontos_trofeus: pontosTrofeus,
@@ -101,8 +101,8 @@ export default function ExtratoTab({ politica, cat, competencia, empresa }: { po
       {linha('(−) Desabonos', a.pontos_desabonos)}
       {linha('(=) Saldo do mês', a.saldo_apurado)}
       {a.saldo_apurado >= 0 ? (<>
-        {linha('(−) Pontuação de referência', a.pontuacao_referencia)}
-        {linha('(=) Pontos premiados', a.pontos_premiaveis)}
+        {linha('Pontuação de referência (gatilho)', a.pontuacao_referencia)}
+        {linha('Pontos premiados', a.pontos_premiaveis)}
         <div className="flex justify-between mt-2 rounded bg-primary text-primary-foreground px-2 py-1.5 font-bold"><span>Prêmio</span><span>{brl(a.valor_bonificacao)}</span></div>
       </>) : (
         <p className="text-destructive font-semibold mt-2">Saldo negativo de {a.saldo_apurado} pontos transportado para {fmtComp(shiftComp(competencia, 1))}. Não há desconto em folha.</p>
@@ -137,7 +137,7 @@ export default function ExtratoTab({ politica, cat, competencia, empresa }: { po
           <div className="flex items-center gap-2">
             <Badge variant={oficial ? 'default' : 'outline'}>{oficial ? 'Apuração oficial + lançamentos' : 'Prévia em tempo real (apuração ainda não calculada)'}</Badge>
           </div>
-          <div className="rounded-lg bg-muted p-3 text-sm font-medium">Pontuação de referência da sua função ({cat.funcaoDe(c)}): {a.pontuacao_referencia} pontos. Seu prêmio corresponde aos pontos acima desse valor.</div>
+          <div className="rounded-lg bg-muted p-3 text-sm font-medium">Pontuação de referência da sua função ({cat.funcaoDe(c)}): {a.pontuacao_referencia} pontos. Ao ultrapassar esse valor, você recebe o prêmio sobre todos os pontos do mês.</div>
           {cards}
           {quadro}
         </div>

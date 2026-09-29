@@ -3,9 +3,9 @@ import type { Catalogo, Politica } from '../hooks/usePremiacao';
 import { efetivoPontos } from '../hooks/usePremiacao';
 
 export const FORMULA_RODAPE =
-  'Prêmio = pontos acima da pontuação de referência da função × valor do ponto. Saldo negativo não gera desconto e é transportado para o mês seguinte.';
+  'Ultrapassada a pontuação de referência da função, prêmio = total de pontos do mês × valor do ponto; abaixo ou igual à referência, não há prêmio. Saldo negativo não gera desconto e é transportado para o mês seguinte.';
 export const TEXTO_REFERENCIA =
-  'Pontuação correspondente ao desempenho ordinariamente esperado para a função. Apenas os pontos acima dela geram prêmio.';
+  'Pontuação correspondente ao desempenho ordinariamente esperado para a função. Funciona como gatilho: ultrapassada, todos os pontos do mês geram prêmio.';
 export const TEXTO_RUBRICA =
   'Configurar no Domínio como prêmio (art. 457, §§ 2º e 4º, CLT) — sem incidência de INSS e FGTS, com incidência de IRRF, sem reflexos.';
 
@@ -26,9 +26,9 @@ export function tituloRegulamento(versao: number, vigencia: string) {
 export function textoRegulamento(razaoSocial: string, politica: Politica) {
   return `1. Natureza. Os prêmios deste programa são concedidos por liberalidade da ${razaoSocial}, exclusivamente em razão de desempenho superior ao ordinariamente esperado no exercício das atividades, nos termos do art. 457, §§ 2º e 4º, da CLT, e não integram a remuneração para nenhum efeito.
 
-2. Pontuação de referência. Cada função possui uma pontuação de referência, que corresponde ao desempenho normalmente esperado para ela. O prêmio corresponde somente aos pontos que ultrapassarem essa referência:
-Prêmio = (saldo de pontos do mês − pontuação de referência da função) × ${valorPontoExtenso(politica.valor_ponto)} por ponto.
-Pontos que não ultrapassarem a referência não geram prêmio e não se acumulam para os meses seguintes.
+2. Pontuação de referência. Cada função possui uma pontuação de referência, que corresponde ao desempenho normalmente esperado para ela. Ela funciona como gatilho: ao ultrapassá-la, ainda que por um ponto, o colaborador faz jus ao prêmio sobre a totalidade dos pontos alcançados no mês:
+Prêmio = saldo de pontos do mês × ${valorPontoExtenso(politica.valor_ponto)} por ponto, desde que o saldo seja superior à pontuação de referência da função.
+Se o saldo não ultrapassar a referência, não há prêmio no mês, e esses pontos e não se acumulam para os meses seguintes.
 
 3. Composição dos pontos. O saldo do mês é formado pelos pontos de medalhas por serviço realizado, somados aos pontos de troféus por metas atingidas, deduzidos os pontos de desabono. As metas são apuradas pela quantidade de serviços realizados nos códigos definidos para cada uma.
 
