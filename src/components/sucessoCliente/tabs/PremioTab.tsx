@@ -21,6 +21,7 @@ import { generatePremioPoliticaPdf } from '@/utils/sucessoCliente/premioPolitica
 import { supabase } from '@/integrations/supabase/client';
 import { usePrizePublicApi } from '@/hooks/prizePublicContext';
 import { HOTELARIA_CONFIG, HOTELARIA_CRITERIOS_INDIVIDUAIS } from '@/utils/sucessoCliente/premioTemplates';
+import PoliticaPersonalizadaIaDialog, { type PoliticaGerada } from "./PoliticaPersonalizadaIaDialog";
 import SelecionarEmpresaDialog from '@/components/sucessoCliente/SelecionarEmpresaDialog';
 import { Building2 } from 'lucide-react';
 
@@ -67,6 +68,31 @@ export default function PremioTab({ client_id, cliente }: { client_id: string; c
   const [aiFiles, setAiFiles] = useState<File[]>([]);
   const [aiContexto, setAiContexto] = useState('');
   const [aiRunning, setAiRunning] = useState(false);
+  const [customOpen, setCustomOpen] = useState(false);
+  const atividadeEmpresa = (() => { try { return localStorage.getItem(`cargos_atividade_empresa_${client_id}`) || ""; } catch { return ""; } })();
+
+  const handleCreatePersonalizada = async (p: PoliticaGerada) => {
+    const label = (newForm.verba_label === "__custom__" ? newForm.verba_label_custom : newForm.verba_label).trim() || "Prêmio";
+    const config = {
+      split_coletivo: p.split_coletivo, split_individual: p.split_individual,
+      individual_pct_distribuicao: p.individual_pct_distribuicao, base_label: p.base_label, rateio: p.rateio,
+      criterios: p.indicadores, escala: HOTELARIA_CONFIG.escala, metas_mensais: {},
+    };
+    const { data, error } = await create({
+      verba_label: label, nome: p.nome, objetivo: p.objetivo || null, regra_premiacao: p.regra_premiacao || null,
+      periodo_tipo: p.periodo_tipo, valor_base: 0, remuneracao_variavel: true, rv_base: "outro", rv_base_label: p.base_label,
+      rv_pct_individual: p.split_individual, rv_pct_igualitario: 0, rv_observacoes: p.observacoes || null,
+      modelo_template: "personalizado", hotelaria_config: config, hotelaria_pontos: {}, hotelaria_apuracao: {},
+    } as any);
+    if (error) { toast.error("Erro ao criar política."); throw error; }
+    const policyId = (data as any)?.id;
+    if (policyId && p.criterios_individuais.length) {
+      await supabase.from("prize_criteria" as any).insert(p.criterios_individuais.map((c, i) => ({ policy_id: policyId, nome: c.nome, descricao: c.descricao || null, peso: c.peso, essencial: false, ordem: i, origem: "ia" })) as any);
+    }
+    toast.success(`Política "${p.nome}" criada. Cadastre os colaboradores e as metas do mês.`);
+    setCreating(false);
+    if (policyId) setSelectedId(policyId);
+  };
 
   const selected = useMemo(() => items.find(i => i.id === selectedId) || null, [items, selectedId]);
 
@@ -197,6 +223,9 @@ export default function PremioTab({ client_id, cliente }: { client_id: string; c
         </div>
       </CardContent></Card>
 
+      <PoliticaPersonalizadaIaDialog open={customOpen} onOpenChange={setCustomOpen}
+        verbaLabel={(newForm.verba_label === "__custom__" ? newForm.verba_label_custom : newForm.verba_label) || "Prêmio"}
+        atividade={atividadeEmpresa} onConfirm={handleCreatePersonalizada}/>
       {creating && (
         <Card><CardContent className="p-4 space-y-3">
           <div className="flex items-center justify-between">
@@ -257,6 +286,13 @@ export default function PremioTab({ client_id, cliente }: { client_id: string; c
               </div>
               <Textarea rows={3} value={newForm.regra_premiacao} onChange={(e)=>setNewForm({...newForm, regra_premiacao: e.target.value})} placeholder="Ex.: havendo atingimento de 80% no resultado geral, o colaborador fará jus ao recebimento do benefício."/>
             </div>
+          </div>
+          <div className="rounded-md border-2 border-primary/40 bg-primary/10 p-3 flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <div className="flex items-center gap-2"><Wand2 className="w-4 h-4 text-primary"/><span className="text-sm font-semibold">Criar uma política nova, do seu jeito (com IA)</span></div>
+              <p className="text-[11px] text-muted-foreground">Explique como deve funcionar e anexe arquivos. A IA monta a política, a apuração, as faixas e os critérios de avaliação e feedback.</p>
+            </div>
+            <Button size="sm" onClick={()=>setCustomOpen(true)}><Sparkles className="w-3 h-3 mr-1"/>Explicar nova política</Button>
           </div>
           <div className="border-t pt-3 space-y-2 bg-primary/5 rounded-md p-3">
             <div className="flex items-center gap-2">
