@@ -90,7 +90,7 @@ export default function AjusteFechamento({ comp, config, funcionarios, saldo, on
             <th className="p-2 text-left">Funcionário</th><th className="p-2 text-right">Comissão original</th><th className="p-2 text-right">Bruto extrato</th>
             <th className="p-2 w-32">Bruto alvo</th><th className="p-2 text-right">Diferença</th><th className="p-2 text-right">Ajustado</th><th className="p-2">Alerta</th>
           </tr></thead>
-          <tbody>{dist.map((d) => {
+          <tbody>{distOrdenada.map((d) => {
             const f = byId.get(d.funcionario_id);
             return (
               <tr key={d.funcionario_id} className="border-t">
