@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
@@ -15,10 +15,17 @@ interface Props { comp: TsCompetencia; config: TsConfig; funcionarios: TsFuncion
 export default function AjusteFechamento({ comp, config, funcionarios, saldo, onSaldoClick, onChanged }: Props) {
   const [dist, setDist] = useState<TsDistribuicao[]>([]);
   const [imp, setImp] = useState<'extrato' | 'alvo' | null>(null);
+  const [ordem, setOrdem] = useState<'codigo' | 'nome'>('codigo');
   const byId = new Map(funcionarios.map((f) => [f.id, f]));
   const byCod = new Map(funcionarios.map((f) => [f.codigo.replace(/^0+/, ''), f.id]));
 
   useEffect(() => { loadDistribuicao(comp.id).then((d) => setDist(d.filter((x) => x.pontos > 0))); }, [comp.id]);
+
+  const distOrdenada = useMemo(() => [...dist].sort((a, b) => {
+    const fa = byId.get(a.funcionario_id); const fb = byId.get(b.funcionario_id);
+    if (ordem === 'codigo') return Number(fa?.codigo ?? 0) - Number(fb?.codigo ?? 0) || (fa?.codigo ?? '').localeCompare(fb?.codigo ?? '');
+    return (fa?.nome ?? '').localeCompare(fb?.nome ?? '', 'pt-BR');
+  }), [dist, ordem, funcionarios]);
 
   const set = (fid: string, p: Partial<TsDistribuicao>) => setDist((ds) => ds.map((d) => d.funcionario_id === fid ? { ...d, ...p } : d));
 
