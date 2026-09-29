@@ -4815,6 +4815,7 @@ export type Database = {
           empresa_id: string
           id: string
           regime_tributario: string
+          teto_retencao_cct: number | null
           updated_at: string
         }
         Insert: {
@@ -4824,6 +4825,7 @@ export type Database = {
           empresa_id: string
           id?: string
           regime_tributario?: string
+          teto_retencao_cct?: number | null
           updated_at?: string
         }
         Update: {
@@ -4833,6 +4835,7 @@ export type Database = {
           empresa_id?: string
           id?: string
           regime_tributario?: string
+          teto_retencao_cct?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -4886,6 +4889,7 @@ export type Database = {
           codigo: string
           created_at: string
           empresa_id: string
+          gera_lancamento: boolean
           id: string
           nome: string
         }
@@ -4894,6 +4898,7 @@ export type Database = {
           codigo: string
           created_at?: string
           empresa_id: string
+          gera_lancamento?: boolean
           id?: string
           nome: string
         }
@@ -4902,6 +4907,7 @@ export type Database = {
           codigo?: string
           created_at?: string
           empresa_id?: string
+          gera_lancamento?: boolean
           id?: string
           nome?: string
         }

@@ -29,7 +29,7 @@ export default function StepExportacao({ comp, config, funcionarios, onBack, onD
     const dist = await loadDistribuicao(comp.id);
     const byId = new Map(funcionarios.map((f) => [f.id, f]));
     const aaaamm = competenciaAAAAMM(comp.competencia);
-    const { conteudo, erros: e } = gerarArquivo(dist.filter((d) => d.pontos > 0).map((d) => ({
+    const { conteudo, erros: e } = gerarArquivo(dist.filter((d) => d.pontos > 0 && byId.get(d.funcionario_id)?.gera_lancamento !== false).map((d) => ({
       codigoEmpregado: byId.get(d.funcionario_id)?.codigo || '', competencia: aaaamm, rubrica: verba, tipoProcesso: proc,
       valor: d.valor_comissao, codigoEmpresa: config.codigo_empresa_dominio,
     })));

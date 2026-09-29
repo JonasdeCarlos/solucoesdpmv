@@ -23,6 +23,7 @@ export default function StepEmpresa({ empresas, empresaId, onEmpresa, config, sa
     if (!c) return;
     if (c.codigo_empresa_dominio && !/^\d{1,10}$/.test(c.codigo_empresa_dominio)) return toast.error('Código da empresa: somente dígitos, até 10.');
     if (c.codigo_verba_padrao && !/^\d{1,4}$/.test(c.codigo_verba_padrao)) return toast.error('Código de verba: somente dígitos, até 4.');
+    if (c.teto_retencao_cct != null && !(Number(c.teto_retencao_cct) > 0 && Number(c.teto_retencao_cct) <= 100)) return toast.error('Teto da CCT deve estar entre 0 e 100%.');
     const err = await saveConfig(c);
     if (err) return toast.error(err.message);
     toast.success('Configuração salva');
@@ -40,7 +41,7 @@ export default function StepEmpresa({ empresas, empresaId, onEmpresa, config, sa
         <p className="text-xs text-muted-foreground mt-1">Para cadastrar uma nova empresa, use a aba Clientes.</p>
       </div>
       {c && empresaId && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <div>
             <Label>Regime tributário</Label>
             <Select value={c.regime_tributario} onValueChange={(v: any) => setC({ ...c, regime_tributario: v })}>
@@ -50,6 +51,11 @@ export default function StepEmpresa({ empresas, empresaId, onEmpresa, config, sa
                 <SelectItem value="demais">Demais regimes (teto 33%)</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+          <div>
+            <Label>Teto de retenção pela CCT (%)</Label>
+            <Input inputMode="decimal" placeholder="Opcional" value={c.teto_retencao_cct ?? ''} onChange={(e) => { const v = e.target.value.replace(',', '.').replace(/[^\d.]/g, ''); setC({ ...c, teto_retencao_cct: v === '' ? null : (v as any) }); }} />
+            <p className="text-xs text-muted-foreground mt-1">Preencha só se a CCT permitir retenção acima do teto legal.</p>
           </div>
           <div>
             <Label>Código da empresa no Domínio</Label>

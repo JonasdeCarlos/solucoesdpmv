@@ -2,20 +2,37 @@ import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
+import { FileText } from 'lucide-react';
 import { ratear } from '../utils/rateio';
 import { fmt, parseNum } from '../utils/validacoes';
 import { loadDistribuicao, saveDistribuicao, updateCompetencia, type TsCompetencia, type TsFuncionario } from '../hooks/useTaxaServico';
+import RelatorioRateioDialog from './RelatorioRateioDialog';
 
-interface Props { comp: TsCompetencia; funcionarios: TsFuncionario[]; onBack: () => void; onNext: () => void }
+interface Props { comp: TsCompetencia; funcionarios: TsFuncionario[]; empresaNome?: string; onBack: () => void; onNext: () => void }
 
-export default function StepRateio({ comp, funcionarios, onBack, onNext }: Props) {
-  const ativos = funcionarios.filter((f) => f.ativo);
-  const [pontos, setPontos] = useState<Record<string, string>>({});
+const draftKey = (id: string) => `ts-rateio-draft-${id}`;
+
+export default function StepRateio({ comp, funcionarios, empresaNome = '', onBack, onNext }: Props) {
+  const ativos = useMemo(() => funcionarios.filter((f) => f.ativo), [funcionarios]);
+  const [pontos, setPontos] = useState<Record<string, string>>(() => {
+    try { return JSON.parse(localStorage.getItem(draftKey(comp.id)) || '{}'); } catch { return {}; }
+  });
+  const [rel, setRel] = useState(false);
   const bloqueado = comp.status === 'exportado' || comp.status === 'ajustado';
 
   useEffect(() => {
-    loadDistribuicao(comp.id).then((d) => setPontos(Object.fromEntries(d.map((x) => [x.funcionario_id, String(x.pontos)]))));
-  }, [comp.id]);
+    loadDistribuicao(comp.id).then((d) => {
+      const salvo = Object.fromEntries(d.map((x) => [x.funcionario_id, String(x.pontos)]));
+      // rascunho digitado tem prioridade sobre o que está salvo
+      setPontos((atual) => (bloqueado ? salvo : { ...salvo, ...atual }));
+    });
+  }, [comp.id, bloqueado]);
+
+  const setPonto = (id: string, v: string) => setPontos((p) => {
+    const n = { ...p, [id]: v };
+    localStorage.setItem(draftKey(comp.id), JSON.stringify(n));
+    return n;
+  });
 
   const r = useMemo(() => ratear(comp.valor_liquido, ativos.map((f) => ({ funcionario_id: f.id, pontos: parseNum(pontos[f.id]) }))), [comp.valor_liquido, ativos, pontos]);
 
@@ -29,13 +46,22 @@ export default function StepRateio({ comp, funcionarios, onBack, onNext }: Props
     })));
     if (err) return toast.error(err.message);
     await updateCompetencia(comp.id, { status: 'calculado' });
+    localStorage.removeItem(draftKey(comp.id));
     toast.success('Rateio salvo');
     onNext();
   };
 
+  const linhas = ativos.map((f) => {
+    const it = r.itens.find((i) => i.funcionario_id === f.id);
+    return { codigo: f.codigo, nome: f.nome, pontos: it?.pontos || 0, valor: it?.valor_comissao || 0, lanca: f.gera_lancamento !== false };
+  }).filter((l) => l.pontos > 0);
+
   return (
     <div className="space-y-4">
-      <p className="text-sm">Líquido a distribuir: <b className="text-primary">{fmt(comp.valor_liquido)}</b></p>
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <p className="text-sm">Líquido a distribuir: <b className="text-primary">{fmt(comp.valor_liquido)}</b></p>
+        <Button variant="outline" size="sm" disabled={!r.totalPontos} onClick={() => setRel(true)}><FileText className="w-4 h-4 mr-1" />Gerar relatório</Button>
+      </div>
       <div className="border rounded-md max-h-[50vh] overflow-auto">
         <table className="w-full text-sm">
           <thead className="bg-muted sticky top-0"><tr><th className="p-2 text-left">Código</th><th className="p-2 text-left">Nome</th><th className="p-2 w-32">Pontos</th><th className="p-2 text-right">Comissão</th></tr></thead>
@@ -43,8 +69,9 @@ export default function StepRateio({ comp, funcionarios, onBack, onNext }: Props
             const it = r.itens.find((i) => i.funcionario_id === f.id);
             return (
               <tr key={f.id} className="border-t">
-                <td className="p-2">{f.codigo}</td><td className="p-2">{f.nome}</td>
-                <td className="p-1"><Input disabled={bloqueado} inputMode="decimal" value={pontos[f.id] ?? ''} onChange={(e) => setPontos((p) => ({ ...p, [f.id]: e.target.value }))} /></td>
+                <td className="p-2">{f.codigo}</td>
+                <td className="p-2">{f.nome}{f.gera_lancamento === false && <span className="ml-2 text-xs text-muted-foreground">(sem lançamento)</span>}</td>
+                <td className="p-1"><Input disabled={bloqueado} inputMode="decimal" value={pontos[f.id] ?? ''} onChange={(e) => setPonto(f.id, e.target.value)} /></td>
                 <td className="p-2 text-right">{fmt(it?.valor_comissao)}</td>
               </tr>);
           })}</tbody>
@@ -59,6 +86,9 @@ export default function StepRateio({ comp, funcionarios, onBack, onNext }: Props
         <Button variant="outline" onClick={onBack}>Voltar</Button>
         <Button onClick={salvar}>{bloqueado ? 'Avançar' : 'Salvar e avançar'}</Button>
       </div>
+      <RelatorioRateioDialog open={rel} onOpenChange={setRel} empresa={empresaNome} competencia={comp.competencia}
+        arrecadado={comp.valor_arrecadado} percentual={comp.percentual_retencao} retido={comp.valor_retido} saldoUtilizado={comp.saldo_utilizado}
+        liquido={comp.valor_liquido} totalPontos={r.totalPontos} valorPonto={r.valorPonto} linhas={linhas} />
     </div>
   );
 }
