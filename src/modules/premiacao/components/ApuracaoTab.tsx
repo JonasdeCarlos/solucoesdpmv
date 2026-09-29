@@ -18,6 +18,7 @@ export default function ApuracaoTab({ politica, cat, competencia, empresa }: { p
   const [busy, setBusy] = useState(false);
   const [codEmpresa, setCodEmpresa] = useState('');
   const [processo, setProcesso] = useState('11');
+  const [fb, setFb] = useState<{ ap: Apuracao; c: Colaborador } | null>(null);
 
   const load = async () => {
     const { data } = await tbl('premiacao_apuracoes').select('*').eq('politica_id', politica.id).eq('competencia', competencia);
@@ -88,7 +89,7 @@ export default function ApuracaoTab({ politica, cat, competencia, empresa }: { p
       <div className="overflow-auto">
         <Table><TableHeader><TableRow>
           <TableHead>Colaborador</TableHead><TableHead>Saldo inicial</TableHead><TableHead>Medalhas</TableHead><TableHead>Troféus</TableHead><TableHead>Desabonos</TableHead>
-          <TableHead>Saldo do mês</TableHead><TableHead>Referência</TableHead><TableHead>Premiáveis</TableHead><TableHead>Prêmio</TableHead><TableHead>Transportado</TableHead><TableHead>Status</TableHead>
+          <TableHead>Saldo do mês</TableHead><TableHead>Referência</TableHead><TableHead>Premiáveis</TableHead><TableHead>Prêmio</TableHead><TableHead>Transportado</TableHead><TableHead>Status</TableHead><TableHead>Documentos</TableHead>
         </TableRow></TableHeader>
           <TableBody>{rows.map(r => {
             const c = colab(r.colaborador_id);
@@ -106,12 +107,24 @@ export default function ApuracaoTab({ politica, cat, competencia, empresa }: { p
                 <TableCell className="font-semibold">{brl(r.valor_bonificacao)}</TableCell>
                 <TableCell className={r.saldo_transportado < 0 ? 'text-destructive' : ''}>{r.saldo_transportado}</TableCell>
                 <TableCell><Badge variant={r.status === 'aberta' ? 'outline' : 'default'}>{r.status}</Badge></TableCell>
+                <TableCell>
+                  <div className="flex gap-1">
+                    <Button size="sm" variant="outline" className="h-7 px-2" disabled={r.status === 'aberta' || !c} title={r.status === 'aberta' ? 'Disponível após fechar a competência' : 'Extrato em PDF'}
+                      onClick={() => c && pdfExtrato({ politica, cat, apuracao: r, colaborador: c, empresa }).save(`extrato-${c.nome}-${competencia}.pdf`)}><FileDown className="w-3 h-3" /></Button>
+                    <Button size="sm" variant="outline" className="h-7 px-2" disabled={r.status === 'aberta' || !c || Number(r.valor_bonificacao) <= 0} title={r.status === 'aberta' ? 'Disponível após fechar a competência' : 'Recibo do prêmio em PDF'}
+                      onClick={() => c && pdfRecibo({ politica, cat, apuracao: r, colaborador: c, empresa }).save(`recibo-premio-${c.nome}-${competencia}.pdf`)}><Receipt className="w-3 h-3" /></Button>
+                    <Button size="sm" variant="outline" className="h-7 px-2" disabled={r.status === 'aberta' || !c} title={r.status === 'aberta' ? 'Disponível após fechar a competência' : 'Feedback (IA ou manual)'}
+                      onClick={() => c && setFb({ ap: r, c })}><MessageSquareText className="w-3 h-3" /></Button>
+                  </div>
+                </TableCell>
               </TableRow>);
           })}</TableBody></Table>
       </div>
       {!rows.length && <p className="text-sm text-muted-foreground">Clique em "Recalcular" para apurar a competência {fmtComp(competencia)}.</p>}
       {rows.length > 0 && <p className="text-sm font-semibold text-right">Total de prêmios: {brl(total)}</p>}
       <p className="text-xs rounded bg-muted p-2">{FORMULA_RODAPE}</p>
+      {status === 'aberta' && rows.length > 0 && <p className="text-xs text-muted-foreground">Extrato, recibo e feedback ficam disponíveis após fechar a competência.</p>}
+      {fb && <FeedbackDialog open onOpenChange={o => !o && setFb(null)} politica={politica} cat={cat} apuracao={fb.ap} colaborador={fb.c} empresa={empresa} />}
     </div>
   );
 }
