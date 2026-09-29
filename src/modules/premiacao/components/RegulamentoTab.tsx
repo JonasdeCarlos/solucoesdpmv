@@ -12,6 +12,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { tbl, shiftComp, competenciaAtual, type Catalogo, type Politica } from '../hooks/usePremiacao';
 import { textoRegulamento, tituloRegulamento, fmtData } from '../utils/textos';
 import { pdfRegulamento } from '../utils/pdfs';
+import { useModelosDocumento } from '@/modules/modelos-documento/useModelosDocumento';
+import { baixarPdf, dadosPadrao, preencherModelo } from '@/modules/modelos-documento/lib';
 
 export default function RegulamentoTab({ politica, cat, empresa, razaoSocial }: { politica: Politica; cat: Catalogo; empresa: string; razaoSocial: string }) {
   const [selId, setSelId] = useState('');
@@ -38,10 +40,17 @@ export default function RegulamentoTab({ politica, cat, empresa, razaoSocial }: 
     const { error } = await tbl('premiacao_regulamento_versoes').update({ texto, vigencia_inicio: vig, publicado_em: new Date().toISOString(), publicado_por: user?.id || null }).eq('id', sel!.id);
     if (error) toast.error(error.message); else { toast.success('Regulamento publicado.'); cat.reload(); }
   };
-  const pdf = (colabId?: string) => {
+  const pdf = async (colabId?: string) => {
     const c = colabId ? cat.colaboradores.find(x => x.id === colabId) : undefined;
+    const mod = modelos.ativo('politica');
+    if (mod) {
+      const dados = dadosPadrao({ colaborador: c ? { nome: c.nome, cpf: c.cpf, codigo: c.codigo, cargo: cat.funcaoDe(c) } : {}, empresa, politica: politica.nome });
+      baixarPdf(await preencherModelo(mod.pdf_base64, mod.campos, [dados]), `politica${c ? '-' + c.nome.replace(/\s+/g, '_') : ''}.pdf`);
+      return;
+    }
     pdfRegulamento({ politica, cat, versao: { ...sel!, texto, vigencia_inicio: vig }, empresa, colaborador: c }).save(`regulamento-v${sel!.versao}${c ? '-' + c.nome.replace(/\s+/g, '_') : ''}.pdf`);
   };
+  const modelos = useModelosDocumento(politica.id);
   const registrar = async (colaborador_id: string, forma: 'aceite_digital' | 'assinatura_fisica', file?: File) => {
     let anexo: string | null = null;
     if (file) {

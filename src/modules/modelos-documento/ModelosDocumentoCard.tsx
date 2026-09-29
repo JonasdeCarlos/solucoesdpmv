@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -118,7 +118,7 @@ function EditorEspacos({ modelo, onClose, onSave, amostra }: { modelo: ModeloDoc
   const [paginas, setPaginas] = useState<Awaited<ReturnType<typeof renderPaginas>> | null>(null);
   const [sel, setSel] = useState<number | null>(null);
   const bytes = useMemo(() => base64ToBytes(modelo.pdf_base64), [modelo.pdf_base64]);
-  useMemo(() => { renderPaginas(bytes).then(setPaginas).catch(() => toast.error('Não foi possível mostrar o PDF.')); }, [bytes]);
+  useEffect(() => { renderPaginas(bytes).then(setPaginas).catch(() => toast.error('Não foi possível mostrar o PDF.')); }, [bytes]);
 
   const upd = (i: number, patch: Partial<Campo>) => setCampos(cs => cs.map((c, j) => (j === i ? { ...c, ...patch } : c)));
   const previa = async () => baixarPdf(await preencherModelo(modelo.pdf_base64, campos, [amostra]), `previa-${modelo.nome}.pdf`);
