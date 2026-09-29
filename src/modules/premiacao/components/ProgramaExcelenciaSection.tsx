@@ -44,7 +44,7 @@ export default function ProgramaExcelenciaSection({ clientId, cliente }: { clien
           <Award className="w-5 h-5 text-primary mt-0.5" />
           <div>
             <h3 className="font-semibold">Programa Excelência — premiação por pontos</h3>
-            <p className="text-xs text-muted-foreground">Medalhas por serviço, troféus por metas, desabonos e pontuação de referência por função. Só os pontos acima da referência viram prêmio.</p>
+            <p className="text-xs text-muted-foreground">Medalhas por serviço, troféus por metas, desabonos e pontuação de referência por função. Ultrapassou a referência, todos os pontos do mês viram prêmio.</p>
           </div>
         </div>
         <div className="flex gap-2 items-center">

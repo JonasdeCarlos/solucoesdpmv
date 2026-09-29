@@ -101,7 +101,7 @@ export function pdfApuracao(opts: { politica: Politica; cat: Catalogo; apuracoes
     return [c?.nome || '—', cat.funcaoDe(c), String(a.pontuacao_referencia), String(a.saldo_inicial), String(a.pontos_medalhas + a.pontos_trofeus), String(a.pontos_desabonos), String(a.saldo_apurado), String(a.pontos_premiaveis), metas, String(a.saldo_transportado), brl(a.valor_bonificacao)];
   });
   const total = apuracoes.reduce((s, a) => s + Number(a.valor_bonificacao), 0);
-  autoTable(doc, { startY: y, head: [['Colaborador', 'Função', 'Referência', 'Saldo inicial', 'Pontos apurados', 'Desabonos', 'Saldo do mês', 'Pontos excedentes', 'Metas atingidas', 'Saldo transportado', 'Prêmio']],
+  autoTable(doc, { startY: y, head: [['Colaborador', 'Função', 'Referência', 'Saldo inicial', 'Pontos apurados', 'Desabonos', 'Saldo do mês', 'Pontos premiados', 'Metas atingidas', 'Saldo transportado', 'Prêmio']],
     body, foot: [['Total', '', '', '', '', '', '', '', '', '', brl(total)]],
     headStyles: { fillColor: MARROM, fontSize: 7.5 }, footStyles: { fillColor: VERDE }, alternateRowStyles: { fillColor: CINZA }, styles: { fontSize: 7.5 }, margin: { left: 14, right: 14 } });
   rodape(doc, FORMULA_RODAPE);
@@ -116,7 +116,7 @@ export function pdfExtrato(opts: { politica: Politica; cat: Catalogo; apuracao: 
   const funcao = cat.funcaoDe(c);
   doc.setFillColor(...CINZA); doc.roundedRect(14, y, w - 28, 14, 2, 2, 'F');
   doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(...MARROM);
-  doc.text(doc.splitTextToSize(`Pontuação de referência da sua função (${funcao}): ${a.pontuacao_referencia} pontos. Seu prêmio corresponde aos pontos acima desse valor.`, w - 34), 17, y + 5.5);
+  doc.text(doc.splitTextToSize(`Pontuação de referência da sua função (${funcao}): ${a.pontuacao_referencia} pontos. Ao ultrapassar esse valor, você recebe o prêmio sobre todos os pontos do mês.`, w - 34), 17, y + 5.5);
   y += 19;
   // cards
   const cards: Array<{ t: string; v: string; cor: [number, number, number] }> = [
@@ -142,7 +142,7 @@ export function pdfExtrato(opts: { politica: Politica; cat: Catalogo; apuracao: 
   ];
   const negativo = a.saldo_apurado < 0;
   if (!negativo) {
-    rows.push(['(−) Pontuação de referência', String(a.pontuacao_referencia)], ['(=) Pontos premiados', String(a.pontos_premiaveis)], ['Prêmio', brl(a.valor_bonificacao)]);
+    rows.push(['Pontuação de referência (gatilho)', String(a.pontuacao_referencia)], ['Pontos premiados', String(a.pontos_premiaveis)], ['Prêmio', brl(a.valor_bonificacao)]);
   } else {
     rows.push([{ content: `Saldo negativo de ${a.saldo_apurado} pontos transportado para ${fmtComp(shiftComp(a.competencia, 1))}. Não há desconto em folha.`, colSpan: 2, styles: { textColor: [190, 30, 30], fontStyle: 'bold' } }]);
   }
