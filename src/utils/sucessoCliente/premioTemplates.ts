@@ -5,7 +5,10 @@ export type HotelariaCriterio = {
   id: string;
   nome: string;
   peso_pct: number; // % sobre faturamento (base do critério)
-  metrica: 'faturamento_direto' | 'nota_media' | 'pct_avaliacoes';
+  metrica: 'faturamento_direto' | 'nota_media' | 'pct_avaliacoes' | 'realizado_meta' | 'realizado_meta_inverso' | 'percentual' | 'nota_generica' | 'sim_nao';
+  unidade?: string | null;
+  escala_max?: number | null;
+  descricao?: string | null;
   canal?: string | null;
   faixas: HotelariaFaixa[];
 };
@@ -18,6 +21,8 @@ export type HotelariaConfig = {
   // % do pool individual efetivamente distribuído como prêmio máximo
   // (ex.: pool = faturamento * split_individual%; teto = pool * individual_pct_distribuicao%)
   individual_pct_distribuicao?: number;
+  base_label?: string;
+  rateio?: 'pontos' | 'igualitario';
   // Metas por competência (chave "YYYY-MM"). Usadas para assinar a política do mês.
   metas_mensais?: Record<string, MetaMensal>;
 };
@@ -125,3 +130,36 @@ export const HOTELARIA_CRITERIOS_INDIVIDUAIS = [
 
 export const HOTELARIA_ESCALA_TEXTO =
   'Escala de pontuação por critério individual: 100% Excelente (sempre demonstra) • 75% Muito Bom (quase sempre) • 50% Bom (na maior parte das vezes) • 25% Regular (ocasionalmente) • 0% Insatisfatório (raramente/nunca).';
+export const isModeloHotelaria = (p: any) =>
+  p?.modelo_template === 'hotelaria' || p?.modelo_template === 'personalizado';
+export const isModeloPersonalizado = (p: any) => p?.modelo_template === 'personalizado';
+
+export const METRICAS_GENERICAS = ['realizado_meta', 'realizado_meta_inverso', 'percentual', 'nota_generica', 'sim_nao'] as const;
+export const METRICA_LABEL: Record<string, string> = {
+  faturamento_direto: 'Faturamento (Meta 0/1/2)',
+  nota_media: 'Nota média do canal',
+  pct_avaliacoes: '% de avaliações / reservas',
+  realizado_meta: 'Realizado x meta (maior é melhor)',
+  realizado_meta_inverso: 'Realizado x meta (menor é melhor)',
+  percentual: 'Percentual atingido (%)',
+  nota_generica: 'Nota média',
+  sim_nao: 'Sim / Não',
+};
+
+/** Enquadra o realizado de um indicador genérico na faixa atingida. */
+export function faixaGenerica(c: HotelariaCriterio, realizado: number): HotelariaFaixa {
+  const piso = c.faixas.find(f => f.nivel === 'piso') || c.faixas[0];
+  const niveis = c.faixas.filter(f => f.nivel !== 'piso');
+  const v = Number(realizado || 0);
+  if (c.metrica === 'sim_nao') {
+    const top = niveis.find(f => f.nivel === 'meta_2') || niveis[niveis.length - 1] || piso;
+    return v >= 1 ? top : piso;
+  }
+  const order: HotelariaFaixa['nivel'][] = ['meta_2', 'meta_1', 'meta_0'];
+  for (const n of order) {
+    const f = niveis.find(x => x.nivel === n);
+    if (!f || f.alvo === null || f.alvo === undefined) continue;
+    if (c.metrica === 'realizado_meta_inverso' ? v <= f.alvo : v >= f.alvo) return f;
+  }
+  return piso;
+}
