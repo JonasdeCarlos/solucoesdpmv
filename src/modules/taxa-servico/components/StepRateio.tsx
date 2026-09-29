@@ -88,7 +88,7 @@ export default function StepRateio({ comp, funcionarios, empresaNome = '', onBac
       </div>
       <RelatorioRateioDialog open={rel} onOpenChange={setRel} empresa={empresaNome} competencia={comp.competencia}
         arrecadado={comp.valor_arrecadado} percentual={comp.percentual_retencao} retido={comp.valor_retido} saldoUtilizado={comp.saldo_utilizado}
-        liquido={comp.valor_liquido} totalPontos={r.totalPontos} valorPonto={r.valorPonto} linhas={linhas} />
+        liquido={comp.valor_liquido} saldoNaoDistribuido={comp.saldo_nao_distribuido} totalPontos={r.totalPontos} valorPonto={r.valorPonto} linhas={linhas} />
     </div>
   );
 }

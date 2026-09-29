@@ -11,7 +11,7 @@ import { fmt, competenciaLabel } from '../utils/validacoes';
 export interface LinhaRel { codigo: string; nome: string; pontos: number; valor: number; lanca: boolean }
 interface Props {
   open: boolean; onOpenChange: (v: boolean) => void; empresa: string; competencia: string;
-  arrecadado: number; percentual: number; retido: number; saldoUtilizado: number; liquido: number;
+  arrecadado: number; percentual: number; retido: number; saldoUtilizado: number; liquido: number; saldoNaoDistribuido: number;
   totalPontos: number; valorPonto: number; linhas: LinhaRel[];
 }
 
@@ -49,6 +49,7 @@ export default function RelatorioRateioDialog(p: Props) {
       body: [
         ['Valor arrecadado', fmt(p.arrecadado), 'Retenção', `${p.percentual.toLocaleString('pt-BR')}% (${fmt(p.retido)})`],
         ['Saldo anterior utilizado', fmt(p.saldoUtilizado), 'Líquido distribuído', fmt(p.liquido)],
+        ['Saldo de comissões não distribuídas', fmt(p.saldoNaoDistribuido), '', ''],
         ['Total de pontos', p.totalPontos.toLocaleString('pt-BR'), 'Valor do ponto', vp],
       ],
       columnStyles: { 0: { fontStyle: 'bold' }, 2: { fontStyle: 'bold' } },
@@ -82,6 +83,7 @@ export default function RelatorioRateioDialog(p: Props) {
             <div>Retenção: <b>{p.percentual.toLocaleString('pt-BR')}% ({fmt(p.retido)})</b></div>
             <div>Saldo anterior utilizado: <b>{fmt(p.saldoUtilizado)}</b></div>
             <div>Líquido distribuído: <b className="text-primary">{fmt(p.liquido)}</b></div>
+            <div>Saldo de comissões não distribuídas: <b>{fmt(p.saldoNaoDistribuido)}</b></div>
             <div>Total de pontos: <b>{p.totalPontos.toLocaleString('pt-BR')}</b></div>
             <div>Valor do ponto: <b>{vp}</b></div>
           </div>
