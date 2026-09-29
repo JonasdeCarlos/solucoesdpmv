@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -14,6 +14,7 @@ export default function ReplicarModeloDialog({ modelo, onClose }: { modelo: Mode
   const [politicas, setPoliticas] = useState<{ id: string; nome: string }[] | null>(null);
   const [marcadas, setMarcadas] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  const escolheu = useRef(false);
 
   useEffect(() => {
     if (!empresa) return;
@@ -40,9 +41,9 @@ export default function ReplicarModeloDialog({ modelo, onClose }: { modelo: Mode
   };
 
   if (!empresa) return (
-    <SelecionarEmpresaDialog open onOpenChange={o => !o && onClose()} title={`Replicar ${TIPO_LABEL[modelo.tipo].toLowerCase()}`}
+    <SelecionarEmpresaDialog open onOpenChange={o => { if (!o && !escolheu.current) onClose(); escolheu.current = false; }} title={`Replicar ${TIPO_LABEL[modelo.tipo].toLowerCase()}`}
       description="Escolha a empresa que vai receber este modelo." confirmLabel="Avançar" excludeIds={[modelo.empresa_id]}
-      onConfirm={id => { setEmpresa(id); throw new Error('stay'); }} />
+      onConfirm={id => { escolheu.current = true; setEmpresa(id); }} />
   );
 
   return (
