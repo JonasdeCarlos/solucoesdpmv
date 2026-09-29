@@ -98,6 +98,7 @@ export default function ProgramaExcelenciaSection({ clientId, cliente }: { clien
           </Tabs>
         </>
       )}
+      {politica && <LinkGestorDialog politicaId={politica.id} open={linkAberto} onOpenChange={setLinkAberto} />}
     </CardContent></Card>
   );
 }
