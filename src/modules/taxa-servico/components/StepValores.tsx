@@ -6,9 +6,9 @@ import { toast } from 'sonner';
 import { calcularValores, validarValores, fmt, parseNum, tetoEfetivo } from '../utils/validacoes';
 import { saldoDisponivel, saveCompetencia, type TsCompetencia, type TsConfig } from '../hooks/useTaxaServico';
 
-interface Props { empresaId: string; config: TsConfig; comp: TsCompetencia | null; onSaved: (c: TsCompetencia) => void; onBack: () => void }
+interface Props { empresaId: string; config: TsConfig; comp: TsCompetencia | null; onSaved: (c: TsCompetencia) => void; onBack: () => void; fechada?: boolean }
 
-export default function StepValores({ empresaId, config, comp, onSaved, onBack }: Props) {
+export default function StepValores({ empresaId, config, comp, onSaved, onBack, fechada }: Props) {
   const [mes, setMes] = useState(comp?.competencia?.slice(0, 7) || new Date().toISOString().slice(0, 7));
   const [arrec, setArrec] = useState(String(comp?.valor_arrecadado ?? ''));
   const [perc, setPerc] = useState(String(comp?.percentual_retencao ?? ''));
