@@ -1,3 +1,4 @@
+import { isModeloHotelaria } from '@/utils/sucessoCliente/premioTemplates';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -85,7 +86,7 @@ export default function PremioAvaliacaoDialog({
   }, [competencia]);
 
   const hotelariaBase = useMemo(() => {
-    if ((policy as any).modelo_template !== 'hotelaria') return null;
+    if (!isModeloHotelaria(policy)) return null;
     const cfg: any = (policy as any).hotelaria_config || {};
     const apuracoes: Record<string, any> = ((policy as any).hotelaria_apuracoes as any) || {};
     const ap: any = (competenciaKey && apuracoes[competenciaKey])
