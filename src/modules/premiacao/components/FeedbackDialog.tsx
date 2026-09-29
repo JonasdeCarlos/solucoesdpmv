@@ -10,7 +10,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { tbl, brl, fmtComp, type Apuracao, type Catalogo, type Colaborador, type Lancamento, type Politica } from '../hooks/usePremiacao';
 import { pdfFeedback } from '../utils/pdfs';
 
-export default function FeedbackDialog({ open, onOpenChange, politica, cat, apuracao, colaborador, empresa }: {
+export default function FeedbackDialog({ open, onOpenChange, politica, cat, apuracao, colaborador, empresa, call }: {
+  call?: (action: string, extra?: Record<string, unknown>) => Promise<any>;
   open: boolean; onOpenChange: (v: boolean) => void;
   politica: Politica; cat: Catalogo; apuracao: Apuracao; colaborador: Colaborador; empresa: string;
 }) {
@@ -22,15 +23,19 @@ export default function FeedbackDialog({ open, onOpenChange, politica, cat, apur
 
   useEffect(() => {
     if (!open) return;
-    tbl('premiacao_feedbacks').select('*').eq('politica_id', politica.id).eq('colaborador_id', colaborador.id).eq('competencia', apuracao.competencia).maybeSingle()
+    (call
+      ? call('get_feedback', { colaborador_id: colaborador.id, competencia: apuracao.competencia }).then((r: any) => ({ data: r.feedback }))
+      : tbl('premiacao_feedbacks').select('*').eq('politica_id', politica.id).eq('colaborador_id', colaborador.id).eq('competencia', apuracao.competencia).maybeSingle())
       .then(({ data }: any) => { setTexto(data?.texto || ''); setOrigem(data?.origem === 'ia' ? 'ia' : 'manual'); });
   }, [open, politica.id, colaborador.id, apuracao.competencia]);
 
   const gerarIa = async () => {
     setGerando(true); setTexto('');
     try {
-      const { data: lanc } = await tbl('premiacao_lancamentos').select('*')
-        .eq('politica_id', politica.id).eq('colaborador_id', colaborador.id).eq('competencia', apuracao.competencia);
+      const { data: lanc } = call
+        ? { data: (await call('list_lancamentos', { competencia: apuracao.competencia, colaborador_id: colaborador.id })).items }
+        : await tbl('premiacao_lancamentos').select('*')
+          .eq('politica_id', politica.id).eq('colaborador_id', colaborador.id).eq('competencia', apuracao.competencia);
       const ocorrencias = ((lanc || []) as Lancamento[]).map(l => ({ tipo: l.tipo, codigo: l.codigo, descricao: l.descricao, pontos: l.pontos_total, observacao: l.observacao }));
       const { data: sess } = await supabase.auth.getSession();
       const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/premiacao-feedback`;
@@ -85,6 +90,12 @@ export default function FeedbackDialog({ open, onOpenChange, politica, cat, apur
 
   const salvar = async () => {
     setSalvando(true);
+    if (call) {
+      const r = await call('save_feedback', { colaborador_id: colaborador.id, competencia: apuracao.competencia, texto, origem });
+      setSalvando(false);
+      if (r.error) return toast.error(r.error);
+      return toast.success('Feedback salvo.');
+    }
     const { error } = await tbl('premiacao_feedbacks').upsert({
       empresa_id: politica.empresa_id, politica_id: politica.id, colaborador_id: colaborador.id,
       competencia: apuracao.competencia, texto, origem,

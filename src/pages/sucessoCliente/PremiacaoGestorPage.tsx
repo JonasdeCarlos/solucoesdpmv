@@ -9,11 +9,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
-import { Lock, Medal, Trophy, MinusCircle, FileDown, Copy, RefreshCw, Loader2, PlusCircle } from 'lucide-react';
+import { Lock, Unlock, Receipt, MessageSquareText, Medal, Trophy, MinusCircle, FileDown, Copy, RefreshCw, Loader2, PlusCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { toBlob } from 'html-to-image';
 import { brl, fmtComp, shiftComp } from '@/modules/premiacao/hooks/usePremiacao';
-import { pdfExtrato, pdfApuracao, pdfRegulamento } from '@/modules/premiacao/utils/pdfs';
+import { pdfExtrato, pdfApuracao, pdfRegulamento, pdfRecibo } from '@/modules/premiacao/utils/pdfs';
+import FeedbackDialog from '@/modules/premiacao/components/FeedbackDialog';
 
 const callEdge = async (token: string, senha: string, action: string, extra: Record<string, unknown> = {}) => {
   const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
@@ -126,7 +127,7 @@ export default function PremiacaoGestorPage() {
             <Card><CardContent className="p-4 space-y-3">
               <p className="text-sm text-muted-foreground">Regulamento vigente{versaoVigente ? ` — versão ${versaoVigente.versao}, vigente desde ${versaoVigente.vigencia_inicio}` : ''}.</p>
               {versaoVigente
-                ? <Button onClick={() => pdfRegulamento({ politica, cat, versao: versaoVigente, empresa }).save(`regulamento-${politica.nome.replace(/\s+/g, '_')}.pdf`)}><FileDown className="w-4 h-4 mr-1" />Gerar PDF do regulamento</Button>
+                ? <RegulamentoGestor politica={politica} cat={cat} versao={versaoVigente} empresa={empresa} />
                 : <p className="text-sm">Nenhuma versão de regulamento gerada ainda.</p>}
             </CardContent></Card>
           </TabsContent>
@@ -395,6 +396,7 @@ function ExtratoGestor({ politica, cat, competencia, empresa, call }: any) {
 function ApuracaoGestor({ politica, cat, competencia, empresa, call }: any) {
   const [items, setItems] = useState<any[]>([]);
   const [busy, setBusy] = useState(false);
+  const [fb, setFb] = useState<{ ap: any; c: any } | null>(null);
 
   const load = async () => {
     const r = await call('list_apuracoes', { competencia });
@@ -402,40 +404,83 @@ function ApuracaoGestor({ politica, cat, competencia, empresa, call }: any) {
   };
   useEffect(() => { load(); }, [competencia]);
 
-  const apurar = async () => {
+  const acao = async (action: string, ok: string) => {
     setBusy(true);
-    const r = await call('apurar', { competencia });
+    const r = await call(action, { competencia });
     setBusy(false);
     if (r.error) { toast.error(r.error); return; }
-    toast.success('Apuração calculada');
+    toast.success(ok);
     load();
   };
 
-  const nomeDe = (id: string) => cat.colaboradores.find((c: any) => c.id === id)?.nome || '—';
-  const total = items.reduce((s, x) => s + (x.valor_bonificacao || 0), 0);
+  const colab = (id: string) => cat.colaboradores.find((c: any) => c.id === id);
+  const total = items.reduce((s, x) => s + Number(x.valor_bonificacao || 0), 0);
+  const status = items.length ? (items.every(r => r.status !== 'aberta') ? 'fechada' : 'aberta') : 'sem apuração';
+  const fechada = status === 'fechada';
+  const arq = (n: string) => n.replace(/\s+/g, '_');
 
   return (
     <Card><CardContent className="p-4 space-y-3">
-      <div className="flex gap-2">
-        <Button onClick={apurar} disabled={busy}>{busy ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-1" />}Calcular / recalcular apuração de {fmtComp(competencia)}</Button>
-        {items.length > 0 && <Button variant="outline" onClick={() => pdfApuracao({ politica, cat, apuracoes: items, competencia, empresa }).save(`apuracao-${competencia}.pdf`)}><FileDown className="w-4 h-4 mr-1" />PDF da apuração</Button>}
+      <div className="flex flex-wrap gap-2 items-center">
+        <Badge variant={fechada ? 'default' : 'outline'}>Status: {status}</Badge>
+        <Button size="sm" onClick={() => acao('apurar', 'Apuração calculada')} disabled={busy || fechada}>{busy ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-1" />}Calcular / recalcular</Button>
+        <Button size="sm" disabled={busy || !items.length || fechada} onClick={() => confirm(`Fechar a competência ${fmtComp(competencia)}?`) && acao('fechar', 'Competência fechada')}><Lock className="w-4 h-4 mr-1" />Fechar competência</Button>
+        <Button size="sm" variant="outline" disabled={busy || !fechada} onClick={() => confirm('Reabrir a apuração? As competências seguintes em aberto serão recalculadas.') && acao('reabrir', 'Competência reaberta')}><Unlock className="w-4 h-4 mr-1" />Reabrir</Button>
+        {items.length > 0 && <Button size="sm" variant="outline" onClick={() => pdfApuracao({ politica, cat, apuracoes: items, competencia, empresa }).save(`apuracao-${competencia}.pdf`)}><FileDown className="w-4 h-4 mr-1" />PDF da apuração</Button>}
       </div>
       {items.length === 0 ? <p className="text-sm text-muted-foreground">Nenhuma apuração calculada para esta competência. Clique em calcular.</p> : (
         <>
+          {!fechada && <p className="text-xs text-muted-foreground">Extrato, recibo e feedback ficam disponíveis após fechar a competência.</p>}
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead><tr className="bg-primary text-primary-foreground"><th className="p-2 text-left">Colaborador</th><th className="p-2 text-right">Saldo</th><th className="p-2 text-right">Referência</th><th className="p-2 text-right">Pontos premiados</th><th className="p-2 text-right">Prêmio</th></tr></thead>
-            <tbody>{items.map((x, i) => (
+            <thead><tr className="bg-primary text-primary-foreground"><th className="p-2 text-left">Colaborador</th><th className="p-2 text-right">Saldo</th><th className="p-2 text-right">Referência</th><th className="p-2 text-right">Pontos premiados</th><th className="p-2 text-right">Prêmio</th>{fechada && <th className="p-2 text-center">Documentos</th>}</tr></thead>
+            <tbody>{items.map((x, i) => {
+              const c = colab(x.colaborador_id);
+              return (
               <tr key={x.id} className={i % 2 ? 'bg-muted/40' : ''}>
-                <td className="p-2">{nomeDe(x.colaborador_id)}</td>
+                <td className="p-2">{c?.nome || '—'}</td>
                 <td className="p-2 text-right">{x.saldo_apurado}</td>
                 <td className="p-2 text-right">{x.pontuacao_referencia}</td>
                 <td className="p-2 text-right">{x.pontos_premiaveis}</td>
                 <td className="p-2 text-right font-semibold">{brl(x.valor_bonificacao)}</td>
-              </tr>))}</tbody>
+                {fechada && <td className="p-2">{c && <div className="flex gap-1 justify-center">
+                  <Button size="sm" variant="ghost" title="Extrato" onClick={() => pdfExtrato({ politica, cat, apuracao: x, colaborador: c, empresa }).save(`extrato-${arq(c.nome)}-${competencia}.pdf`)}><FileDown className="w-3 h-3" /></Button>
+                  <Button size="sm" variant="ghost" title="Recibo" onClick={() => pdfRecibo({ politica, cat, apuracao: x, colaborador: c, empresa }).save(`recibo-${arq(c.nome)}-${competencia}.pdf`)}><Receipt className="w-3 h-3" /></Button>
+                  <Button size="sm" variant="ghost" title="Feedback" onClick={() => setFb({ ap: x, c })}><MessageSquareText className="w-3 h-3" /></Button>
+                </div>}</td>}
+              </tr>); })}</tbody>
           </table>
+          </div>
           <div className="flex justify-end font-bold">Total: {brl(total)}</div>
         </>
       )}
+      {fb && <FeedbackDialog open onOpenChange={v => !v && setFb(null)} politica={politica} cat={cat} apuracao={fb.ap} colaborador={fb.c} empresa={empresa} call={call} />}
     </CardContent></Card>
+  );
+}
+
+function RegulamentoGestor({ politica, cat, versao, empresa }: any) {
+  const [colabId, setColabId] = useState('todos');
+  const ativos = cat.colaboradores.filter((c: any) => c.ativo !== false);
+  const gerar = () => {
+    const alvo = colabId === 'todos' ? ativos : ativos.filter((c: any) => c.id === colabId);
+    if (!alvo.length) return toast.error('Nenhum colaborador cadastrado.');
+    alvo.forEach((c: any) => pdfRegulamento({ politica, cat, versao, empresa, colaborador: c }).save(`politica-${c.nome.replace(/\s+/g, '_')}.pdf`));
+  };
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-2 items-end">
+        <div className="min-w-60"><Label className="text-xs">Política para assinatura do colaborador</Label>
+          <Select value={colabId} onValueChange={setColabId}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os colaboradores (um PDF cada)</SelectItem>
+              {ativos.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
+            </SelectContent>
+          </Select></div>
+        <Button onClick={gerar}><FileDown className="w-4 h-4 mr-1" />PDF para assinatura</Button>
+        <Button variant="outline" onClick={() => pdfRegulamento({ politica, cat, versao, empresa }).save(`regulamento-${politica.nome.replace(/\s+/g, '_')}.pdf`)}><FileDown className="w-4 h-4 mr-1" />PDF sem nome</Button>
+      </div>
+    </div>
   );
 }
