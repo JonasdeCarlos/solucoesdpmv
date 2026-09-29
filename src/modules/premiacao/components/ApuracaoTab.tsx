@@ -5,10 +5,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { RefreshCw, Lock, Unlock, FileText, FileSpreadsheet, FileDown, AlertTriangle, Loader2 } from 'lucide-react';
+import { RefreshCw, Lock, Unlock, FileText, FileSpreadsheet, FileDown, AlertTriangle, Loader2, Receipt, MessageSquareText } from 'lucide-react';
 import { toast } from 'sonner';
-import { tbl, rpc, brl, fmtComp, type Apuracao, type Catalogo, type Politica } from '../hooks/usePremiacao';
-import { pdfApuracao } from '../utils/pdfs';
+import { tbl, rpc, brl, fmtComp, type Apuracao, type Catalogo, type Colaborador, type Politica } from '../hooks/usePremiacao';
+import { pdfApuracao, pdfExtrato, pdfRecibo } from '../utils/pdfs';
+import FeedbackDialog from './FeedbackDialog';
 import { FORMULA_RODAPE } from '../utils/textos';
 import { gerarArquivo } from '@/modules/taxa-servico/utils/dominioLayout';
 
