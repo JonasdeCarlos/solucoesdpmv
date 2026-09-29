@@ -11,12 +11,29 @@ import RelatorioRateioDialog from './RelatorioRateioDialog';
 interface Props { comp: TsCompetencia; funcionarios: TsFuncionario[]; empresaNome?: string; onBack: () => void; onNext: () => void }
 
 const draftKey = (id: string) => `ts-rateio-draft-${id}`;
+const diasKey = (id: string) => `ts-rateio-dias-${id}`;
+const diasDoMes = (comp: string) => new Date(Number(comp.slice(0, 4)), Number(comp.slice(5, 7)), 0).getDate();
 
 export default function StepRateio({ comp, funcionarios, empresaNome = '', onBack, onNext }: Props) {
   const ativos = useMemo(() => funcionarios.filter((f) => f.ativo), [funcionarios]);
   const [pontos, setPontos] = useState<Record<string, string>>(() => {
     try { return JSON.parse(localStorage.getItem(draftKey(comp.id)) || '{}'); } catch { return {}; }
   });
+  const diasMes = diasDoMes(comp.competencia);
+  const [dias, setDias] = useState<Record<string, string>>(() => {
+    try { return JSON.parse(localStorage.getItem(diasKey(comp.id)) || '{}'); } catch { return {}; }
+  });
+  const setDia = (id: string, v: string) => setDias((p) => {
+    const n = { ...p, [id]: v };
+    localStorage.setItem(diasKey(comp.id), JSON.stringify(n));
+    return n;
+  });
+  const diasDe = (id: string) => {
+    const v = dias[id];
+    if (v == null || v === '') return diasMes;
+    return Math.min(diasMes, Math.max(0, parseNum(v)));
+  };
+  const fator = (id: string) => diasDe(id) / diasMes;
   const [rel, setRel] = useState(false);
   const bloqueado = comp.status === 'exportado' || comp.status === 'ajustado';
 
@@ -34,14 +51,14 @@ export default function StepRateio({ comp, funcionarios, empresaNome = '', onBac
     return n;
   });
 
-  const r = useMemo(() => ratear(comp.valor_liquido, ativos.map((f) => ({ funcionario_id: f.id, pontos: parseNum(pontos[f.id]) }))), [comp.valor_liquido, ativos, pontos]);
+  const r = useMemo(() => ratear(comp.valor_liquido, ativos.map((f) => ({ funcionario_id: f.id, pontos: parseNum(pontos[f.id]) * fator(f.id) }))), [comp.valor_liquido, ativos, pontos, dias, diasMes]);
 
   const salvar = async () => {
     if (bloqueado) return onNext();
     if (!r.totalPontos) return toast.error('Informe os pontos.');
     if (r.diferenca !== 0) return toast.error('A soma distribuída difere do líquido.');
     const err = await saveDistribuicao(r.itens.map((i) => ({
-      competencia_id: comp.id, funcionario_id: i.funcionario_id, pontos: i.pontos, valor_comissao: i.valor_comissao,
+      competencia_id: comp.id, funcionario_id: i.funcionario_id, pontos: parseNum(pontos[i.funcionario_id]), valor_comissao: i.valor_comissao,
       rendimento_bruto_extrato: null, valor_bruto_alvo: null, diferenca: null, valor_ajustado: null, alerta: null,
     })));
     if (err) return toast.error(err.message);
@@ -53,8 +70,8 @@ export default function StepRateio({ comp, funcionarios, empresaNome = '', onBac
 
   const linhas = ativos.map((f) => {
     const it = r.itens.find((i) => i.funcionario_id === f.id);
-    return { codigo: f.codigo, nome: f.nome, pontos: it?.pontos || 0, valor: it?.valor_comissao || 0, lanca: f.gera_lancamento !== false };
-  }).filter((l) => l.pontos > 0);
+    return { codigo: f.codigo, nome: f.nome, pontos: parseNum(pontos[f.id]), valor: it?.valor_comissao || 0, lanca: f.gera_lancamento !== false };
+  }).filter((l) => l.pontos > 0 && l.valor > 0);
 
   return (
     <div className="space-y-4">
@@ -64,7 +81,7 @@ export default function StepRateio({ comp, funcionarios, empresaNome = '', onBac
       </div>
       <div className="border rounded-md max-h-[50vh] overflow-auto">
         <table className="w-full text-sm">
-          <thead className="bg-muted sticky top-0"><tr><th className="p-2 text-left">Código</th><th className="p-2 text-left">Nome</th><th className="p-2 w-32">Pontos</th><th className="p-2 text-right">Comissão</th></tr></thead>
+          <thead className="bg-muted sticky top-0"><tr><th className="p-2 text-left">Código</th><th className="p-2 text-left">Nome</th><th className="p-2 w-32">Pontos</th><th className="p-2 w-24">Dias (máx. {diasMes})</th><th className="p-2 text-right">Comissão</th></tr></thead>
           <tbody>{ativos.map((f) => {
             const it = r.itens.find((i) => i.funcionario_id === f.id);
             return (
@@ -72,11 +89,12 @@ export default function StepRateio({ comp, funcionarios, empresaNome = '', onBac
                 <td className="p-2">{f.codigo}</td>
                 <td className="p-2">{f.nome}{f.gera_lancamento === false && <span className="ml-2 text-xs text-muted-foreground">(sem lançamento)</span>}</td>
                 <td className="p-1"><Input disabled={bloqueado} inputMode="decimal" value={pontos[f.id] ?? ''} onChange={(e) => setPonto(f.id, e.target.value)} /></td>
+                <td className="p-1"><Input disabled={bloqueado} inputMode="decimal" value={dias[f.id] ?? String(diasMes)} onChange={(e) => setDia(f.id, e.target.value)} /></td>
                 <td className="p-2 text-right">{fmt(it?.valor_comissao)}</td>
               </tr>);
           })}</tbody>
           <tfoot className="bg-muted/50 font-medium"><tr>
-            <td className="p-2" colSpan={2}>Total de pontos: {r.totalPontos.toLocaleString('pt-BR')} · Valor do ponto: {r.valorPonto.toLocaleString('pt-BR', { maximumFractionDigits: 6 })}</td>
+            <td className="p-2" colSpan={3}>Pontos efetivos (proporcionais aos dias): {r.totalPontos.toLocaleString('pt-BR', { maximumFractionDigits: 4 })} · Valor do ponto: {r.valorPonto.toLocaleString('pt-BR', { maximumFractionDigits: 6 })}</td>
             <td className="p-2 text-right">Soma: {fmt(r.soma)}</td>
             <td className={`p-2 text-right ${r.diferenca !== 0 ? 'text-destructive' : ''}`}>Diferença: {fmt(r.diferenca)}</td>
           </tr></tfoot>
