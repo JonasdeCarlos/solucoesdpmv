@@ -59,7 +59,7 @@ export default function PremiacaoGestorPage() {
       medalhas: bundle.medalhas, servicos: bundle.servicos, metas: bundle.metas,
       metasServicos: bundle.metas_servicos, desabonos: bundle.desabonos,
       referencias, colaboradores: bundle.colaboradores, cargos: bundle.cargos,
-      versoes, ciencias: [], versaoVigente: versoes[0] || null, reload: () => {},
+      versoes, ciencias: [], versaoVigente: versoes[0] || null, reload: async () => {},
       refDe: (c: any) => {
         const r = referencias.find((x: any) => x.cargo_id === c.cargo_id)
           || referencias.find((x: any) => x.funcao === c.funcao);
