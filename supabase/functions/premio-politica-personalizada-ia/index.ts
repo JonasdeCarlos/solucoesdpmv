@@ -1,6 +1,6 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
-import mammoth from "npm:mammoth@1.8.0";
-import * as XLSX from "npm:xlsx@0.18.5";
+import { decodeBase64 } from "jsr:@std/encoding@1/base64";
+// mammoth/xlsx são carregados só quando necessários (evita estourar memória no boot)
 
 type FileIn = { name: string; mime: string; data_base64: string };
 const METRICAS = ["faturamento_direto", "realizado_meta", "realizado_meta_inverso", "percentual", "nota_generica", "sim_nao"];
@@ -17,8 +17,10 @@ Deno.serve(async (req) => {
     const anterior = body?.anterior ? JSON.stringify(body.anterior).slice(0, 20000) : "";
     const atividade = String(body?.atividade || "").slice(0, 500);
     const verba = String(body?.verba_label || "Prêmio").slice(0, 60);
-    const files: FileIn[] = Array.isArray(body?.files) ? body.files.slice(0, 10) : [];
+    const files: FileIn[] = Array.isArray(body?.files) ? body.files.slice(0, 6) : [];
     if (!descricao.trim() && files.length === 0) return json({ error: "Descreva a política ou anexe arquivos." }, 400);
+    const totalB64 = files.reduce((s, f) => s + String(f?.data_base64 || "").length, 0);
+    if (totalB64 > 11_000_000) return json({ error: "Os anexos somam mais de 8 MB. Envie arquivos menores ou menos arquivos." }, 400);
 
     let extra = "";
     const media: any[] = [];
@@ -31,13 +33,20 @@ Deno.serve(async (req) => {
         } else if (mime.startsWith("image/")) {
           media.push({ type: "input_image", image_url: `data:${mime};base64,${f.data_base64}` });
         } else {
-          const bin = Uint8Array.from(atob(f.data_base64), (c) => c.charCodeAt(0));
+          const bin = decodeBase64(f.data_base64);
+          f.data_base64 = "";
           let txt = "";
           if (/\.docx$/i.test(name) || mime.includes("wordprocessingml")) {
+            const mammoth = (await import("npm:mammoth@1.8.0")).default;
             txt = (await mammoth.extractRawText({ arrayBuffer: bin.buffer.slice(bin.byteOffset, bin.byteOffset + bin.byteLength) })).value || "";
           } else if (/\.(xlsx|xls|csv)$/i.test(name) || mime.includes("sheet") || mime.includes("excel") || mime.includes("csv")) {
-            const wb = XLSX.read(bin, { type: "array" });
-            txt = wb.SheetNames.map((s) => `# ${s}\n${XLSX.utils.sheet_to_csv(wb.Sheets[s])}`).join("\n\n");
+            if (/\.csv$/i.test(name) || mime.includes("csv")) {
+              txt = new TextDecoder().decode(bin);
+            } else {
+              const XLSX = await import("npm:xlsx@0.18.5");
+              const wb = XLSX.read(bin, { type: "array", dense: true });
+              txt = wb.SheetNames.slice(0, 5).map((s: string) => `# ${s}\n${XLSX.utils.sheet_to_csv(wb.Sheets[s])}`).join("\n\n");
+            }
           } else {
             txt = new TextDecoder().decode(bin);
           }
@@ -81,8 +90,7 @@ Regras: números sem R$ e sem separador de milhar; 2 a 6 indicadores; 3 a 6 crit
         ],
         stream: true,
         store: false,
-        reasoning: { effort: "medium", summary: "auto" },
-        include: ["reasoning.encrypted_content"],
+        reasoning: { effort: "medium" },
       }),
     });
     if (!r.ok || !r.body) {
