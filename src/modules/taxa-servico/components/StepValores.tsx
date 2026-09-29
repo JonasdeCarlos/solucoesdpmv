@@ -14,7 +14,7 @@ export default function StepValores({ empresaId, config, comp, onSaved, onBack }
   const [perc, setPerc] = useState(String(comp?.percentual_retencao ?? ''));
   const [saldoUso, setSaldoUso] = useState(String(comp?.saldo_utilizado ?? '0'));
   const [disp, setDisp] = useState(0);
-  const bloqueado = comp && (comp.status === 'exportado' || comp.status === 'ajustado');
+  const bloqueado = comp && (fechada ?? (comp.status === 'exportado' || comp.status === 'ajustado'));
 
   useEffect(() => { saldoDisponivel(empresaId, comp?.id ?? null).then(setDisp); }, [empresaId, comp?.id]);
 
@@ -38,7 +38,7 @@ export default function StepValores({ empresaId, config, comp, onSaved, onBack }
 
   return (
     <div className="space-y-4">
-      {bloqueado && <p className="text-sm text-muted-foreground">Competência já exportada — valores somente leitura.</p>}
+      {bloqueado && <p className="text-sm text-muted-foreground">Competência fechada — reabra no passo 6 para editar.</p>}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div><Label>Competência</Label><Input type="month" disabled={!!bloqueado} value={mes} onChange={(e) => setMes(e.target.value)} /></div>
         <div><Label>Valor total arrecadado (R$)</Label><Input disabled={!!bloqueado} inputMode="decimal" value={arrec} onChange={(e) => setArrec(e.target.value)} /></div>

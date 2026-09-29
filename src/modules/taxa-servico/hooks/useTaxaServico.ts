@@ -98,3 +98,13 @@ export async function saveExportacao(competenciaId: string, tipo: 'original' | '
 }
 
 export { db as tsDb };
+
+/** Fechamento explícito (passo 6). Sem registro: competências já exportadas contam como fechadas. */
+const fechKey = (id: string) => `ts-fechada-${id}`;
+export function isFechada(c: TsCompetencia) {
+  const v = localStorage.getItem(fechKey(c.id));
+  if (v === null) return c.status === 'exportado' || c.status === 'ajustado';
+  return v === '1';
+}
+export function setFechada(id: string, fechada: boolean) { localStorage.setItem(fechKey(id), fechada ? '1' : '0'); }
+export function marcarAbertaSeNova(id: string) { if (localStorage.getItem(fechKey(id)) === null) setFechada(id, false); }

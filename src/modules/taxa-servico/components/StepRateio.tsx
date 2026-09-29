@@ -8,13 +8,13 @@ import { fmt, parseNum } from '../utils/validacoes';
 import { loadDistribuicao, saveDistribuicao, updateCompetencia, type TsCompetencia, type TsFuncionario } from '../hooks/useTaxaServico';
 import RelatorioRateioDialog from './RelatorioRateioDialog';
 
-interface Props { comp: TsCompetencia; funcionarios: TsFuncionario[]; empresaNome?: string; onBack: () => void; onNext: () => void }
+interface Props { comp: TsCompetencia; funcionarios: TsFuncionario[]; empresaNome?: string; onBack: () => void; onNext: () => void; fechada?: boolean }
 
 const draftKey = (id: string) => `ts-rateio-draft-${id}`;
 const diasKey = (id: string) => `ts-rateio-dias-${id}`;
 const diasDoMes = (comp: string) => new Date(Number(comp.slice(0, 4)), Number(comp.slice(5, 7)), 0).getDate();
 
-export default function StepRateio({ comp, funcionarios, empresaNome = '', onBack, onNext }: Props) {
+export default function StepRateio({ comp, funcionarios, empresaNome = '', onBack, onNext, fechada }: Props) {
   const ativos = useMemo(() => funcionarios.filter((f) => f.ativo), [funcionarios]);
   const [pontos, setPontos] = useState<Record<string, string>>(() => {
     try { return JSON.parse(localStorage.getItem(draftKey(comp.id)) || '{}'); } catch { return {}; }
@@ -35,7 +35,7 @@ export default function StepRateio({ comp, funcionarios, empresaNome = '', onBac
   };
   const fator = (id: string) => diasDe(id) / diasMes;
   const [rel, setRel] = useState(false);
-  const bloqueado = comp.status === 'exportado' || comp.status === 'ajustado';
+  const bloqueado = fechada ?? (comp.status === 'exportado' || comp.status === 'ajustado');
 
   useEffect(() => {
     loadDistribuicao(comp.id).then((d) => {
@@ -62,7 +62,7 @@ export default function StepRateio({ comp, funcionarios, empresaNome = '', onBac
       rendimento_bruto_extrato: null, valor_bruto_alvo: null, diferenca: null, valor_ajustado: null, alerta: null,
     })));
     if (err) return toast.error(err.message);
-    await updateCompetencia(comp.id, { status: 'calculado' });
+    if (comp.status === 'rascunho') await updateCompetencia(comp.id, { status: 'calculado' });
     localStorage.removeItem(draftKey(comp.id));
     toast.success('Rateio salvo');
     onNext();
