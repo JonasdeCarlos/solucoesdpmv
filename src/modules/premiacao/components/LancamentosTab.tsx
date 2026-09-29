@@ -110,7 +110,20 @@ export default function LancamentosTab({ politica, cat, competencia }: { politic
         <div className="md:col-span-2"><Label className="text-xs">Colaborador</Label>
           <Select value={colab} onValueChange={setColab}><SelectTrigger className="h-8"><SelectValue placeholder="Selecione" /></SelectTrigger>
             <SelectContent>{cat.colaboradores.filter(c => c.ativo).map(c => <SelectItem key={c.id} value={c.id}>{c.codigo ? `${c.codigo} — ` : ''}{c.nome}</SelectItem>)}</SelectContent></Select></div>
-        <div><Label className="text-xs">Código</Label><Input className="h-8 font-mono" value={f.codigo} onChange={e => setF({ ...f, codigo: e.target.value })} onKeyDown={e => e.key === 'Enter' && lancar()} /></div>
+        <div><Label className="text-xs">Código</Label>
+          <Select value={f.codigo} onValueChange={v => setF({ ...f, codigo: v })}>
+            <SelectTrigger className="h-8 font-mono"><SelectValue placeholder="Selecione" /></SelectTrigger>
+            <SelectContent className="max-h-80">
+              <div className="px-2 py-1 text-[11px] font-semibold text-muted-foreground">Serviços (medalhas)</div>
+              {cat.servicos.filter(s => s.ativo).map(s => (
+                <SelectItem key={s.id} value={s.codigo}>{s.codigo} — {s.descricao}</SelectItem>
+              ))}
+              <div className="px-2 py-1 text-[11px] font-semibold text-muted-foreground">Desabonos</div>
+              {cat.desabonos.filter(d => d.ativo).map(d => (
+                <SelectItem key={d.id} value={d.codigo}>{d.codigo} — {d.descricao}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select></div>
         <div><Label className="text-xs">Quantidade</Label><Input type="number" min={1} className="h-8" value={f.quantidade} onChange={e => setF({ ...f, quantidade: Number(e.target.value) })} /></div>
         <div><Label className="text-xs">Data</Label><Input type="date" className="h-8" value={f.data} onChange={e => setF({ ...f, data: e.target.value })} /></div>
         <div><Label className="text-xs">Nº da OS</Label><Input className="h-8" value={f.os} onChange={e => setF({ ...f, os: e.target.value })} /></div>
