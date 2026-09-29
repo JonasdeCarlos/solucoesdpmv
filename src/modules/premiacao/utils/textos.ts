@@ -28,7 +28,7 @@ export function textoRegulamento(razaoSocial: string, politica: Politica) {
 
 2. Pontuação de referência. Cada função possui uma pontuação de referência, que corresponde ao desempenho normalmente esperado para ela. Ela funciona como gatilho: ao ultrapassá-la, ainda que por um ponto, o colaborador faz jus ao prêmio sobre a totalidade dos pontos alcançados no mês:
 Prêmio = saldo de pontos do mês × ${valorPontoExtenso(politica.valor_ponto)} por ponto, desde que o saldo seja superior à pontuação de referência da função.
-Se o saldo não ultrapassar a referência, não há prêmio no mês, e esses pontos e não se acumulam para os meses seguintes.
+Se o saldo não ultrapassar a referência, não há prêmio no mês, e esses pontos não se acumulam para os meses seguintes.
 
 3. Composição dos pontos. O saldo do mês é formado pelos pontos de medalhas por serviço realizado, somados aos pontos de troféus por metas atingidas, deduzidos os pontos de desabono. As metas são apuradas pela quantidade de serviços realizados nos códigos definidos para cada uma.
 
