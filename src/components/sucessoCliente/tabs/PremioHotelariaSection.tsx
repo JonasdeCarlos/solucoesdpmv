@@ -9,7 +9,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Plus, Trash2, Save, Building2, Settings, ClipboardList, LineChart, CalendarDays, ArrowRightCircle, FileDown, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePrizeEmployees, usePrizeCriteria, type PrizePolicy } from '@/hooks/usePrizePolicies';
-import { HOTELARIA_CONFIG, HOTELARIA_ESCALA_TEXTO, HOTELARIA_CRITERIOS_INDIVIDUAIS, type HotelariaConfig, type HotelariaCriterio, type MetaMensal } from '@/utils/sucessoCliente/premioTemplates';
+import { HOTELARIA_CONFIG, HOTELARIA_ESCALA_TEXTO, HOTELARIA_CRITERIOS_INDIVIDUAIS, type HotelariaConfig, type HotelariaCriterio, type MetaMensal, faixaGenerica, METRICAS_GENERICAS, METRICA_LABEL, isModeloPersonalizado } from '@/utils/sucessoCliente/premioTemplates';
 import { generatePremioPoliticaPdf } from '@/utils/sucessoCliente/premioPoliticaPdf';
 import { EmployeesSection } from './PremioTab';
 import PremioAplicacaoSection from './PremioAplicacaoSection';
@@ -34,6 +34,7 @@ type ApuracaoState = {
   avaliacoes: Avaliacao[];
   data_referencia?: string;
   dias_periodo?: number;
+  realizados?: Record<string, number>;
 };
 
 const APURACAO_DEFAULT: ApuracaoState = {
@@ -261,11 +262,16 @@ export default function PremioHotelariaSection({ policy, cliente, onUpdate, onDr
     } else if (c.metrica === 'pct_avaliacoes') {
       const ordered = c.faixas.filter(f => f.nivel !== 'piso').slice().sort((a, b) => (b.alvo || 0) - (a.alvo || 0));
       for (const f of ordered) if (pctAvaliacoes >= (f.alvo || 0)) { atingido = f; break; }
+    } else if ((METRICAS_GENERICAS as readonly string[]).includes(c.metrica)) {
+      atingido = faixaGenerica(c, Number(ap.realizados?.[c.id] ?? 0));
     }
     const valor = bc * (atingido.pct / 100);
     return { bc, atingido, valor, mediaCanal };
   };
 
+  const personalizado = isModeloPersonalizado(policy);
+  const genericos = config.criterios.filter(c => (METRICAS_GENERICAS as readonly string[]).includes(c.metrica));
+  const usaAvaliacoes = !personalizado || config.criterios.some(c => c.metrica === "nota_media" || c.metrica === "pct_avaliacoes");
   const criteriosCalc = config.criterios.map(c => ({ criterio: c, ...calcCriterio(c) }));
   const totalColetivo = criteriosCalc.reduce((s, r) => s + r.valor, 0);
 
@@ -298,6 +304,10 @@ export default function PremioHotelariaSection({ policy, cliente, onUpdate, onDr
         const ordered = c.faixas.filter(f => f.nivel !== 'piso').slice().sort((a, b) => (b.alvo || 0) - (a.alvo || 0));
         for (const f of ordered) if (pctAvaliacoes >= (f.alvo || 0)) { atingido = f; break; }
         referencia = `${pctAvaliacoes.toFixed(1)}%`;
+      } else if ((METRICAS_GENERICAS as readonly string[]).includes(c.metrica)) {
+        const r = Number(ap.realizados?.[c.id] ?? 0);
+        atingido = faixaGenerica(c, r);
+        referencia = c.metrica === "sim_nao" ? (r >= 1 ? "Sim" : "Não") : `Realizado: ${r}${c.unidade ? " " + c.unidade : ""}`;
       }
       const valorDia = bcDia * (atingido.pct / 100);
       const valorProj = valorDia * diasPeriodo;
@@ -381,6 +391,7 @@ export default function PremioHotelariaSection({ policy, cliente, onUpdate, onDr
                           <SelectItem value="faturamento_direto">Faturamento (Meta 0/1/2)</SelectItem>
                           <SelectItem value="nota_media">Nota média do canal</SelectItem>
                           <SelectItem value="pct_avaliacoes">% de avaliações / reservas</SelectItem>
+                          {METRICAS_GENERICAS.map(m => <SelectItem key={m} value={m}>{METRICA_LABEL[m]}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </div>
@@ -522,7 +533,7 @@ export default function PremioHotelariaSection({ policy, cliente, onUpdate, onDr
               <p className="text-[11px] text-amber-600">Sem metas cadastradas para {labelMes(activeComp)}. Cadastre em <strong>Metas mensais</strong> ou preencha Meta 0/1/2 abaixo.</p>
             )}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-              <div><Label className="text-xs">Faturamento total</Label><Input type="number" value={ap.faturamento_total} onChange={(e)=>updateApState({...ap, faturamento_total: Number(e.target.value)})} onBlur={(e)=>{ const next = {...ap, faturamento_total: Number(e.currentTarget.value)}; updateApState(next); saveApuracaoSilent(next); }}/></div>
+              <div><Label className="text-xs">{personalizado ? (config.base_label || "Base de cálculo (R$)") : "Faturamento total"}</Label><Input type="number" value={ap.faturamento_total} onChange={(e)=>updateApState({...ap, faturamento_total: Number(e.target.value)})} onBlur={(e)=>{ const next = {...ap, faturamento_total: Number(e.currentTarget.value)}; updateApState(next); saveApuracaoSilent(next); }}/></div>
               <div>
                 <Label className="text-xs">Ref./dia (auto = fat÷dia)</Label>
                 <Input type="text" readOnly value={BRL(valorReferenciaDia)} className="bg-muted"/>
@@ -535,6 +546,29 @@ export default function PremioHotelariaSection({ policy, cliente, onUpdate, onDr
               <div><Label className="text-xs">Dias do período</Label><Input type="number" min={1} value={ap.dias_periodo || 30} onChange={(e)=>updateApState({...ap, dias_periodo: Number(e.target.value)})} onBlur={(e)=>{ const next = {...ap, dias_periodo: Number(e.currentTarget.value)}; updateApState(next); saveApuracaoSilent(next); }}/></div>
             </div>
 
+            {genericos.length > 0 && (
+              <div className="space-y-2 border rounded-md p-2 bg-muted/20">
+                <Label className="text-xs font-semibold">Realizado de cada indicador</Label>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                  {genericos.map(c => (
+                    <div key={c.id}>
+                      <Label className="text-[11px]">{c.nome}{c.unidade ? ` (${c.unidade})` : ""}</Label>
+                      {c.metrica === "sim_nao" ? (
+                        <Select value={String((ap.realizados?.[c.id] ?? 0) >= 1 ? 1 : 0)} onValueChange={(v)=>{ const next = { ...ap, realizados: { ...(ap.realizados || {}), [c.id]: Number(v) } }; updateApState(next); saveApuracaoSilent(next); }}>
+                          <SelectTrigger className="h-9"><SelectValue/></SelectTrigger>
+                          <SelectContent><SelectItem value="1">Sim (atingiu)</SelectItem><SelectItem value="0">Não</SelectItem></SelectContent>
+                        </Select>
+                      ) : (
+                        <Input type="number" step="0.01" value={ap.realizados?.[c.id] ?? 0} onChange={(e)=>updateApState({ ...ap, realizados: { ...(ap.realizados || {}), [c.id]: Number(e.target.value) } })} onBlur={(e)=>{ const next = { ...ap, realizados: { ...(ap.realizados || {}), [c.id]: Number(e.currentTarget.value) } }; updateApState(next); saveApuracaoSilent(next); }}/>
+                      )}
+                      <p className="text-[10px] text-muted-foreground mt-0.5">{METRICA_LABEL[c.metrica]} • Metas: {c.faixas.filter(f=>f.nivel!=="piso").map(f=>f.alvo ?? "-").join(" / ")}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {usaAvaliacoes && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label className="text-xs">Avaliações por canal (canal, nota, data)</Label>
@@ -580,6 +614,7 @@ export default function PremioHotelariaSection({ policy, cliente, onUpdate, onDr
                       {criterio.metrica === 'nota_media' && `Média: ${mediaCanal.toFixed(2)}`}
                       {criterio.metrica === 'pct_avaliacoes' && `${pctAvaliacoes.toFixed(1)}%`}
                       {criterio.metrica === 'faturamento_direto' && `Ref/dia: ${BRL(valorReferenciaDia)}`}
+                      {(METRICAS_GENERICAS as readonly string[]).includes(criterio.metrica) && (criterio.metrica === "sim_nao" ? ((ap.realizados?.[criterio.id] ?? 0) >= 1 ? "Sim" : "Não") : `Realizado: ${ap.realizados?.[criterio.id] ?? 0}${criterio.unidade ? " " + criterio.unidade : ""}`)}
                     </div>
                     <div className="col-span-2 text-right font-semibold">{BRL(valor)}</div>
                   </div>
