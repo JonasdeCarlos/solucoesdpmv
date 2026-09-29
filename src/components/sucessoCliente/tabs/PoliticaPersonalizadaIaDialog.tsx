@@ -41,8 +41,8 @@ export default function PoliticaPersonalizadaIaDialog({ open, onOpenChange, verb
 
   const gerar = async (refazer = false) => {
     if (!descricao.trim() && files.length === 0) { toast.error('Explique a política ou anexe ao menos um arquivo.'); return; }
-    const tooBig = files.find(f => f.size > 15 * 1024 * 1024);
-    if (tooBig) { toast.error(`O arquivo "${tooBig.name}" passa de 15 MB.`); return; }
+    const total = files.reduce((s, f) => s + f.size, 0);
+    if (total > 8 * 1024 * 1024) { toast.error('Os anexos somam mais de 8 MB. Envie arquivos menores ou menos arquivos.'); return; }
     setRunning(true);
     try {
       const payloadFiles = await Promise.all(files.map(async f => ({ name: f.name, mime: f.type || 'application/octet-stream', data_base64: await fileToBase64(f) })));
