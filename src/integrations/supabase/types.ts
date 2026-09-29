@@ -4694,6 +4694,227 @@ export type Database = {
         }
         Relationships: []
       }
+      ts_competencias: {
+        Row: {
+          codigo_verba: string | null
+          competencia: string
+          created_at: string
+          empresa_id: string
+          id: string
+          percentual_retencao: number
+          saldo_nao_distribuido: number
+          saldo_utilizado: number
+          status: string
+          tipo_processo: string
+          updated_at: string
+          valor_arrecadado: number
+          valor_liquido: number
+          valor_retido: number
+        }
+        Insert: {
+          codigo_verba?: string | null
+          competencia: string
+          created_at?: string
+          empresa_id: string
+          id?: string
+          percentual_retencao?: number
+          saldo_nao_distribuido?: number
+          saldo_utilizado?: number
+          status?: string
+          tipo_processo?: string
+          updated_at?: string
+          valor_arrecadado?: number
+          valor_liquido?: number
+          valor_retido?: number
+        }
+        Update: {
+          codigo_verba?: string | null
+          competencia?: string
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          percentual_retencao?: number
+          saldo_nao_distribuido?: number
+          saldo_utilizado?: number
+          status?: string
+          tipo_processo?: string
+          updated_at?: string
+          valor_arrecadado?: number
+          valor_liquido?: number
+          valor_retido?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ts_competencias_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ts_distribuicao: {
+        Row: {
+          alerta: string | null
+          competencia_id: string
+          diferenca: number | null
+          funcionario_id: string
+          id: string
+          pontos: number
+          rendimento_bruto_extrato: number | null
+          valor_ajustado: number | null
+          valor_bruto_alvo: number | null
+          valor_comissao: number
+        }
+        Insert: {
+          alerta?: string | null
+          competencia_id: string
+          diferenca?: number | null
+          funcionario_id: string
+          id?: string
+          pontos?: number
+          rendimento_bruto_extrato?: number | null
+          valor_ajustado?: number | null
+          valor_bruto_alvo?: number | null
+          valor_comissao?: number
+        }
+        Update: {
+          alerta?: string | null
+          competencia_id?: string
+          diferenca?: number | null
+          funcionario_id?: string
+          id?: string
+          pontos?: number
+          rendimento_bruto_extrato?: number | null
+          valor_ajustado?: number | null
+          valor_bruto_alvo?: number | null
+          valor_comissao?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ts_distribuicao_competencia_id_fkey"
+            columns: ["competencia_id"]
+            isOneToOne: false
+            referencedRelation: "ts_competencias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ts_distribuicao_funcionario_id_fkey"
+            columns: ["funcionario_id"]
+            isOneToOne: false
+            referencedRelation: "ts_funcionarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ts_empresa_config: {
+        Row: {
+          codigo_empresa_dominio: string | null
+          codigo_verba_padrao: string | null
+          created_at: string
+          empresa_id: string
+          id: string
+          regime_tributario: string
+          updated_at: string
+        }
+        Insert: {
+          codigo_empresa_dominio?: string | null
+          codigo_verba_padrao?: string | null
+          created_at?: string
+          empresa_id: string
+          id?: string
+          regime_tributario?: string
+          updated_at?: string
+        }
+        Update: {
+          codigo_empresa_dominio?: string | null
+          codigo_verba_padrao?: string | null
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          regime_tributario?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ts_empresa_config_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: true
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ts_exportacoes: {
+        Row: {
+          competencia_id: string
+          conteudo: string
+          created_at: string
+          id: string
+          nome_arquivo: string
+          tipo: string
+        }
+        Insert: {
+          competencia_id: string
+          conteudo: string
+          created_at?: string
+          id?: string
+          nome_arquivo: string
+          tipo: string
+        }
+        Update: {
+          competencia_id?: string
+          conteudo?: string
+          created_at?: string
+          id?: string
+          nome_arquivo?: string
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ts_exportacoes_competencia_id_fkey"
+            columns: ["competencia_id"]
+            isOneToOne: false
+            referencedRelation: "ts_competencias"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ts_funcionarios: {
+        Row: {
+          ativo: boolean
+          codigo: string
+          created_at: string
+          empresa_id: string
+          id: string
+          nome: string
+        }
+        Insert: {
+          ativo?: boolean
+          codigo: string
+          created_at?: string
+          empresa_id: string
+          id?: string
+          nome: string
+        }
+        Update: {
+          ativo?: boolean
+          codigo?: string
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          nome?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ts_funcionarios_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -4942,7 +5163,23 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      ts_saldo_empresa: {
+        Row: {
+          empresa_id: string | null
+          saldo_acumulado: number | null
+          saldo_consumido: number | null
+          saldo_gerado: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ts_competencias_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       get_empregador_web_password: {
@@ -4966,6 +5203,10 @@ export type Database = {
       set_timeclock_password: {
         Args: { _client_id: string; _password: string }
         Returns: undefined
+      }
+      ts_saldo_disponivel: {
+        Args: { p_competencia_id: string; p_empresa_id: string }
+        Returns: number
       }
     }
     Enums: {
