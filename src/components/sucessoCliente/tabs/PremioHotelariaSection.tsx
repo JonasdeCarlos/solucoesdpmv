@@ -601,6 +601,7 @@ export default function PremioHotelariaSection({ policy, cliente, onUpdate, onDr
                 </div>
               )}
             </div>
+            )}
 
             <div className="border-t pt-3 space-y-2">
               <h5 className="text-sm font-semibold">Resultado por critério coletivo (acumulado)</h5>
