@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Link2, Copy, Loader2, Trash2, KeyRound } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { buildExternalAppLink } from '@/utils/publicLinks';
 
 const callManage = async (politicaId: string, op: string, extra: Record<string, unknown> = {}) => {
   const { data, error } = await supabase.functions.invoke('premiacao-public', {
@@ -42,7 +43,7 @@ export default function LinkGestorDialog({ politicaId, open, onOpenChange }: { p
     } catch (e: any) { toast.error(e.message); } finally { setBusy(false); }
   };
 
-  const url = (t: string) => `${window.location.origin}/premiacao-gestor/${t}`;
+  const url = (t: string) => buildExternalAppLink(`/premiacao-gestor/${t}`);
   const copiar = (t: string) => { navigator.clipboard.writeText(url(t)); toast.success('Link copiado'); };
 
   return (
@@ -81,7 +82,7 @@ export default function LinkGestorDialog({ politicaId, open, onOpenChange }: { p
             </div>
           ))}
         </div>
-        <p className="text-xs text-muted-foreground">O link só funciona no endereço publicado do sistema. Se estiver testando na prévia, publique o app antes de enviar ao gestor.</p>
+        <p className="text-xs text-muted-foreground">O link usa sempre o endereço publicado do sistema. Publique o app para que as últimas mudanças apareçam para o gestor.</p>
       </DialogContent>
     </Dialog>
   );
