@@ -196,7 +196,32 @@ async function handle(action: string, link: any, body: any) {
 
   if (action === "apurar") {
     const { error } = await s.rpc("premiacao_apurar", { p_politica_id: pid, p_competencia: body.competencia });
-    if (error) throw error;
+    if (error) return json({ error: error.message }, 400);
+    return json({ ok: true });
+  }
+
+  if (action === "fechar" || action === "reabrir") {
+    const { error } = await s.rpc(action === "fechar" ? "premiacao_fechar" : "premiacao_reabrir", { p_politica_id: pid, p_competencia: body.competencia });
+    if (error) return json({ error: error.message }, 400);
+    return json({ ok: true });
+  }
+
+  if (action === "get_feedback") {
+    const { data } = await s.from("premiacao_feedbacks").select("*").eq("politica_id", pid)
+      .eq("colaborador_id", body.colaborador_id).eq("competencia", body.competencia).maybeSingle();
+    return json({ feedback: data || null });
+  }
+
+  if (action === "save_feedback") {
+    const texto = String(body.texto || "").slice(0, 20000);
+    if (!texto.trim() || !body.colaborador_id || !body.competencia) return json({ error: "Dados incompletos" }, 400);
+    const { data: colab } = await s.from("premiacao_colaboradores").select("id").eq("id", body.colaborador_id).eq("empresa_id", empresaId).maybeSingle();
+    if (!colab) return json({ error: "Colaborador não encontrado" }, 404);
+    const { error } = await s.from("premiacao_feedbacks").upsert({
+      empresa_id: empresaId, politica_id: pid, colaborador_id: body.colaborador_id, competencia: body.competencia,
+      texto, origem: body.origem === "ia" ? "ia" : "manual",
+    }, { onConflict: "politica_id,colaborador_id,competencia" });
+    if (error) return json({ error: error.message }, 400);
     return json({ ok: true });
   }
 
