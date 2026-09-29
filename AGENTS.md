@@ -1,0 +1,1 @@
+- Programa Excelência (premiação por pontos) vive em src/modules/premiacao com tabelas premiacao_* e cálculos nas RPCs premiacao_apurar/fechar/reabrir — regras de cálculo ficam no banco, não no front.
