@@ -49,7 +49,7 @@ export default function AjusteFechamento({ comp, config, funcionarios, saldo, on
   const exportar = async () => {
     if (!calculado) return toast.error('Clique em "Recalcular comissões" antes.');
     const aaaamm = competenciaAAAAMM(comp.competencia);
-    const { conteudo, erros } = gerarArquivo(dist.map((d) => ({
+    const { conteudo, erros } = gerarArquivo(dist.filter((d) => byId.get(d.funcionario_id)?.gera_lancamento !== false).map((d) => ({
       codigoEmpregado: byId.get(d.funcionario_id)?.codigo || '', competencia: aaaamm, rubrica: comp.codigo_verba || config.codigo_verba_padrao || '',
       tipoProcesso: comp.tipo_processo || '11', valor: d.valor_ajustado ?? d.valor_comissao, codigoEmpresa: config.codigo_empresa_dominio,
     })));

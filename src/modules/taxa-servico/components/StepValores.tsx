@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { calcularValores, validarValores, fmt, parseNum, TETO_RETENCAO } from '../utils/validacoes';
+import { calcularValores, validarValores, fmt, parseNum, tetoEfetivo } from '../utils/validacoes';
 import { saldoDisponivel, saveCompetencia, type TsCompetencia, type TsConfig } from '../hooks/useTaxaServico';
 
 interface Props { empresaId: string; config: TsConfig; comp: TsCompetencia | null; onSaved: (c: TsCompetencia) => void; onBack: () => void }
@@ -20,7 +20,7 @@ export default function StepValores({ empresaId, config, comp, onSaved, onBack }
 
   const a = parseNum(arrec), p = parseNum(perc), s = parseNum(saldoUso);
   const { retido, liquido } = calcularValores(a, p, s);
-  const erros = useMemo(() => validarValores({ regime: config.regime_tributario, percentual: p, saldoUtilizado: s, saldoDisponivel: disp, arrecadado: a }), [config, p, s, disp, a]);
+  const erros = useMemo(() => validarValores({ regime: config.regime_tributario, percentual: p, saldoUtilizado: s, saldoDisponivel: disp, arrecadado: a, tetoCct: config.teto_retencao_cct }), [config, p, s, disp, a]);
 
   const salvar = async () => {
     if (erros.length) return toast.error(erros[0]);
@@ -43,7 +43,7 @@ export default function StepValores({ empresaId, config, comp, onSaved, onBack }
         <div><Label>Competência</Label><Input type="month" disabled={!!bloqueado} value={mes} onChange={(e) => setMes(e.target.value)} /></div>
         <div><Label>Valor total arrecadado (R$)</Label><Input disabled={!!bloqueado} inputMode="decimal" value={arrec} onChange={(e) => setArrec(e.target.value)} /></div>
         <div>
-          <Label>% de retenção da empresa (teto {TETO_RETENCAO[config.regime_tributario]}%)</Label>
+          <Label>% de retenção da empresa (teto {tetoEfetivo(config.regime_tributario, config.teto_retencao_cct)}%{config.teto_retencao_cct ? ' pela CCT' : ''})</Label>
           <Input disabled={!!bloqueado} inputMode="decimal" value={perc} onChange={(e) => setPerc(e.target.value)} />
         </div>
         <div>

@@ -3,8 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 
 const db = supabase as any;
 
-export interface TsConfig { id?: string; empresa_id: string; regime_tributario: 'simples' | 'demais'; codigo_empresa_dominio: string | null; codigo_verba_padrao: string | null }
-export interface TsFuncionario { id: string; empresa_id: string; codigo: string; nome: string; ativo: boolean }
+export interface TsConfig { id?: string; empresa_id: string; regime_tributario: 'simples' | 'demais'; codigo_empresa_dominio: string | null; codigo_verba_padrao: string | null; teto_retencao_cct?: number | null }
+export interface TsFuncionario { id: string; empresa_id: string; codigo: string; nome: string; ativo: boolean; gera_lancamento?: boolean }
 export interface TsCompetencia {
   id: string; empresa_id: string; competencia: string; valor_arrecadado: number; percentual_retencao: number; valor_retido: number;
   saldo_utilizado: number; valor_liquido: number; codigo_verba: string | null; tipo_processo: string; saldo_nao_distribuido: number;
@@ -54,7 +54,7 @@ export function useTaxaServicoEmpresa(empresaId: string | null) {
 
   const saveConfig = async (c: TsConfig) => {
     const { error } = await db.from('ts_empresa_config').upsert(
-      { empresa_id: c.empresa_id, regime_tributario: c.regime_tributario, codigo_empresa_dominio: c.codigo_empresa_dominio || null, codigo_verba_padrao: c.codigo_verba_padrao || null },
+      { empresa_id: c.empresa_id, regime_tributario: c.regime_tributario, codigo_empresa_dominio: c.codigo_empresa_dominio || null, codigo_verba_padrao: c.codigo_verba_padrao || null, teto_retencao_cct: c.teto_retencao_cct ? Number(c.teto_retencao_cct) : null },
       { onConflict: 'empresa_id' },
     );
     if (!error) await reload();
