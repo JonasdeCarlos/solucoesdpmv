@@ -6,8 +6,30 @@ type FileIn = { name: string; mime: string; data_base64: string };
 const METRICAS = ["faturamento_direto", "realizado_meta", "realizado_meta_inverso", "percentual", "nota_generica", "sim_nao"];
 const PERIODOS = ["mensal", "quinzenal", "bimestral", "trimestral", "semestral", "anual"];
 
-Deno.serve(async (req) => {
+// Mantém a conexão viva (espaços em branco a cada 10s) enquanto a IA trabalha,
+// evitando o limite de 150s de inatividade. JSON aceita espaços iniciais.
+Deno.serve((req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const enc = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(ctrl) {
+      const ping = setInterval(() => { try { ctrl.enqueue(enc.encode(" ")); } catch { /* */ } }, 10000);
+      ctrl.enqueue(enc.encode(" "));
+      try {
+        const res = await handle(req);
+        ctrl.enqueue(enc.encode(await res.text()));
+      } catch (e) {
+        ctrl.enqueue(enc.encode(JSON.stringify({ error: e instanceof Error ? e.message : String(e) })));
+      } finally {
+        clearInterval(ping);
+        ctrl.close();
+      }
+    },
+  });
+  return new Response(stream, { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+});
+
+async function handle(req: Request): Promise<Response> {
   try {
     const KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!KEY) return json({ error: "Chave de IA não configurada." }, 500);
