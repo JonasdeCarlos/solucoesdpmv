@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Award, Loader2, Plus, AlertTriangle } from 'lucide-react';
+import { Award, Loader2, Plus, AlertTriangle, Link2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { competenciaAtual, rpc, tbl, usePoliticas, usePremiacaoCatalogo } from '../hooks/usePremiacao';
 import { PoliticaTab, ReferenciasTab, MedalhasTab, ServicosTab, DesabonosTab, ColaboradoresTab } from './CadastrosTabs';
@@ -15,6 +15,7 @@ import LancamentosTab from './LancamentosTab';
 import ApuracaoTab from './ApuracaoTab';
 import RegulamentoTab from './RegulamentoTab';
 import ExtratoTab from './ExtratoTab';
+import LinkGestorDialog from './LinkGestorDialog';
 
 export default function ProgramaExcelenciaSection({ clientId, cliente }: { clientId: string; cliente: any }) {
   const { items, loading, reload } = usePoliticas(clientId);
