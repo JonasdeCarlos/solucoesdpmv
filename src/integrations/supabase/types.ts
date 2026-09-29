@@ -4059,6 +4059,64 @@ export type Database = {
           },
         ]
       }
+      premiacao_feedbacks: {
+        Row: {
+          colaborador_id: string
+          competencia: string
+          created_at: string
+          empresa_id: string
+          id: string
+          origem: string
+          politica_id: string
+          texto: string
+          updated_at: string
+        }
+        Insert: {
+          colaborador_id: string
+          competencia: string
+          created_at?: string
+          empresa_id: string
+          id?: string
+          origem?: string
+          politica_id: string
+          texto?: string
+          updated_at?: string
+        }
+        Update: {
+          colaborador_id?: string
+          competencia?: string
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          origem?: string
+          politica_id?: string
+          texto?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "premiacao_feedbacks_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "premiacao_colaboradores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "premiacao_feedbacks_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "premiacao_feedbacks_politica_id_fkey"
+            columns: ["politica_id"]
+            isOneToOne: false
+            referencedRelation: "premiacao_politicas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       premiacao_lancamentos: {
         Row: {
           anexo_url: string | null
