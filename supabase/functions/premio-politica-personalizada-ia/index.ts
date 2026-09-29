@@ -112,7 +112,7 @@ Regras: números sem R$ e sem separador de milhar; 2 a 6 indicadores; 3 a 6 crit
         ],
         stream: true,
         store: false,
-        reasoning: { effort: "medium" },
+        reasoning: { effort: "low" },
       }),
     });
     if (!r.ok || !r.body) {
@@ -190,7 +190,7 @@ Regras: números sem R$ e sem separador de milhar; 2 a 6 indicadores; 3 a 6 crit
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : String(e) }, 500);
   }
-});
+}
 
 function json(b: any, status = 200) {
   return new Response(JSON.stringify(b), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
