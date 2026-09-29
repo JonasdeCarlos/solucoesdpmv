@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Plus, Search } from 'lucide-react';
+import { ArrowLeft, Plus, Search, Lock, LockOpen } from 'lucide-react';
+import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import SaldoCard from '../components/SaldoCard';
 import SaldoExtratoDialog from '../components/SaldoExtratoDialog';
@@ -14,10 +15,10 @@ import StepFuncionarios from '../components/StepFuncionarios';
 import StepRateio from '../components/StepRateio';
 import StepExportacao from '../components/StepExportacao';
 import AjusteFechamento from '../components/AjusteFechamento';
-import { useEmpresas, useTaxaServicoEmpresa, type TsCompetencia } from '../hooks/useTaxaServico';
+import { useEmpresas, useTaxaServicoEmpresa, isFechada, setFechada, marcarAbertaSeNova, type TsCompetencia } from '../hooks/useTaxaServico';
 import { fmt, competenciaLabel } from '../utils/validacoes';
 
-const STEPS = ['Empresa', 'Valores', 'Funcionários', 'Pontuação e rateio', 'Verba e exportação'];
+const STEPS = ['Empresa', 'Valores', 'Funcionários', 'Pontuação e rateio', 'Verba e exportação', 'Fechamento'];
 const STATUS: Record<string, string> = { rascunho: 'Rascunho', calculado: 'Calculado', exportado: 'Exportado', ajustado: 'Ajustado' };
 
 export default function TaxaServicoPage() {
@@ -29,6 +30,14 @@ export default function TaxaServicoPage() {
   const [comp, setComp] = useState<TsCompetencia | null>(null);
   const [extrato, setExtrato] = useState(false);
   const [busca, setBusca] = useState('');
+  const [, force] = useState(0);
+  const fechada = comp ? isFechada(comp) : false;
+  const alternarFechamento = (v: boolean) => {
+    if (!comp) return;
+    setFechada(comp.id, v); force((n) => n + 1);
+    toast.success(v ? 'Competência fechada' : 'Competência reaberta para edição');
+  };
+  const aposExportar = async () => { if (comp) marcarAbertaSeNova(comp.id); await refreshComp(); };
   const empresasFiltradas = empresas.filter((e) => e.nome.toLowerCase().includes(busca.toLowerCase().trim()));
 
   const abrir = (c: TsCompetencia | null, s = 0) => { setComp(c); setStep(s); setModo('fluxo'); };
@@ -78,7 +87,7 @@ export default function TaxaServicoPage() {
                     <tr key={c.id} className="border-t hover:bg-muted/40 cursor-pointer" onClick={() => abrir(c, 1)}>
                       <td className="p-2">{competenciaLabel(c.competencia)}</td>
                       <td className="p-2 text-right">{fmt(c.valor_liquido)}</td>
-                      <td className="p-2"><Badge variant={c.status === 'rascunho' ? 'outline' : 'secondary'}>{STATUS[c.status]}</Badge></td>
+                      <td className="p-2"><Badge variant={c.status === 'rascunho' ? 'outline' : 'secondary'}>{STATUS[c.status]}</Badge>{isFechada(c) && <Badge className="ml-1" variant="outline"><Lock className="w-3 h-3 mr-1" />Fechada</Badge>}</td>
                       <td className="p-2 text-right text-primary">Abrir</td>
                     </tr>
                   ))}</tbody>
@@ -93,7 +102,10 @@ export default function TaxaServicoPage() {
         <Card>
           <CardHeader>
             <Button variant="ghost" size="sm" className="w-fit" onClick={() => { setModo('lista'); reload(); }}><ArrowLeft className="w-4 h-4 mr-1" />Competências</Button>
-            {comp && <CardTitle className="text-base">Competência {competenciaLabel(comp.competencia)} — {STATUS[comp.status]}</CardTitle>}
+            {comp && <div className="flex items-center justify-between gap-2 flex-wrap">
+              <CardTitle className="text-base">Competência {competenciaLabel(comp.competencia)} — {STATUS[comp.status]} · {fechada ? 'Fechada' : 'Em aberto'}</CardTitle>
+              {fechada && <Button size="sm" variant="outline" onClick={() => alternarFechamento(false)}><LockOpen className="w-4 h-4 mr-1" />Reabrir apuração</Button>}
+            </div>}
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="lancamento">
@@ -110,13 +122,32 @@ export default function TaxaServicoPage() {
                   ))}
                 </div>
                 {step === 0 && <StepEmpresa empresas={empresas} empresaId={empresaId} onEmpresa={setEmpresaId} config={config} saveConfig={saveConfig} onNext={() => setStep(1)} />}
-                {step === 1 && empresaId && config && <StepValores key={comp?.id || 'novo'} empresaId={empresaId} config={config} comp={comp} onBack={() => setStep(0)} onSaved={async (c) => { setComp(c); await reload(); setStep(2); }} />}
+                {step === 1 && empresaId && config && <StepValores key={comp?.id || 'novo'} empresaId={empresaId} config={config} comp={comp} fechada={comp ? fechada : undefined} onBack={() => setStep(0)} onSaved={async (c) => { setComp(c); await reload(); setStep(2); }} />}
                 {step === 2 && empresaId && <StepFuncionarios empresaId={empresaId} funcionarios={funcionarios} reload={reload} onBack={() => setStep(1)} onNext={() => setStep(3)} />}
-                {step === 3 && comp && <StepRateio comp={comp} funcionarios={funcionarios} empresaNome={empresas.find((e) => e.id === empresaId)?.nome} onBack={() => setStep(2)} onNext={async () => { await refreshComp(); setStep(4); }} />}
-                {step === 4 && comp && config && <StepExportacao comp={comp} config={config} funcionarios={funcionarios} onBack={() => setStep(3)} onGoValores={() => setStep(1)} onDone={refreshComp} />}
+                {step === 3 && comp && <StepRateio fechada={fechada} comp={comp} funcionarios={funcionarios} empresaNome={empresas.find((e) => e.id === empresaId)?.nome} onBack={() => setStep(2)} onNext={async () => { await refreshComp(); setStep(4); }} />}
+                {step === 4 && comp && config && <StepExportacao comp={comp} config={config} funcionarios={funcionarios} onBack={() => setStep(3)} onGoValores={() => setStep(1)} onDone={aposExportar} />}
+                {step === 4 && comp && !fechada && <div className="flex justify-end mt-4"><Button variant="outline" onClick={() => setStep(5)}>Ir para fechamento</Button></div>}
+                {step === 5 && comp && (
+                  <div className="space-y-4">
+                    <div className="grid sm:grid-cols-3 gap-3 text-sm">
+                      <div className="border rounded-md p-3"><p className="text-muted-foreground">Arrecadado</p><b>{fmt(comp.valor_arrecadado)}</b></div>
+                      <div className="border rounded-md p-3"><p className="text-muted-foreground">Líquido distribuído</p><b>{fmt(comp.valor_liquido)}</b></div>
+                      <div className="border rounded-md p-3"><p className="text-muted-foreground">Situação</p><b>{STATUS[comp.status]} · {fechada ? 'Fechada' : 'Em aberto'}</b></div>
+                    </div>
+                    {comp.status === 'rascunho' || comp.status === 'calculado'
+                      ? <p className="text-sm text-muted-foreground">Exporte o arquivo no passo 5 antes de fechar a competência.</p>
+                      : <p className="text-sm text-muted-foreground">{fechada ? 'Apuração fechada: valores e pontuação ficam somente leitura. Reabra para corrigir e exportar de novo.' : 'Enquanto estiver em aberto, é possível alterar valores, pontos e dias e exportar novamente.'}</p>}
+                    <div className="flex justify-between">
+                      <Button variant="outline" onClick={() => setStep(4)}>Voltar</Button>
+                      {fechada
+                        ? <Button variant="outline" onClick={() => alternarFechamento(false)}><LockOpen className="w-4 h-4 mr-1" />Reabrir apuração</Button>
+                        : <Button disabled={comp.status === 'rascunho' || comp.status === 'calculado'} onClick={() => alternarFechamento(true)}><Lock className="w-4 h-4 mr-1" />Fechar competência</Button>}
+                    </div>
+                  </div>
+                )}
               </TabsContent>
               <TabsContent value="ajuste">
-                {comp && config && <AjusteFechamento comp={comp} config={config} funcionarios={funcionarios} saldo={saldo} onSaldoClick={() => setExtrato(true)} onChanged={refreshComp} />}
+                {comp && config && <AjusteFechamento comp={comp} config={config} funcionarios={funcionarios} saldo={saldo} onSaldoClick={() => setExtrato(true)} onChanged={aposExportar} />}
               </TabsContent>
             </Tabs>
           </CardContent>
