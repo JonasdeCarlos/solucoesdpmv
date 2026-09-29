@@ -3819,6 +3819,758 @@ export type Database = {
         }
         Relationships: []
       }
+      premiacao_apuracoes: {
+        Row: {
+          colaborador_id: string
+          competencia: string
+          created_at: string
+          empresa_id: string
+          fechado_em: string | null
+          fechado_por: string | null
+          id: string
+          medalhas_contagem: Json
+          meses_negativos: number
+          politica_id: string
+          pontos_desabonos: number
+          pontos_medalhas: number
+          pontos_premiaveis: number
+          pontos_trofeus: number
+          pontuacao_referencia: number
+          saldo_apurado: number
+          saldo_inicial: number
+          saldo_transportado: number
+          status: string
+          trofeus_conquistados: Json
+          updated_at: string
+          valor_bonificacao: number
+          valor_ponto: number
+        }
+        Insert: {
+          colaborador_id: string
+          competencia: string
+          created_at?: string
+          empresa_id: string
+          fechado_em?: string | null
+          fechado_por?: string | null
+          id?: string
+          medalhas_contagem?: Json
+          meses_negativos?: number
+          politica_id: string
+          pontos_desabonos?: number
+          pontos_medalhas?: number
+          pontos_premiaveis?: number
+          pontos_trofeus?: number
+          pontuacao_referencia?: number
+          saldo_apurado?: number
+          saldo_inicial?: number
+          saldo_transportado?: number
+          status?: string
+          trofeus_conquistados?: Json
+          updated_at?: string
+          valor_bonificacao?: number
+          valor_ponto?: number
+        }
+        Update: {
+          colaborador_id?: string
+          competencia?: string
+          created_at?: string
+          empresa_id?: string
+          fechado_em?: string | null
+          fechado_por?: string | null
+          id?: string
+          medalhas_contagem?: Json
+          meses_negativos?: number
+          politica_id?: string
+          pontos_desabonos?: number
+          pontos_medalhas?: number
+          pontos_premiaveis?: number
+          pontos_trofeus?: number
+          pontuacao_referencia?: number
+          saldo_apurado?: number
+          saldo_inicial?: number
+          saldo_transportado?: number
+          status?: string
+          trofeus_conquistados?: Json
+          updated_at?: string
+          valor_bonificacao?: number
+          valor_ponto?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "premiacao_apuracoes_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "premiacao_colaboradores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "premiacao_apuracoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "premiacao_apuracoes_politica_id_fkey"
+            columns: ["politica_id"]
+            isOneToOne: false
+            referencedRelation: "premiacao_politicas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      premiacao_ciencias: {
+        Row: {
+          anexo_url: string | null
+          colaborador_id: string
+          created_at: string
+          data_ciencia: string
+          forma: string
+          id: string
+          versao_regulamento_id: string
+        }
+        Insert: {
+          anexo_url?: string | null
+          colaborador_id: string
+          created_at?: string
+          data_ciencia?: string
+          forma?: string
+          id?: string
+          versao_regulamento_id: string
+        }
+        Update: {
+          anexo_url?: string | null
+          colaborador_id?: string
+          created_at?: string
+          data_ciencia?: string
+          forma?: string
+          id?: string
+          versao_regulamento_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "premiacao_ciencias_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "premiacao_colaboradores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "premiacao_ciencias_versao_regulamento_id_fkey"
+            columns: ["versao_regulamento_id"]
+            isOneToOne: false
+            referencedRelation: "premiacao_regulamento_versoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      premiacao_colaboradores: {
+        Row: {
+          ativo: boolean
+          cargo_id: string | null
+          codigo: string | null
+          cpf: string | null
+          created_at: string
+          data_desligamento: string | null
+          empresa_id: string
+          funcao: string | null
+          id: string
+          nome: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          cargo_id?: string | null
+          codigo?: string | null
+          cpf?: string | null
+          created_at?: string
+          data_desligamento?: string | null
+          empresa_id: string
+          funcao?: string | null
+          id?: string
+          nome: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          cargo_id?: string | null
+          codigo?: string | null
+          cpf?: string | null
+          created_at?: string
+          data_desligamento?: string | null
+          empresa_id?: string
+          funcao?: string | null
+          id?: string
+          nome?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "premiacao_colaboradores_cargo_id_fkey"
+            columns: ["cargo_id"]
+            isOneToOne: false
+            referencedRelation: "cargos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "premiacao_colaboradores_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      premiacao_desabonos: {
+        Row: {
+          ativo: boolean
+          codigo: string
+          created_at: string
+          descricao: string
+          id: string
+          politica_id: string
+          pontos: number
+        }
+        Insert: {
+          ativo?: boolean
+          codigo: string
+          created_at?: string
+          descricao: string
+          id?: string
+          politica_id: string
+          pontos?: number
+        }
+        Update: {
+          ativo?: boolean
+          codigo?: string
+          created_at?: string
+          descricao?: string
+          id?: string
+          politica_id?: string
+          pontos?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "premiacao_desabonos_politica_id_fkey"
+            columns: ["politica_id"]
+            isOneToOne: false
+            referencedRelation: "premiacao_politicas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      premiacao_lancamentos: {
+        Row: {
+          anexo_url: string | null
+          codigo: string | null
+          colaborador_id: string
+          competencia: string
+          created_at: string
+          data_ocorrencia: string
+          desabono_id: string | null
+          descricao: string | null
+          empresa_id: string
+          gera_pontos: boolean
+          id: string
+          lancado_por: string | null
+          observacao: string | null
+          politica_id: string
+          pontos_total: number
+          pontos_unitarios: number
+          quantidade: number
+          referencia_os: string | null
+          servico_id: string | null
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          anexo_url?: string | null
+          codigo?: string | null
+          colaborador_id: string
+          competencia: string
+          created_at?: string
+          data_ocorrencia?: string
+          desabono_id?: string | null
+          descricao?: string | null
+          empresa_id: string
+          gera_pontos?: boolean
+          id?: string
+          lancado_por?: string | null
+          observacao?: string | null
+          politica_id: string
+          pontos_total?: number
+          pontos_unitarios?: number
+          quantidade?: number
+          referencia_os?: string | null
+          servico_id?: string | null
+          tipo?: string
+          updated_at?: string
+        }
+        Update: {
+          anexo_url?: string | null
+          codigo?: string | null
+          colaborador_id?: string
+          competencia?: string
+          created_at?: string
+          data_ocorrencia?: string
+          desabono_id?: string | null
+          descricao?: string | null
+          empresa_id?: string
+          gera_pontos?: boolean
+          id?: string
+          lancado_por?: string | null
+          observacao?: string | null
+          politica_id?: string
+          pontos_total?: number
+          pontos_unitarios?: number
+          quantidade?: number
+          referencia_os?: string | null
+          servico_id?: string | null
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "premiacao_lancamentos_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "premiacao_colaboradores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "premiacao_lancamentos_desabono_id_fkey"
+            columns: ["desabono_id"]
+            isOneToOne: false
+            referencedRelation: "premiacao_desabonos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "premiacao_lancamentos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "premiacao_lancamentos_politica_id_fkey"
+            columns: ["politica_id"]
+            isOneToOne: false
+            referencedRelation: "premiacao_politicas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "premiacao_lancamentos_servico_id_fkey"
+            columns: ["servico_id"]
+            isOneToOne: false
+            referencedRelation: "premiacao_servicos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      premiacao_log: {
+        Row: {
+          acao: string
+          antes: Json | null
+          created_at: string
+          depois: Json | null
+          entidade: string
+          entidade_id: string | null
+          id: string
+          politica_id: string | null
+          usuario_id: string | null
+        }
+        Insert: {
+          acao: string
+          antes?: Json | null
+          created_at?: string
+          depois?: Json | null
+          entidade: string
+          entidade_id?: string | null
+          id?: string
+          politica_id?: string | null
+          usuario_id?: string | null
+        }
+        Update: {
+          acao?: string
+          antes?: Json | null
+          created_at?: string
+          depois?: Json | null
+          entidade?: string
+          entidade_id?: string | null
+          id?: string
+          politica_id?: string | null
+          usuario_id?: string | null
+        }
+        Relationships: []
+      }
+      premiacao_medalhas: {
+        Row: {
+          ativo: boolean
+          cor_hex: string
+          created_at: string
+          icone: string | null
+          id: string
+          nome: string
+          ordem: number
+          politica_id: string
+          pontos_padrao: number
+        }
+        Insert: {
+          ativo?: boolean
+          cor_hex?: string
+          created_at?: string
+          icone?: string | null
+          id?: string
+          nome: string
+          ordem?: number
+          politica_id: string
+          pontos_padrao?: number
+        }
+        Update: {
+          ativo?: boolean
+          cor_hex?: string
+          created_at?: string
+          icone?: string | null
+          id?: string
+          nome?: string
+          ordem?: number
+          politica_id?: string
+          pontos_padrao?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "premiacao_medalhas_politica_id_fkey"
+            columns: ["politica_id"]
+            isOneToOne: false
+            referencedRelation: "premiacao_politicas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      premiacao_metas: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          icone: string | null
+          id: string
+          modo_apuracao: string
+          nome: string
+          periodicidade: string
+          politica_id: string
+          pontos_trofeu: number
+          quantidade_alvo: number
+          unidade: string | null
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          icone?: string | null
+          id?: string
+          modo_apuracao?: string
+          nome: string
+          periodicidade?: string
+          politica_id: string
+          pontos_trofeu?: number
+          quantidade_alvo?: number
+          unidade?: string | null
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          icone?: string | null
+          id?: string
+          modo_apuracao?: string
+          nome?: string
+          periodicidade?: string
+          politica_id?: string
+          pontos_trofeu?: number
+          quantidade_alvo?: number
+          unidade?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "premiacao_metas_politica_id_fkey"
+            columns: ["politica_id"]
+            isOneToOne: false
+            referencedRelation: "premiacao_politicas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      premiacao_metas_manuais: {
+        Row: {
+          atingida: boolean
+          colaborador_id: string
+          competencia: string
+          created_at: string
+          id: string
+          marcado_por: string | null
+          meta_id: string
+        }
+        Insert: {
+          atingida?: boolean
+          colaborador_id: string
+          competencia: string
+          created_at?: string
+          id?: string
+          marcado_por?: string | null
+          meta_id: string
+        }
+        Update: {
+          atingida?: boolean
+          colaborador_id?: string
+          competencia?: string
+          created_at?: string
+          id?: string
+          marcado_por?: string | null
+          meta_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "premiacao_metas_manuais_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "premiacao_colaboradores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "premiacao_metas_manuais_meta_id_fkey"
+            columns: ["meta_id"]
+            isOneToOne: false
+            referencedRelation: "premiacao_metas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      premiacao_metas_servicos: {
+        Row: {
+          meta_id: string
+          peso_contagem: number
+          servico_id: string
+        }
+        Insert: {
+          meta_id: string
+          peso_contagem?: number
+          servico_id: string
+        }
+        Update: {
+          meta_id?: string
+          peso_contagem?: number
+          servico_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "premiacao_metas_servicos_meta_id_fkey"
+            columns: ["meta_id"]
+            isOneToOne: false
+            referencedRelation: "premiacao_metas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "premiacao_metas_servicos_servico_id_fkey"
+            columns: ["servico_id"]
+            isOneToOne: false
+            referencedRelation: "premiacao_servicos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      premiacao_politicas: {
+        Row: {
+          ativo: boolean
+          codigo_rubrica_dominio: string | null
+          created_at: string
+          empresa_id: string
+          id: string
+          limite_saldo_negativo: number | null
+          meses_max_transporte: number | null
+          nome: string
+          pontuacao_referencia_padrao: number
+          teto_mensal_pontos: number | null
+          updated_at: string
+          valor_ponto: number
+          vigencia_fim: string | null
+          vigencia_inicio: string
+        }
+        Insert: {
+          ativo?: boolean
+          codigo_rubrica_dominio?: string | null
+          created_at?: string
+          empresa_id: string
+          id?: string
+          limite_saldo_negativo?: number | null
+          meses_max_transporte?: number | null
+          nome?: string
+          pontuacao_referencia_padrao?: number
+          teto_mensal_pontos?: number | null
+          updated_at?: string
+          valor_ponto?: number
+          vigencia_fim?: string | null
+          vigencia_inicio?: string
+        }
+        Update: {
+          ativo?: boolean
+          codigo_rubrica_dominio?: string | null
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          limite_saldo_negativo?: number | null
+          meses_max_transporte?: number | null
+          nome?: string
+          pontuacao_referencia_padrao?: number
+          teto_mensal_pontos?: number | null
+          updated_at?: string
+          valor_ponto?: number
+          vigencia_fim?: string | null
+          vigencia_inicio?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "premiacao_politicas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      premiacao_referencias: {
+        Row: {
+          cargo_id: string
+          created_at: string
+          id: string
+          politica_id: string
+          pontuacao_referencia: number
+        }
+        Insert: {
+          cargo_id: string
+          created_at?: string
+          id?: string
+          politica_id: string
+          pontuacao_referencia?: number
+        }
+        Update: {
+          cargo_id?: string
+          created_at?: string
+          id?: string
+          politica_id?: string
+          pontuacao_referencia?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "premiacao_referencias_cargo_id_fkey"
+            columns: ["cargo_id"]
+            isOneToOne: false
+            referencedRelation: "cargos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "premiacao_referencias_politica_id_fkey"
+            columns: ["politica_id"]
+            isOneToOne: false
+            referencedRelation: "premiacao_politicas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      premiacao_regulamento_versoes: {
+        Row: {
+          created_at: string
+          id: string
+          politica_id: string
+          publicado_em: string | null
+          publicado_por: string | null
+          texto: string
+          versao: number
+          vigencia_inicio: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          politica_id: string
+          publicado_em?: string | null
+          publicado_por?: string | null
+          texto?: string
+          versao: number
+          vigencia_inicio?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          politica_id?: string
+          publicado_em?: string | null
+          publicado_por?: string | null
+          texto?: string
+          versao?: number
+          vigencia_inicio?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "premiacao_regulamento_versoes_politica_id_fkey"
+            columns: ["politica_id"]
+            isOneToOne: false
+            referencedRelation: "premiacao_politicas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      premiacao_servicos: {
+        Row: {
+          ativo: boolean
+          codigo: string
+          created_at: string
+          descricao: string
+          exige_comprovacao: boolean
+          gera_pontos: boolean
+          id: string
+          limite_por_competencia: number | null
+          medalha_id: string | null
+          politica_id: string
+          pontos_override: number | null
+        }
+        Insert: {
+          ativo?: boolean
+          codigo: string
+          created_at?: string
+          descricao: string
+          exige_comprovacao?: boolean
+          gera_pontos?: boolean
+          id?: string
+          limite_por_competencia?: number | null
+          medalha_id?: string | null
+          politica_id: string
+          pontos_override?: number | null
+        }
+        Update: {
+          ativo?: boolean
+          codigo?: string
+          created_at?: string
+          descricao?: string
+          exige_comprovacao?: boolean
+          gera_pontos?: boolean
+          id?: string
+          limite_por_competencia?: number | null
+          medalha_id?: string | null
+          politica_id?: string
+          pontos_override?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "premiacao_servicos_medalha_id_fkey"
+            columns: ["medalha_id"]
+            isOneToOne: false
+            referencedRelation: "premiacao_medalhas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "premiacao_servicos_politica_id_fkey"
+            columns: ["politica_id"]
+            isOneToOne: false
+            referencedRelation: "premiacao_politicas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       prize_alignment_reports: {
         Row: {
           assessment_employee_id: string
@@ -5202,6 +5954,30 @@ export type Database = {
       }
       is_admin_or_master: { Args: { _user_id: string }; Returns: boolean }
       normalize_email: { Args: { _email: string }; Returns: string }
+      premiacao_apurar: {
+        Args: { p_competencia: string; p_politica_id: string }
+        Returns: undefined
+      }
+      premiacao_comp_shift: {
+        Args: { p_comp: string; p_delta: number }
+        Returns: string
+      }
+      premiacao_fechar: {
+        Args: { p_competencia: string; p_politica_id: string }
+        Returns: undefined
+      }
+      premiacao_marcar_exportada: {
+        Args: { p_competencia: string; p_politica_id: string }
+        Returns: undefined
+      }
+      premiacao_reabrir: {
+        Args: { p_competencia: string; p_politica_id: string }
+        Returns: undefined
+      }
+      premiacao_seed_politica: {
+        Args: { p_politica_id: string }
+        Returns: undefined
+      }
       set_empregador_web_password: {
         Args: { _client_id: string; _password: string }
         Returns: undefined
