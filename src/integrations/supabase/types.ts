@@ -4667,6 +4667,59 @@ export type Database = {
           },
         ]
       }
+      premio_modelos_documento: {
+        Row: {
+          arquivo_nome: string | null
+          campos: Json
+          created_at: string
+          empresa_id: string
+          escopo: string
+          id: string
+          nome: string
+          pdf_base64: string
+          ref_id: string
+          tipo: string
+          updated_at: string
+          usar_personalizado: boolean
+        }
+        Insert: {
+          arquivo_nome?: string | null
+          campos?: Json
+          created_at?: string
+          empresa_id: string
+          escopo?: string
+          id?: string
+          nome?: string
+          pdf_base64: string
+          ref_id: string
+          tipo?: string
+          updated_at?: string
+          usar_personalizado?: boolean
+        }
+        Update: {
+          arquivo_nome?: string | null
+          campos?: Json
+          created_at?: string
+          empresa_id?: string
+          escopo?: string
+          id?: string
+          nome?: string
+          pdf_base64?: string
+          ref_id?: string
+          tipo?: string
+          updated_at?: string
+          usar_personalizado?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "premio_modelos_documento_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       prize_alignment_reports: {
         Row: {
           assessment_employee_id: string

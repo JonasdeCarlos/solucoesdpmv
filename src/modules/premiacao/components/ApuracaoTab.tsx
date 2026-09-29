@@ -10,6 +10,8 @@ import { toast } from 'sonner';
 import { tbl, rpc, brl, fmtComp, type Apuracao, type Catalogo, type Colaborador, type Politica } from '../hooks/usePremiacao';
 import { pdfApuracao, pdfExtrato, pdfRecibo } from '../utils/pdfs';
 import FeedbackDialog from './FeedbackDialog';
+import { useModelosDocumento } from '@/modules/modelos-documento/useModelosDocumento';
+import { baixarPdf, dadosPadrao, preencherModelo, type TipoModelo } from '@/modules/modelos-documento/lib';
 import { FORMULA_RODAPE } from '../utils/textos';
 import { gerarArquivo } from '@/modules/taxa-servico/utils/dominioLayout';
 
@@ -68,6 +70,15 @@ export default function ApuracaoTab({ politica, cat, competencia, empresa }: { p
     XLSX.writeFile(wb, `apuracao-premio-${competencia}.xlsx`);
   };
 
+  const modelos = useModelosDocumento(politica.id);
+  const docPersonalizado = async (tipo: TipoModelo, r: Apuracao, c: Colaborador) => {
+    const mod = modelos.ativo(tipo);
+    if (!mod) return false;
+    const dados = dadosPadrao({ colaborador: { nome: c.nome, cpf: c.cpf, codigo: c.codigo, cargo: cat.funcaoDe(c) }, empresa, politica: politica.nome, competencia, valor: Number(r.valor_bonificacao), pontos: r.pontos_premiaveis });
+    baixarPdf(await preencherModelo(mod.pdf_base64, mod.campos, [dados]), `${tipo}-${c.nome}-${competencia}.pdf`);
+    return true;
+  };
+
   const total = rows.reduce((s, r) => s + Number(r.valor_bonificacao), 0);
 
   return (
@@ -110,9 +121,9 @@ export default function ApuracaoTab({ politica, cat, competencia, empresa }: { p
                 <TableCell>
                   <div className="flex gap-1">
                     <Button size="sm" variant="outline" className="h-7 px-2" disabled={r.status === 'aberta' || !c} title={r.status === 'aberta' ? 'Disponível após fechar a competência' : 'Extrato em PDF'}
-                      onClick={() => c && pdfExtrato({ politica, cat, apuracao: r, colaborador: c, empresa }).save(`extrato-${c.nome}-${competencia}.pdf`)}><FileDown className="w-3 h-3" /></Button>
+                      onClick={async () => c && !(await docPersonalizado('extrato', r, c)) && pdfExtrato({ politica, cat, apuracao: r, colaborador: c, empresa }).save(`extrato-${c.nome}-${competencia}.pdf`)}><FileDown className="w-3 h-3" /></Button>
                     <Button size="sm" variant="outline" className="h-7 px-2" disabled={r.status === 'aberta' || !c || Number(r.valor_bonificacao) <= 0} title={r.status === 'aberta' ? 'Disponível após fechar a competência' : 'Recibo do prêmio em PDF'}
-                      onClick={() => c && pdfRecibo({ politica, cat, apuracao: r, colaborador: c, empresa }).save(`recibo-premio-${c.nome}-${competencia}.pdf`)}><Receipt className="w-3 h-3" /></Button>
+                      onClick={async () => c && !(await docPersonalizado('recibo', r, c)) && pdfRecibo({ politica, cat, apuracao: r, colaborador: c, empresa }).save(`recibo-premio-${c.nome}-${competencia}.pdf`)}><Receipt className="w-3 h-3" /></Button>
                     <Button size="sm" variant="outline" className="h-7 px-2" disabled={r.status === 'aberta' || !c} title={r.status === 'aberta' ? 'Disponível após fechar a competência' : 'Feedback (IA ou manual)'}
                       onClick={() => c && setFb({ ap: r, c })}><MessageSquareText className="w-3 h-3" /></Button>
                   </div>

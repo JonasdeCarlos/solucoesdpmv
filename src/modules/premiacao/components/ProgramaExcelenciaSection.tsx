@@ -16,6 +16,8 @@ import ApuracaoTab from './ApuracaoTab';
 import RegulamentoTab from './RegulamentoTab';
 import ExtratoTab from './ExtratoTab';
 import LinkGestorDialog from './LinkGestorDialog';
+import ModelosDocumentoCard from '@/modules/modelos-documento/ModelosDocumentoCard';
+import { dadosPadrao } from '@/modules/modelos-documento/lib';
 
 export default function ProgramaExcelenciaSection({ clientId, cliente }: { clientId: string; cliente: any }) {
   const { items, loading, reload } = usePoliticas(clientId);
@@ -83,6 +85,7 @@ export default function ProgramaExcelenciaSection({ clientId, cliente }: { clien
               <TabsTrigger value="apuracao">Apuração Mensal</TabsTrigger>
               <TabsTrigger value="regulamento">Regulamento</TabsTrigger>
               <TabsTrigger value="extrato">Extrato do Colaborador</TabsTrigger>
+              <TabsTrigger value="modelos">Modelos de documento</TabsTrigger>
             </TabsList>
             <TabsContent value="politica"><PoliticaTab politica={politica} onSaved={reload} /></TabsContent>
             <TabsContent value="colaboradores"><ColaboradoresTab politica={politica} cat={cat} /></TabsContent>
@@ -94,6 +97,11 @@ export default function ProgramaExcelenciaSection({ clientId, cliente }: { clien
             <TabsContent value="lancamentos"><LancamentosTab politica={politica} cat={cat} competencia={competencia} /></TabsContent>
             <TabsContent value="apuracao"><ApuracaoTab politica={politica} cat={cat} competencia={competencia} empresa={empresaNome} /></TabsContent>
             <TabsContent value="regulamento"><RegulamentoTab politica={politica} cat={cat} empresa={empresaNome} razaoSocial={cliente?.nome || ''} /></TabsContent>
+            <TabsContent value="modelos">
+              <ModelosDocumentoCard empresaId={clientId} escopo="excelencia" refId={politica.id} tipos={['politica', 'recibo', 'extrato', 'voucher']}
+                pessoas={cat.colaboradores.map(c => ({ id: c.id, nome: c.nome, cpf: c.cpf, codigo: c.codigo, cargo: cat.funcaoDe(c) }))}
+                montarDados={(p, x) => dadosPadrao({ colaborador: p, empresa: cliente?.nome || '', cnpj: cliente?.cnpj || cliente?.cpf || '', cidade: cliente?.cidade || '', politica: politica.nome, competencia: x.competencia || competencia, valor: x.valor ? Number(x.valor.replace(/\./g, '').replace(',', '.')) : null, pontos: x.pontos, observacao: x.observacao })} />
+            </TabsContent>
             <TabsContent value="extrato"><ExtratoTab politica={politica} cat={cat} competencia={competencia} empresa={empresaNome} /></TabsContent>
           </Tabs>
         </>

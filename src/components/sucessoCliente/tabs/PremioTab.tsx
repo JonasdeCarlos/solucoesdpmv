@@ -11,6 +11,8 @@ import { Switch } from '@/components/ui/switch';
 import { Loader2, Plus, Trash2, Wand2, Save, Pencil, X, Users, Upload, FileDown, Sparkles, Link2, KeyRound } from 'lucide-react';
 import { buildExternalAppLink } from '@/utils/publicLinks';
 import { copyToClipboard } from '@/utils/clipboard';
+import ModelosDocumentoCard from '@/modules/modelos-documento/ModelosDocumentoCard';
+import { dadosPadrao } from '@/modules/modelos-documento/lib';
 import { usePrizePolicies, usePrizeCriteria, usePrizeEmployees, type PrizePolicy } from '@/hooks/usePrizePolicies';
 import { useEmpregados } from '@/hooks/useEmpregados';
 import { toast } from 'sonner';
@@ -548,10 +550,20 @@ function PolicyCard({ policy, expanded, onToggle, onUpdate, onRemove, cliente }:
                 <PremioAplicacaoSection policy={effectivePolicy} cliente={cliente}/>
               </>
             )}
+            <PremioModelosSection policy={effectivePolicy} cliente={cliente}/>
           </div>
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function PremioModelosSection({ policy, cliente }: { policy: PrizePolicy; cliente: any }) {
+  const { items } = usePrizeEmployees(policy.id);
+  return (
+    <ModelosDocumentoCard empresaId={policy.client_id} escopo="premio" refId={policy.id} tipos={['politica', 'recibo', 'voucher']}
+      pessoas={items.filter(e => e.ativo !== false).map(e => ({ id: e.id, nome: e.nome, cpf: e.cpf, matricula: e.matricula, codigo: e.codigo_folha, cargo: e.cargo, setor: e.setor, data_admissao: e.data_admissao }))}
+      montarDados={(p, x) => dadosPadrao({ colaborador: p, empresa: cliente?.nome || '', cnpj: cliente?.cnpj || cliente?.cpf || '', cidade: cliente?.cidade || '', politica: policy.nome, competencia: x.competencia, valor: x.valor ? Number(x.valor.replace(/\./g, '').replace(',', '.')) : null, pontos: x.pontos, observacao: x.observacao })} />
   );
 }
 
