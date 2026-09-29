@@ -79,6 +79,11 @@ export default function AjusteFechamento({ comp, config, funcionarios, saldo, on
         <Button onClick={recalcular}><Calculator className="w-4 h-4 mr-1" />Recalcular comissões</Button>
         <Button onClick={exportar} variant="secondary"><Download className="w-4 h-4 mr-1" />Exportar arquivo ajustado</Button>
       </div>
+      <div className="flex items-center gap-2 text-sm">
+        <span className="text-muted-foreground">Ordenar por:</span>
+        <Button size="sm" variant={ordem === 'codigo' ? 'default' : 'outline'} onClick={() => setOrdem('codigo')}>Código</Button>
+        <Button size="sm" variant={ordem === 'nome' ? 'default' : 'outline'} onClick={() => setOrdem('nome')}>Ordem alfabética</Button>
+      </div>
       <div className="border rounded-md max-h-[50vh] overflow-auto">
         <table className="w-full text-sm">
           <thead className="bg-muted sticky top-0"><tr>
