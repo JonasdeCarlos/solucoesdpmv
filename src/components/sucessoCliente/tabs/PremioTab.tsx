@@ -24,6 +24,7 @@ import { HOTELARIA_CONFIG, HOTELARIA_CRITERIOS_INDIVIDUAIS } from '@/utils/suces
 import PoliticaPersonalizadaIaDialog, { type PoliticaGerada } from "./PoliticaPersonalizadaIaDialog";
 import SelecionarEmpresaDialog from '@/components/sucessoCliente/SelecionarEmpresaDialog';
 import { Building2 } from 'lucide-react';
+import ProgramaExcelenciaSection from '@/modules/premiacao/components/ProgramaExcelenciaSection';
 
 const VERBA_PRESETS = ['Prêmio', 'Benefício', 'Gratificação', 'Bonificação', 'Bônus', 'PLR', 'Adicional de Desempenho'];
 
@@ -222,6 +223,8 @@ export default function PremioTab({ client_id, cliente }: { client_id: string; c
           {!creating && <Button size="sm" onClick={()=>setCreating(true)}><Plus className="w-3 h-3 mr-1"/>Nova política</Button>}
         </div>
       </CardContent></Card>
+
+      <ProgramaExcelenciaSection clientId={client_id} cliente={cliente} />
 
       <PoliticaPersonalizadaIaDialog open={customOpen} onOpenChange={setCustomOpen}
         verbaLabel={(newForm.verba_label === "__custom__" ? newForm.verba_label_custom : newForm.verba_label) || "Prêmio"}
