@@ -1,3 +1,4 @@
+import { isModeloHotelaria } from '@/utils/sucessoCliente/premioTemplates';
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -132,7 +133,7 @@ export default function PremioPublicPage() {
   if (!policy || !api) return null;
 
   const empresa = cliente?.razao_social || cliente?.nome_fantasia || cliente?.nome || 'Empresa';
-  const isHotelaria = (policy as any).modelo_template === 'hotelaria';
+  const isHotelaria = isModeloHotelaria(policy);
 
   return (
     <PrizePublicApiProvider api={api}>

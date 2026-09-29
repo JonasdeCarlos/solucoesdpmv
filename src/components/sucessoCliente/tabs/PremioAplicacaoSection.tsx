@@ -1,3 +1,4 @@
+import { isModeloHotelaria } from '@/utils/sucessoCliente/premioTemplates';
 import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -101,7 +102,7 @@ export default function PremioAplicacaoSection({ policy, cliente }: { policy: Pr
         </div>
       </div>
 
-      {current && rv && (policy as any).modelo_template !== 'hotelaria' && (
+      {current && rv && !isModeloHotelaria(policy) && (
         <div className="border rounded-md p-3 bg-primary/5 grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
           <div className="md:col-span-4">
             <Label className="text-xs">Faturamento previsto ({rv.base_label || rv.base}) — competência {current.competencia}</Label>
@@ -157,7 +158,7 @@ function AssessmentEmployeeList({ assessment, policy, cliente, onOpenHistory, on
 
   // Calcula demonstrativo coletivo (Hotelaria) para a competência da apuração
   const coletivoData = useMemo(() => {
-    if ((policy as any).modelo_template !== 'hotelaria') return null;
+    if (!isModeloHotelaria(policy)) return null;
     const [mm, aaaa] = String(assessment.competencia || '').split('/');
     if (!mm || !aaaa) return null;
     const compKey = `${aaaa}-${mm}`;

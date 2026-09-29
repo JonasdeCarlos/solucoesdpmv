@@ -1,3 +1,4 @@
+import { isModeloHotelaria } from '@/utils/sucessoCliente/premioTemplates';
 import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -326,7 +327,7 @@ function PolicyCard({ policy, expanded, onToggle, onUpdate, onRemove, cliente }:
     valor_base: policy.valor_base,
     status: policy.status,
   });
-  const isHotelaria = (policy as any).modelo_template === 'hotelaria';
+  const isHotelaria = isModeloHotelaria(policy);
   const effectivePolicy = isHotelaria ? ({ ...policy, ...hotelariaDraft } as PrizePolicy) : policy;
 
   useEffect(() => {
@@ -524,7 +525,7 @@ export function CriteriaSection({ policy, cliente }: { policy: PrizePolicy; clie
   const [generating, setGenerating] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [explainingNovo, setExplainingNovo] = useState(false);
-  const isHotelaria = (policy as any).modelo_template === 'hotelaria';
+  const isHotelaria = isModeloHotelaria(policy);
   const metasMap: Record<string, any> = (((policy as any).hotelaria_config as any)?.metas_mensais) || {};
   const mesesDisponiveis = Object.keys(metasMap).sort().reverse();
   const [mesPdf, setMesPdf] = useState<string>(() => mesesDisponiveis[0] || new Date().toISOString().slice(0,7));
@@ -588,7 +589,7 @@ export function CriteriaSection({ policy, cliente }: { policy: PrizePolicy; clie
           observacoes: rvObservacoesAtual,
           criterios_individuais: items.map(c => ({ nome: c.nome, peso: c.peso })),
         } : null,
-        hotelaria: remuneracaoVariavelAtual && (policy as any).modelo_template === 'hotelaria' ? (() => {
+        hotelaria: remuneracaoVariavelAtual && isModeloHotelaria(policy) ? (() => {
           const cfg = (policy as any).hotelaria_config || HOTELARIA_CONFIG;
           const legacy: Record<string, number> = ((policy as any).hotelaria_pontos as any) || {};
           const pontos = (participantes || []).filter(p => p.ativo).map(p => ({
