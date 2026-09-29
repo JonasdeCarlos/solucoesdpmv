@@ -4434,6 +4434,44 @@ export type Database = {
           },
         ]
       }
+      premiacao_public_links: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          id: string
+          politica_id: string
+          senha_hash: string | null
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          politica_id: string
+          senha_hash?: string | null
+          token?: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          politica_id?: string
+          senha_hash?: string | null
+          token?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "premiacao_public_links_politica_id_fkey"
+            columns: ["politica_id"]
+            isOneToOne: false
+            referencedRelation: "premiacao_politicas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       premiacao_referencias: {
         Row: {
           cargo_id: string

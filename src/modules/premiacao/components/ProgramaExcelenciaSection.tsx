@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Award, Loader2, Plus, AlertTriangle } from 'lucide-react';
+import { Award, Loader2, Plus, AlertTriangle, Link2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { competenciaAtual, rpc, tbl, usePoliticas, usePremiacaoCatalogo } from '../hooks/usePremiacao';
 import { PoliticaTab, ReferenciasTab, MedalhasTab, ServicosTab, DesabonosTab, ColaboradoresTab } from './CadastrosTabs';
@@ -15,6 +15,7 @@ import LancamentosTab from './LancamentosTab';
 import ApuracaoTab from './ApuracaoTab';
 import RegulamentoTab from './RegulamentoTab';
 import ExtratoTab from './ExtratoTab';
+import LinkGestorDialog from './LinkGestorDialog';
 
 export default function ProgramaExcelenciaSection({ clientId, cliente }: { clientId: string; cliente: any }) {
   const { items, loading, reload } = usePoliticas(clientId);
@@ -22,6 +23,7 @@ export default function ProgramaExcelenciaSection({ clientId, cliente }: { clien
   const [aberto, setAberto] = useState(false);
   const [criando, setCriando] = useState(false);
   const [competencia, setCompetencia] = useState(competenciaAtual());
+  const [linkAberto, setLinkAberto] = useState(false);
   const politica = items.find(p => p.id === selId) || null;
   const cat = usePremiacaoCatalogo(politica);
   const empresaNome = [cliente?.nome, cliente?.cnpj ? `CNPJ ${cliente.cnpj}` : cliente?.cpf ? `CPF ${cliente.cpf}` : ''].filter(Boolean).join(' — ');
@@ -55,6 +57,7 @@ export default function ProgramaExcelenciaSection({ clientId, cliente }: { clien
             </Select>
           )}
           <Button size="sm" variant="outline" onClick={criar} disabled={criando}>{criando ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Plus className="w-3 h-3 mr-1" />}Nova política de pontos</Button>
+          {politica && <Button size="sm" variant="outline" onClick={() => setLinkAberto(true)}><Link2 className="w-3 h-3 mr-1" />Link do gestor</Button>}
           {politica && <Button size="sm" onClick={() => setAberto(v => !v)}>{aberto ? 'Recolher' : 'Abrir'}</Button>}
         </div>
       </div>
@@ -95,6 +98,7 @@ export default function ProgramaExcelenciaSection({ clientId, cliente }: { clien
           </Tabs>
         </>
       )}
+      {politica && <LinkGestorDialog politicaId={politica.id} open={linkAberto} onOpenChange={setLinkAberto} />}
     </CardContent></Card>
   );
 }
