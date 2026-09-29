@@ -2,7 +2,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { Apuracao, Catalogo, Colaborador, Politica, RegVersao } from '../hooks/usePremiacao';
 import { brl, fmtComp, shiftComp } from '../hooks/usePremiacao';
-import { FORMULA_RODAPE, quadrosAnexos, termoCiencia, tituloRegulamento } from './textos';
+import { FORMULA_RODAPE, quadrosAnexos, termoCiencia, tituloRegulamento, valorPontoExtenso as valorExtenso } from './textos';
 
 const VERDE: [number, number, number] = [98, 142, 63];
 const MARROM: [number, number, number] = [57, 52, 33];
@@ -156,6 +156,86 @@ export function pdfExtrato(opts: { politica: Politica; cat: Catalogo; apuracao: 
       body: a.trofeus_conquistados.map(t => [t.nome, t.realizado === null ? 'Manual' : `${t.realizado} / ${t.alvo} ${t.unidade || ''}`, t.atingida ? 'Atingida' : 'Não atingida', String(t.pontos)]),
       headStyles: { fillColor: MARROM }, alternateRowStyles: { fillColor: CINZA }, styles: { fontSize: 8.5 }, margin: { left: 14, right: 14 } });
   }
+  rodape(doc, FORMULA_RODAPE);
+  return doc;
+}
+
+export function pdfRecibo(opts: { politica: Politica; cat: Catalogo; apuracao: Apuracao; colaborador: Colaborador; empresa: string; cidade?: string }) {
+  const { apuracao: a, colaborador: c, empresa, politica, cat } = opts;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const w = doc.internal.pageSize.getWidth();
+  let y = header(doc, `${politica.nome} — Recibo de prêmio por desempenho — ${fmtComp(a.competencia)}`, empresa);
+  y = secao(doc, y + 2, 'Recibo');
+  const valor = Number(a.valor_bonificacao);
+  const texto = `Eu, ${c.nome}${c.cpf ? `, inscrito(a) no CPF nº ${c.cpf}` : ''}, exercendo a função de ${cat.funcaoDe(c)}, declaro haver recebido de ${empresa} a importância de ${valorExtenso(valor)}, a título de prêmio por desempenho superior ao ordinariamente esperado, referente à competência ${fmtComp(a.competencia)}, apurada no Programa Excelência.
+
+O valor decorre de ${a.pontos_premiaveis} ponto(s) premiado(s) × ${valorExtenso(Number(a.valor_ponto))} por ponto, tendo o saldo do mês (${a.saldo_apurado} pontos) ultrapassado a pontuação de referência da função (${a.pontuacao_referencia} pontos).
+
+Declaro ainda estar ciente de que o prêmio é concedido por liberalidade da empresa, nos termos do art. 457, §§ 2º e 4º, da CLT, não integra a remuneração para nenhum efeito e não gera direito adquirido para competências futuras. Dou plena e geral quitação quanto ao valor acima.`;
+  doc.setFontSize(10); doc.setTextColor(30);
+  for (const par of texto.split(/\n\s*\n/)) {
+    const lines = doc.splitTextToSize(par.trim(), w - 28);
+    if (y + lines.length * 5 > doc.internal.pageSize.getHeight() - 60) { doc.addPage(); y = 18; }
+    doc.text(lines, 14, y, { align: 'justify', maxWidth: w - 28 });
+    y += lines.length * 5 + 3;
+  }
+  y = secao(doc, y + 2, 'Resumo da apuração');
+  autoTable(doc, {
+    startY: y,
+    body: [
+      ['Saldo inicial', String(a.saldo_inicial)],
+      ['(+) Medalhas', String(a.pontos_medalhas)],
+      ['(+) Troféus', String(a.pontos_trofeus)],
+      ['(−) Desabonos', String(a.pontos_desabonos)],
+      ['(=) Saldo do mês', String(a.saldo_apurado)],
+      ['Pontuação de referência (gatilho)', String(a.pontuacao_referencia)],
+      ['Pontos premiados', String(a.pontos_premiaveis)],
+      ['Valor do ponto', brl(Number(a.valor_ponto))],
+      ['Valor do prêmio', brl(valor)],
+    ],
+    theme: 'plain', columnStyles: { 1: { halign: 'right', fontStyle: 'bold' } },
+    didParseCell: (d) => { if (d.row.index === 8) { d.cell.styles.fillColor = VERDE; d.cell.styles.textColor = 255; d.cell.styles.fontStyle = 'bold'; } },
+    styles: { fontSize: 9.5, cellPadding: 2 }, alternateRowStyles: { fillColor: CINZA }, margin: { left: 14, right: 14 },
+  });
+  y = lastY(doc) + 16;
+  if (y > doc.internal.pageSize.getHeight() - 45) { doc.addPage(); y = 25; }
+  const hoje = new Date().toLocaleDateString('pt-BR');
+  doc.setFontSize(9.5); doc.setTextColor(30);
+  doc.text(`${opts.cidade ? `${opts.cidade}, ` : ''}${hoje}.`, 14, y);
+  y += 22;
+  doc.setDrawColor(120); doc.line(35, y, w - 35, y);
+  doc.setFontSize(9); doc.setTextColor(60);
+  doc.text(c.nome, w / 2, y + 5, { align: 'center' });
+  if (c.cpf) doc.text(`CPF ${c.cpf}`, w / 2, y + 10, { align: 'center' });
+  rodape(doc, FORMULA_RODAPE);
+  return doc;
+}
+
+export function pdfFeedback(opts: { politica: Politica; cat: Catalogo; apuracao: Apuracao; colaborador: Colaborador; empresa: string; texto: string }) {
+  const { apuracao: a, colaborador: c, empresa, politica, cat, texto } = opts;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const w = doc.internal.pageSize.getWidth();
+  let y = header(doc, `${politica.nome} — Feedback de desempenho — ${fmtComp(a.competencia)}`, empresa);
+  doc.setFillColor(...CINZA); doc.roundedRect(14, y, w - 28, 14, 2, 2, 'F');
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(...MARROM);
+  doc.text(doc.splitTextToSize(`${c.nome} — ${cat.funcaoDe(c)} | Saldo do mês: ${a.saldo_apurado} pts | Referência: ${a.pontuacao_referencia} pts | Prêmio: ${brl(Number(a.valor_bonificacao))}`, w - 34), 17, y + 5.5);
+  y += 20;
+  y = secao(doc, y, 'Feedback');
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(30);
+  for (const par of String(texto || '').split(/\n\s*\n/)) {
+    if (!par.trim()) continue;
+    const lines = doc.splitTextToSize(par.trim(), w - 28);
+    if (y + lines.length * 5 > doc.internal.pageSize.getHeight() - 45) { doc.addPage(); y = 18; }
+    doc.text(lines, 14, y, { align: 'justify', maxWidth: w - 28 });
+    y += lines.length * 5 + 3;
+  }
+  y += 14;
+  if (y > doc.internal.pageSize.getHeight() - 45) { doc.addPage(); y = 25; }
+  doc.setDrawColor(120);
+  doc.line(20, y, w / 2 - 8, y); doc.line(w / 2 + 8, y, w - 20, y);
+  doc.setFontSize(8.5); doc.setTextColor(60);
+  doc.text('Gestor(a)', (20 + w / 2 - 8) / 2, y + 5, { align: 'center' });
+  doc.text(c.nome, (w / 2 + 8 + w - 20) / 2, y + 5, { align: 'center' });
   rodape(doc, FORMULA_RODAPE);
   return doc;
 }
