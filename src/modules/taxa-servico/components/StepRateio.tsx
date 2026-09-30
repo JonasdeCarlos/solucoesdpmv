@@ -15,7 +15,9 @@ const diasKey = (id: string) => `ts-rateio-dias-${id}`;
 const diasDoMes = (comp: string) => new Date(Number(comp.slice(0, 4)), Number(comp.slice(5, 7)), 0).getDate();
 
 export default function StepRateio({ comp, funcionarios, empresaNome = '', onBack, onNext, fechada }: Props) {
-  const ativos = useMemo(() => funcionarios.filter((f) => f.ativo), [funcionarios]);
+  const [ordem, setOrdem] = useState<'nome' | 'codigo'>('codigo');
+  const ativos = useMemo(() => funcionarios.filter((f) => f.ativo).sort((a, b) =>
+    ordem === 'codigo' ? Number(a.codigo) - Number(b.codigo) || a.codigo.localeCompare(b.codigo) : a.nome.localeCompare(b.nome, 'pt-BR')), [funcionarios, ordem]);
   const [pontos, setPontos] = useState<Record<string, string>>(() => {
     try { return JSON.parse(localStorage.getItem(draftKey(comp.id)) || '{}'); } catch { return {}; }
   });
@@ -77,7 +79,12 @@ export default function StepRateio({ comp, funcionarios, empresaNome = '', onBac
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <p className="text-sm">Líquido a distribuir: <b className="text-primary">{fmt(comp.valor_liquido)}</b></p>
-        <Button variant="outline" size="sm" disabled={!r.totalPontos} onClick={() => setRel(true)}><FileText className="w-4 h-4 mr-1" />Gerar relatório</Button>
+        <div className="flex items-center gap-2 text-sm">
+          <span className="text-muted-foreground">Ordenar por:</span>
+          <Button size="sm" variant={ordem === 'codigo' ? 'default' : 'outline'} onClick={() => setOrdem('codigo')}>Código</Button>
+          <Button size="sm" variant={ordem === 'nome' ? 'default' : 'outline'} onClick={() => setOrdem('nome')}>Ordem alfabética</Button>
+          <Button variant="outline" size="sm" disabled={!r.totalPontos} onClick={() => setRel(true)}><FileText className="w-4 h-4 mr-1" />Gerar relatório</Button>
+        </div>
       </div>
       <div className="border rounded-md max-h-[50vh] overflow-auto">
         <table className="w-full text-sm">
