@@ -12,22 +12,33 @@ interface Props { comp: TsCompetencia; funcionarios: TsFuncionario[]; empresaNom
 
 const draftKey = (id: string) => `ts-rateio-draft-${id}`;
 const diasKey = (id: string) => `ts-rateio-dias-${id}`;
+const ultimoKey = (empresaId: string) => `ts-rateio-ultimo-${empresaId}`;
 const diasDoMes = (comp: string) => new Date(Number(comp.slice(0, 4)), Number(comp.slice(5, 7)), 0).getDate();
 
 export default function StepRateio({ comp, funcionarios, empresaNome = '', onBack, onNext, fechada }: Props) {
   const [ordem, setOrdem] = useState<'nome' | 'codigo'>('codigo');
   const ativos = useMemo(() => funcionarios.filter((f) => f.ativo).sort((a, b) =>
     ordem === 'codigo' ? Number(a.codigo) - Number(b.codigo) || a.codigo.localeCompare(b.codigo) : a.nome.localeCompare(b.nome, 'pt-BR')), [funcionarios, ordem]);
-  const [pontos, setPontos] = useState<Record<string, string>>(() => {
-    try { return JSON.parse(localStorage.getItem(draftKey(comp.id)) || '{}'); } catch { return {}; }
-  });
+  // Últimos valores digitados na empresa: servem de ponto de partida para o próximo mês
+  const ultimo = (() => { try { return JSON.parse(localStorage.getItem(ultimoKey(comp.empresa_id)) || '{}'); } catch { return {}; } })() as { pontos?: Record<string, string>; dias?: Record<string, string> };
+  const lerOuUltimo = (key: string, fallback?: Record<string, string>) => {
+    const raw = localStorage.getItem(key);
+    if (raw) { try { return JSON.parse(raw); } catch { /* ignore */ } }
+    return fallback ? { ...fallback } : {};
+  };
+  const salvarUltimo = (patch: { pontos?: Record<string, string>; dias?: Record<string, string> }) => {
+    try {
+      const atual = JSON.parse(localStorage.getItem(ultimoKey(comp.empresa_id)) || '{}');
+      localStorage.setItem(ultimoKey(comp.empresa_id), JSON.stringify({ ...atual, ...patch }));
+    } catch { /* ignore */ }
+  };
+  const [pontos, setPontos] = useState<Record<string, string>>(() => lerOuUltimo(draftKey(comp.id), ultimo.pontos));
   const diasMes = diasDoMes(comp.competencia);
-  const [dias, setDias] = useState<Record<string, string>>(() => {
-    try { return JSON.parse(localStorage.getItem(diasKey(comp.id)) || '{}'); } catch { return {}; }
-  });
+  const [dias, setDias] = useState<Record<string, string>>(() => lerOuUltimo(diasKey(comp.id), ultimo.dias));
   const setDia = (id: string, v: string) => setDias((p) => {
     const n = { ...p, [id]: v };
     localStorage.setItem(diasKey(comp.id), JSON.stringify(n));
+    salvarUltimo({ dias: n });
     return n;
   });
   const diasDe = (id: string) => {
@@ -41,15 +52,18 @@ export default function StepRateio({ comp, funcionarios, empresaNome = '', onBac
 
   useEffect(() => {
     loadDistribuicao(comp.id).then((d) => {
+      if (!d.length) return;
       const salvo = Object.fromEntries(d.map((x) => [x.funcionario_id, String(x.pontos)]));
+      const temRascunho = !!localStorage.getItem(draftKey(comp.id));
       // rascunho digitado tem prioridade sobre o que está salvo
-      setPontos((atual) => (bloqueado ? salvo : { ...salvo, ...atual }));
+      setPontos((atual) => (bloqueado || !temRascunho ? salvo : { ...salvo, ...atual }));
     });
   }, [comp.id, bloqueado]);
 
   const setPonto = (id: string, v: string) => setPontos((p) => {
     const n = { ...p, [id]: v };
     localStorage.setItem(draftKey(comp.id), JSON.stringify(n));
+    salvarUltimo({ pontos: n });
     return n;
   });
 
