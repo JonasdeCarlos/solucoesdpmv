@@ -79,7 +79,6 @@ export default function StepRateio({ comp, funcionarios, empresaNome = '', onBac
     })));
     if (err) return toast.error(err.message);
     if (comp.status === 'rascunho') await updateCompetencia(comp.id, { status: 'calculado' });
-    localStorage.removeItem(draftKey(comp.id));
     toast.success('Rateio salvo');
     onNext();
   };
