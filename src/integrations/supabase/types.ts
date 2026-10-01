@@ -3406,6 +3406,7 @@ export type Database = {
           integra_base_hora: boolean
           ordem: number
           percentual_salario: number | null
+          quinquenio_integra: boolean
           tipo: string
           updated_at: string
           valor_fixo: number | null
@@ -3424,6 +3425,7 @@ export type Database = {
           integra_base_hora?: boolean
           ordem?: number
           percentual_salario?: number | null
+          quinquenio_integra?: boolean
           tipo?: string
           updated_at?: string
           valor_fixo?: number | null
@@ -3442,6 +3444,7 @@ export type Database = {
           integra_base_hora?: boolean
           ordem?: number
           percentual_salario?: number | null
+          quinquenio_integra?: boolean
           tipo?: string
           updated_at?: string
           valor_fixo?: number | null
