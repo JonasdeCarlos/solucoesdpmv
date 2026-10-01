@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { calcular, reverso, percQuinquenio, DEFAULT_RUBRICAS, DEFAULT_MODELO, type Params } from '../motor';
 import { gerarTxt } from '../exportTxt';
 
-const base = (over: Partial<Params> = {}): Params => ({ salario: 1750, admissao: '2014-01-01', competencia: '2026-08', diasUteis: 25, diasDsr: 5, divisor: 220, formato: 'hhmm', rubricas: DEFAULT_RUBRICAS, ...over });
+const base = (over: Partial<Params> = {}): Params => ({ salario: 1750, admissao: '2014-01-01', competencia: '2026-08', diasUteis: 25, diasDsr: 5, divisor: 220, formato: 'hhmm', rubricas: DEFAULT_RUBRICAS.map((r) => ({ ...r, quinquenio_integra: true })), ...over });
 const min = (h: number, m: number) => h * 60 + m;
 
 describe('bruto alvo', () => {
@@ -18,6 +18,10 @@ describe('bruto alvo', () => {
   it('teste 2', () => {
     const r = calcular(base({ admissao: '2024-01-01' }), { AD_NOT: min(49, 54) });
     expect(r.variaveis[0].valor).toBe(79.39);
+  });
+  it('AD_NOT sem quinquênio na base', () => {
+    const r = calcular(base({ rubricas: DEFAULT_RUBRICAS }), { AD_NOT: min(38, 2) });
+    expect(r.variaveis[0].valor).toBe(60.51);
   });
   it('teste 3', () => {
     expect([4, 5, 9, 10, 11, 14, 15].map((a) => percQuinquenio(a))).toEqual([0, 5, 5, 10, 10, 10, 15]);
