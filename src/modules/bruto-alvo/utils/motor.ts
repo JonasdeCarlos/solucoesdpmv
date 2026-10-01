@@ -12,6 +12,8 @@ export interface Rubrica {
   percentual_salario?: number | null;
   gera_dsr: boolean;
   integra_base_hora: boolean;
+  /** Variáveis: o quinquênio entra na hora-base desta rubrica? */
+  quinquenio_integra?: boolean;
   exporta: boolean;
   ativo: boolean;
   codigo_rubrica_dominio?: string | null;
@@ -36,15 +38,15 @@ export interface LinhaVar { verba: string; descricao: string; unidades: number; 
 export interface Resultado {
   anos: number; percQuinq: number; valorQuinq: number;
   fixas: { verba: string; descricao: string; valor: number }[];
-  horaBase: number; variaveis: LinhaVar[]; dsrNoturno: number; dsrExtras: number; bruto: number;
+  horaBase: number; horaBaseSemQuinq: number; variaveis: LinhaVar[]; dsrNoturno: number; dsrExtras: number; bruto: number;
 }
 
 export const DEFAULT_RUBRICAS: Rubrica[] = [
   { verba: 'QUINQUENIO', descricao: 'Quinquênio', tipo: 'quinquenio', fator: 0, gera_dsr: false, integra_base_hora: true, exporta: false, ativo: true, ordem: 0 },
-  { verba: 'AD_NOT', descricao: 'AD. NOT', tipo: 'variavel', fator: 0.2, gera_dsr: true, integra_base_hora: false, exporta: true, ativo: true, ordem: 1 },
-  { verba: 'HE60', descricao: 'H. EXTRA 60%', tipo: 'variavel', fator: 1.6, gera_dsr: true, integra_base_hora: false, exporta: true, ativo: true, ordem: 2 },
-  { verba: 'HE120', descricao: 'H. EXTRA 120%', tipo: 'variavel', fator: 2.2, gera_dsr: true, integra_base_hora: false, exporta: true, ativo: true, ordem: 3 },
-  { verba: 'HE120_DOM', descricao: 'H. EXTRA 120% Domingo', tipo: 'variavel', fator: 2.2, gera_dsr: true, integra_base_hora: false, exporta: true, ativo: true, ordem: 4 },
+  { verba: 'AD_NOT', descricao: 'AD. NOT', tipo: 'variavel', fator: 0.2, gera_dsr: true, integra_base_hora: false, quinquenio_integra: false, exporta: true, ativo: true, ordem: 1 },
+  { verba: 'HE60', descricao: 'H. EXTRA 60%', tipo: 'variavel', fator: 1.6, gera_dsr: true, integra_base_hora: false, quinquenio_integra: true, exporta: true, ativo: true, ordem: 2 },
+  { verba: 'HE120', descricao: 'H. EXTRA 120%', tipo: 'variavel', fator: 2.2, gera_dsr: true, integra_base_hora: false, quinquenio_integra: true, exporta: true, ativo: true, ordem: 3 },
+  { verba: 'HE120_DOM', descricao: 'H. EXTRA 120% Domingo', tipo: 'variavel', fator: 2.2, gera_dsr: true, integra_base_hora: false, quinquenio_integra: true, exporta: true, ativo: true, ordem: 4 },
 ];
 
 export const DEFAULT_MODELO: ItemCfg[] = [
@@ -95,10 +97,12 @@ export function calcular(p: Params, unidades: Record<string, number>, horasPonto
   }));
   const baseHora = p.salario + (quinq?.integra_base_hora ? valorQ : 0) + fixas.filter((f) => f.integra).reduce((s, f) => s + f.valor, 0);
   const horaBase = baseHora / (p.divisor || 220);
+  const horaSemQ = (baseHora - (quinq?.integra_base_hora ? valorQ : 0)) / (p.divisor || 220);
+  const hbDe = (r: Rubrica) => (r.quinquenio_integra === false ? horaSemQ : horaBase);
   const variaveis: LinhaVar[] = ativas.filter((r) => r.tipo === 'variavel').sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0)).map((r) => {
     const u = Math.max(0, Math.round(unidades[r.verba] || 0));
     const horas = horasDe(u, p.formato);
-    return { verba: r.verba, descricao: r.descricao, unidades: u, horas, hhmm: hhmm(unidadesParaMinutos(u, p.formato)), valor: r2(horas * horaBase * r.fator), gera_dsr: r.gera_dsr, horas_ponto: horasPonto[r.verba] };
+    return { verba: r.verba, descricao: r.descricao, unidades: u, horas, hhmm: hhmm(unidadesParaMinutos(u, p.formato)), valor: r2(horas * hbDe(r) * r.fator), gera_dsr: r.gera_dsr, horas_ponto: horasPonto[r.verba] };
   });
   const du = p.diasUteis || 1;
   const somaN = variaveis.filter((v) => v.gera_dsr && isNoturno(v.verba)).reduce((s, v) => s + v.valor, 0);
@@ -106,7 +110,7 @@ export function calcular(p: Params, unidades: Record<string, number>, horasPonto
   const dsrNoturno = r2(somaN / du * p.diasDsr);
   const dsrExtras = r2(somaE / du * p.diasDsr);
   const bruto = r2(p.salario + valorQ + fixas.reduce((s, f) => s + f.valor, 0) + variaveis.reduce((s, v) => s + v.valor, 0) + dsrNoturno + dsrExtras);
-  return { anos, percQuinq: percQ, valorQuinq: valorQ, fixas: fixas.map(({ integra, ...f }) => f), horaBase, variaveis, dsrNoturno, dsrExtras, bruto };
+  return { anos, percQuinq: percQ, valorQuinq: valorQ, fixas: fixas.map(({ integra, ...f }) => f), horaBase, horaBaseSemQuinq: horaSemQ, variaveis, dsrNoturno, dsrExtras, bruto };
 }
 
 export interface Reverso { unidades: Record<string, number>; resultado: Resultado; diferenca: number; erro?: string }
@@ -120,13 +124,14 @@ export function reverso(p: Params, itens: ItemCfg[], alvo: number, criterio: Cri
   if (alvo < fixo) return { unidades, resultado: base, diferenca: r2(fixo - alvo), erro: 'Alvo menor que o fixo do funcionário' };
   const saldo = alvo - fixo;
   const rub = (v: string) => p.rubricas.find((r) => r.verba === v && r.ativo && r.tipo === 'variavel');
+  const hb = (r: Rubrica, x: Resultado) => (r.quinquenio_integra === false ? x.horaBaseSemQuinq : x.horaBase);
   const fatorDsr = (r: Rubrica) => 1 + (r.gera_dsr ? p.diasDsr / (p.diasUteis || 1) : 0);
   const porU = p.formato === 'hhmm' ? 60 : 100;
   for (const i of itens) {
     const r = rub(i.verba); if (!r) continue;
     if (i.modo === 'horas_fixas') unidades[i.verba] = Math.round(i.unidades || 0);
     else if (i.modo === 'percentual') {
-      const h = (saldo * (Number(i.percentual) || 0) / 100) / (base.horaBase * r.fator * fatorDsr(r) || 1);
+      const h = (saldo * (Number(i.percentual) || 0) / 100) / (hb(r, base) * r.fator * fatorDsr(r) || 1);
       unidades[i.verba] = Math.max(0, Math.round(h * porU));
     }
   }
@@ -135,7 +140,7 @@ export function reverso(p: Params, itens: ItemCfg[], alvo: number, criterio: Cri
   if (aj) {
     const r = rub(aj.verba)!;
     const falta = alvo - res.bruto;
-    let u = Math.max(0, Math.round((falta / (res.horaBase * r.fator * fatorDsr(r) || 1)) * porU));
+    let u = Math.max(0, Math.round((falta / (hb(r, res) * r.fator * fatorDsr(r) || 1)) * porU));
     const avalia = (x: number) => calcular(p, { ...unidades, [aj.verba]: x }, ponto).bruto;
     const ok = (b: number) => criterio === 'mais_proximo' || b <= alvo + 1e-9;
     const score = (b: number) => (ok(b) ? Math.abs(b - alvo) : Infinity);
