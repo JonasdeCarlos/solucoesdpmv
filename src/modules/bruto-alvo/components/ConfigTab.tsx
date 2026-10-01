@@ -69,7 +69,7 @@ export default function ConfigTab({ empresaId, config, rubricas, feriados, model
         <CardHeader><CardTitle className="text-base">Rubricas</CardTitle></CardHeader>
         <CardContent className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead><tr className="text-left text-muted-foreground"><th className="p-1">Verba</th><th className="p-1">Tipo</th><th className="p-1">Código Domínio</th><th className="p-1">Fator / Valor / %</th><th className="p-1">Gera DSR</th><th className="p-1">Integra hora-base</th><th className="p-1">Exporta</th><th className="p-1">Ativa</th><th /></tr></thead>
+            <thead><tr className="text-left text-muted-foreground"><th className="p-1">Verba</th><th className="p-1">Tipo</th><th className="p-1">Código Domínio</th><th className="p-1">Fator / Valor / %</th><th className="p-1">Gera DSR</th><th className="p-1">Quinquênio integra</th><th className="p-1">Integra hora-base</th><th className="p-1">Exporta</th><th className="p-1">Ativa</th><th /></tr></thead>
             <tbody>{rubricas.map((r) => (
               <tr key={r.verba} className="border-t">
                 <td className="p-1">{r.descricao}</td>
@@ -81,6 +81,7 @@ export default function ConfigTab({ empresaId, config, rubricas, feriados, model
                   {r.tipo === 'quinquenio' && <span className="text-xs">5% a cada 5 anos</span>}
                 </td>
                 <td className="p-1">{r.tipo === 'variavel' && <input type="checkbox" checked={r.gera_dsr} onChange={(e) => salvarRub(r, { gera_dsr: e.target.checked })} />}</td>
+                <td className="p-1">{r.tipo === 'variavel' && <input type="checkbox" checked={r.quinquenio_integra !== false} onChange={(e) => salvarRub(r, { quinquenio_integra: e.target.checked })} />}</td>
                 <td className="p-1">{r.tipo !== 'variavel' && <input type="checkbox" checked={r.integra_base_hora} onChange={(e) => salvarRub(r, { integra_base_hora: e.target.checked })} />}</td>
                 <td className="p-1">{r.tipo === 'variavel' && <input type="checkbox" checked={r.exporta} onChange={(e) => salvarRub(r, { exporta: e.target.checked })} />}</td>
                 <td className="p-1"><input type="checkbox" checked={r.ativo} onChange={(e) => salvarRub(r, { ativo: e.target.checked })} /></td>
