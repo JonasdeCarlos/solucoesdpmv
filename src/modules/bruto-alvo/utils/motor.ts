@@ -146,8 +146,21 @@ export function reverso(p: Params, itens: ItemCfg[], alvo: number, criterio: Cri
       for (const c of cands) { const s = score(avalia(c)); if (s < bestS) { best = c; bestS = s; melhorou = true; } }
       if (!melhorou) break;
     }
-    if (bestS === Infinity) { while (best > 0 && avalia(best) > alvo) best--; }
+    if (bestS === Infinity) { while (best > 0 && avalia(best) > alvo) best--; bestS = score(avalia(best)); }
     unidades[aj.verba] = best;
+    // Refino fino: o passo de 1 minuto da verba de ajuste pode ser maior que a tolerância;
+    // combina ±2 minutos do ajuste com ±40 minutos da verba percentual de menor fator.
+    const fina = itens.filter((i) => i.modo === 'percentual' && rub(i.verba)).map((i) => rub(i.verba)!).sort((a, b) => a.fator - b.fator)[0];
+    if (fina && bestS > 0.005) {
+      const u0 = unidades[fina.verba] || 0;
+      let bA = best, bF = u0;
+      for (let da = -2; da <= 2; da++) for (let df = -40; df <= 40; df++) {
+        const a = best + da, f = u0 + df; if (a < 0 || f < 0) continue;
+        const s = score(calcular(p, { ...unidades, [aj.verba]: a, [fina.verba]: f }, ponto).bruto);
+        if (s < bestS - 1e-9) { bestS = s; bA = a; bF = f; }
+      }
+      unidades[aj.verba] = bA; unidades[fina.verba] = bF;
+    }
     res = calcular(p, unidades, ponto);
   }
   return { unidades, resultado: res, diferenca: r2(res.bruto - alvo) };
