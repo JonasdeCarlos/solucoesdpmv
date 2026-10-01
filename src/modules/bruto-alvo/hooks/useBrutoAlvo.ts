@@ -9,7 +9,7 @@ export interface FbConfig {
   limite_he_diario: number; formato_horas: Formato; codigo_empresa_dominio: string | null; tipo_processo: string;
 }
 export interface FbRubrica extends Rubrica { id?: string; empresa_id: string }
-export interface FbFuncionario { id: string; empresa_id: string; codigo: string; nome: string; cpf: string | null; salario_base: number; data_admissao: string | null; ativo: boolean }
+export interface FbFuncionario { id: string; empresa_id: string; codigo: string; nome: string; cpf: string | null; salario_base: number; bruto_alvo_ref: number | null; data_admissao: string | null; ativo: boolean }
 export interface FbFeriado { id: string; data: string; descricao: string; abrangencia: string }
 export interface FbModelo { id: string; nome: string; padrao: boolean; itens: ItemCfg[] }
 export interface FbCompetencia { id: string; empresa_id: string; competencia: string; dias_uteis: number; dias_dsr: number; status: string }
@@ -49,7 +49,7 @@ export function useBrutoAlvo(empresaId: string | null) {
       codigo_empresa_dominio: cd?.codigo_empresa_dominio ?? '', tipo_processo: cd?.tipo_processo ?? '11',
     });
     setRubricas((r.data || []).map((x: any) => ({ ...x, fator: Number(x.fator), valor_fixo: N(x.valor_fixo), percentual_salario: N(x.percentual_salario) })));
-    setFuncionarios((f.data || []).map((x: any) => ({ ...x, salario_base: Number(x.salario_base) })));
+    setFuncionarios((f.data || []).map((x: any) => ({ ...x, salario_base: Number(x.salario_base), bruto_alvo_ref: N(x.bruto_alvo_ref) })));
     setFeriados(h.data || []);
     setModelos(m.data || []);
     setCompetencias(k.data || []);

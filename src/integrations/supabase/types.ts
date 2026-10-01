@@ -3530,6 +3530,7 @@ export type Database = {
       fb_funcionarios: {
         Row: {
           ativo: boolean
+          bruto_alvo_ref: number | null
           codigo: string
           cpf: string | null
           created_at: string
@@ -3542,6 +3543,7 @@ export type Database = {
         }
         Insert: {
           ativo?: boolean
+          bruto_alvo_ref?: number | null
           codigo: string
           cpf?: string | null
           created_at?: string
@@ -3554,6 +3556,7 @@ export type Database = {
         }
         Update: {
           ativo?: boolean
+          bruto_alvo_ref?: number | null
           codigo?: string
           cpf?: string | null
           created_at?: string

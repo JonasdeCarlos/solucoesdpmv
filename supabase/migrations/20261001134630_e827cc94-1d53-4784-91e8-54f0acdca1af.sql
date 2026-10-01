@@ -1,0 +1,1 @@
+ALTER TABLE public.fb_funcionarios ADD COLUMN IF NOT EXISTS bruto_alvo_ref numeric(12,2);
