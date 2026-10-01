@@ -18,7 +18,7 @@ const toIso = (s: any): string | null => {
 };
 
 export default function FuncionariosTab({ empresaId, funcionarios, reload }: { empresaId: string; funcionarios: FbFuncionario[]; reload: () => void }) {
-  const [novo, setNovo] = useState({ codigo: '', nome: '', cpf: '', salario: '', admissao: '' });
+  const [novo, setNovo] = useState({ codigo: '', nome: '', cpf: '', salario: '', alvo: '', admissao: '' });
   const [colar, setColar] = useState('');
   const [ordem, setOrdem] = useState<'nome' | 'codigo'>('nome');
 
@@ -28,8 +28,8 @@ export default function FuncionariosTab({ empresaId, funcionarios, reload }: { e
   };
   const adicionar = () => {
     if (!novo.codigo || !novo.nome) return toast.error('Informe código e nome');
-    upsert([{ codigo: novo.codigo.trim(), nome: novo.nome.trim(), cpf: novo.cpf || null, salario_base: parseNum(novo.salario), data_admissao: novo.admissao || null }]);
-    setNovo({ codigo: '', nome: '', cpf: '', salario: '', admissao: '' });
+    upsert([{ codigo: novo.codigo.trim(), nome: novo.nome.trim(), cpf: novo.cpf || null, salario_base: parseNum(novo.salario), bruto_alvo_ref: novo.alvo.trim() ? parseNum(novo.alvo) : null, data_admissao: novo.admissao || null }]);
+    setNovo({ codigo: '', nome: '', cpf: '', salario: '', alvo: '', admissao: '' });
   };
   const linhasParaRows = (linhas: any[][]) => linhas
     .filter((l) => l[0] && l[1] && /\d/.test(String(l[0])))
@@ -74,13 +74,14 @@ export default function FuncionariosTab({ empresaId, funcionarios, reload }: { e
         </CardHeader>
         <CardContent className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead><tr className="text-left text-muted-foreground"><th className="p-1">Código</th><th className="p-1">Nome</th><th className="p-1">CPF</th><th className="p-1">Salário</th><th className="p-1">Admissão</th><th className="p-1">Ativo</th><th /></tr></thead>
+            <thead><tr className="text-left text-muted-foreground"><th className="p-1">Código</th><th className="p-1">Nome</th><th className="p-1">CPF</th><th className="p-1">Salário</th><th className="p-1">Bruto alvo (ref.)</th><th className="p-1">Admissão</th><th className="p-1">Ativo</th><th /></tr></thead>
             <tbody>
               <tr>
                 <td className="p-1"><Input className="h-8 w-20" value={novo.codigo} onChange={(e) => setNovo({ ...novo, codigo: e.target.value })} /></td>
                 <td className="p-1"><Input className="h-8" value={novo.nome} onChange={(e) => setNovo({ ...novo, nome: e.target.value })} /></td>
                 <td className="p-1"><Input className="h-8 w-36" value={novo.cpf} onChange={(e) => setNovo({ ...novo, cpf: e.target.value })} /></td>
                 <td className="p-1"><Input className="h-8 w-28" value={novo.salario} onChange={(e) => setNovo({ ...novo, salario: e.target.value })} /></td>
+                <td className="p-1"><Input className="h-8 w-28" value={novo.alvo} onChange={(e) => setNovo({ ...novo, alvo: e.target.value })} /></td>
                 <td className="p-1"><Input type="date" className="h-8 w-36" value={novo.admissao} onChange={(e) => setNovo({ ...novo, admissao: e.target.value })} /></td>
                 <td /><td className="p-1"><Button size="sm" onClick={adicionar}><Plus className="w-4 h-4" /></Button></td>
               </tr>
@@ -90,6 +91,7 @@ export default function FuncionariosTab({ empresaId, funcionarios, reload }: { e
                   <td className="p-1">{f.nome}</td>
                   <td className="p-1">{f.cpf}</td>
                   <td className="p-1"><Input className="h-8 w-28" defaultValue={f.salario_base.toFixed(2).replace('.', ',')} onBlur={(e) => { const v = parseNum(e.target.value); if (v !== f.salario_base) atualizar(f, { salario_base: v }); }} /></td>
+                  <td className="p-1"><Input className="h-8 w-28" placeholder="—" defaultValue={f.bruto_alvo_ref != null ? f.bruto_alvo_ref.toFixed(2).replace('.', ',') : ''} onBlur={(e) => { const v = e.target.value.trim() ? parseNum(e.target.value) : null; if (v !== f.bruto_alvo_ref) atualizar(f, { bruto_alvo_ref: v }); }} /></td>
                   <td className="p-1"><Input type="date" className={`h-8 w-36 ${!f.data_admissao ? 'border-destructive' : ''}`} defaultValue={f.data_admissao || ''} onBlur={(e) => { if ((e.target.value || null) !== f.data_admissao) atualizar(f, { data_admissao: e.target.value || null }); }} /></td>
                   <td className="p-1"><input type="checkbox" checked={f.ativo} onChange={(e) => atualizar(f, { ativo: e.target.checked })} /></td>
                   <td className="p-1"><Button size="icon" variant="ghost" onClick={() => remover(f)}><Trash2 className="w-4 h-4" /></Button></td>

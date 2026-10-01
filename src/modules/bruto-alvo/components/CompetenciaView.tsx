@@ -50,7 +50,7 @@ export default function CompetenciaView({ empresaNome, comp, config, rubricas, f
           ? itensDb.sort((a, b) => a.ordem - b.ordem).map((i) => ({ verba: i.verba, modo: i.modo, percentual: i.percentual != null ? Number(i.percentual) : null, unidades: i.modo === 'horas_fixas' ? Number(i.minutos || 0) : null, horas_ponto: i.horas_ponto != null ? Number(i.horas_ponto) : null }))
           : modeloPadrao.map((i) => ({ ...i }));
         const unidades: Record<string, number> = {}; itensDb.forEach((i) => { unidades[i.verba] = Number(i.minutos || 0); });
-        const linha: Linha = { funcId: f.id, lancId: l?.id, alvo: l?.bruto_alvo != null ? Number(l.bruto_alvo) : null, salario: l?.salario_base != null ? Number(l.salario_base) : f.salario_base, admissao: l?.data_admissao ?? f.data_admissao, itens, unidades, res: null, diferenca: l?.diferenca != null ? Number(l.diferenca) : null, status: l?.status, brutoDominio: l?.bruto_dominio != null ? Number(l.bruto_dominio) : null };
+        const linha: Linha = { funcId: f.id, lancId: l?.id, alvo: l?.bruto_alvo != null ? Number(l.bruto_alvo) : (f.bruto_alvo_ref ?? null), salario: l?.salario_base != null ? Number(l.salario_base) : f.salario_base, admissao: l?.data_admissao ?? f.data_admissao, itens, unidades, res: null, diferenca: l?.diferenca != null ? Number(l.diferenca) : null, status: l?.status, brutoDominio: l?.bruto_dominio != null ? Number(l.bruto_dominio) : null };
         if (itensDb.length && linha.admissao) linha.res = calcular(params(linha), unidades, Object.fromEntries(itens.map((i) => [i.verba, i.horas_ponto])));
         map[f.id] = linha;
       }
@@ -168,7 +168,7 @@ export default function CompetenciaView({ empresaNome, comp, config, rubricas, f
             <table className="w-full text-xs">
               <thead><tr className="text-left text-muted-foreground border-b">
                 <th /><th className="p-1">Nome</th><th className="p-1 text-right">Salário</th><th className="p-1">Anos</th><th className="p-1">% Q.</th><th className="p-1 text-right">Quinq.</th><th className="p-1 text-right">Hora-base</th>
-                <th className="p-1">Bruto alvo</th>{variaveis.filter((v) => v.verba === 'AD_NOT').map((v) => <th key={v.verba} className="p-1">{v.descricao}</th>)}<th className="p-1">DSR Not.</th>
+                <th className="p-1 text-right">Bruto alvo (ref.)</th><th className="p-1">A atingir no mês</th>{variaveis.filter((v) => v.verba === 'AD_NOT').map((v) => <th key={v.verba} className="p-1">{v.descricao}</th>)}<th className="p-1">DSR Not.</th>
                 {variaveis.filter((v) => v.verba !== 'AD_NOT').map((v) => <th key={v.verba} className="p-1">{v.descricao}</th>)}<th className="p-1">DSR HE</th>
                 <th className="p-1 text-right">Previsto</th><th className="p-1 text-right">Dif.</th><th className="p-1">Status</th><th className="p-1">Bruto Domínio</th><th className="p-1 text-right">Prévia × folha</th>
               </tr></thead>
@@ -186,7 +186,12 @@ export default function CompetenciaView({ empresaNome, comp, config, rubricas, f
                       <td className="p-1">{r ? `${r.percQuinq}%` : ''}</td>
                       <td className="p-1 text-right">{r ? fmt(r.valorQuinq) : ''}</td>
                       <td className="p-1 text-right">{r ? r.horaBase.toFixed(4).replace('.', ',') : ''}</td>
-                      <td className="p-1"><Input className="h-7 w-24 text-xs" defaultValue={l.alvo != null ? l.alvo.toFixed(2).replace('.', ',') : ''} key={`${f.id}-${l.alvo}`} onBlur={(e) => setL(f.id, { alvo: e.target.value ? parseNum(e.target.value) : null })} /></td>
+                      <td className="p-1 text-right text-muted-foreground">{f.bruto_alvo_ref ? fmt(f.bruto_alvo_ref) : '—'}</td>
+                      <td className="p-1"><Input className="h-7 w-24 text-xs" defaultValue={l.alvo != null ? l.alvo.toFixed(2).replace('.', ',') : ''} key={`${f.id}-${l.alvo}`} onBlur={(e) => setL(f.id, { alvo: e.target.value ? parseNum(e.target.value) : null })} />
+                        {f.bruto_alvo_ref && l.alvo != null && Math.abs(l.alvo - f.bruto_alvo_ref) >= 0.01 && (
+                          <div className={l.alvo > f.bruto_alvo_ref ? 'text-green-700 dark:text-green-400' : 'text-destructive'}>{l.alvo > f.bruto_alvo_ref ? '+' : ''}{fmt(l.alvo - f.bruto_alvo_ref)} ({((l.alvo / f.bruto_alvo_ref - 1) * 100).toFixed(1).replace('.', ',')}%)</div>
+                        )}
+                      </td>
                       {variaveis.filter((v) => v.verba === 'AD_NOT').map((v) => <td key={v.verba} className="p-1">{H(r?.variaveis.find((x) => x.verba === v.verba))}</td>)}
                       <td className="p-1">{r?.dsrNoturno ? fmt(r.dsrNoturno) : '—'}</td>
                       {variaveis.filter((v) => v.verba !== 'AD_NOT').map((v) => <td key={v.verba} className="p-1">{H(r?.variaveis.find((x) => x.verba === v.verba))}</td>)}
