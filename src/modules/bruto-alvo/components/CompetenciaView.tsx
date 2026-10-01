@@ -42,15 +42,27 @@ export default function CompetenciaView({ empresaNome, comp, config, rubricas, f
   useEffect(() => {
     (async () => {
       const { data: lancs } = await fbDb.from('fb_lancamentos').select('*, fb_lancamento_itens(*)').eq('competencia_id', comp.id);
+      // Bases das competências anteriores (mais recente primeiro) para quem ainda não tem lançamento neste mês
+      const { data: antComps } = await fbDb.from('fb_competencias').select('id, competencia').eq('empresa_id', comp.empresa_id).lt('competencia', comp.competencia).order('competencia', { ascending: false }).limit(12);
+      const ordemAnt = (antComps || []).map((c: any) => c.id);
+      let anteriores: any[] = [];
+      if (ordemAnt.length) {
+        const { data } = await fbDb.from('fb_lancamentos').select('funcionario_id, competencia_id, bruto_alvo, fb_lancamento_itens(*)').in('competencia_id', ordemAnt);
+        anteriores = (data || []).sort((a: any, b: any) => ordemAnt.indexOf(a.competencia_id) - ordemAnt.indexOf(b.competencia_id));
+      }
       const map: Record<string, Linha> = {};
       for (const f of funcionarios) {
         const l = (lancs || []).find((x: any) => x.funcionario_id === f.id);
+        const ant = l ? null : anteriores.find((x: any) => x.funcionario_id === f.id && x.bruto_alvo != null);
         const itensDb: any[] = l?.fb_lancamento_itens || [];
+        const itensAnt: any[] = ant?.fb_lancamento_itens || [];
+        const toItem = (i: any, comPonto: boolean): ItemCfg => ({ verba: i.verba, modo: i.modo, percentual: i.percentual != null ? Number(i.percentual) : null, unidades: i.modo === 'horas_fixas' ? Number(i.minutos || 0) : null, horas_ponto: comPonto && i.horas_ponto != null ? Number(i.horas_ponto) : null });
         const itens: ItemCfg[] = itensDb.length
-          ? itensDb.sort((a, b) => a.ordem - b.ordem).map((i) => ({ verba: i.verba, modo: i.modo, percentual: i.percentual != null ? Number(i.percentual) : null, unidades: i.modo === 'horas_fixas' ? Number(i.minutos || 0) : null, horas_ponto: i.horas_ponto != null ? Number(i.horas_ponto) : null }))
+          ? [...itensDb].sort((a, b) => a.ordem - b.ordem).map((i) => toItem(i, true))
+          : itensAnt.length ? [...itensAnt].sort((a, b) => a.ordem - b.ordem).map((i) => toItem(i, false))
           : modeloPadrao.map((i) => ({ ...i }));
         const unidades: Record<string, number> = {}; itensDb.forEach((i) => { unidades[i.verba] = Number(i.minutos || 0); });
-        const linha: Linha = { funcId: f.id, lancId: l?.id, alvo: l?.bruto_alvo != null ? Number(l.bruto_alvo) : (f.bruto_alvo_ref ?? null), salario: l?.salario_base != null ? Number(l.salario_base) : f.salario_base, admissao: l?.data_admissao ?? f.data_admissao, itens, unidades, res: null, diferenca: l?.diferenca != null ? Number(l.diferenca) : null, status: l?.status, brutoDominio: l?.bruto_dominio != null ? Number(l.bruto_dominio) : null };
+        const linha: Linha = { funcId: f.id, lancId: l?.id, alvo: l?.bruto_alvo != null ? Number(l.bruto_alvo) : (ant?.bruto_alvo != null ? Number(ant.bruto_alvo) : (f.bruto_alvo_ref ?? null)), salario: l?.salario_base != null ? Number(l.salario_base) : f.salario_base, admissao: l?.data_admissao ?? f.data_admissao, itens, unidades, res: null, diferenca: l?.diferenca != null ? Number(l.diferenca) : null, status: l?.status, brutoDominio: l?.bruto_dominio != null ? Number(l.bruto_dominio) : null };
         if (itensDb.length && linha.admissao) linha.res = calcular(params(linha), unidades, Object.fromEntries(itens.map((i) => [i.verba, i.horas_ponto])));
         map[f.id] = linha;
       }
