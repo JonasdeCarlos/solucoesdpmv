@@ -1,1 +1,2 @@
 - Programa Excelência (premiação por pontos) vive em src/modules/premiacao com tabelas premiacao_* e cálculos nas RPCs premiacao_apurar/fechar/reabrir — regras de cálculo ficam no banco, não no front.
+- Fechamento por Bruto Alvo vive em src/modules/bruto-alvo com tabelas fb_* e cadastro próprio de funcionários; reutiliza o gerador Domínio da Taxa de Serviço só via wrapper (exportTxt.ts). Why: módulo isolado, sem alterar código existente.

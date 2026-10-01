@@ -62,6 +62,7 @@ import CctRadarPage from "./pages/gestaoCct/CctRadarPage";
 import CctCompararPage from "./pages/gestaoCct/CctCompararPage";
 import CctEnquadramentoPage from "./pages/gestaoCct/CctEnquadramentoPage";
 import TaxaServicoPage from "./modules/taxa-servico/pages/TaxaServicoPage";
+import BrutoAlvoPage from "./modules/bruto-alvo/pages/BrutoAlvoPage";
 
 const queryClient = new QueryClient();
 
@@ -137,6 +138,7 @@ const App = () => (
              <Route path="/gestao-cct/:id/perguntar" element={<CctAskPage />} />
               <Route path="/usuarios" element={<UsuariosPage />} />
               <Route path="/taxa-servico" element={<TaxaServicoPage />} />
+              <Route path="/bruto-alvo" element={<BrutoAlvoPage />} />
               <Route path="/banco-horas" element={<BhLayout />}>
                 <Route index element={<BhDashboardPage />} />
                 <Route path="importar" element={<BhImportPage />} />
