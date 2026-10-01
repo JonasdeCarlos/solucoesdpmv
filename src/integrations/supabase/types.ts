@@ -3295,6 +3295,454 @@ export type Database = {
           },
         ]
       }
+      fb_competencias: {
+        Row: {
+          competencia: string
+          created_at: string
+          created_by: string | null
+          dias_dsr: number
+          dias_uteis: number
+          empresa_id: string
+          id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          competencia: string
+          created_at?: string
+          created_by?: string | null
+          dias_dsr?: number
+          dias_uteis?: number
+          empresa_id: string
+          id?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          competencia?: string
+          created_at?: string
+          created_by?: string | null
+          dias_dsr?: number
+          dias_uteis?: number
+          empresa_id?: string
+          id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fb_competencias_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fb_config_empresa: {
+        Row: {
+          codigo_empresa_dominio: string | null
+          created_at: string
+          criterio_ajuste: string
+          divisor: number
+          empresa_id: string
+          formato_horas: string
+          id: string
+          limite_he_diario: number
+          teto_quinquenio: number | null
+          tipo_processo: string
+          tolerancia: number
+          updated_at: string
+        }
+        Insert: {
+          codigo_empresa_dominio?: string | null
+          created_at?: string
+          criterio_ajuste?: string
+          divisor?: number
+          empresa_id: string
+          formato_horas?: string
+          id?: string
+          limite_he_diario?: number
+          teto_quinquenio?: number | null
+          tipo_processo?: string
+          tolerancia?: number
+          updated_at?: string
+        }
+        Update: {
+          codigo_empresa_dominio?: string | null
+          created_at?: string
+          criterio_ajuste?: string
+          divisor?: number
+          empresa_id?: string
+          formato_horas?: string
+          id?: string
+          limite_he_diario?: number
+          teto_quinquenio?: number | null
+          tipo_processo?: string
+          tolerancia?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fb_config_empresa_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: true
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fb_config_rubricas: {
+        Row: {
+          ativo: boolean
+          codigo_rubrica_dominio: string | null
+          created_at: string
+          descricao: string | null
+          empresa_id: string
+          exporta: boolean
+          fator: number
+          gera_dsr: boolean
+          id: string
+          integra_base_hora: boolean
+          ordem: number
+          percentual_salario: number | null
+          tipo: string
+          updated_at: string
+          valor_fixo: number | null
+          verba: string
+        }
+        Insert: {
+          ativo?: boolean
+          codigo_rubrica_dominio?: string | null
+          created_at?: string
+          descricao?: string | null
+          empresa_id: string
+          exporta?: boolean
+          fator?: number
+          gera_dsr?: boolean
+          id?: string
+          integra_base_hora?: boolean
+          ordem?: number
+          percentual_salario?: number | null
+          tipo?: string
+          updated_at?: string
+          valor_fixo?: number | null
+          verba: string
+        }
+        Update: {
+          ativo?: boolean
+          codigo_rubrica_dominio?: string | null
+          created_at?: string
+          descricao?: string | null
+          empresa_id?: string
+          exporta?: boolean
+          fator?: number
+          gera_dsr?: boolean
+          id?: string
+          integra_base_hora?: boolean
+          ordem?: number
+          percentual_salario?: number | null
+          tipo?: string
+          updated_at?: string
+          valor_fixo?: number | null
+          verba?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fb_config_rubricas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fb_exportacoes: {
+        Row: {
+          arquivo_nome: string
+          competencia_id: string
+          conteudo: string
+          gerado_em: string
+          gerado_por: string | null
+          id: string
+        }
+        Insert: {
+          arquivo_nome: string
+          competencia_id: string
+          conteudo: string
+          gerado_em?: string
+          gerado_por?: string | null
+          id?: string
+        }
+        Update: {
+          arquivo_nome?: string
+          competencia_id?: string
+          conteudo?: string
+          gerado_em?: string
+          gerado_por?: string | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fb_exportacoes_competencia_id_fkey"
+            columns: ["competencia_id"]
+            isOneToOne: false
+            referencedRelation: "fb_competencias"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fb_feriados: {
+        Row: {
+          abrangencia: string
+          created_at: string
+          data: string
+          descricao: string
+          empresa_id: string
+          id: string
+        }
+        Insert: {
+          abrangencia?: string
+          created_at?: string
+          data: string
+          descricao?: string
+          empresa_id: string
+          id?: string
+        }
+        Update: {
+          abrangencia?: string
+          created_at?: string
+          data?: string
+          descricao?: string
+          empresa_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fb_feriados_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fb_funcionarios: {
+        Row: {
+          ativo: boolean
+          codigo: string
+          cpf: string | null
+          created_at: string
+          data_admissao: string | null
+          empresa_id: string
+          id: string
+          nome: string
+          salario_base: number
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          codigo: string
+          cpf?: string | null
+          created_at?: string
+          data_admissao?: string | null
+          empresa_id: string
+          id?: string
+          nome: string
+          salario_base?: number
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          codigo?: string
+          cpf?: string | null
+          created_at?: string
+          data_admissao?: string | null
+          empresa_id?: string
+          id?: string
+          nome?: string
+          salario_base?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fb_funcionarios_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fb_lancamento_itens: {
+        Row: {
+          created_at: string
+          horas_decimal: number | null
+          horas_hhmm: string | null
+          horas_ponto: number | null
+          id: string
+          lancamento_id: string
+          minutos: number | null
+          modo: string
+          ordem: number
+          percentual: number | null
+          valor: number | null
+          verba: string
+        }
+        Insert: {
+          created_at?: string
+          horas_decimal?: number | null
+          horas_hhmm?: string | null
+          horas_ponto?: number | null
+          id?: string
+          lancamento_id: string
+          minutos?: number | null
+          modo?: string
+          ordem?: number
+          percentual?: number | null
+          valor?: number | null
+          verba: string
+        }
+        Update: {
+          created_at?: string
+          horas_decimal?: number | null
+          horas_hhmm?: string | null
+          horas_ponto?: number | null
+          id?: string
+          lancamento_id?: string
+          minutos?: number | null
+          modo?: string
+          ordem?: number
+          percentual?: number | null
+          valor?: number | null
+          verba?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fb_lancamento_itens_lancamento_id_fkey"
+            columns: ["lancamento_id"]
+            isOneToOne: false
+            referencedRelation: "fb_lancamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fb_lancamentos: {
+        Row: {
+          anos_completos: number | null
+          bruto_alvo: number | null
+          bruto_dominio: number | null
+          bruto_previsto: number | null
+          competencia_id: string
+          created_at: string
+          data_admissao: string | null
+          detalhe: Json | null
+          diferenca: number | null
+          diferenca_dominio: number | null
+          funcionario_id: string
+          hora_base: number | null
+          id: string
+          perc_quinquenio: number | null
+          salario_base: number | null
+          status: string | null
+          updated_at: string
+          valor_quinquenio: number | null
+        }
+        Insert: {
+          anos_completos?: number | null
+          bruto_alvo?: number | null
+          bruto_dominio?: number | null
+          bruto_previsto?: number | null
+          competencia_id: string
+          created_at?: string
+          data_admissao?: string | null
+          detalhe?: Json | null
+          diferenca?: number | null
+          diferenca_dominio?: number | null
+          funcionario_id: string
+          hora_base?: number | null
+          id?: string
+          perc_quinquenio?: number | null
+          salario_base?: number | null
+          status?: string | null
+          updated_at?: string
+          valor_quinquenio?: number | null
+        }
+        Update: {
+          anos_completos?: number | null
+          bruto_alvo?: number | null
+          bruto_dominio?: number | null
+          bruto_previsto?: number | null
+          competencia_id?: string
+          created_at?: string
+          data_admissao?: string | null
+          detalhe?: Json | null
+          diferenca?: number | null
+          diferenca_dominio?: number | null
+          funcionario_id?: string
+          hora_base?: number | null
+          id?: string
+          perc_quinquenio?: number | null
+          salario_base?: number | null
+          status?: string | null
+          updated_at?: string
+          valor_quinquenio?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fb_lancamentos_competencia_id_fkey"
+            columns: ["competencia_id"]
+            isOneToOne: false
+            referencedRelation: "fb_competencias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fb_lancamentos_funcionario_id_fkey"
+            columns: ["funcionario_id"]
+            isOneToOne: false
+            referencedRelation: "fb_funcionarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fb_modelos_distribuicao: {
+        Row: {
+          created_at: string
+          empresa_id: string
+          id: string
+          itens: Json
+          nome: string
+          padrao: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          empresa_id: string
+          id?: string
+          itens?: Json
+          nome: string
+          padrao?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          itens?: Json
+          nome?: string
+          padrao?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fb_modelos_distribuicao_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       feedback_records: {
         Row: {
           client_id: string
