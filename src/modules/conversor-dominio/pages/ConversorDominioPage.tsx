@@ -253,7 +253,9 @@ function Editor({ empresaId, conv, mapasIni, codigosIni, codEmpresa, tipoProc, o
     if (faltaCod.length) return toast.error(`Informe o código Domínio de ${faltaCod.length} funcionário(s) antes de gerar.`);
     const faltaRub = eventos.filter((e) => !mapas[e]?.ignorar && !/^\d{1,4}$/.test(mapas[e]?.rubrica || ''));
     if (faltaRub.length) return toast.error(`Informe a rubrica de: ${faltaRub.join(', ')} (ou marque Ignorar).`);
-    const r = gerarConteudo(linhas, mapas, codigos, competencia, tipoProc, codEmpresa || null);
+    const linhasOk = linhas.filter((l) => !ignorados.has(normNome(l.nome || '')));
+    if (!linhasOk.length) return toast.error('Todos os funcionários estão ignorados.');
+    const r = gerarConteudo(linhasOk, mapas, codigos, competencia, tipoProc, codEmpresa || null);
     if (r.erros.length) { toast.error(r.erros.slice(0, 3).join('\n')); return; }
     if (await salvar({ conteudo_txt: r.conteudo, status: 'gerado', qtd_lancamentos: r.linhas.length })) {
       baixarTxt(`FOLHA${competencia.slice(4)}${competencia.slice(0, 4)}-${codEmpresa || '0'}-LANC.txt`, r.conteudo);
