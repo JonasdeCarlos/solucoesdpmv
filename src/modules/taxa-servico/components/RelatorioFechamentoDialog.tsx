@@ -54,7 +54,7 @@ export default function RelatorioFechamentoDialog({ open, onOpenChange, empresa,
     [difAjuste < 0 ? 'Majoração (abateu do saldo)' : 'Diferença de ajuste ao saldo', fmt(Math.abs(difAjuste))],
   ];
   void saldo;
-  const geradoMes = comp.status === 'ajustado' ? comp.saldo_nao_distribuido : difAjuste;
+  const geradoMes = difAjuste;
   const saldoFinal = round2(saldoAnt - comp.saldo_utilizado + geradoMes);
   const saldoLinhas: [string, string][] = [
     ['Saldo antes desta competência', fmt(saldoAnt)],
