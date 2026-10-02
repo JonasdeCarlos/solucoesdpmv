@@ -41,8 +41,20 @@ export default function AjusteFechamento({ comp, config, funcionarios, saldo, on
     void byCod;
   };
 
+  const [manual, setManual] = useState<Set<string>>(new Set());
+  const setComissao = (fid: string, v: string) => {
+    const t = v.trim();
+    setManual((s) => { const n = new Set(s); t ? n.add(fid) : n.delete(fid); return n; });
+    setDist((ds) => ds.map((d) => {
+      if (d.funcionario_id !== fid) return d;
+      if (!t) return { ...d, ...calcularAjuste(d) };
+      const val = round2(parseNum(t));
+      return { ...d, valor_ajustado: val, alerta: null } as TsDistribuicao;
+    }));
+  };
+
   const recalcular = async () => {
-    const novo = dist.map((d) => ({ ...d, ...calcularAjuste(d) }));
+    const novo = dist.map((d) => manual.has(d.funcionario_id) ? d : ({ ...d, ...calcularAjuste(d) }));
     setDist(novo);
     const err = await saveDistribuicao(novo);
     if (err) toast.error(err.message); else toast.success('Comissões recalculadas');
@@ -88,7 +100,7 @@ export default function AjusteFechamento({ comp, config, funcionarios, saldo, on
         <table className="w-full text-sm">
           <thead className="bg-muted sticky top-0"><tr>
             <th className="p-2 text-left">Funcionário</th><th className="p-2 text-right">Comissão original</th><th className="p-2 text-right">Bruto extrato</th>
-            <th className="p-2 w-32">Bruto alvo</th><th className="p-2 text-right">Diferença</th><th className="p-2 text-right">Ajustado</th><th className="p-2">Alerta</th>
+            <th className="p-2 w-32">Bruto alvo</th><th className="p-2 text-right">Diferença</th><th className="p-2 w-36">Comissão a lançar</th><th className="p-2">Alerta</th>
           </tr></thead>
           <tbody>{distOrdenada.map((d) => {
             const f = byId.get(d.funcionario_id);
@@ -99,7 +111,7 @@ export default function AjusteFechamento({ comp, config, funcionarios, saldo, on
                 <td className="p-1"><Input className="text-right" inputMode="decimal" defaultValue={d.rendimento_bruto_extrato ?? ''} key={`e${d.rendimento_bruto_extrato}`} onBlur={(e) => set(d.funcionario_id, { rendimento_bruto_extrato: e.target.value ? parseNum(e.target.value) : null })} /></td>
                 <td className="p-1"><Input className="text-right" inputMode="decimal" defaultValue={d.valor_bruto_alvo ?? ''} key={`a${d.valor_bruto_alvo}`} onBlur={(e) => set(d.funcionario_id, { valor_bruto_alvo: e.target.value ? parseNum(e.target.value) : null })} /></td>
                 <td className="p-2 text-right">{d.diferenca == null ? '—' : fmt(d.diferenca)}</td>
-                <td className="p-2 text-right font-medium">{d.valor_ajustado == null ? '—' : fmt(d.valor_ajustado)}</td>
+                <td className="p-1"><Input className={`text-right font-medium ${manual.has(d.funcionario_id) ? 'border-primary' : ''}`} inputMode="decimal" placeholder="—" title="Digite para definir o valor lançado na folha; apague para voltar ao cálculo" defaultValue={d.valor_ajustado == null ? '' : d.valor_ajustado.toFixed(2).replace('.', ',')} key={`c${d.valor_ajustado}`} onBlur={(e) => setComissao(d.funcionario_id, e.target.value)} /></td>
                 <td className="p-2 text-xs">{d.alerta && <span className="inline-flex items-center gap-1 text-destructive"><AlertTriangle className="w-3 h-3" />{d.alerta}</span>}</td>
               </tr>);
           })}</tbody>
