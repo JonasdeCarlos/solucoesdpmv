@@ -128,13 +128,22 @@ function Editor({ empresaId, conv, mapasIni, codigosIni, codEmpresa, tipoProc, o
   const [codigos, setCodigos] = useState<Record<string, string>>(codigosIni);
   const [lendo, setLendo] = useState(false);
   const [planilha, setPlanilha] = useState<{ aoa: string[][]; cod: number; nome: number; evento: number; valor: number; cols: number[] } | null>(null);
+  const ignorKey = `cl-ignorados-${empresaId}-${competencia}`;
+  const [ignorados, setIgnorados] = useState<Set<string>>(() => { try { return new Set(JSON.parse(localStorage.getItem(ignorKey) || '[]')); } catch { return new Set(); } });
+  useEffect(() => { try { localStorage.setItem(ignorKey, JSON.stringify(Array.from(ignorados))); } catch { /* noop */ } }, [ignorados, ignorKey]);
 
   const eventos = useMemo(() => Array.from(new Set(linhas.map((l) => l.evento))), [linhas]);
-  const nomesSemCodigo = useMemo(() => {
+  const funcionarios = useMemo(() => {
     const m = new Map<string, string>();
-    for (const l of linhas) if (!l.codigo && l.nome) m.set(normNome(l.nome), l.nome);
+    for (const l of linhas) if (l.nome) m.set(normNome(l.nome), l.nome);
     return Array.from(m.entries()).sort((a, b) => a[1].localeCompare(b[1]));
   }, [linhas]);
+  const nomesSemCodigo = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const l of linhas) if (!l.codigo && l.nome && !ignorados.has(normNome(l.nome))) m.set(normNome(l.nome), l.nome);
+    return Array.from(m.entries()).sort((a, b) => a[1].localeCompare(b[1]));
+  }, [linhas, ignorados]);
+  const toggleIgnorado = (k: string) => setIgnorados((p) => { const n = new Set(p); n.has(k) ? n.delete(k) : n.add(k); return n; });
 
   // completa mapas para eventos novos
   useEffect(() => {
@@ -244,7 +253,9 @@ function Editor({ empresaId, conv, mapasIni, codigosIni, codEmpresa, tipoProc, o
     if (faltaCod.length) return toast.error(`Informe o código Domínio de ${faltaCod.length} funcionário(s) antes de gerar.`);
     const faltaRub = eventos.filter((e) => !mapas[e]?.ignorar && !/^\d{1,4}$/.test(mapas[e]?.rubrica || ''));
     if (faltaRub.length) return toast.error(`Informe a rubrica de: ${faltaRub.join(', ')} (ou marque Ignorar).`);
-    const r = gerarConteudo(linhas, mapas, codigos, competencia, tipoProc, codEmpresa || null);
+    const linhasOk = linhas.filter((l) => !ignorados.has(normNome(l.nome || '')));
+    if (!linhasOk.length) return toast.error('Todos os funcionários estão ignorados.');
+    const r = gerarConteudo(linhasOk, mapas, codigos, competencia, tipoProc, codEmpresa || null);
     if (r.erros.length) { toast.error(r.erros.slice(0, 3).join('\n')); return; }
     if (await salvar({ conteudo_txt: r.conteudo, status: 'gerado', qtd_lancamentos: r.linhas.length })) {
       baixarTxt(`FOLHA${competencia.slice(4)}${competencia.slice(0, 4)}-${codEmpresa || '0'}-LANC.txt`, r.conteudo);
@@ -335,10 +346,22 @@ function Editor({ empresaId, conv, mapasIni, codigosIni, codEmpresa, tipoProc, o
           <CardHeader className="pb-2 flex-row items-center justify-between"><CardTitle className="text-base">4. Conferência ({linhas.length} lançamentos)</CardTitle>
             <Button size="sm" variant="ghost" onClick={() => confirm('Limpar todos os lançamentos?') && setLinhas([])}>Limpar</Button></CardHeader>
           <CardContent className="max-h-[480px] overflow-auto">
+            {funcionarios.length > 0 && (
+              <div className="mb-3 rounded-md border p-2 bg-muted/30">
+                <div className="text-xs text-muted-foreground mb-1">Funcionários — desmarque para <strong>ignorar na exportação</strong> (os lançamentos ficam guardados, mas não vão para o arquivo):</div>
+                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                  {funcionarios.map(([k, n]) => (
+                    <label key={k} className={`flex items-center gap-1 text-sm ${ignorados.has(k) ? 'line-through opacity-50' : ''}`}>
+                      <input type="checkbox" checked={!ignorados.has(k)} onChange={() => toggleIgnorado(k)} />{n}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-card"><tr className="text-left text-muted-foreground"><th className="w-24">Código</th><th>Nome</th><th>Evento</th><th className="w-28">Valor</th><th className="w-10" /></tr></thead>
               <tbody>{linhas.map((l, i) => (
-                <tr key={i} className={`border-t ${mapas[l.evento]?.ignorar ? 'opacity-40' : ''}`}>
+                <tr key={i} className={`border-t ${mapas[l.evento]?.ignorar || ignorados.has(normNome(l.nome || '')) ? 'opacity-40' : ''}`}>
                   <td><Input className="h-7" value={l.codigo || codigos[normNome(l.nome)] || ''} placeholder="?" onChange={(e) => setLinha(i, { codigo: e.target.value.replace(/\D/g, '') })} /></td>
                   <td className="px-1">{l.nome}</td>
                   <td className="px-1">{l.evento}</td>
