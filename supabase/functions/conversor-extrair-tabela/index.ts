@@ -4,6 +4,14 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 const json = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), { status: s, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
+const norm = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/[^A-Z ]/g, "").replace(/\s+/g, " ").trim();
+const dist = (a: string, b: string) => {
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+  return d[a.length][b.length];
+};
+
 const PROMPT = `Você recebe uma tabela/planilha/relatório de lançamentos de folha de pagamento enviada por uma empresa brasileira (pode ser foto, scan ou PDF; o formato varia).
 
 PASSO 1 — LEIA O CABEÇALHO: liste em "colunas" TODOS os títulos de coluna, da esquerda para a direita, exatamente como escritos (inclusive títulos de duas linhas, juntando-os: "Total" + "Refeição" = "Total Refeição"). Não pule nenhuma coluna.
@@ -21,6 +29,7 @@ REGRAS IMPORTANTES:
 - Siga cada linha horizontalmente com cuidado para não misturar valores de funcionários adjacentes; confira o alinhamento coluna a coluna.
 - Leia dígitos com atenção (6/8, 1/7, 3/8, 5/6, 0/9); mantenha vírgula decimal e ponto de milhar como no documento. Não arredonde.
 - Se houver uma coluna de total por linha, use-a para conferir: a soma dos componentes deve bater; se não bater, releia os valores.
+- NOMES: copie cada nome letra por letra como está impresso. NUNCA invente, complete, corrija ou "adivinhe" um nome. Só gere lançamentos para linhas que realmente existem no documento. Se um nome estiver ilegível, use o que for legível e não crie variações. Cada funcionário aparece uma única vez por linha — não duplique linhas nem crie pessoas a partir de cabeçalhos, rodapés, assinaturas, nomes da empresa ou do responsável.
 - Não invente dados.
 Responda SOMENTE JSON: {"colunas":["..."],"lancamentos":[{"codigo":"","nome":"","evento":"","valor":""}]}`;
 
@@ -39,6 +48,8 @@ Deno.serve(async (req) => {
     if (!parts.length) return json({ error: "Nenhum arquivo enviado" }, 400);
     if (parts.reduce((s, m) => s + m[2].length, 0) > 25_000_000) return json({ error: "Arquivos muito grandes" }, 400);
 
+    const conhecidos: { nome: string; codigo: string }[] = Array.isArray(body?.conhecidos) ? body.conhecidos.slice(0, 600).map((x: any) => ({ nome: String(x?.nome || "").slice(0, 120), codigo: String(x?.codigo || "").replace(/\D/g, "").slice(0, 10) })).filter((x: any) => x.nome) : [];
+    const PROMPT_FULL = PROMPT + (conhecidos.length ? `\n\nFuncionários já cadastrados desta empresa (use como referência de grafia; se o nome do documento corresponder claramente a um deles, use a grafia e o código cadastrados; se não corresponder, mantenha o nome como impresso — nunca troque por um cadastrado parecido sem certeza):\n${conhecidos.map((c) => `${c.codigo || "-"} | ${c.nome}`).join("\n")}` : "");
     let raw = "";
     const ANTH = Deno.env.get("ANTHROPIC_API_KEY");
     if (ANTH) {
@@ -50,7 +61,7 @@ Deno.serve(async (req) => {
           const blocks: any[] = parts.map((m) => m[1] === "application/pdf"
             ? { type: "document", source: { type: "base64", media_type: "application/pdf", data: m[2] } }
             : { type: "image", source: { type: "base64", media_type: m[1], data: m[2] } });
-          blocks.push({ type: "text", text: PROMPT });
+          blocks.push({ type: "text", text: PROMPT_FULL });
           const ar = await fetch("https://api.anthropic.com/v1/messages", {
             method: "POST",
             headers: { "x-api-key": ANTH, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
@@ -70,11 +81,11 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
           model: "openai/gpt-6-astra",
           store: false,
-          reasoning: { effort: "medium" },
+          reasoning: { effort: "high" },
           input: [{
             role: "user",
             content: [
-              { type: "input_text", text: PROMPT },
+              { type: "input_text", text: PROMPT_FULL },
               ...parts.map((m, i) => m[1] === "application/pdf"
                 ? { type: "input_file", filename: `arquivo${i + 1}.pdf`, file_data: m[0] }
                 : { type: "input_image", image_url: m[0] }),
@@ -96,7 +107,18 @@ Deno.serve(async (req) => {
       nome: String(l?.nome ?? "").trim(),
       evento: String(l?.evento ?? "").trim(),
       valor: String(l?.valor ?? "").trim(),
-    })).filter((l: any) => (l.nome || l.codigo) && l.evento && l.valor);
+    })).filter((l: any) => (l.nome || l.codigo) && l.evento && l.valor).map((l: any) => {
+      if (!conhecidos.length) return l;
+      const n = norm(l.nome);
+      const byCod = l.codigo && conhecidos.find((c) => c.codigo === l.codigo);
+      let best = byCod || conhecidos.find((c) => norm(c.nome) === n);
+      if (!best) {
+        let bd = 1;
+        for (const c of conhecidos) { const d = dist(n, norm(c.nome)) / Math.max(n.length, 1); if (d < bd) { bd = d; best = c; } }
+        if (bd > 0.15) best = undefined;
+      }
+      return best ? { ...l, nome: best.nome, codigo: l.codigo || best.codigo } : l;
+    });
     return json({ lancamentos, colunas: Array.isArray(parsed.colunas) ? parsed.colunas.map(String) : [] });
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : String(e) }, 500);
