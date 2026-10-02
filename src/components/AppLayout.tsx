@@ -27,6 +27,7 @@ const NAV_ITEMS = [
   { to: '/enquadramento-sindical', label: 'Enquadramento Sindical', icon: Landmark },
   { to: '/taxa-servico', label: 'Taxa de Serviço', icon: Coins },
   { to: '/bruto-alvo', label: 'Bruto Alvo', icon: Target },
+  { to: '/conversor-dominio', label: 'Conversor Domínio', icon: FileSpreadsheet },
   { to: '/admissao/escritorio', label: 'Admissão', icon: UserPlus },
 ];
 
