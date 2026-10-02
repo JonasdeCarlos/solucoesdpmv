@@ -38,7 +38,7 @@ export default function ConversorDominioPage() {
     if (!empresaId) return;
     const [c, m, f, k] = await Promise.all([
       db.from('cl_config').select('*').eq('empresa_id', empresaId).maybeSingle(),
-      db.from('cl_mapeamentos').select('*').eq('empresa_id', empresaId),
+      db.from('cl_mapeamentos').select('*').eq('empresa_id', empresaId).not('evento', 'like', '[Ponto]%'),
       db.from('cl_funcionarios').select('*').eq('empresa_id', empresaId),
       db.from('cl_conversoes').select('*').eq('empresa_id', empresaId).order('competencia', { ascending: false }).order('created_at', { ascending: false }),
     ]);

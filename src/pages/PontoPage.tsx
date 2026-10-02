@@ -4,6 +4,7 @@ import { Eraser } from 'lucide-react';
 import PontoHeader from '@/components/ponto/PontoHeader';
 import PontoGrid from '@/components/ponto/PontoGrid';
 import PontoSummary from '@/components/ponto/PontoSummary';
+import PontoVerbasDominio from '@/components/ponto/PontoVerbasDominio';
 import PontoPrintView from '@/components/ponto/PontoPrintView';
 import PontoOcrImport from '@/components/ponto/PontoOcrImport';
 import PontoBancoHoras from '@/components/ponto/PontoBancoHoras';
@@ -174,6 +175,8 @@ const PontoPage: React.FC = () => {
       />
 
       <PontoSummary resumo={resumo} />
+
+      <PontoVerbasDominio diasCalculados={diasCalculados} identificacao={identificacao} />
 
       <PontoPrintView
         identificacao={identificacao}
