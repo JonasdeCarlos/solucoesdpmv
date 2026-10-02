@@ -42,15 +42,26 @@ export default function AjusteFechamento({ comp, config, funcionarios, saldo, on
   };
 
   const [manual, setManual] = useState<Set<string>>(new Set());
+  const [salvando, setSalvando] = useState(false);
   const setComissao = (fid: string, v: string) => {
     const t = v.trim();
     setManual((s) => { const n = new Set(s); t ? n.add(fid) : n.delete(fid); return n; });
-    setDist((ds) => ds.map((d) => {
+    const novo = dist.map((d) => {
       if (d.funcionario_id !== fid) return d;
       if (!t) return { ...d, ...calcularAjuste(d) };
       const val = round2(parseNum(t));
       return { ...d, valor_ajustado: val, alerta: null } as TsDistribuicao;
-    }));
+    });
+    setDist(novo);
+    const row = novo.find((d) => d.funcionario_id === fid);
+    if (row) saveDistribuicao([row]).then((err) => { if (err) toast.error(err.message); });
+  };
+
+  const salvarTudo = async () => {
+    setSalvando(true);
+    const err = await saveDistribuicao(dist);
+    setSalvando(false);
+    if (err) toast.error(err.message); else toast.success('Valores salvos');
   };
 
   const recalcular = async () => {
