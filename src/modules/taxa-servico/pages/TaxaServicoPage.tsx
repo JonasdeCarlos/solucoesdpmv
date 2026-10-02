@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Plus, Search, Lock, LockOpen } from 'lucide-react';
+import { ArrowLeft, Plus, Search, Lock, LockOpen, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import SaldoCard from '../components/SaldoCard';
@@ -15,6 +15,7 @@ import StepFuncionarios from '../components/StepFuncionarios';
 import StepRateio from '../components/StepRateio';
 import StepExportacao from '../components/StepExportacao';
 import AjusteFechamento from '../components/AjusteFechamento';
+import RelatorioFechamentoDialog from '../components/RelatorioFechamentoDialog';
 import { useEmpresas, useTaxaServicoEmpresa, isFechada, setFechada, marcarAbertaSeNova, type TsCompetencia } from '../hooks/useTaxaServico';
 import { fmt, competenciaLabel } from '../utils/validacoes';
 
@@ -29,6 +30,7 @@ export default function TaxaServicoPage() {
   const [step, setStep] = useState(0);
   const [comp, setComp] = useState<TsCompetencia | null>(null);
   const [extrato, setExtrato] = useState(false);
+  const [relFinal, setRelFinal] = useState(false);
   const [busca, setBusca] = useState('');
   const [, force] = useState(0);
   const fechada = comp ? isFechada(comp) : false;
@@ -138,7 +140,8 @@ export default function TaxaServicoPage() {
                       ? <p className="text-sm text-muted-foreground">Exporte o arquivo no passo 5 antes de fechar a competência.</p>
                       : <p className="text-sm text-muted-foreground">{fechada ? 'Apuração fechada: valores e pontuação ficam somente leitura. Reabra para corrigir e exportar de novo.' : 'Enquanto estiver em aberto, é possível alterar valores, pontos e dias e exportar novamente.'}</p>}
                     <div className="flex justify-between">
-                      <Button variant="outline" onClick={() => setStep(4)}>Voltar</Button>
+                      <div className="flex gap-2"><Button variant="outline" onClick={() => setStep(4)}>Voltar</Button>
+                      <Button variant="secondary" onClick={() => setRelFinal(true)}><FileText className="w-4 h-4 mr-1" />Relatório final</Button></div>
                       {fechada
                         ? <Button variant="outline" onClick={() => alternarFechamento(false)}><LockOpen className="w-4 h-4 mr-1" />Reabrir apuração</Button>
                         : <Button disabled={comp.status === 'rascunho' || comp.status === 'calculado'} onClick={() => alternarFechamento(true)}><Lock className="w-4 h-4 mr-1" />Fechar competência</Button>}
@@ -153,6 +156,7 @@ export default function TaxaServicoPage() {
           </CardContent>
         </Card>
       )}
+      {comp && <RelatorioFechamentoDialog open={relFinal} onOpenChange={setRelFinal} empresa={empresas.find((e) => e.id === empresaId)?.nome || ''} comp={comp} funcionarios={funcionarios} saldo={saldo} fechada={fechada} />}
       <SaldoExtratoDialog open={extrato} onOpenChange={setExtrato} competencias={competencias} />
     </div>
   );
