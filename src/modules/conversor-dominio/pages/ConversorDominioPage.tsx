@@ -346,10 +346,22 @@ function Editor({ empresaId, conv, mapasIni, codigosIni, codEmpresa, tipoProc, o
           <CardHeader className="pb-2 flex-row items-center justify-between"><CardTitle className="text-base">4. Conferência ({linhas.length} lançamentos)</CardTitle>
             <Button size="sm" variant="ghost" onClick={() => confirm('Limpar todos os lançamentos?') && setLinhas([])}>Limpar</Button></CardHeader>
           <CardContent className="max-h-[480px] overflow-auto">
+            {funcionarios.length > 0 && (
+              <div className="mb-3 rounded-md border p-2 bg-muted/30">
+                <div className="text-xs text-muted-foreground mb-1">Funcionários — desmarque para <strong>ignorar na exportação</strong> (os lançamentos ficam guardados, mas não vão para o arquivo):</div>
+                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                  {funcionarios.map(([k, n]) => (
+                    <label key={k} className={`flex items-center gap-1 text-sm ${ignorados.has(k) ? 'line-through opacity-50' : ''}`}>
+                      <input type="checkbox" checked={!ignorados.has(k)} onChange={() => toggleIgnorado(k)} />{n}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-card"><tr className="text-left text-muted-foreground"><th className="w-24">Código</th><th>Nome</th><th>Evento</th><th className="w-28">Valor</th><th className="w-10" /></tr></thead>
               <tbody>{linhas.map((l, i) => (
-                <tr key={i} className={`border-t ${mapas[l.evento]?.ignorar ? 'opacity-40' : ''}`}>
+                <tr key={i} className={`border-t ${mapas[l.evento]?.ignorar || ignorados.has(normNome(l.nome || '')) ? 'opacity-40' : ''}`}>
                   <td><Input className="h-7" value={l.codigo || codigos[normNome(l.nome)] || ''} placeholder="?" onChange={(e) => setLinha(i, { codigo: e.target.value.replace(/\D/g, '') })} /></td>
                   <td className="px-1">{l.nome}</td>
                   <td className="px-1">{l.evento}</td>
