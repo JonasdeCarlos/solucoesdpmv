@@ -49,7 +49,17 @@ function montarLinhas(items: any[], ang: number): string {
   }).join('\n');
 }
 
-export async function lerPdf(file: File, maxPaginas = 8): Promise<PaginaPdf[]> {
+/** Texto extraído é utilizável? (evita PDFs com fontes sem mapeamento, que geram lixo) */
+export function textoConfiavel(t: string): boolean {
+  const limpo = t.replace(/\s|\|/g, '');
+  if (limpo.length < 80) return false;
+  const bons = (limpo.match(/[A-Za-zÀ-ÿ0-9.,:\/()%$-]/g) || []).length;
+  const palavras = t.match(/\b[A-Za-zÀ-ÿ]{3,}\b/g) || [];
+  const comVogal = palavras.filter((w) => /[aeiouáéíóúâêôãõAEIOUÁÉÍÓÚÂÊÔÃÕ]/.test(w)).length;
+  return bons / limpo.length > 0.9 && palavras.length >= 5 && comVogal / palavras.length > 0.8;
+}
+
+export async function lerPdf(file: File, maxPaginas = 8, comImagem = true): Promise<PaginaPdf[]> {
   const pdfjs = await loadPdfjs();
   const pdf = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
   const out: PaginaPdf[] = [];
@@ -62,6 +72,7 @@ export async function lerPdf(file: File, maxPaginas = 8): Promise<PaginaPdf[]> {
     // texto a `ang` graus (anti-horário) no espaço do PDF → girar a vista `ang` graus no sentido horário
     // (rotação do pdfjs é horária e substitui o /Rotate da página), deixando o texto em pé.
     const giro = ang % 360;
+    if (!comImagem) { out.push({ texto, imagem: '', giro }); continue; }
     const base = page.getViewport({ scale: 1, rotation: giro });
     const scale = Math.min(2.2, 2400 / Math.max(base.width, base.height));
     const vp = page.getViewport({ scale, rotation: giro });

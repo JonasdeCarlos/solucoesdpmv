@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { lerPdf } from '../utils/pdfTexto';
+import { lerPdf, textoConfiavel } from '../utils/pdfTexto';
 import * as XLSX from 'xlsx';
 import { toast } from 'sonner';
 import { FileSpreadsheet, Loader2, Plus, Download, Trash2, ArrowLeft, Save, Wand2 } from 'lucide-react';
@@ -174,16 +174,15 @@ function Editor({ empresaId, conv, mapasIni, codigosIni, codEmpresa, tipoProc, o
     try {
       const arquivos: { dataUrl: string }[] = []; const textos: string[] = []; let girados = 0;
       for (const x of Array.from(files).slice(0, 8)) {
+        arquivos.push({ dataUrl: await toDataUrl(x) });
         if (x.type === 'application/pdf' || x.name.toLowerCase().endsWith('.pdf')) {
           try {
-            const pags = await lerPdf(x);
-            for (const p of pags) { arquivos.push({ dataUrl: p.imagem }); if (p.texto.trim()) textos.push(p.texto); if (p.giro) girados++; }
-            continue;
+            const pags = await lerPdf(x, 30, false);
+            for (const p of pags) { if (textoConfiavel(p.texto)) textos.push(p.texto); if (p.giro) girados++; }
           } catch (err) { console.warn('pdf texto', err); }
         }
-        arquivos.push({ dataUrl: await toDataUrl(x) });
       }
-      if (girados) toast.info(`${girados} página(s) estavam giradas e foram colocadas em pé para a leitura.`);
+      if (girados && textos.length) toast.info(`${girados} página(s) em paisagem detectadas — leitura feita pelo texto do PDF.`);
       const [a, b, c] = await Promise.all([
         db.from('cl_funcionarios').select('nome,codigo').eq('empresa_id', empresaId),
         db.from('fb_funcionarios').select('nome,codigo').eq('empresa_id', empresaId),
@@ -193,7 +192,7 @@ function Editor({ empresaId, conv, mapasIni, codigosIni, codEmpresa, tipoProc, o
       const conhecidos = [...(a.data || []), ...(b.data || []), ...(c.data || [])]
         .filter((x: any) => x?.nome && !vistos.has(normNome(x.nome)) && vistos.add(normNome(x.nome)))
         .map((x: any) => ({ nome: String(x.nome), codigo: String(x.codigo || '') })).slice(0, 600);
-      const { data, error } = await supabase.functions.invoke('conversor-extrair-tabela', { body: { arquivos: arquivos.slice(0, 8), conhecidos, textos } });
+      const { data, error } = await supabase.functions.invoke('conversor-extrair-tabela', { body: { arquivos, conhecidos, textos } });
       if (error || data?.error) throw new Error(data?.error || error?.message);
       if (data?.suspeitos) toast.warning(`${data.suspeitos} lançamento(s) com nome que não aparece no PDF — confira na lista.`);
       receberLancamentos(data.lancamentos || [], Array.from(files).map((x) => x.name).join(', '));
