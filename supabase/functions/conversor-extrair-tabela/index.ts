@@ -53,20 +53,29 @@ Deno.serve(async (req) => {
     if (!raw) {
       const KEY = Deno.env.get("LOVABLE_API_KEY");
       if (!KEY) throw new Error("LOVABLE_API_KEY missing");
-      const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      const r = await fetch("https://ai.gateway.lovable.dev/v1/responses", {
         method: "POST",
         headers: { Authorization: `Bearer ${KEY}`, "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "google/gemini-2.5-pro",
-          response_format: { type: "json_object" },
-          messages: [{ role: "user", content: [{ type: "text", text: PROMPT }, ...parts.map((m) => ({ type: "image_url", image_url: { url: m[0] } }))] }],
+          model: "openai/gpt-6-astra",
+          store: false,
+          reasoning: { effort: "low" },
+          input: [{
+            role: "user",
+            content: [
+              { type: "input_text", text: PROMPT },
+              ...parts.map((m, i) => m[1] === "application/pdf"
+                ? { type: "input_file", filename: `arquivo${i + 1}.pdf`, file_data: m[0] }
+                : { type: "input_image", image_url: m[0] }),
+            ],
+          }],
         }),
       });
       if (r.status === 429) return json({ error: "Limite de requisições atingido. Tente em instantes." }, 429);
       if (r.status === 402) return json({ error: "Créditos de IA esgotados." }, 402);
       const d = await r.json();
       if (!r.ok) return json({ error: d?.error?.message || "Falha na leitura" }, 500);
-      raw = d?.choices?.[0]?.message?.content || "";
+      raw = d?.output_text || (d?.output || []).flatMap((o: any) => o?.content || []).map((c: any) => c?.text || "").join("");
     }
     const txt = raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1);
     let parsed: any = {};
