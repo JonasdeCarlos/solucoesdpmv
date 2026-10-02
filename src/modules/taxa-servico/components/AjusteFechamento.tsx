@@ -63,10 +63,8 @@ export default function AjusteFechamento({ comp, config, funcionarios, saldo, on
   const original = round2(dist.reduce((s, d) => s + d.valor_comissao, 0));
   const ajustado = round2(dist.reduce((s, d) => s + (d.valor_ajustado ?? d.valor_comissao), 0));
   const saldoComp = round2(original - ajustado);
-  const calculado = dist.some((d) => d.valor_ajustado != null);
 
   const exportar = async () => {
-    if (!calculado) return toast.error('Clique em "Recalcular comissões" antes.');
     const aaaamm = competenciaAAAAMM(comp.competencia);
     const { conteudo, erros } = gerarArquivo(dist.filter((d) => byId.get(d.funcionario_id)?.gera_lancamento !== false).map((d) => ({
       codigoEmpregado: byId.get(d.funcionario_id)?.codigo || '', competencia: aaaamm, rubrica: comp.codigo_verba || config.codigo_verba_padrao || '',
@@ -97,10 +95,10 @@ export default function AjusteFechamento({ comp, config, funcionarios, saldo, on
         <Button size="sm" variant={ordem === 'nome' ? 'default' : 'outline'} onClick={() => setOrdem('nome')}>Ordem alfabética</Button>
       </div>
       <div className="border rounded-md max-h-[50vh] overflow-auto">
-        <table className="w-full text-sm">
+        <table className="w-full min-w-[900px] text-sm">
           <thead className="bg-muted sticky top-0"><tr>
             <th className="p-2 text-left">Funcionário</th><th className="p-2 text-right">Comissão original</th><th className="p-2 text-right">Bruto extrato</th>
-            <th className="p-2 w-32">Bruto alvo</th><th className="p-2 text-right">Diferença</th><th className="p-2 w-36">Comissão a lançar</th><th className="p-2">Alerta</th>
+            <th className="p-2 w-32">Bruto alvo</th><th className="p-2 text-right">Diferença</th><th className="p-2 w-40 bg-primary/15 text-primary">Comissão a lançar</th><th className="p-2">Alerta</th>
           </tr></thead>
           <tbody>{distOrdenada.map((d) => {
             const f = byId.get(d.funcionario_id);
@@ -111,7 +109,7 @@ export default function AjusteFechamento({ comp, config, funcionarios, saldo, on
                 <td className="p-1"><Input className="text-right" inputMode="decimal" defaultValue={d.rendimento_bruto_extrato ?? ''} key={`e${d.rendimento_bruto_extrato}`} onBlur={(e) => set(d.funcionario_id, { rendimento_bruto_extrato: e.target.value ? parseNum(e.target.value) : null })} /></td>
                 <td className="p-1"><Input className="text-right" inputMode="decimal" defaultValue={d.valor_bruto_alvo ?? ''} key={`a${d.valor_bruto_alvo}`} onBlur={(e) => set(d.funcionario_id, { valor_bruto_alvo: e.target.value ? parseNum(e.target.value) : null })} /></td>
                 <td className="p-2 text-right">{d.diferenca == null ? '—' : fmt(d.diferenca)}</td>
-                <td className="p-1"><Input className={`text-right font-medium ${manual.has(d.funcionario_id) ? 'border-primary' : ''}`} inputMode="decimal" placeholder="—" title="Digite para definir o valor lançado na folha; apague para voltar ao cálculo" defaultValue={d.valor_ajustado == null ? '' : d.valor_ajustado.toFixed(2).replace('.', ',')} key={`c${d.valor_ajustado}`} onBlur={(e) => setComissao(d.funcionario_id, e.target.value)} /></td>
+                <td className="p-1"><Input className={`text-right font-medium ${manual.has(d.funcionario_id) ? 'border-primary' : ''}`} inputMode="decimal" placeholder="—" title="Digite para definir o valor lançado na folha; apague para voltar ao cálculo" defaultValue={(d.valor_ajustado ?? d.valor_comissao).toFixed(2).replace('.', ',')} key={`c${d.valor_ajustado}`} onBlur={(e) => setComissao(d.funcionario_id, e.target.value)} /></td>
                 <td className="p-2 text-xs">{d.alerta && <span className="inline-flex items-center gap-1 text-destructive"><AlertTriangle className="w-3 h-3" />{d.alerta}</span>}</td>
               </tr>);
           })}</tbody>
@@ -121,7 +119,8 @@ export default function AjusteFechamento({ comp, config, funcionarios, saldo, on
         <div className="rounded-md bg-muted/40 p-3">Líquido original distribuído<br /><b>{fmt(original)}</b></div>
         <div className="rounded-md bg-muted/40 p-3">Total ajustado<br /><b>{fmt(ajustado)}</b></div>
         <div className={`rounded-md p-3 ${saldoComp < 0 ? 'bg-destructive/10 text-destructive' : 'bg-primary/10'}`}>
-          {saldoComp < 0 ? 'Consumo de saldo por acréscimo' : 'Saldo não distribuído da competência'}<br /><b>{fmt(saldoComp)}</b>
+          {saldoComp < 0 ? 'Majoração: abate do saldo acumulado' : 'Diferença vai para o saldo não distribuído'}<br /><b>{fmt(Math.abs(saldoComp))}</b>
+          <div className="text-xs mt-1 opacity-80">Saldo acumulado após exportar: {fmt(round2(saldo.saldo_acumulado - (comp.status === 'ajustado' ? comp.saldo_nao_distribuido : 0) + saldoComp))}</div>
         </div>
       </div>
       <ImportarExtratoDialog open={imp === 'extrato'} onOpenChange={(o) => !o && setImp(null)} empresaId={comp.empresa_id} onConfirm={aplicarImport('rendimento_bruto_extrato')} />
