@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { Download, Save } from 'lucide-react';
+import { Download, Save, ListPlus, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,8 @@ const PREFIXO = '[Ponto] ';
 
 interface Verba { id: string; label: string; minutos?: number; qtd?: number }
 
+interface Guardado { codigo: string; nome: string; itens: { evento: string; rubrica: string; tipo: 'horas' | 'quantidade'; valor: string }[] }
+
 interface Props { diasCalculados: PontoDiaCalculado[]; identificacao: PontoIdentificacao }
 
 const PontoVerbasDominio: React.FC<Props> = ({ diasCalculados, identificacao }) => {
@@ -25,6 +27,14 @@ const PontoVerbasDominio: React.FC<Props> = ({ diasCalculados, identificacao }) 
   const [tipoProc, setTipoProc] = useState('11');
   const [codFunc, setCodFunc] = useState('');
   const [rubricas, setRubricas] = useState<Record<string, string>>({});
+  const comp = (identificacao.mesAno || '').replace('-', '');
+  const lotKey = `ponto-lote-${empresaId}-${comp}`;
+  const [lote, setLote] = useState<Guardado[]>([]);
+  useEffect(() => {
+    if (!empresaId) { setLote([]); return; }
+    try { setLote(JSON.parse(localStorage.getItem(lotKey) || '[]')); } catch { setLote([]); }
+  }, [lotKey]);
+  const gravarLote = (l: Guardado[]) => { setLote(l); localStorage.setItem(lotKey, JSON.stringify(l)); };
 
   const verbas: Verba[] = useMemo(() => {
     let he50 = 0, he100 = 0, atraso = 0, faltas = 0, not = 0, intra = 0;
@@ -90,18 +100,34 @@ const PontoVerbasDominio: React.FC<Props> = ({ diasCalculados, identificacao }) 
     return true;
   };
 
-  const exportar = async () => {
-    if (!codFunc) return toast.error('Informe o código do empregado no Domínio.');
+  const montarAtual = async (): Promise<Guardado | null> => {
+    if (!codFunc) { toast.error('Informe o código do empregado no Domínio.'); return null; }
     const usadas = verbas.filter((v) => (v.minutos ?? v.qtd ?? 0) > 0 && rubricas[v.id]);
-    if (!usadas.length) return toast.error('Nenhuma verba com valor e rubrica preenchida.');
-    if (!(await salvarConfig(true))) return;
-    const linhas = usadas.map((v) => ({ codigo: codFunc, nome: identificacao.empregadoNome, evento: v.id, valor: v.qtd != null ? String(v.qtd) : minutesToHHMM(v.minutos!) }));
-    const mapas: Record<string, Mapa> = Object.fromEntries(usadas.map((v) => [v.id, { evento: v.id, rubrica: rubricas[v.id], tipo: v.qtd != null ? 'quantidade' : 'horas', ignorar: false }]));
-    const comp = identificacao.mesAno.replace('-', '');
+    if (!usadas.length) { toast.error('Nenhuma verba com valor e rubrica preenchida.'); return null; }
+    if (!(await salvarConfig(true))) return null;
+    return { codigo: codFunc, nome: identificacao.empregadoNome || '', itens: usadas.map((v) => ({ evento: v.id, rubrica: rubricas[v.id], tipo: v.qtd != null ? 'quantidade' : 'horas', valor: v.qtd != null ? String(v.qtd) : minutesToHHMM(v.minutos!) })) };
+  };
+
+  const gerar = (lista: Guardado[], sufixo: string) => {
+    const linhas: any[] = []; const mapas: Record<string, Mapa> = {};
+    for (const g of lista) for (const it of g.itens) {
+      const ev = `${it.evento}|${it.rubrica}|${it.tipo}`;
+      mapas[ev] = { evento: ev, rubrica: it.rubrica, tipo: it.tipo, ignorar: false } as Mapa;
+      linhas.push({ codigo: g.codigo, nome: g.nome, evento: ev, valor: it.valor });
+    }
     const r = gerarConteudo(linhas, mapas, {}, comp, tipoProc, codEmpresa || null);
     if (r.erros.length) return toast.error(r.erros.slice(0, 3).join('\n'));
-    baixarTxt(`FOLHA${comp.slice(4)}${comp.slice(0, 4)}-${codEmpresa || '0'}-PONTO-${codFunc}.txt`, r.conteudo);
+    baixarTxt(`FOLHA${comp.slice(4)}${comp.slice(0, 4)}-${codEmpresa || '0'}-PONTO-${sufixo}.txt`, r.conteudo);
     toast.success(`Arquivo gerado com ${r.linhas.length} lançamento(s).`);
+  };
+
+  const exportar = async () => { const g = await montarAtual(); if (g) gerar([g], g.codigo); };
+
+  const guardar = async () => {
+    const g = await montarAtual(); if (!g) return;
+    const existe = lote.some((x) => x.codigo === g.codigo);
+    gravarLote([...lote.filter((x) => x.codigo !== g.codigo), g]);
+    toast.success(existe ? `Lançamentos de ${g.nome || g.codigo} atualizados no lote.` : `${g.nome || g.codigo} guardado. Agora preencha o próximo empregado.`);
   };
 
   return (
@@ -134,8 +160,24 @@ const PontoVerbasDominio: React.FC<Props> = ({ diasCalculados, identificacao }) 
         <p className="text-xs text-muted-foreground">Os códigos ficam salvos por empresa — na próxima apuração da mesma empresa já vêm preenchidos. Verbas zeradas ou sem rubrica não entram no arquivo.</p>
         <div className="flex flex-wrap gap-2 justify-end">
           <Button variant="outline" onClick={() => salvarConfig()}><Save className="w-4 h-4 mr-1" />Salvar códigos da empresa</Button>
-          <Button onClick={exportar}><Download className="w-4 h-4 mr-1" />Gerar arquivo Domínio</Button>
+          <Button variant="outline" onClick={exportar}><Download className="w-4 h-4 mr-1" />Arquivo só deste empregado</Button>
+          <Button variant="secondary" onClick={guardar}><ListPlus className="w-4 h-4 mr-1" />Guardar lançamentos</Button>
         </div>
+        {lote.length > 0 && (
+          <div className="border rounded p-3 space-y-2">
+            <p className="text-sm font-medium">Empregados guardados ({lote.length}) — {identificacao.mesAno}</p>
+            {lote.map((g) => (
+              <div key={g.codigo} className="flex items-center justify-between text-sm border-t pt-1">
+                <span>{g.codigo} — {g.nome} <span className="text-muted-foreground">({g.itens.length} verba(s))</span></span>
+                <Button size="icon" variant="ghost" onClick={() => gravarLote(lote.filter((x) => x.codigo !== g.codigo))}><Trash2 className="w-4 h-4" /></Button>
+              </div>
+            ))}
+            <div className="flex gap-2 justify-end pt-1">
+              <Button variant="ghost" onClick={() => gravarLote([])}>Limpar lote</Button>
+              <Button onClick={() => gerar(lote, 'LOTE')}><Download className="w-4 h-4 mr-1" />Gerar arquivo único ({lote.length})</Button>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
