@@ -5,13 +5,24 @@ const json = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), { status: s, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
 const PROMPT = `Você recebe uma tabela/planilha/relatório de lançamentos de folha de pagamento enviada por uma empresa brasileira (pode ser foto, scan ou PDF; o formato varia).
-Extraia TODOS os lançamentos no formato "uma linha por lançamento":
-- codigo: código do funcionário se existir na tabela (só dígitos), senão ""
+
+PASSO 1 — LEIA O CABEÇALHO: liste em "colunas" TODOS os títulos de coluna, da esquerda para a direita, exatamente como escritos (inclusive títulos de duas linhas, juntando-os: "Total" + "Refeição" = "Total Refeição"). Não pule nenhuma coluna.
+PASSO 2 — EXTRAIA: para cada funcionário (linha) e cada coluna de evento, gere um lançamento:
+- codigo: código do funcionário se existir (só dígitos), senão ""
 - nome: nome do funcionário como aparece
-- evento: nome do evento/coluna (ex.: "Hora extra 50%", "Faltas", "Comissão", "Adiantamento") exatamente como no cabeçalho
-- valor: o valor como aparece (ex.: "350,00", "12:30", "2")
-Regras: ignore totais, subtotais e células vazias ou zeradas. Não invente dados. Se a tabela tiver uma coluna por evento, gere uma linha para cada célula preenchida.
-Responda SOMENTE JSON: {"lancamentos":[{"codigo":"","nome":"","evento":"","valor":""}]}`;
+- evento: o título EXATO da coluna de onde o valor saiu (nunca troque por coluna vizinha nem por nome parecido)
+- valor: o valor exatamente como impresso (ex.: "1.350,00", "12:30", "2")
+
+REGRAS IMPORTANTES:
+- Colunas cujo título começa com "Total" (ex.: "Total Refeição", "Total Transporte", "Total Recebido") SÃO eventos e devem ser extraídas, cada uma separadamente. "Total Refeição" ≠ "Total Recebido".
+- Ignore apenas LINHAS de total/subtotal/soma geral no fim da tabela ou de grupos — nunca colunas.
+- Ignore colunas de identificação (código, nome, CPF, cargo, setor, admissão, assinatura).
+- Ignore células vazias, "-" ou zeradas.
+- Siga cada linha horizontalmente com cuidado para não misturar valores de funcionários adjacentes; confira o alinhamento coluna a coluna.
+- Leia dígitos com atenção (6/8, 1/7, 3/8, 5/6, 0/9); mantenha vírgula decimal e ponto de milhar como no documento. Não arredonde.
+- Se houver uma coluna de total por linha, use-a para conferir: a soma dos componentes deve bater; se não bater, releia os valores.
+- Não invente dados.
+Responda SOMENTE JSON: {"colunas":["..."],"lancamentos":[{"codigo":"","nome":"","evento":"","valor":""}]}`;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -43,7 +54,7 @@ Deno.serve(async (req) => {
           const ar = await fetch("https://api.anthropic.com/v1/messages", {
             method: "POST",
             headers: { "x-api-key": ANTH, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
-            body: JSON.stringify({ model, max_tokens: 16000, temperature: 0, messages: [{ role: "user", content: blocks }] }),
+            body: JSON.stringify({ model, max_tokens: 32000, temperature: 0, messages: [{ role: "user", content: blocks }] }),
           });
           if (ar.ok) raw = ((await ar.json())?.content || []).map((c: any) => c?.text || "").join("");
           else console.error("anthropic", ar.status, (await ar.text()).slice(0, 300));
@@ -59,7 +70,7 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
           model: "openai/gpt-6-astra",
           store: false,
-          reasoning: { effort: "low" },
+          reasoning: { effort: "medium" },
           input: [{
             role: "user",
             content: [
@@ -86,7 +97,7 @@ Deno.serve(async (req) => {
       evento: String(l?.evento ?? "").trim(),
       valor: String(l?.valor ?? "").trim(),
     })).filter((l: any) => (l.nome || l.codigo) && l.evento && l.valor);
-    return json({ lancamentos });
+    return json({ lancamentos, colunas: Array.isArray(parsed.colunas) ? parsed.colunas.map(String) : [] });
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : String(e) }, 500);
   }
