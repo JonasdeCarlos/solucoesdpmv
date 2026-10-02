@@ -54,12 +54,24 @@ export default function AjusteFechamento({ comp, config, funcionarios, saldo, on
     });
     setDist(novo);
     const row = novo.find((d) => d.funcionario_id === fid);
-    if (row) saveDistribuicao([row]).then((err) => { if (err) toast.error(err.message); });
+    if (row) saveDistribuicao([row]).then((err) => { if (err) toast.error(err.message); else sincronizarSaldo(novo); });
+  };
+
+  // Competência já exportada (ajustada): mantém o saldo não distribuído igual à diferença atual
+  const sincronizarSaldo = async (ds: TsDistribuicao[]) => {
+    if (comp.status !== 'ajustado') return;
+    const orig = ds.reduce((s, d) => s + d.valor_comissao, 0);
+    const aj = ds.reduce((s, d) => s + (d.valor_ajustado ?? d.valor_comissao), 0);
+    const novoSaldo = round2(orig - aj);
+    if (novoSaldo === round2(comp.saldo_nao_distribuido)) return;
+    const { error } = await updateCompetencia(comp.id, { saldo_nao_distribuido: novoSaldo });
+    if (error) toast.error(error.message); else onChanged();
   };
 
   const salvarTudo = async () => {
     setSalvando(true);
     const err = await saveDistribuicao(dist);
+    if (!err) await sincronizarSaldo(dist);
     setSalvando(false);
     if (err) toast.error(err.message); else toast.success('Valores salvos');
   };
@@ -68,6 +80,7 @@ export default function AjusteFechamento({ comp, config, funcionarios, saldo, on
     const novo = dist.map((d) => manual.has(d.funcionario_id) ? d : ({ ...d, ...calcularAjuste(d) }));
     setDist(novo);
     const err = await saveDistribuicao(novo);
+    if (!err) await sincronizarSaldo(novo);
     if (err) toast.error(err.message); else toast.success('Comissões recalculadas');
   };
 
