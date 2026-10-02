@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -17,6 +18,18 @@ export default function RelatorioFechamentoDialog({ open, onOpenChange, empresa,
   const [dist, setDist] = useState<TsDistribuicao[]>([]);
   const [busy, setBusy] = useState(false);
   useEffect(() => { if (open) loadDistribuicao(comp.id).then((d) => setDist(d.filter((x) => x.pontos > 0))); }, [open, comp.id]);
+  const [saldoAnt, setSaldoAnt] = useState(0);
+  useEffect(() => {
+    if (!open) return;
+    (supabase as any).from('ts_competencias').select('saldo_nao_distribuido,saldo_utilizado,status')
+      .eq('empresa_id', comp.empresa_id).lt('competencia', comp.competencia)
+      .then(({ data }: any) => {
+        const rows = (data || []) as any[];
+        const g = rows.filter((r) => r.status === 'ajustado').reduce((s, r) => s + Number(r.saldo_nao_distribuido || 0), 0);
+        const u = rows.filter((r) => r.status === 'exportado' || r.status === 'ajustado').reduce((s, r) => s + Number(r.saldo_utilizado || 0), 0);
+        setSaldoAnt(round2(g - u));
+      });
+  }, [open, comp.empresa_id, comp.competencia]);
 
   const byId = new Map(funcionarios.map((f) => [f.id, f]));
   const linhas = dist.map((d) => {
@@ -40,10 +53,14 @@ export default function RelatorioFechamentoDialog({ open, onOpenChange, empresa,
     ['Lançado no arquivo da folha', fmt(tFolha)],
     [difAjuste < 0 ? 'Majoração (abateu do saldo)' : 'Diferença de ajuste ao saldo', fmt(Math.abs(difAjuste))],
   ];
+  void saldo;
+  const geradoMes = comp.status === 'ajustado' ? comp.saldo_nao_distribuido : difAjuste;
+  const saldoFinal = round2(saldoAnt - comp.saldo_utilizado + geradoMes);
   const saldoLinhas: [string, string][] = [
-    ['Saldo gerado (acumulado)', fmt(saldo.saldo_gerado)],
-    ['Saldo consumido (acumulado)', fmt(saldo.saldo_consumido)],
-    ['Saldo disponível atual', fmt(saldo.saldo_acumulado)],
+    ['Saldo antes desta competência', fmt(saldoAnt)],
+    ['(-) Saldo utilizado no mês', fmt(comp.saldo_utilizado)],
+    [geradoMes < 0 ? '(-) Majoração abatida no mês' : '(+) Saldo gerado no mês', fmt(Math.abs(geradoMes))],
+    ['Saldo disponível após o mês', fmt(saldoFinal)],
   ];
 
   const copiar = async () => {
