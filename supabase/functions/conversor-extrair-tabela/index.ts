@@ -50,6 +50,9 @@ Deno.serve(async (req) => {
 
     const conhecidos: { nome: string; codigo: string }[] = Array.isArray(body?.conhecidos) ? body.conhecidos.slice(0, 600).map((x: any) => ({ nome: String(x?.nome || "").slice(0, 120), codigo: String(x?.codigo || "").replace(/\D/g, "").slice(0, 10) })).filter((x: any) => x.nome) : [];
     const PROMPT_FULL = PROMPT + (conhecidos.length ? `\n\nFuncionários já cadastrados desta empresa (use como referência de grafia; se o nome do documento corresponder claramente a um deles, use a grafia e o código cadastrados; se não corresponder, mantenha o nome como impresso — nunca troque por um cadastrado parecido sem certeza):\n${conhecidos.map((c) => `${c.codigo || "-"} | ${c.nome}`).join("\n")}` : "");
+    const textos: string[] = Array.isArray(body?.textos) ? body.textos.slice(0, 8).map((t: any) => String(t || "").slice(0, 60000)) : [];
+    const textoTotal = textos.join("\n");
+    const PROMPT_TXT = PROMPT_FULL + (textoTotal.trim().length > 200 ? `\n\nTEXTO DIGITAL EXTRAÍDO DO PDF (FONTE DA VERDADE — células separadas por " | "). As imagens servem só para entender a estrutura da tabela; os NOMES e VALORES devem ser copiados EXATAMENTE deste texto. Todo nome que você devolver tem que existir literalmente aqui:\n<<<\n${textoTotal}\n>>>` : "");
     let raw = "";
     const ANTH = Deno.env.get("ANTHROPIC_API_KEY");
     if (ANTH) {
@@ -61,7 +64,7 @@ Deno.serve(async (req) => {
           const blocks: any[] = parts.map((m) => m[1] === "application/pdf"
             ? { type: "document", source: { type: "base64", media_type: "application/pdf", data: m[2] } }
             : { type: "image", source: { type: "base64", media_type: m[1], data: m[2] } });
-          blocks.push({ type: "text", text: PROMPT_FULL });
+          blocks.push({ type: "text", text: PROMPT_TXT });
           const ar = await fetch("https://api.anthropic.com/v1/messages", {
             method: "POST",
             headers: { "x-api-key": ANTH, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
@@ -85,7 +88,7 @@ Deno.serve(async (req) => {
           input: [{
             role: "user",
             content: [
-              { type: "input_text", text: PROMPT_FULL },
+              { type: "input_text", text: PROMPT_TXT },
               ...parts.map((m, i) => m[1] === "application/pdf"
                 ? { type: "input_file", filename: `arquivo${i + 1}.pdf`, file_data: m[0] }
                 : { type: "input_image", image_url: m[0] }),
@@ -119,7 +122,35 @@ Deno.serve(async (req) => {
       }
       return best ? { ...l, nome: best.nome, codigo: l.codigo || best.codigo } : l;
     });
-    return json({ lancamentos, colunas: Array.isArray(parsed.colunas) ? parsed.colunas.map(String) : [] });
+    let suspeitos = 0;
+    let finais = lancamentos;
+    if (textoTotal.trim().length > 200) {
+      // candidatos = trechos de nome presentes no texto do PDF
+      const cand = new Set<string>();
+      for (const linha of textoTotal.split("\n")) for (const cel of linha.split("|")) {
+        const n = norm(cel); if (n.length >= 4 && /[A-Z]{2,} [A-Z]{2,}/.test(n)) cand.add(n);
+      }
+      const lista = [...cand];
+      const tn = norm(textoTotal);
+      const cacheNome = new Map<string, string | null>();
+      finais = lancamentos.map((l: any) => {
+        const n = norm(l.nome);
+        if (!n || tn.includes(n)) return l;
+        if (!cacheNome.has(n)) {
+          let best: string | null = null, bd = 1;
+          for (const c of lista) { const d = dist(n, c) / Math.max(n.length, c.length); if (d < bd) { bd = d; best = c; } }
+          cacheNome.set(n, bd <= 0.3 ? best : null);
+        }
+        const b = cacheNome.get(n);
+        if (b) {
+          const k = conhecidos.find((c) => norm(c.nome) === b);
+          return { ...l, nome: k?.nome || b, codigo: l.codigo || k?.codigo || "" };
+        }
+        suspeitos++;
+        return { ...l, suspeito: true };
+      });
+    }
+    return json({ lancamentos: finais, suspeitos, colunas: Array.isArray(parsed.colunas) ? parsed.colunas.map(String) : [] });
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : String(e) }, 500);
   }
