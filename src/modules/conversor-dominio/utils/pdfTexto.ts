@@ -59,8 +59,9 @@ export async function lerPdf(file: File, maxPaginas = 8): Promise<PaginaPdf[]> {
     // ângulo do texto em relação ao espaço do usuário (sem /Rotate)
     const ang = anguloDominante(tc.items);
     const texto = montarLinhas(tc.items, ang);
-    // texto girado em sentido anti-horário ang graus → girar a vista ang graus no sentido horário... pdfjs rotation é horária
-    const giro = (((page.rotate || 0) + (360 - ang)) % 360 + 360) % 360;
+    // texto a `ang` graus (anti-horário) no espaço do PDF → girar a vista `ang` graus no sentido horário
+    // (rotação do pdfjs é horária e substitui o /Rotate da página), deixando o texto em pé.
+    const giro = ang % 360;
     const base = page.getViewport({ scale: 1, rotation: giro });
     const scale = Math.min(2.2, 2400 / Math.max(base.width, base.height));
     const vp = page.getViewport({ scale, rotation: giro });
