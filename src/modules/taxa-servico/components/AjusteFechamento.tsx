@@ -80,6 +80,7 @@ export default function AjusteFechamento({ comp, config, funcionarios, saldo, on
     const novo = dist.map((d) => manual.has(d.funcionario_id) ? d : ({ ...d, ...calcularAjuste(d) }));
     setDist(novo);
     const err = await saveDistribuicao(novo);
+    if (!err) await sincronizarSaldo(novo);
     if (err) toast.error(err.message); else toast.success('Comissões recalculadas');
   };
 
