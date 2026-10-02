@@ -128,13 +128,22 @@ function Editor({ empresaId, conv, mapasIni, codigosIni, codEmpresa, tipoProc, o
   const [codigos, setCodigos] = useState<Record<string, string>>(codigosIni);
   const [lendo, setLendo] = useState(false);
   const [planilha, setPlanilha] = useState<{ aoa: string[][]; cod: number; nome: number; evento: number; valor: number; cols: number[] } | null>(null);
+  const ignorKey = `cl-ignorados-${empresaId}-${competencia}`;
+  const [ignorados, setIgnorados] = useState<Set<string>>(() => { try { return new Set(JSON.parse(localStorage.getItem(ignorKey) || '[]')); } catch { return new Set(); } });
+  useEffect(() => { try { localStorage.setItem(ignorKey, JSON.stringify(Array.from(ignorados))); } catch { /* noop */ } }, [ignorados, ignorKey]);
 
   const eventos = useMemo(() => Array.from(new Set(linhas.map((l) => l.evento))), [linhas]);
-  const nomesSemCodigo = useMemo(() => {
+  const funcionarios = useMemo(() => {
     const m = new Map<string, string>();
-    for (const l of linhas) if (!l.codigo && l.nome) m.set(normNome(l.nome), l.nome);
+    for (const l of linhas) if (l.nome) m.set(normNome(l.nome), l.nome);
     return Array.from(m.entries()).sort((a, b) => a[1].localeCompare(b[1]));
   }, [linhas]);
+  const nomesSemCodigo = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const l of linhas) if (!l.codigo && l.nome && !ignorados.has(normNome(l.nome))) m.set(normNome(l.nome), l.nome);
+    return Array.from(m.entries()).sort((a, b) => a[1].localeCompare(b[1]));
+  }, [linhas, ignorados]);
+  const toggleIgnorado = (k: string) => setIgnorados((p) => { const n = new Set(p); n.has(k) ? n.delete(k) : n.add(k); return n; });
 
   // completa mapas para eventos novos
   useEffect(() => {
