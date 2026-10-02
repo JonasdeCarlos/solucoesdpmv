@@ -172,7 +172,16 @@ function Editor({ empresaId, conv, mapasIni, codigosIni, codEmpresa, tipoProc, o
     setLendo(true);
     try {
       const arquivos = await Promise.all(Array.from(files).slice(0, 8).map(async (x) => ({ dataUrl: await toDataUrl(x) })));
-      const { data, error } = await supabase.functions.invoke('conversor-extrair-tabela', { body: { arquivos } });
+      const [a, b, c] = await Promise.all([
+        db.from('cl_funcionarios').select('nome,codigo').eq('empresa_id', empresaId),
+        db.from('fb_funcionarios').select('nome,codigo').eq('empresa_id', empresaId),
+        db.from('ts_funcionarios').select('nome,codigo').eq('empresa_id', empresaId),
+      ]);
+      const vistos = new Set<string>();
+      const conhecidos = [...(a.data || []), ...(b.data || []), ...(c.data || [])]
+        .filter((x: any) => x?.nome && !vistos.has(normNome(x.nome)) && vistos.add(normNome(x.nome)))
+        .map((x: any) => ({ nome: String(x.nome), codigo: String(x.codigo || '') })).slice(0, 600);
+      const { data, error } = await supabase.functions.invoke('conversor-extrair-tabela', { body: { arquivos, conhecidos } });
       if (error || data?.error) throw new Error(data?.error || error?.message);
       receberLancamentos(data.lancamentos || [], Array.from(files).map((x) => x.name).join(', '));
     } catch (e: any) { toast.error(e.message || 'Falha na leitura'); } finally { setLendo(false); }
