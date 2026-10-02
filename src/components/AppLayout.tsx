@@ -1,6 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import logoMonteVerde from '@/assets/logo-monte-verde.png';
-import { Calculator, Users, FileText, Receipt, Clock, DollarSign, Percent, Building2, FileStack, ClipboardCheck, LogOut, FileCog, CalendarDays, UserPlus, Bell, ShieldCheck, Hourglass, PartyPopper, Sparkles, ScrollText, Landmark, Coins, Target } from 'lucide-react';
+import { Calculator, Users, FileText, Receipt, Clock, DollarSign, Percent, Building2, FileStack, ClipboardCheck, LogOut, FileCog, CalendarDays, UserPlus, Bell, ShieldCheck, Hourglass, PartyPopper, Sparkles, ScrollText, Landmark, Coins, Target, FileSpreadsheet } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
 import { Button } from '@/components/ui/button';
@@ -27,6 +27,7 @@ const NAV_ITEMS = [
   { to: '/enquadramento-sindical', label: 'Enquadramento Sindical', icon: Landmark },
   { to: '/taxa-servico', label: 'Taxa de Serviço', icon: Coins },
   { to: '/bruto-alvo', label: 'Bruto Alvo', icon: Target },
+  { to: '/conversor-dominio', label: 'Conversor Domínio', icon: FileSpreadsheet },
   { to: '/admissao/escritorio', label: 'Admissão', icon: UserPlus },
 ];
 

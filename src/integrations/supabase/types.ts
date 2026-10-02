@@ -2003,6 +2003,167 @@ export type Database = {
         }
         Relationships: []
       }
+      cl_config: {
+        Row: {
+          codigo_empresa_dominio: string | null
+          created_at: string
+          empresa_id: string
+          id: string
+          tipo_processo: string
+          updated_at: string
+        }
+        Insert: {
+          codigo_empresa_dominio?: string | null
+          created_at?: string
+          empresa_id: string
+          id?: string
+          tipo_processo?: string
+          updated_at?: string
+        }
+        Update: {
+          codigo_empresa_dominio?: string | null
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          tipo_processo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cl_config_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: true
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cl_conversoes: {
+        Row: {
+          arquivo_origem: string | null
+          competencia: string
+          conteudo_txt: string | null
+          created_at: string
+          empresa_id: string
+          id: string
+          linhas: Json
+          qtd_lancamentos: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          arquivo_origem?: string | null
+          competencia: string
+          conteudo_txt?: string | null
+          created_at?: string
+          empresa_id: string
+          id?: string
+          linhas?: Json
+          qtd_lancamentos?: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          arquivo_origem?: string | null
+          competencia?: string
+          conteudo_txt?: string | null
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          linhas?: Json
+          qtd_lancamentos?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cl_conversoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cl_funcionarios: {
+        Row: {
+          codigo: string
+          created_at: string
+          empresa_id: string
+          id: string
+          nome: string
+          nome_norm: string
+          updated_at: string
+        }
+        Insert: {
+          codigo: string
+          created_at?: string
+          empresa_id: string
+          id?: string
+          nome: string
+          nome_norm: string
+          updated_at?: string
+        }
+        Update: {
+          codigo?: string
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          nome?: string
+          nome_norm?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cl_funcionarios_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cl_mapeamentos: {
+        Row: {
+          created_at: string
+          empresa_id: string
+          evento: string
+          id: string
+          ignorar: boolean
+          rubrica: string | null
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          empresa_id: string
+          evento: string
+          id?: string
+          ignorar?: boolean
+          rubrica?: string | null
+          tipo?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          empresa_id?: string
+          evento?: string
+          id?: string
+          ignorar?: boolean
+          rubrica?: string | null
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cl_mapeamentos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_audit_log: {
         Row: {
           action: string
