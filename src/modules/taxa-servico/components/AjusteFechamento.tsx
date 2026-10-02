@@ -41,10 +41,19 @@ export default function AjusteFechamento({ comp, config, funcionarios, saldo, on
     void byCod;
   };
 
-  const [manual, setManual] = useState<Set<string>>(new Set());
+  const manualKey = `ts-ajuste-manual-${comp.id}`;
+  const [manual, setManualState] = useState<Set<string>>(() => {
+    try { return new Set(JSON.parse(localStorage.getItem(manualKey) || '[]')); } catch { return new Set(); }
+  });
+  const setManual = (fn: (s: Set<string>) => Set<string>) => setManualState((s) => {
+    const n = fn(s); try { localStorage.setItem(manualKey, JSON.stringify([...n])); } catch { /* */ } return n;
+  });
   const [salvando, setSalvando] = useState(false);
   const setComissao = (fid: string, v: string) => {
     const t = v.trim();
+    const atual = dist.find((d) => d.funcionario_id === fid);
+    // Só conta como digitado se o valor realmente mudou (sair do campo sem alterar não trava o cálculo)
+    if (t && atual && round2(parseNum(t)) === round2(atual.valor_ajustado ?? atual.valor_comissao)) return;
     setManual((s) => { const n = new Set(s); t ? n.add(fid) : n.delete(fid); return n; });
     const novo = dist.map((d) => {
       if (d.funcionario_id !== fid) return d;
