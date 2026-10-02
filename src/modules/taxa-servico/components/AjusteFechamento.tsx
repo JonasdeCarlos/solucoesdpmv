@@ -134,6 +134,9 @@ export default function AjusteFechamento({ comp, config, funcionarios, saldo, on
           <div className="text-xs mt-1 opacity-80">Saldo acumulado após exportar: {fmt(round2(saldo.saldo_acumulado - (comp.status === 'ajustado' ? comp.saldo_nao_distribuido : 0) + saldoComp))}</div>
         </div>
       </div>
+      <div className="flex justify-end">
+        <Button onClick={salvarTudo} disabled={salvando}>{salvando ? 'Salvando…' : 'Salvar valores digitados'}</Button>
+      </div>
       <ImportarExtratoDialog open={imp === 'extrato'} onOpenChange={(o) => !o && setImp(null)} empresaId={comp.empresa_id} onConfirm={aplicarImport('rendimento_bruto_extrato')} />
       <ImportarExtratoDialog open={imp === 'alvo'} onOpenChange={(o) => !o && setImp(null)} empresaId={comp.empresa_id} valorLabel="Bruto alvo" permitirPdf={false} onConfirm={aplicarImport('valor_bruto_alvo')} />
     </div>
