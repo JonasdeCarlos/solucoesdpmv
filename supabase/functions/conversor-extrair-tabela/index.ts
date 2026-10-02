@@ -50,9 +50,9 @@ Deno.serve(async (req) => {
 
     const conhecidos: { nome: string; codigo: string }[] = Array.isArray(body?.conhecidos) ? body.conhecidos.slice(0, 600).map((x: any) => ({ nome: String(x?.nome || "").slice(0, 120), codigo: String(x?.codigo || "").replace(/\D/g, "").slice(0, 10) })).filter((x: any) => x.nome) : [];
     const PROMPT_FULL = PROMPT + (conhecidos.length ? `\n\nFuncionários já cadastrados desta empresa (use como referência de grafia; se o nome do documento corresponder claramente a um deles, use a grafia e o código cadastrados; se não corresponder, mantenha o nome como impresso — nunca troque por um cadastrado parecido sem certeza):\n${conhecidos.map((c) => `${c.codigo || "-"} | ${c.nome}`).join("\n")}` : "");
-    const textos: string[] = Array.isArray(body?.textos) ? body.textos.slice(0, 8).map((t: any) => String(t || "").slice(0, 60000)) : [];
+    const textos: string[] = Array.isArray(body?.textos) ? body.textos.slice(0, 30).map((t: any) => String(t || "").slice(0, 40000)) : [];
     const textoTotal = textos.join("\n");
-    const PROMPT_TXT = PROMPT_FULL + (textoTotal.trim().length > 200 ? `\n\nTEXTO DIGITAL EXTRAÍDO DO PDF (FONTE DA VERDADE — células separadas por " | "). As imagens servem só para entender a estrutura da tabela; os NOMES e VALORES devem ser copiados EXATAMENTE deste texto. Todo nome que você devolver tem que existir literalmente aqui:\n<<<\n${textoTotal}\n>>>` : "");
+    const PROMPT_TXT = PROMPT_FULL + (textoTotal.trim().length > 200 ? `\n\nTEXTO DIGITAL EXTRAÍDO DO PDF (FONTE DA VERDADE — células separadas por " | "). Cada linha do texto é uma linha da tabela, já na orientação correta (mesmo que a página esteja em paisagem). Use o arquivo anexo só para confirmar a estrutura/cabeçalhos; copie NOMES e VALORES EXATAMENTE deste texto, linha por linha, sem misturar linhas. Todo nome devolvido tem que existir literalmente aqui:\n<<<\n${textoTotal}\n>>>` : "");
     let raw = "";
     const ANTH = Deno.env.get("ANTHROPIC_API_KEY");
     if (ANTH) {
