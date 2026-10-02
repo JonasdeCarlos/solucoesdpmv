@@ -42,15 +42,26 @@ export default function AjusteFechamento({ comp, config, funcionarios, saldo, on
   };
 
   const [manual, setManual] = useState<Set<string>>(new Set());
+  const [salvando, setSalvando] = useState(false);
   const setComissao = (fid: string, v: string) => {
     const t = v.trim();
     setManual((s) => { const n = new Set(s); t ? n.add(fid) : n.delete(fid); return n; });
-    setDist((ds) => ds.map((d) => {
+    const novo = dist.map((d) => {
       if (d.funcionario_id !== fid) return d;
       if (!t) return { ...d, ...calcularAjuste(d) };
       const val = round2(parseNum(t));
       return { ...d, valor_ajustado: val, alerta: null } as TsDistribuicao;
-    }));
+    });
+    setDist(novo);
+    const row = novo.find((d) => d.funcionario_id === fid);
+    if (row) saveDistribuicao([row]).then((err) => { if (err) toast.error(err.message); });
+  };
+
+  const salvarTudo = async () => {
+    setSalvando(true);
+    const err = await saveDistribuicao(dist);
+    setSalvando(false);
+    if (err) toast.error(err.message); else toast.success('Valores salvos');
   };
 
   const recalcular = async () => {
@@ -122,6 +133,9 @@ export default function AjusteFechamento({ comp, config, funcionarios, saldo, on
           {saldoComp < 0 ? 'Majoração: abate do saldo acumulado' : 'Diferença vai para o saldo não distribuído'}<br /><b>{fmt(Math.abs(saldoComp))}</b>
           <div className="text-xs mt-1 opacity-80">Saldo acumulado após exportar: {fmt(round2(saldo.saldo_acumulado - (comp.status === 'ajustado' ? comp.saldo_nao_distribuido : 0) + saldoComp))}</div>
         </div>
+      </div>
+      <div className="flex justify-end">
+        <Button onClick={salvarTudo} disabled={salvando}>{salvando ? 'Salvando…' : 'Salvar valores digitados'}</Button>
       </div>
       <ImportarExtratoDialog open={imp === 'extrato'} onOpenChange={(o) => !o && setImp(null)} empresaId={comp.empresa_id} onConfirm={aplicarImport('rendimento_bruto_extrato')} />
       <ImportarExtratoDialog open={imp === 'alvo'} onOpenChange={(o) => !o && setImp(null)} empresaId={comp.empresa_id} valorLabel="Bruto alvo" permitirPdf={false} onConfirm={aplicarImport('valor_bruto_alvo')} />
