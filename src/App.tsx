@@ -142,6 +142,7 @@ const App = () => (
               <Route path="/taxa-servico" element={<TaxaServicoPage />} />
               <Route path="/bruto-alvo" element={<BrutoAlvoPage />} />
               <Route path="/conversor-dominio" element={<ConversorDominioPage />} />
+              <Route path="/calculadora-horas" element={<CalculadoraHorasPage />} />
               <Route path="/banco-horas" element={<BhLayout />}>
                 <Route index element={<BhDashboardPage />} />
                 <Route path="importar" element={<BhImportPage />} />
