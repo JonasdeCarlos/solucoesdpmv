@@ -64,6 +64,7 @@ import CctEnquadramentoPage from "./pages/gestaoCct/CctEnquadramentoPage";
 import TaxaServicoPage from "./modules/taxa-servico/pages/TaxaServicoPage";
 import BrutoAlvoPage from "./modules/bruto-alvo/pages/BrutoAlvoPage";
 import ConversorDominioPage from "./modules/conversor-dominio/pages/ConversorDominioPage";
+import CalculadoraHorasPage from "./pages/CalculadoraHorasPage";
 
 const queryClient = new QueryClient();
 
@@ -141,6 +142,7 @@ const App = () => (
               <Route path="/taxa-servico" element={<TaxaServicoPage />} />
               <Route path="/bruto-alvo" element={<BrutoAlvoPage />} />
               <Route path="/conversor-dominio" element={<ConversorDominioPage />} />
+              <Route path="/calculadora-horas" element={<CalculadoraHorasPage />} />
               <Route path="/banco-horas" element={<BhLayout />}>
                 <Route index element={<BhDashboardPage />} />
                 <Route path="importar" element={<BhImportPage />} />
