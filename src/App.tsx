@@ -64,6 +64,7 @@ import CctEnquadramentoPage from "./pages/gestaoCct/CctEnquadramentoPage";
 import TaxaServicoPage from "./modules/taxa-servico/pages/TaxaServicoPage";
 import BrutoAlvoPage from "./modules/bruto-alvo/pages/BrutoAlvoPage";
 import ConversorDominioPage from "./modules/conversor-dominio/pages/ConversorDominioPage";
+import CalculadoraHorasPage from "./pages/CalculadoraHorasPage";
 
 const queryClient = new QueryClient();
 
