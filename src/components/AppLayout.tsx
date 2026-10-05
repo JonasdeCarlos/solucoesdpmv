@@ -28,6 +28,7 @@ const NAV_ITEMS = [
   { to: '/taxa-servico', label: 'Taxa de Serviço', icon: Coins },
   { to: '/bruto-alvo', label: 'Bruto Alvo', icon: Target },
   { to: '/conversor-dominio', label: 'Conversor Domínio', icon: FileSpreadsheet },
+  { to: '/calculadora-horas', label: 'Calculadora de Horas', icon: Timer },
   { to: '/admissao/escritorio', label: 'Admissão', icon: UserPlus },
 ];
 
