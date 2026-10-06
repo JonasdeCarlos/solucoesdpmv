@@ -14,9 +14,9 @@ async function jinaDdg(query: string, limit: number): Promise<Hit[]> {
     signal: AbortSignal.timeout(25000),
   });
   if (!r.ok) throw new Error(`jina ${r.status}`);
-  const md = await r.text();
+  const md = (await r.text()).slice(0, 300000);
   const out: Hit[] = [];
-  const re = /^#{2,3}\s*\[([^\]]+)\]\(([^)]+)\)\s*([\s\S]*?)(?=^#{2,3}\s*\[|\Z)/gm;
+  const re = /^#{2,3}\s*\[([^\]]+)\]\(([^)]+)\)\s*([\s\S]*?)(?=^#{2,3}\s*\[|$(?![\s\S]))/gm;
   let m: RegExpExecArray | null;
   while ((m = re.exec(md)) && out.length < limit) {
     const raw = m[2];
@@ -43,7 +43,7 @@ async function ddgHtml(query: string, limit: number): Promise<Hit[]> {
     signal: AbortSignal.timeout(12000),
   });
   if (!r.ok) throw new Error(`ddg ${r.status}`);
-  const html = await r.text();
+  const html = (await r.text()).slice(0, 300000);
   const out: Hit[] = [];
   const strip = (s: string) => s.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&#x27;/g, "'").trim();
   const re = /<a[^>]+class="result__a"[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>([\s\S]*?)(?=<a[^>]+class="result__a"|$)/g;
@@ -68,7 +68,7 @@ async function ddgLite(query: string, limit: number): Promise<Hit[]> {
     signal: AbortSignal.timeout(12000),
   });
   if (!r.ok) throw new Error(`ddglite ${r.status}`);
-  const html = await r.text();
+  const html = (await r.text()).slice(0, 300000);
   const out: Hit[] = [];
   const strip = (s: string) => s.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').trim();
   const re = /<a[^>]+class="result-link"[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>([\s\S]*?)(?=<a[^>]+class="result-link"|$)/g;
@@ -91,13 +91,16 @@ async function bing(query: string, limit: number): Promise<Hit[]> {
     signal: AbortSignal.timeout(12000),
   });
   if (!r.ok) throw new Error(`bing ${r.status}`);
-  const html = await r.text();
+  const html = (await r.text()).slice(0, 300000);
   const out: Hit[] = [];
   const strip = (s: string) => s.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').trim();
-  const re = /<li class="b_algo"[\s\S]*?<h2>\s*<a[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?(?:<p[^>]*>([\s\S]*?)<\/p>)?<\/li>/g;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(html)) && out.length < limit) {
-    out.push({ url: m[1], title: strip(m[2]), snippet: strip(m[3] || '').slice(0, 500) });
+  for (const bloco of html.split('<li class="b_algo"').slice(1, limit * 2)) {
+    if (out.length >= limit) break;
+    const b = bloco.slice(0, 8000);
+    const a = b.match(/<h2[^>]*>\s*<a[^>]+href="([^"]+)"[^>]*>([\s\S]{0,600}?)<\/a>/);
+    if (!a) continue;
+    const p = b.match(/<p[^>]*>([\s\S]{0,2000}?)<\/p>/);
+    out.push({ url: a[1], title: strip(a[2]), snippet: strip(p?.[1] || '').slice(0, 500) });
   }
   return out;
 }

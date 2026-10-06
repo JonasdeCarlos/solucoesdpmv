@@ -250,7 +250,10 @@ const CctEnquadramentoPage = () => {
       if ((data as { error?: string })?.error) throw new Error((data as { error: string }).error);
       setResultado(data as Resultado);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Falha ao buscar sindicatos.');
+      const msg = e instanceof Error ? e.message : '';
+      toast.error(/546|WORKER_RESOURCE_LIMIT|504/.test(msg)
+        ? 'A busca demorou demais. Tente de novo ou informe CNAE/atividade mais específicos.'
+        : msg || 'Falha ao buscar sindicatos.');
     } finally {
       setLoading(false);
     }

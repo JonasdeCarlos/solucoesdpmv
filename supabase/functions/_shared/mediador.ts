@@ -93,9 +93,11 @@ const paraData = (br: string) => {
 };
 
 export function parseInstrumentos(html: string): { total: number; instrumentos: MediadorInstrumento[] } {
-  const totalTxt = stripTags(html).match(/Resultado:\s*(\d+)/);
+  const idxRes = html.search(/Resultado:/i);
+  const totalTxt = idxRes >= 0 ? stripTags(html.slice(idxRes, idxRes + 400)).match(/Resultado:\s*(\d+)/) : null;
   const total = totalTxt ? Number(totalTxt[1]) : 0;
-  const blocos = html.split(/<tr\s+indice="/i).slice(1);
+  // Limita o volume processado para não estourar a CPU da função.
+  const blocos = html.split(/<tr\s+indice="/i).slice(1, 151).map((b) => b.slice(0, 20000));
   const hoje = new Date();
   const instrumentos: MediadorInstrumento[] = [];
 
