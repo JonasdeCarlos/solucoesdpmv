@@ -14,7 +14,7 @@ async function jinaDdg(query: string, limit: number): Promise<Hit[]> {
     signal: AbortSignal.timeout(25000),
   });
   if (!r.ok) throw new Error(`jina ${r.status}`);
-  const md = await r.text().slice(0, 300000);
+  const md = (await r.text()).slice(0, 300000);
   const out: Hit[] = [];
   const re = /^#{2,3}\s*\[([^\]]+)\]\(([^)]+)\)\s*([\s\S]*?)(?=^#{2,3}\s*\[|$(?![\s\S]))/gm;
   let m: RegExpExecArray | null;
@@ -43,7 +43,7 @@ async function ddgHtml(query: string, limit: number): Promise<Hit[]> {
     signal: AbortSignal.timeout(12000),
   });
   if (!r.ok) throw new Error(`ddg ${r.status}`);
-  const html = await r.text().slice(0, 300000);
+  const html = (await r.text()).slice(0, 300000);
   const out: Hit[] = [];
   const strip = (s: string) => s.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&#x27;/g, "'").trim();
   const re = /<a[^>]+class="result__a"[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>([\s\S]*?)(?=<a[^>]+class="result__a"|$)/g;
@@ -68,7 +68,7 @@ async function ddgLite(query: string, limit: number): Promise<Hit[]> {
     signal: AbortSignal.timeout(12000),
   });
   if (!r.ok) throw new Error(`ddglite ${r.status}`);
-  const html = await r.text().slice(0, 300000);
+  const html = (await r.text()).slice(0, 300000);
   const out: Hit[] = [];
   const strip = (s: string) => s.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').trim();
   const re = /<a[^>]+class="result-link"[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>([\s\S]*?)(?=<a[^>]+class="result-link"|$)/g;
@@ -91,7 +91,7 @@ async function bing(query: string, limit: number): Promise<Hit[]> {
     signal: AbortSignal.timeout(12000),
   });
   if (!r.ok) throw new Error(`bing ${r.status}`);
-  const html = await r.text().slice(0, 300000);
+  const html = (await r.text()).slice(0, 300000);
   const out: Hit[] = [];
   const strip = (s: string) => s.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').trim();
   for (const bloco of html.split('<li class="b_algo"').slice(1, limit * 2)) {
