@@ -39,10 +39,11 @@ async function buildFullTextFromFiles(supabase: any, analysisId: string, analysi
   for (const f of list) {
     const name = String(f.file_name || 'arquivo');
     if (!/\.pdf$/i.test(name)) continue; // imagens não têm camada de texto
-    const { data: blob } = await supabase.storage.from('cct-docs').download(f.file_path);
-    if (!blob) continue;
+    const { data: blob, error: dErr } = await supabase.storage.from('cct-docs').download(f.file_path);
+    if (!blob) { console.warn('[cct-ask] download falhou', name, dErr?.message); continue; }
     const bytes = new Uint8Array(await blob.arrayBuffer());
     const txt = await extractPdfText(bytes);
+    console.log('[cct-ask] texto extraído', name, txt.length);
     if (txt.length > 50) partes.push(`=== ARQUIVO: ${name} ===\n${txt}`);
   }
   const full = partes.join('\n\n');
