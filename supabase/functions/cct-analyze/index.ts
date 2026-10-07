@@ -1,4 +1,36 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import * as pdfjs from 'npm:pdfjs-dist@4.10.38/legacy/build/pdf.min.mjs';
+
+// Extrai o texto digital de um PDF (até 150 páginas). Retorna '' se não houver camada de texto.
+async function extractPdfText(bytes: Uint8Array, maxPages = 150): Promise<string> {
+  try {
+    const doc = await (pdfjs as any).getDocument({ data: bytes, disableWorker: true, useSystemFonts: true }).promise;
+    const pages = Math.min(doc.numPages, maxPages);
+    let out = '';
+    for (let p = 1; p <= pages; p++) {
+      const page = await doc.getPage(p);
+      const tc = await page.getTextContent();
+      out += tc.items.map((i: any) => i.str).join(' ') + '\n';
+    }
+    return out.replace(/[ \t]+/g, ' ').trim();
+  } catch {
+    return '';
+  }
+}
+
+// Lê o texto de TODOS os arquivos PDF anexados (principal + aditivos) e devolve concatenado.
+async function buildFullTextFromFiles(supabase: any, fileList: any[]): Promise<string> {
+  const partes: string[] = [];
+  for (const f of fileList) {
+    const name = String(f.file_name || 'arquivo');
+    if (!/\.pdf$/i.test(name)) continue;
+    const { data: blob } = await supabase.storage.from('cct-docs').download(f.file_path);
+    if (!blob) continue;
+    const txt = await extractPdfText(new Uint8Array(await blob.arrayBuffer()));
+    if (txt.length > 50) partes.push(`=== ARQUIVO: ${name} ===\n${txt}`);
+  }
+  return partes.join('\n\n');
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
