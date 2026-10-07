@@ -9,7 +9,7 @@ const corsHeaders = {
 const MODEL = 'google/gemini-2.5-flash';
 
 // Extrai o texto de um PDF (camada de texto digital). Retorna '' se não houver texto.
-async function extractPdfText(bytes: Uint8Array, maxPages = 150): Promise<string> {
+async function extractPdfText(bytes: Uint8Array, maxPages = 40): Promise<string> {
   try {
     const doc = await (pdfjs as any).getDocument({ data: bytes, isEvalSupported: false, disableFontFace: true, useSystemFonts: true }).promise;
     const pages = Math.min(doc.numPages, maxPages);
