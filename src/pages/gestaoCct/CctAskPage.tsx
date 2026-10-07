@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { ChevronLeft, Send, Loader2, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchCctAnalysis, type CctAnalysis } from '@/hooks/cct/useCctAnalyses';
+import CctViewer from '@/components/gestaoCct/CctViewer';
 
 type Msg = { role: 'user' | 'assistant'; content: string };
 
@@ -78,7 +79,8 @@ export default function CctAskPage() {
       ) : !a?.ocr_applied ? (
         <Card><CardContent className="p-4 text-sm text-muted-foreground">Execute "Analisar com IA" na tela da CCT antes de perguntar — sem Raio-X extraído, a IA não tem dados para responder.</CardContent></Card>
       ) : (
-        <>
+        <div className="grid gap-4 xl:grid-cols-2">
+        <div className="space-y-4 min-w-0">
           <Card>
             <CardHeader><CardTitle className="text-base">Sugestões</CardTitle></CardHeader>
             <CardContent className="flex flex-wrap gap-2">
@@ -95,7 +97,7 @@ export default function CctAskPage() {
               ) : msgs.map((m, i) => (
                 <div key={i} className={m.role === 'user' ? 'flex justify-end' : 'flex justify-start'}>
                   <div className={`max-w-[85%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap ${m.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-                    {m.content}
+                    {m.content.replace(/\*\*/g, '')}
                   </div>
                 </div>
               ))}
@@ -108,7 +110,7 @@ export default function CctAskPage() {
 
           <div className="flex gap-2">
             <Input
-              placeholder="Ex.: Qual o valor do vale-alimentação?"
+              placeholder="Ex.: Quais as condições do REPIS?"
               value={q}
               onChange={(e) => setQ(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') ask(q); }}
@@ -118,8 +120,14 @@ export default function CctAskPage() {
               {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </Button>
           </div>
-        </>
+        </div>
+        <Card className="min-w-0">
+          <CardHeader><CardTitle className="text-base">Visualizar CCT</CardTitle></CardHeader>
+          <CardContent><CctViewer analysisId={a.id} ocrText={a.ocr_text} originalPath={a.original_file_path} originalName={a.original_file_name} /></CardContent>
+        </Card>
+        </div>
       )}
+
     </div>
   );
 }
