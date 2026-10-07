@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import * as pdfjs from 'npm:pdfjs-dist@4.10.38/legacy/build/pdf.min.mjs';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -6,6 +7,61 @@ const corsHeaders = {
 };
 
 const MODEL = 'google/gemini-2.5-flash';
+
+// Extrai o texto de um PDF (camada de texto digital). Retorna '' se não houver texto.
+async function extractPdfText(bytes: Uint8Array, maxPages = 40): Promise<string> {
+  try {
+    const doc = await (pdfjs as any).getDocument({ data: bytes, isEvalSupported: false, disableFontFace: true, useSystemFonts: true }).promise;
+    const pages = Math.min(doc.numPages, maxPages);
+    let out = '';
+    for (let p = 1; p <= pages; p++) {
+      const page = await doc.getPage(p);
+      const tc = await page.getTextContent();
+      out += tc.items.map((i: any) => i.str).join(' ') + '\n';
+    }
+    return out.replace(/[ \t]+/g, ' ').trim();
+  } catch (e: any) {
+    console.warn('[cct-ask] extractPdfText falhou', e?.message || String(e));
+    return '';
+  }
+}
+
+// Lê o texto de TODOS os arquivos anexados à CCT (principal + aditivos) e grava em ocr_text.
+async function buildFullTextFromFiles(supabase: any, analysisId: string, analysis: any): Promise<string> {
+  const { data: files } = await supabase
+    .from('cct_analysis_files').select('file_path,file_name,file_kind')
+    .eq('cct_analysis_id', analysisId).order('order_index');
+  let list: any[] = files || [];
+  if (!list.length && analysis.original_file_path) {
+    list = [{ file_path: analysis.original_file_path, file_name: analysis.original_file_name || 'documento.pdf' }];
+  }
+  const partes: string[] = [];
+  for (const f of list) {
+    const name = String(f.file_name || 'arquivo');
+    if (!/\.pdf$/i.test(name)) continue; // imagens não têm camada de texto
+    // Tenta download direto; se falhar, usa URL assinada + fetch (mesmo caminho do front-end)
+    let bytes: Uint8Array | null = null;
+    const { data: blob, error: dErr } = await supabase.storage.from('cct-docs').download(f.file_path);
+    if (blob) {
+      bytes = new Uint8Array(await blob.arrayBuffer());
+    } else {
+      const { data: s } = await supabase.storage.from('cct-docs').createSignedUrl(f.file_path, 300);
+      if (s?.signedUrl) {
+        const r = await fetch(s.signedUrl);
+        if (r.ok) bytes = new Uint8Array(await r.arrayBuffer());
+      }
+    }
+    if (!bytes) { console.warn('[cct-ask] download falhou', name, dErr?.message); continue; }
+    const txt = await extractPdfText(bytes);
+    console.log('[cct-ask] texto extraído', name, txt.length);
+    if (txt.length > 50) partes.push(`=== ARQUIVO: ${name} ===\n${txt}`);
+  }
+  const full = partes.join('\n\n');
+  if (full) {
+    await supabase.from('cct_analyses').update({ ocr_text: full.slice(0, 500000) }).eq('id', analysisId);
+  }
+  return full;
+}
 
 const SYSTEM = `Você é assistente jurídico-trabalhista especializado em Convenções Coletivas de Trabalho brasileiras.
 Você responde perguntas sobre UMA CCT específica, usando os dados fornecidos: TEXTO INTEGRAL da CCT (fonte principal), TRECHOS MAIS RELEVANTES para a pergunta e o Raio-X estruturado (resumo, pode estar incompleto).
@@ -67,7 +123,11 @@ Deno.serve(async (req) => {
       union_obligations: a.union_obligations, health_safety: a.health_safety, penalties: a.penalties,
       dp_attention_points: a.dp_attention_points, ai_summary: a.ai_summary,
     };
-    const full: string = typeof a.ocr_text === 'string' ? a.ocr_text.trim() : '';
+    let full: string = typeof a.ocr_text === 'string' ? a.ocr_text.trim() : '';
+    if (!full) {
+      // Texto integral ainda não gravado: extrai agora de TODOS os arquivos anexados e grava para as próximas.
+      full = (await buildFullTextFromFiles(supabase, analysis_id, a)).trim();
+    }
     const integral = full.slice(0, 350000);
     const trechos = full ? relevantChunks(full, String(question)) : [];
 
