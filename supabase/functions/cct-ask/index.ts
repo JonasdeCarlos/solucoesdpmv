@@ -111,7 +111,11 @@ Deno.serve(async (req) => {
       union_obligations: a.union_obligations, health_safety: a.health_safety, penalties: a.penalties,
       dp_attention_points: a.dp_attention_points, ai_summary: a.ai_summary,
     };
-    const full: string = typeof a.ocr_text === 'string' ? a.ocr_text.trim() : '';
+    let full: string = typeof a.ocr_text === 'string' ? a.ocr_text.trim() : '';
+    if (!full) {
+      // Texto integral ainda não gravado: extrai agora de TODOS os arquivos anexados e grava para as próximas.
+      full = (await buildFullTextFromFiles(supabase, analysis_id, a)).trim();
+    }
     const integral = full.slice(0, 350000);
     const trechos = full ? relevantChunks(full, String(question)) : [];
 
