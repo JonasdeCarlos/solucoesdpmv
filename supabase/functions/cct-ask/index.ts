@@ -11,7 +11,7 @@ const MODEL = 'google/gemini-2.5-flash';
 // Extrai o texto de um PDF (camada de texto digital). Retorna '' se não houver texto.
 async function extractPdfText(bytes: Uint8Array, maxPages = 150): Promise<string> {
   try {
-    const doc = await (pdfjs as any).getDocument({ data: bytes, disableWorker: true, useSystemFonts: true }).promise;
+    const doc = await (pdfjs as any).getDocument({ data: bytes, isEvalSupported: false, disableFontFace: true, useSystemFonts: true }).promise;
     const pages = Math.min(doc.numPages, maxPages);
     let out = '';
     for (let p = 1; p <= pages; p++) {
@@ -20,7 +20,8 @@ async function extractPdfText(bytes: Uint8Array, maxPages = 150): Promise<string
       out += tc.items.map((i: any) => i.str).join(' ') + '\n';
     }
     return out.replace(/[ \t]+/g, ' ').trim();
-  } catch {
+  } catch (e: any) {
+    console.warn('[cct-ask] extractPdfText falhou', e?.message || String(e));
     return '';
   }
 }
