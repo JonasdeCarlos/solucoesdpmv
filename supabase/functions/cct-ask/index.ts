@@ -39,9 +39,19 @@ async function buildFullTextFromFiles(supabase: any, analysisId: string, analysi
   for (const f of list) {
     const name = String(f.file_name || 'arquivo');
     if (!/\.pdf$/i.test(name)) continue; // imagens não têm camada de texto
+    // Tenta download direto; se falhar, usa URL assinada + fetch (mesmo caminho do front-end)
+    let bytes: Uint8Array | null = null;
     const { data: blob, error: dErr } = await supabase.storage.from('cct-docs').download(f.file_path);
-    if (!blob) { console.warn('[cct-ask] download falhou', name, dErr?.message); continue; }
-    const bytes = new Uint8Array(await blob.arrayBuffer());
+    if (blob) {
+      bytes = new Uint8Array(await blob.arrayBuffer());
+    } else {
+      const { data: s } = await supabase.storage.from('cct-docs').createSignedUrl(f.file_path, 300);
+      if (s?.signedUrl) {
+        const r = await fetch(s.signedUrl);
+        if (r.ok) bytes = new Uint8Array(await r.arrayBuffer());
+      }
+    }
+    if (!bytes) { console.warn('[cct-ask] download falhou', name, dErr?.message); continue; }
     const txt = await extractPdfText(bytes);
     console.log('[cct-ask] texto extraído', name, txt.length);
     if (txt.length > 50) partes.push(`=== ARQUIVO: ${name} ===\n${txt}`);
