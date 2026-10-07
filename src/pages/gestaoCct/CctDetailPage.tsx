@@ -15,6 +15,8 @@ import { generateCctRaioXTecnicoPdf } from '@/utils/gestaoCct/raioXTecnicoPdf';
 import { CctVersionsCard } from '@/components/gestaoCct/CctVersionsCard';
 import { CctResumoClienteCard } from '@/components/gestaoCct/CctResumoClienteCard';
 import { CctHistoricoCard } from '@/components/gestaoCct/CctHistoricoCard';
+import CctViewer from '@/components/gestaoCct/CctViewer';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const BLOCK_TITLES: Record<string, string> = {
   identification: 'A) Identificação',
@@ -122,6 +124,7 @@ export default function CctDetailPage() {
   const [exporting, setExporting] = useState(false);
   const [exportingTech, setExportingTech] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [viewOpen, setViewOpen] = useState(false);
 
   const reload = useCallback(async () => {
     if (!id) return;
@@ -262,6 +265,8 @@ export default function CctDetailPage() {
             PDF Raio-X técnico
           </Button>
           <Button variant="outline" onClick={() => nav(`/gestao-cct/${a.id}/revisar`)}><FileText className="w-4 h-4 mr-1"/>Revisar Raio-X</Button>
+          <Button variant="outline" onClick={() => setViewOpen(true)}><FileText className="w-4 h-4 mr-1"/>Visualizar CCT</Button>
+          <Dialog open={viewOpen} onOpenChange={setViewOpen}><DialogContent className="max-w-5xl"><DialogHeader><DialogTitle>{a.title || 'CCT'}</DialogTitle></DialogHeader><CctViewer analysisId={a.id} ocrText={a.ocr_text} originalPath={a.original_file_path} originalName={a.original_file_name} height={560} /></DialogContent></Dialog>
           <Button variant="outline" onClick={() => nav(`/gestao-cct/${a.id}/perguntar`)}><MessageSquare className="w-4 h-4 mr-1"/>Perguntar à CCT</Button>
           <Button variant="outline" onClick={() => nav(`/gestao-cct/comparar?anterior=${(a as any).parent_analysis_id || ''}&nova=${a.id}`)}>
             <GitCompareArrows className="w-4 h-4 mr-1"/>Comparar CCTs
