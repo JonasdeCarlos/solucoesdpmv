@@ -352,8 +352,18 @@ Deno.serve(async (req) => {
           parsed.ai_summary = partes.join(' ').trim() || 'Análise da CCT concluída. Revise os blocos abaixo para conferir cada cláusula.';
         }
 
+        // Grava o texto integral de todos os anexos (para o "Perguntar à CCT" e a busca textual)
+        let ocrText: string | null = null;
+        try {
+          const t = await buildFullTextFromFiles(supabase, fileList);
+          ocrText = t ? t.slice(0, 500000) : null;
+        } catch (ocrErr: any) {
+          console.warn('[cct-analyze] extração de texto integral falhou', ocrErr?.message || ocrErr);
+        }
+
         const updates: any = {
           status: 'revisar',
+          ocr_text: ocrText,
           ai_summary: parsed.ai_summary || null,
           confidence_score: typeof parsed.confidence_score === 'number' ? parsed.confidence_score : null,
           identification: parsed.identification || {},
