@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import * as pdfjs from 'npm:pdfjs-dist@4.10.38/legacy/build/pdf.min.mjs';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -6,6 +7,49 @@ const corsHeaders = {
 };
 
 const MODEL = 'google/gemini-2.5-flash';
+
+// Extrai o texto de um PDF (camada de texto digital). Retorna '' se não houver texto.
+async function extractPdfText(bytes: Uint8Array, maxPages = 150): Promise<string> {
+  try {
+    const doc = await (pdfjs as any).getDocument({ data: bytes, disableWorker: true, useSystemFonts: true }).promise;
+    const pages = Math.min(doc.numPages, maxPages);
+    let out = '';
+    for (let p = 1; p <= pages; p++) {
+      const page = await doc.getPage(p);
+      const tc = await page.getTextContent();
+      out += tc.items.map((i: any) => i.str).join(' ') + '\n';
+    }
+    return out.replace(/[ \t]+/g, ' ').trim();
+  } catch {
+    return '';
+  }
+}
+
+// Lê o texto de TODOS os arquivos anexados à CCT (principal + aditivos) e grava em ocr_text.
+async function buildFullTextFromFiles(supabase: any, analysisId: string, analysis: any): Promise<string> {
+  const { data: files } = await supabase
+    .from('cct_analysis_files').select('file_path,file_name,file_kind')
+    .eq('cct_analysis_id', analysisId).order('order_index');
+  let list: any[] = files || [];
+  if (!list.length && analysis.original_file_path) {
+    list = [{ file_path: analysis.original_file_path, file_name: analysis.original_file_name || 'documento.pdf' }];
+  }
+  const partes: string[] = [];
+  for (const f of list) {
+    const name = String(f.file_name || 'arquivo');
+    if (!/\.pdf$/i.test(name)) continue; // imagens não têm camada de texto
+    const { data: blob } = await supabase.storage.from('cct-docs').download(f.file_path);
+    if (!blob) continue;
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    const txt = await extractPdfText(bytes);
+    if (txt.length > 50) partes.push(`=== ARQUIVO: ${name} ===\n${txt}`);
+  }
+  const full = partes.join('\n\n');
+  if (full) {
+    await supabase.from('cct_analyses').update({ ocr_text: full.slice(0, 500000) }).eq('id', analysisId);
+  }
+  return full;
+}
 
 const SYSTEM = `Você é assistente jurídico-trabalhista especializado em Convenções Coletivas de Trabalho brasileiras.
 Você responde perguntas sobre UMA CCT específica, usando os dados fornecidos: TEXTO INTEGRAL da CCT (fonte principal), TRECHOS MAIS RELEVANTES para a pergunta e o Raio-X estruturado (resumo, pode estar incompleto).
