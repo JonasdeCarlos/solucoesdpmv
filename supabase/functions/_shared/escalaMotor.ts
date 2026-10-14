@@ -171,14 +171,14 @@ export function validarEscala(p: EscalaParams, funcs: EscalaFuncionario[], opts:
   const domingos = dias.filter((d) => diaSemana(d) === 0);
 
   // R05 (geral)
-  const algumDomingoT = funcs.some((f) => domingos.some((d) => f.dias[d] === 'T'));
+  const algumDomingoT = funcs.some((f) => domingos.some((d) => (f.dias[d] || 'T') === 'T'));
   if (algumDomingoT && !p.fundamento_trabalho_domingo?.trim())
     out.push(v('R05', 'BLOQUEIO', 'Domingo trabalhado sem fundamento de autorização', FUND.R05));
 
   // R09 cobertura
   if (p.minimo_diario > 0) {
     for (const d of dias) {
-      const n = funcs.filter((f) => f.dias[d] === 'T').length;
+      const n = funcs.filter((f) => (f.dias[d] || 'T') === 'T').length;
       if (n < p.minimo_diario) out.push(v('R09', 'ALERTA', `Cobertura de ${n} abaixo do mínimo de ${p.minimo_diario}`, FUND.R09, undefined, fmtBR(d)));
     }
   }
