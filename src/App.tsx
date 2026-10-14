@@ -65,6 +65,8 @@ import TaxaServicoPage from "./modules/taxa-servico/pages/TaxaServicoPage";
 import BrutoAlvoPage from "./modules/bruto-alvo/pages/BrutoAlvoPage";
 import ConversorDominioPage from "./modules/conversor-dominio/pages/ConversorDominioPage";
 import CalculadoraHorasPage from "./pages/CalculadoraHorasPage";
+import EscalaRevezamentoPage from "./modules/escala-revezamento/pages/EscalaRevezamentoPage";
+import EscalaPublicaPage from "./modules/escala-revezamento/pages/EscalaPublicaPage";
 
 const queryClient = new QueryClient();
 
@@ -89,6 +91,7 @@ const App = () => (
             <Route path="/politica-hotelaria/:policyId" element={<PoliticaHotelariaPublicPage />} />
             <Route path="/premio/:policyId" element={<PremioPublicPage />} />
             <Route path="/premiacao-gestor/:token" element={<PremiacaoGestorPage />} />
+            <Route path="/escala-publica/:token" element={<EscalaPublicaPage />} />
             {/* Admissão — escritório (senha) */}
             <Route path="/admissao/escritorio/login" element={<EscritorioLoginPage />} />
             <Route element={<OfficeGuard />}>
@@ -143,6 +146,7 @@ const App = () => (
               <Route path="/bruto-alvo" element={<BrutoAlvoPage />} />
               <Route path="/conversor-dominio" element={<ConversorDominioPage />} />
               <Route path="/calculadora-horas" element={<CalculadoraHorasPage />} />
+              <Route path="/escala-revezamento" element={<EscalaRevezamentoPage />} />
               <Route path="/banco-horas" element={<BhLayout />}>
                 <Route index element={<BhDashboardPage />} />
                 <Route path="importar" element={<BhImportPage />} />
