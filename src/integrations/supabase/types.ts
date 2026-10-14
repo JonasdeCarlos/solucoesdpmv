@@ -3412,6 +3412,303 @@ export type Database = {
         }
         Relationships: []
       }
+      escala_dias: {
+        Row: {
+          data: string
+          escala_id: string
+          funcionario_id: string
+          id: string
+          tipo: string
+        }
+        Insert: {
+          data: string
+          escala_id: string
+          funcionario_id: string
+          id?: string
+          tipo?: string
+        }
+        Update: {
+          data?: string
+          escala_id?: string
+          funcionario_id?: string
+          id?: string
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "escala_dias_escala_id_fkey"
+            columns: ["escala_id"]
+            isOneToOne: false
+            referencedRelation: "escalas_revezamento"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "escala_dias_funcionario_id_fkey"
+            columns: ["funcionario_id"]
+            isOneToOne: false
+            referencedRelation: "escala_funcionarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      escala_funcionarios: {
+        Row: {
+          art386_ativo: boolean
+          art386_justificativa_desativacao: string
+          cargo: string
+          codigo: string
+          created_at: string
+          escala_id: string
+          hora_entrada: string
+          hora_saida: string
+          id: string
+          nome: string
+          ordem: number
+          sexo: string
+          ultima_folga_anterior: string | null
+          ultimo_domingo_folga_anterior: string | null
+        }
+        Insert: {
+          art386_ativo?: boolean
+          art386_justificativa_desativacao?: string
+          cargo?: string
+          codigo?: string
+          created_at?: string
+          escala_id: string
+          hora_entrada?: string
+          hora_saida?: string
+          id?: string
+          nome?: string
+          ordem?: number
+          sexo?: string
+          ultima_folga_anterior?: string | null
+          ultimo_domingo_folga_anterior?: string | null
+        }
+        Update: {
+          art386_ativo?: boolean
+          art386_justificativa_desativacao?: string
+          cargo?: string
+          codigo?: string
+          created_at?: string
+          escala_id?: string
+          hora_entrada?: string
+          hora_saida?: string
+          id?: string
+          nome?: string
+          ordem?: number
+          sexo?: string
+          ultima_folga_anterior?: string | null
+          ultimo_domingo_folga_anterior?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "escala_funcionarios_escala_id_fkey"
+            columns: ["escala_id"]
+            isOneToOne: false
+            referencedRelation: "escalas_revezamento"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      escala_links_publicos: {
+        Row: {
+          cliente_id: string
+          created_at: string
+          created_by: string | null
+          expira_em: string | null
+          id: string
+          limite_escalas: number | null
+          pin_hash: string | null
+          revogado_em: string | null
+          token_hash: string
+          ultimo_acesso_em: string | null
+        }
+        Insert: {
+          cliente_id: string
+          created_at?: string
+          created_by?: string | null
+          expira_em?: string | null
+          id?: string
+          limite_escalas?: number | null
+          pin_hash?: string | null
+          revogado_em?: string | null
+          token_hash: string
+          ultimo_acesso_em?: string | null
+        }
+        Update: {
+          cliente_id?: string
+          created_at?: string
+          created_by?: string | null
+          expira_em?: string | null
+          id?: string
+          limite_escalas?: number | null
+          pin_hash?: string | null
+          revogado_em?: string | null
+          token_hash?: string
+          ultimo_acesso_em?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "escala_links_publicos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      escala_pin_tentativas: {
+        Row: {
+          bloqueado_ate: string | null
+          falhas: number
+          link_id: string
+          updated_at: string
+        }
+        Insert: {
+          bloqueado_ate?: string | null
+          falhas?: number
+          link_id: string
+          updated_at?: string
+        }
+        Update: {
+          bloqueado_ate?: string | null
+          falhas?: number
+          link_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "escala_pin_tentativas_link_id_fkey"
+            columns: ["link_id"]
+            isOneToOne: true
+            referencedRelation: "escala_links_publicos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      escalas_revezamento: {
+        Row: {
+          aceite_lgpd_em: string | null
+          aprovado_em: string | null
+          aprovado_por: string | null
+          atividade_anexo_iv: string
+          categoria_atividade: string
+          cct_registro: string
+          cct_vigencia: string
+          cct_vigente: boolean
+          cliente_id: string
+          created_at: string
+          created_by: string | null
+          data_fim: string
+          data_inicio: string
+          enviado_em: string | null
+          feriados: Json
+          fundamento_trabalho_domingo: string
+          id: string
+          link_id: string | null
+          minimo_diario: number
+          n_domingos: number
+          observacao_escritorio: string
+          origem: string
+          prazo_folga_compensatoria_feriado: number
+          preenchido_por_contato: string
+          preenchido_por_nome: string
+          regime: string
+          regras_cct: Json
+          responsavel_nome: string
+          setor: string
+          status: string
+          titulo: string
+          updated_at: string
+          visto_escritorio: boolean
+        }
+        Insert: {
+          aceite_lgpd_em?: string | null
+          aprovado_em?: string | null
+          aprovado_por?: string | null
+          atividade_anexo_iv?: string
+          categoria_atividade?: string
+          cct_registro?: string
+          cct_vigencia?: string
+          cct_vigente?: boolean
+          cliente_id: string
+          created_at?: string
+          created_by?: string | null
+          data_fim: string
+          data_inicio: string
+          enviado_em?: string | null
+          feriados?: Json
+          fundamento_trabalho_domingo?: string
+          id?: string
+          link_id?: string | null
+          minimo_diario?: number
+          n_domingos?: number
+          observacao_escritorio?: string
+          origem?: string
+          prazo_folga_compensatoria_feriado?: number
+          preenchido_por_contato?: string
+          preenchido_por_nome?: string
+          regime?: string
+          regras_cct?: Json
+          responsavel_nome?: string
+          setor?: string
+          status?: string
+          titulo?: string
+          updated_at?: string
+          visto_escritorio?: boolean
+        }
+        Update: {
+          aceite_lgpd_em?: string | null
+          aprovado_em?: string | null
+          aprovado_por?: string | null
+          atividade_anexo_iv?: string
+          categoria_atividade?: string
+          cct_registro?: string
+          cct_vigencia?: string
+          cct_vigente?: boolean
+          cliente_id?: string
+          created_at?: string
+          created_by?: string | null
+          data_fim?: string
+          data_inicio?: string
+          enviado_em?: string | null
+          feriados?: Json
+          fundamento_trabalho_domingo?: string
+          id?: string
+          link_id?: string | null
+          minimo_diario?: number
+          n_domingos?: number
+          observacao_escritorio?: string
+          origem?: string
+          prazo_folga_compensatoria_feriado?: number
+          preenchido_por_contato?: string
+          preenchido_por_nome?: string
+          regime?: string
+          regras_cct?: Json
+          responsavel_nome?: string
+          setor?: string
+          status?: string
+          titulo?: string
+          updated_at?: string
+          visto_escritorio?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "escalas_revezamento_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "escalas_revezamento_link_id_fkey"
+            columns: ["link_id"]
+            isOneToOne: false
+            referencedRelation: "escala_links_publicos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       estruturas_salariais: {
         Row: {
           cargos_sugeridos: Json
