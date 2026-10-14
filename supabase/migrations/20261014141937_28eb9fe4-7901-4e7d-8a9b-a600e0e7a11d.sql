@@ -1,0 +1,1 @@
+CREATE POLICY "No client access" ON public.escala_pin_tentativas FOR ALL TO authenticated USING (false) WITH CHECK (false);

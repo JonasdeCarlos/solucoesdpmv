@@ -4,3 +4,6 @@ verify_jwt = false
 
 [functions.cargos-chat]
 verify_jwt = false
+
+[functions.escala-publica]
+verify_jwt = false

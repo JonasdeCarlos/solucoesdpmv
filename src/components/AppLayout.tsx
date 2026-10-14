@@ -1,6 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import logoMonteVerde from '@/assets/logo-monte-verde.png';
-import { Calculator, Users, FileText, Receipt, Clock, DollarSign, Percent, Building2, FileStack, ClipboardCheck, LogOut, FileCog, CalendarDays, UserPlus, Bell, ShieldCheck, Hourglass, PartyPopper, Sparkles, ScrollText, Landmark, Coins, Target, FileSpreadsheet, Timer } from 'lucide-react';
+import { Calculator, Users, FileText, Receipt, Clock, DollarSign, Percent, Building2, FileStack, ClipboardCheck, LogOut, FileCog, CalendarDays, UserPlus, Bell, ShieldCheck, Hourglass, PartyPopper, Sparkles, ScrollText, Landmark, Coins, Target, FileSpreadsheet, Timer, CalendarRange } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
 import { Button } from '@/components/ui/button';
@@ -29,6 +29,7 @@ const NAV_ITEMS = [
   { to: '/bruto-alvo', label: 'Bruto Alvo', icon: Target },
   { to: '/conversor-dominio', label: 'Conversor Domínio', icon: FileSpreadsheet },
   { to: '/calculadora-horas', label: 'Calculadora de Horas', icon: Timer },
+  { to: '/escala-revezamento', label: 'Escala de Revezamento', icon: CalendarRange },
   { to: '/admissao/escritorio', label: 'Admissão', icon: UserPlus },
 ];
 
