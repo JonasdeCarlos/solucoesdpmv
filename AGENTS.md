@@ -1,3 +1,4 @@
 - Programa Excelência (premiação por pontos) vive em src/modules/premiacao com tabelas premiacao_* e cálculos nas RPCs premiacao_apurar/fechar/reabrir — regras de cálculo ficam no banco, não no front.
 - Fechamento por Bruto Alvo vive em src/modules/bruto-alvo com tabelas fb_* e cadastro próprio de funcionários; reutiliza o gerador Domínio da Taxa de Serviço só via wrapper (exportTxt.ts). Why: módulo isolado, sem alterar código existente.
 - Conversor de lançamentos Domínio vive em src/modules/conversor-dominio com tabelas cl_* e edge conversor-extrair-tabela; gera o TXT só via gerarLinha/validarLinha da Taxa de Serviço. Why: um único gerador do layout Domínio.
+- Escala de Revezamento vive em src/modules/escala-revezamento (tabelas escala*); regras ficam só em supabase/functions/_shared/escalaMotor.ts, importado pelo front e pela edge escala-publica. Why: uma única fonte de verdade das regras.
