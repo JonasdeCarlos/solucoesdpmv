@@ -17,7 +17,7 @@ export async function carregarEscala(db: any, id: string) {
     id: f.id, codigo: f.codigo, nome: f.nome, cargo: f.cargo, sexo: f.sexo === 'F' ? 'F' : 'M',
     art386_ativo: !!f.art386_ativo, art386_justificativa_desativacao: f.art386_justificativa_desativacao || '',
     ultima_folga_anterior: f.ultima_folga_anterior, ultimo_domingo_folga_anterior: f.ultimo_domingo_folga_anterior,
-    hora_entrada: f.hora_entrada || '', hora_saida: f.hora_saida || '', dias: {},
+    hora_entrada: f.hora_entrada || '', hora_saida: f.hora_saida || '', setor: f.setor || '', dias: {},
   }));
   const byId = new Map(funcionarios.map((f) => [f.id, f]));
   (ds || []).forEach((d: any) => { const f = byId.get(d.funcionario_id); if (f) f.dias[d.data] = d.tipo as TipoDia; });
@@ -38,7 +38,7 @@ export async function salvarEscala(db: any, id: string, patch: Record<string, un
     id: uuidRe.test(f.id) ? f.id : crypto.randomUUID(), escala_id: id, ordem: i, codigo: f.codigo || '', nome: f.nome || '',
     cargo: f.cargo || '', sexo: f.sexo, art386_ativo: !!f.art386_ativo, art386_justificativa_desativacao: f.art386_justificativa_desativacao || '',
     ultima_folga_anterior: f.ultima_folga_anterior || null, ultimo_domingo_folga_anterior: f.ultimo_domingo_folga_anterior || null,
-    hora_entrada: f.hora_entrada || '', hora_saida: f.hora_saida || '',
+    hora_entrada: f.hora_entrada || '', hora_saida: f.hora_saida || '', setor: f.setor || '',
   }));
   const { error: e2 } = await db.from('escala_funcionarios').insert(rows);
   if (e2) throw e2;
