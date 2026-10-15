@@ -22,7 +22,7 @@ describe('motor escala', () => {
     expect(ids(validarEscala(base, [f('1', 'M', dias)]))).toContain('R02');
   });
   it('R05: domingo trabalhado sem fundamento bloqueia', () => {
-    expect(ids(validarEscala({ ...base, fundamento_trabalho_domingo: '' }, [f('1')]))).toContain('R05');
+    expect(ids(validarEscala({ ...base, fundamento_trabalho_domingo: '', atividade_anexo_iv: 'nenhuma' }, [f('1')]))).toContain('R05');
   });
   it('R04: mulher não pode trabalhar 2 domingos seguidos', () => {
     const g = gerarEscala(base, [f('1', 'F')]);

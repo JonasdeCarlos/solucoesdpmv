@@ -121,6 +121,9 @@ export const nEfetivo = (p: EscalaParams) => Math.max(1, Math.min(p.n_domingos |
 export const is12x36 = (p: EscalaParams) => /12\s*x\s*36/i.test(p.regime || '');
 const descanso = (t?: TipoDia) => t === 'F' || t === 'FC' || t === 'A';
 const feriadoSet = (p: EscalaParams) => new Set((p.feriados || []).map((f) => f.data));
+/** Domingo autorizado: fundamento digitado, atividade do Anexo IV ou CCT vigente. */
+export const domingoAutorizado = (p: EscalaParams) =>
+  !!p.fundamento_trabalho_domingo?.trim() || (!!p.atividade_anexo_iv && p.atividade_anexo_iv !== 'nenhuma') || !!p.cct_vigente;
 const podeTrabalharFeriado = (p: EscalaParams) =>
   p.categoria_atividade === 'COMERCIO'
     ? (p.atividade_anexo_iv && p.atividade_anexo_iv !== 'nenhuma') || (p.cct_vigente && !!p.regras_cct?.clausula_feriados)
@@ -179,7 +182,7 @@ export function validarEscala(p: EscalaParams, funcs: EscalaFuncionario[], opts:
 
   // R05 (geral)
   const algumDomingoT = funcs.some((f) => domingos.some((d) => (f.dias[d] || 'T') === 'T'));
-  if (algumDomingoT && !p.fundamento_trabalho_domingo?.trim())
+  if (algumDomingoT && !domingoAutorizado(p))
     out.push(v('R05', 'BLOQUEIO', 'Domingo trabalhado sem fundamento de autorização', FUND.R05));
 
   // R09 cobertura
@@ -324,7 +327,7 @@ export function gerarEscala(p: EscalaParams, funcsIn: EscalaFuncionario[]): Gera
   const N = nEfetivo(p);
   const domingos = dias.filter((d) => diaSemana(d) === 0);
   const feriadoOk = podeTrabalharFeriado(p);
-  const domingoOk = !!p.fundamento_trabalho_domingo?.trim();
+  const domingoOk = domingoAutorizado(p);
   const funcs = funcsIn.map((f) => ({ ...f, dias: {} as Record<string, TipoDia> }));
   // mantém afastamentos
   funcsIn.forEach((f, i) => Object.entries(f.dias || {}).forEach(([d, t]) => { if (t === 'A') funcs[i].dias[d] = 'A'; }));
@@ -454,7 +457,7 @@ export function gerarEscala(p: EscalaParams, funcsIn: EscalaFuncionario[]): Gera
       conflitos.push(`R09 Cobertura mínima de ${p.minimo_diario} não atingida em ${falta.length} dia(s) (${falta.slice(0, 6).map(fmtBR).join(', ')}${falta.length > 6 ? '…' : ''}). Sugestão: ter ao menos ${Math.max(sugerido, funcs.length + 1)} funcionários ou reduzir o mínimo diário.`);
     }
   }
-  if (!domingoOk && domingos.length) conflitos.push('R05 Sem fundamento para trabalho aos domingos: todos os domingos foram marcados como folga.');
+  if (!domingoOk && domingos.length) conflitos.push('R05 Sem autorização para trabalho aos domingos (preencha o fundamento, a atividade do Anexo IV ou a CCT): todos os domingos foram marcados como folga, sem revezamento.');
   if (!feriadoOk && fer.size) conflitos.push('R06 Atividade sem autorização para feriados: feriados marcados como folga.');
   const res = validarEscala(p, funcs);
   res.bloqueios.forEach((b) => conflitos.push(b.mensagem));
