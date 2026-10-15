@@ -21,6 +21,8 @@ export interface EscalaFuncionario {
 
 export interface RegrasCct {
   n_domingos_max?: number | null;
+  /** Opcional: semanas máximas entre domingos de folga da mulher (art. 386 CLT = 2). */
+  domingo_mulher_semanas?: number | null;
   max_consecutivos?: number | null;
   prazo_folga_feriado?: number | null;
   clausula_feriados?: boolean;
@@ -39,8 +41,6 @@ export interface EscalaParams {
   regras_cct: RegrasCct;
   prazo_folga_compensatoria_feriado: number;
   n_domingos: number;
-  /** Opcional: semanas máximas entre domingos de folga da mulher (art. 386 CLT = 2). */
-  domingo_mulher_semanas?: number | null;
   minimo_diario: number;
   feriados: { data: string; nome: string }[];
   setor: string;
@@ -113,7 +113,7 @@ export const prazoFeriado = (p: EscalaParams) => {
   const c = p.regras_cct?.prazo_folga_feriado;
   return c && c > 0 ? c : (p.prazo_folga_compensatoria_feriado || 7);
 };
-export const semMulher = (p: EscalaParams) => Math.max(2, Math.floor(Number(p.domingo_mulher_semanas) || 2));
+export const semMulher = (p: EscalaParams) => Math.max(2, Math.floor(Number(p.regras_cct?.domingo_mulher_semanas) || 2));
 
 export const nEfetivo = (p: EscalaParams) => Math.max(1, Math.min(p.n_domingos || 1, nMaxCategoria(p)));
 export const is12x36 = (p: EscalaParams) => /12\s*x\s*36/i.test(p.regime || '');
@@ -155,6 +155,7 @@ export interface Resultado {
 
 export function validarEscala(p: EscalaParams, funcs: EscalaFuncionario[], opts: { pdfFinal?: boolean; cliente?: { nome?: string; cnpj?: string } } = {}): Resultado {
   const out: Violacao[] = [];
+  if (semMulher(p) > 2) out.push(v('R04', 'ALERTA', `Escala domingo da mulher ampliada para ${semMulher(p)} semanas — o art. 386 da CLT prevê folga dominical quinzenal (a cada 2 semanas). Risco trabalhista: exige respaldo em CCT/ACT.`, FUND.R04, ''));
   const porCelula: Record<string, string[]> = {};
   const marca = (fid: string, d: string, id: string) => { const k = `${fid}|${d}`; (porCelula[k] ||= []).includes(id) || porCelula[k].push(id); };
   const domingosTrabalhados: Record<string, number> = {};
