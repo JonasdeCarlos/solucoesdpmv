@@ -41,3 +41,15 @@ describe('motor escala', () => {
     expect(ids(validarEscala(p, [f('1')]))).toContain('R06');
   });
 });
+
+import { gerarEscala as gerarSpread, novoFuncionario as novoSpread } from '../motor';
+import { it as itSpread, expect as expectSpread } from 'vitest';
+itSpread('folgas de domingo são distribuídas em turmas, não todos no mesmo dia', () => {
+  const p: any = { regime: '6x1', data_inicio: '2026-11-02', data_fim: '2026-11-29', categoria_atividade: 'COMERCIO', atividade_anexo_iv: 'Hotéis', fundamento_trabalho_domingo: 'Anexo IV', cct_vigente: false, cct_registro: '', cct_vigencia: '', regras_cct: {}, prazo_folga_compensatoria_feriado: 7, n_domingos: 3, minimo_diario: 0, feriados: [], setor: '', responsavel_nome: '' };
+  const fs = [0, 1, 2, 3, 4, 5].map((i) => ({ ...novoSpread(), nome: 'F' + i }));
+  const g = gerarSpread(p, fs);
+  const primeiroDomingo = '2026-11-08';
+  const folgas = g.funcionarios.filter((f) => f.dias[primeiroDomingo] === 'F').length;
+  expectSpread(folgas).toBeLessThan(6);
+  expectSpread(folgas).toBeGreaterThan(0);
+});
