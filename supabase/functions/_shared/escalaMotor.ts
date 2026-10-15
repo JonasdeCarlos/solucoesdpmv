@@ -346,10 +346,13 @@ export function gerarEscala(p: EscalaParams, funcsIn: EscalaFuncionario[]): Gera
     let ja = 1;
     if (f.ultimo_domingo_folga_anterior && f.ultimo_domingo_folga_anterior < p.data_inicio)
       ja = Math.max(0, Math.floor((diffDias(f.ultimo_domingo_folga_anterior, p.data_inicio) - 1) / 7));
-    const primeiro = Math.max(0, Math.min(T - 1 - ja, (idx % T)));
+    // fase rotativa por funcionário (turmas); a 1ª folga é antecipada se o histórico exigir
+    const fase = idx % T;
+    const prazo = Math.max(0, T - 1 - ja);
+    const primeiro = Math.min(fase, prazo);
     domingos.forEach((d, k) => {
       if (f.dias[d] === 'A') return;
-      const folga = !domingoOk || (k >= primeiro && (k - primeiro) % T === 0);
+      const folga = !domingoOk || k === primeiro || (k > primeiro && k % T === fase);
       f.dias[d] = folga ? 'F' : 'T';
     });
   });
