@@ -174,7 +174,7 @@ function EscalaView({ id, onVoltar }: { id: string; onVoltar: () => void }) {
       e = { ...e, status: 'em_revisao', visto_escritorio: true };
     }
     setEsc(e); setParams(paramsDe(e)); setFuncs(r.funcionarios); setTitulo(e.titulo); setObs(e.observacao_escritorio || '');
-    const { data: c } = await supabase.from('clientes' as any).select('nome, cnpj').eq('id', e.cliente_id).maybeSingle();
+    const { data: c } = await supabase.from('clientes' as any).select('nome, cnpj, cnae').eq('id', e.cliente_id).maybeSingle();
     setCliente(c);
   }, [id]);
   useEffect(() => { load(); }, [load]);
