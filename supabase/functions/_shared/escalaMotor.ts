@@ -9,6 +9,8 @@ export interface EscalaFuncionario {
   codigo: string;
   nome: string;
   cargo: string;
+  /** Opcional: setor do funcionário. Se vazio, não entra na regra de cobertura por setor. */
+  setor?: string;
   sexo: 'M' | 'F';
   art386_ativo: boolean;
   art386_justificativa_desativacao: string;
@@ -327,6 +329,14 @@ export function gerarEscala(p: EscalaParams, funcsIn: EscalaFuncionario[]): Gera
   // mantém afastamentos
   funcsIn.forEach((f, i) => Object.entries(f.dias || {}).forEach(([d, t]) => { if (t === 'A') funcs[i].dias[d] = 'A'; }));
   const cobertura = (d: string) => funcs.filter((f) => (f.dias[d] || 'T') === 'T').length;
+  // Cobertura por setor: setores vazios são ignorados
+  const setores = [...new Set(funcs.map((f) => (f.setor || '').trim()).filter(Boolean))];
+  const coberturaSetor = (d: string, s: string) => funcs.filter((f) => (f.setor || '').trim() === s && (f.dias[d] || 'T') === 'T').length;
+  /** true se marcar folga para f em d deixaria o setor dele descoberto */
+  const descobreSetor = (f: EscalaFuncionario, d: string) => {
+    const s = (f.setor || '').trim();
+    return !!s && coberturaSetor(d, s) <= 1;
+  };
 
   // 1) Domingos por turmas (R03/R04/R11)
   const gerais = funcs.filter((f) => !(f.sexo === 'F' && f.art386_ativo));
@@ -356,8 +366,11 @@ export function gerarEscala(p: EscalaParams, funcsIn: EscalaFuncionario[]): Gera
       if (diaSemana(d) !== 1) continue;
       const sem = listarDias(d, addDias(d, 6)).filter((x) => x <= p.data_fim);
       if (sem.some((x) => t(x) === 'F' || t(x) === 'A')) continue;
-      const cand = sem.filter((x) => diaSemana(x) !== 0 && t(x) === 'T' && !fer.has(x));
+      let cand = sem.filter((x) => diaSemana(x) !== 0 && t(x) === 'T' && !fer.has(x));
       if (!cand.length) continue;
+      // evita deixar o setor descoberto, se houver alternativa
+      const semDescobrir = cand.filter((x) => !descobreSetor(f, x));
+      if (semDescobrir.length) cand = semDescobrir;
       // maior cobertura primeiro; desempate rotativo (R11)
       const rot = (fi + Math.floor(diffDias(p.data_inicio, d) / 7)) % 6;
       cand.sort((a, b) => cobertura(b) - cobertura(a) || ((diaSemana(a) + 6 - rot) % 6) - ((diaSemana(b) + 6 - rot) % 6));
@@ -386,8 +399,10 @@ export function gerarEscala(p: EscalaParams, funcsIn: EscalaFuncionario[]): Gera
   funcs.forEach((f) => {
     for (const d of dias) {
       if (!fer.has(d) || (f.dias[d] || 'T') !== 'T') continue;
-      const janela = listarDias(addDias(d, 1), addDias(d, prazo)).filter((x) => x <= p.data_fim && (f.dias[x] || 'T') === 'T' && !fer.has(x) && diaSemana(x) !== 0);
+      let janela = listarDias(addDias(d, 1), addDias(d, prazo)).filter((x) => x <= p.data_fim && (f.dias[x] || 'T') === 'T' && !fer.has(x) && diaSemana(x) !== 0);
       if (!janela.length) continue;
+      const semDescobrir = janela.filter((x) => !descobreSetor(f, x));
+      if (semDescobrir.length) janela = semDescobrir;
       janela.sort((a, b) => cobertura(b) - cobertura(a));
       f.dias[janela[0]] = 'FC';
     }
@@ -395,6 +410,38 @@ export function gerarEscala(p: EscalaParams, funcsIn: EscalaFuncionario[]): Gera
 
   // preenche T
   funcs.forEach((f) => dias.forEach((d) => { if (!f.dias[d]) f.dias[d] = 'T'; }));
+
+  // 4b) Reparo de cobertura por setor: tenta remanejar folgas que deixaram um setor descoberto
+  if (setores.length) {
+    for (const d of dias) {
+      for (const s of setores) {
+        if (coberturaSetor(d, s) > 0) continue;
+        const membros = funcs.filter((f) => (f.setor || '').trim() === s);
+        // tenta mover a folga semanal (F) de um membro para outro dia da mesma semana com cobertura
+        let reparado = false;
+        for (const f of membros) {
+          if (f.dias[d] !== 'F') continue;
+          const semIni = addDias(d, -diaSemana(d));
+          const sem = listarDias(semIni < p.data_inicio ? p.data_inicio : semIni, addDias(semIni, 6))
+            .filter((x) => x <= p.data_fim && x !== d);
+          const alvo = sem.find((x) =>
+            (f.dias[x] || 'T') === 'T' && diaSemana(x) !== 0 && !fer.has(x) &&
+            coberturaSetor(x, s) >= 2 && // mover a folga para lá não descobre o setor
+            !(f.sexo === 'F' && f.art386_ativo && diaSemana(x) === 0));
+          if (alvo) {
+            f.dias[d] = 'T';
+            f.dias[alvo] = 'F';
+            reparado = true;
+            break;
+          }
+        }
+        if (!reparado) {
+          const qtd = membros.length;
+          conflitos.push(`Setor "${s}" descoberto em ${fmtBR(d)}: ${qtd <= 1 ? 'há apenas 1 funcionário no setor' : 'todos os funcionários do setor estão de folga/afastados'}. Ajuste manualmente ou reforce o quadro do setor.`);
+        }
+      }
+    }
+  }
 
   // 5) Cobertura (R09) — só informa
   if (p.minimo_diario > 0) {

@@ -6,7 +6,7 @@ import { safeUuid } from '@/utils/safeUuid';
 
 export function novoFuncionario(): EscalaFuncionario {
   return {
-    id: safeUuid(), codigo: '', nome: '', cargo: '', sexo: 'M', art386_ativo: false, art386_justificativa_desativacao: '',
+    id: safeUuid(), codigo: '', nome: '', cargo: '', setor: '', sexo: 'M', art386_ativo: false, art386_justificativa_desativacao: '',
     ultima_folga_anterior: null, ultimo_domingo_folga_anterior: null, hora_entrada: '', hora_saida: '', dias: {},
   };
 }
