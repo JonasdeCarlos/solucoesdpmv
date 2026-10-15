@@ -13,6 +13,7 @@ import {
   ATIVIDADES_ANEXO_IV, CATEGORIA_LABEL, listarDias, diaSemana, fmtBR, gerarEscala, validarEscala, is12x36,
   nMaxCategoria, novoFuncionario, type EscalaFuncionario, type EscalaParams, type TipoDia, type Categoria,
 } from '../motor';
+import ImportarFuncionarios from './ImportarFuncionarios';
 
 const SEM = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 const CICLO: TipoDia[] = ['T', 'F', 'FC', 'A'];
@@ -169,7 +170,7 @@ export default function EscalaEditor({ params: p, onParams, funcionarios: fs, on
 
       <Card className="p-4 space-y-3">
         <div className="flex items-center justify-between"><h3 className="font-semibold">Funcionários ({fs.length})</h3>
-          {!readOnly && <Button size="sm" variant="outline" onClick={() => onFuncionarios([...fs, novoFuncionario()])}><Plus className="w-4 h-4 mr-1" />Funcionário</Button>}</div>
+          {!readOnly && <div className="flex gap-2"><ImportarFuncionarios atuais={fs} onImportar={onFuncionarios} /><Button size="sm" variant="outline" onClick={() => onFuncionarios([...fs, novoFuncionario()])}><Plus className="w-4 h-4 mr-1" />Funcionário</Button></div>}</div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm min-w-[980px]">
             <thead><tr className="text-left text-muted-foreground">
