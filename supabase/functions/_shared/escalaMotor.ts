@@ -366,8 +366,11 @@ export function gerarEscala(p: EscalaParams, funcsIn: EscalaFuncionario[]): Gera
       if (diaSemana(d) !== 1) continue;
       const sem = listarDias(d, addDias(d, 6)).filter((x) => x <= p.data_fim);
       if (sem.some((x) => t(x) === 'F' || t(x) === 'A')) continue;
-      const cand = sem.filter((x) => diaSemana(x) !== 0 && t(x) === 'T' && !fer.has(x));
+      let cand = sem.filter((x) => diaSemana(x) !== 0 && t(x) === 'T' && !fer.has(x));
       if (!cand.length) continue;
+      // evita deixar o setor descoberto, se houver alternativa
+      const semDescobrir = cand.filter((x) => !descobreSetor(f, x));
+      if (semDescobrir.length) cand = semDescobrir;
       // maior cobertura primeiro; desempate rotativo (R11)
       const rot = (fi + Math.floor(diffDias(p.data_inicio, d) / 7)) % 6;
       cand.sort((a, b) => cobertura(b) - cobertura(a) || ((diaSemana(a) + 6 - rot) % 6) - ((diaSemana(b) + 6 - rot) % 6));
