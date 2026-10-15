@@ -10,7 +10,7 @@ import { novoFuncionario, type EscalaFuncionario } from '../motor';
 const norm = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
 const toDataUrl = (f: File) => new Promise<string>((ok, err) => { const r = new FileReader(); r.onload = () => ok(String(r.result)); r.onerror = err; r.readAsDataURL(f); });
 
-type Achado = { codigo: string; nome: string; cargo?: string };
+type Achado = { codigo: string; nome: string; cargo?: string; setor?: string };
 
 export default function ImportarFuncionarios({ atuais, onImportar }: { atuais: EscalaFuncionario[]; onImportar: (f: EscalaFuncionario[]) => void }) {
   const ref = useRef<HTMLInputElement>(null);
@@ -32,9 +32,10 @@ export default function ImportarFuncionarios({ atuais, onImportar }: { atuais: E
           const iN = h.findIndex((x) => /nome|funcion|empregad|colaborador/.test(x));
           const iC = h.findIndex((x) => /^(cod|matr)/.test(x));
           const iG = h.findIndex((x) => /cargo|funcao/.test(x) && !/funcionario/.test(x));
+          const iS = h.findIndex((x) => /setor|departamento|secao/.test(x));
           for (const r of aoa.slice(hi + 1)) {
             const n = r[iN]; if (!n || /^total/i.test(n) || !/[a-z]/i.test(n)) continue;
-            achados.push({ nome: n, codigo: iC >= 0 ? String(r[iC] || '').replace(/\D/g, '') : '', cargo: iG >= 0 ? r[iG] : '' });
+            achados.push({ nome: n, codigo: iC >= 0 ? String(r[iC] || '').replace(/\D/g, '') : '', cargo: iG >= 0 ? r[iG] : '', setor: iS >= 0 ? r[iS] : '' });
           }
         } else outros.push(f);
       }
@@ -57,7 +58,7 @@ export default function ImportarFuncionarios({ atuais, onImportar }: { atuais: E
       const novos: EscalaFuncionario[] = [];
       for (const a of achados) {
         const k = norm(a.nome); if (!k || vistos.has(k)) continue; vistos.add(k);
-        novos.push({ ...novoFuncionario(), nome: a.nome.trim(), codigo: a.codigo, cargo: a.cargo || '' });
+        novos.push({ ...novoFuncionario(), nome: a.nome.trim(), codigo: a.codigo, cargo: a.cargo || '', setor: a.setor || '' });
       }
       if (!novos.length) return toast.info('Nenhum funcionário novo encontrado no extrato.');
       onImportar([...atuais.filter((f) => f.nome.trim()), ...novos]);
