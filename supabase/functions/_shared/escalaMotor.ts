@@ -329,6 +329,14 @@ export function gerarEscala(p: EscalaParams, funcsIn: EscalaFuncionario[]): Gera
   // mantém afastamentos
   funcsIn.forEach((f, i) => Object.entries(f.dias || {}).forEach(([d, t]) => { if (t === 'A') funcs[i].dias[d] = 'A'; }));
   const cobertura = (d: string) => funcs.filter((f) => (f.dias[d] || 'T') === 'T').length;
+  // Cobertura por setor: setores vazios são ignorados
+  const setores = [...new Set(funcs.map((f) => (f.setor || '').trim()).filter(Boolean))];
+  const coberturaSetor = (d: string, s: string) => funcs.filter((f) => (f.setor || '').trim() === s && (f.dias[d] || 'T') === 'T').length;
+  /** true se marcar folga para f em d deixaria o setor dele descoberto */
+  const descobreSetor = (f: EscalaFuncionario, d: string) => {
+    const s = (f.setor || '').trim();
+    return !!s && coberturaSetor(d, s) <= 1;
+  };
 
   // 1) Domingos por turmas (R03/R04/R11)
   const gerais = funcs.filter((f) => !(f.sexo === 'F' && f.art386_ativo));
