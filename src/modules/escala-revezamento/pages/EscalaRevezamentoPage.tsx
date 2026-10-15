@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useClientes } from '@/hooks/useClientes';
 import { Card } from '@/components/ui/card';
@@ -24,9 +24,11 @@ const linkUrl = (t: string) => buildExternalAppLink(`/escala-publica/${t}`);
 
 export default function EscalaRevezamentoPage() {
   const { clientes } = useClientes();
-  const [clienteId, setClienteId] = useState('');
+  const [clienteId, setClienteIdRaw] = useState(() => localStorage.getItem('escala-cliente') || '');
+  const setClienteId = (v: string) => { setClienteIdRaw(v); localStorage.setItem('escala-cliente', v); };
   const [busca, setBusca] = useState('');
-  const [aberta, setAberta] = useState<string | null>(null);
+  const [aberta, setAbertaRaw] = useState<string | null>(() => sessionStorage.getItem('escala-aberta'));
+  const setAberta = (v: string | null) => { setAbertaRaw(v); if (v) sessionStorage.setItem('escala-aberta', v); else sessionStorage.removeItem('escala-aberta'); };
   const [tab, setTab] = useState('escalas');
   const [novas, setNovas] = useState(0);
 
@@ -164,10 +166,13 @@ function EscalaView({ id, onVoltar }: { id: string; onVoltar: () => void }) {
   const [salvando, setSalvando] = useState(false);
   const [devolver, setDevolver] = useState(false);
   const [obs, setObs] = useState('');
+  const [estado, setEstado] = useState<'salvo' | 'salvando' | 'pendente'>('salvo');
+  const pronto = useRef(false);
+  const fila = useRef<Promise<void>>(Promise.resolve());
 
   const load = useCallback(async () => {
     const r = await carregarEscala(supabase, id);
-    if (!r) return;
+    if (!r) { sessionStorage.removeItem('escala-aberta'); onVoltar(); return; }
     let e = r.escala;
     if (e.origem === 'publica' && e.status === 'enviada') {
       await supabase.from('escalas_revezamento' as any).update({ status: 'em_revisao', visto_escritorio: true } as any).eq('id', id);
@@ -176,8 +181,34 @@ function EscalaView({ id, onVoltar }: { id: string; onVoltar: () => void }) {
     setEsc(e); setParams(paramsDe(e)); setFuncs(r.funcionarios); setTitulo(e.titulo); setObs(e.observacao_escritorio || '');
     const { data: c } = await supabase.from('clientes' as any).select('nome, cnpj, cnae').eq('id', e.cliente_id).maybeSingle();
     setCliente(c);
+    pronto.current = false;
+    setTimeout(() => { pronto.current = true; }, 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
   useEffect(() => { load(); }, [load]);
+
+  // salvamento automático do rascunho (parâmetros, funcionários importados, folgas)
+  useEffect(() => {
+    if (!pronto.current || !params || esc?.status === 'aprovada') return;
+    setEstado('pendente');
+    const t = setTimeout(() => {
+      const patch: Record<string, unknown> = { titulo };
+      PARAM_KEYS.forEach((k) => { patch[k] = params[k]; });
+      const snap = funcs;
+      fila.current = fila.current.then(async () => {
+        setEstado('salvando');
+        try { await salvarEscala(supabase, id, patch, snap); setEstado('salvo'); }
+        catch (e: any) { setEstado('pendente'); toast.error('Falha ao salvar rascunho: ' + e.message); }
+      });
+    }, 1500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params, funcs, titulo]);
+  useEffect(() => {
+    const h = (ev: BeforeUnloadEvent) => { if (estado !== 'salvo') { ev.preventDefault(); ev.returnValue = ''; } };
+    window.addEventListener('beforeunload', h);
+    return () => window.removeEventListener('beforeunload', h);
+  }, [estado]);
 
   const salvar = async (extra: Record<string, unknown> = {}) => {
     if (!params) return;
@@ -185,7 +216,9 @@ function EscalaView({ id, onVoltar }: { id: string; onVoltar: () => void }) {
     try {
       const patch: Record<string, unknown> = { titulo, ...extra };
       PARAM_KEYS.forEach((k) => { patch[k] = params[k]; });
+      await fila.current;
       await salvarEscala(supabase, id, patch, funcs);
+      setEstado('salvo');
       toast.success('Escala salva.');
       await load();
     } catch (e: any) { toast.error(e.message); } finally { setSalvando(false); }
@@ -206,6 +239,7 @@ function EscalaView({ id, onVoltar }: { id: string; onVoltar: () => void }) {
         <Button variant="ghost" onClick={onVoltar}><ArrowLeft className="w-4 h-4 mr-1" />Voltar</Button>
         <Input className="w-72" value={titulo} onChange={(e) => setTitulo(e.target.value)} />
         <StatusBadge s={esc.status} />
+        {esc.status !== 'aprovada' && <span className="text-xs text-muted-foreground">{estado === 'salvo' ? 'Rascunho salvo' : estado === 'salvando' ? 'Salvando…' : 'Alterações não salvas'}</span>}
         <span className="text-sm text-muted-foreground">{cliente?.nome}</span>
         <div className="ml-auto flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => { try { gerarPdf(info, false); } catch (e: any) { toast.error(e.message); } }}><FileDown className="w-4 h-4 mr-1" />PDF</Button>

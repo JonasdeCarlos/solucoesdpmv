@@ -1,0 +1,1 @@
+ALTER TABLE public.escala_funcionarios ADD COLUMN IF NOT EXISTS setor text NOT NULL DEFAULT '';

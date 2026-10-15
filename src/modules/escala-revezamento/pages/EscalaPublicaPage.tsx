@@ -19,7 +19,8 @@ export default function EscalaPublicaPage() {
   const [precisaPin, setPrecisaPin] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [bundle, setBundle] = useState<any>(null);
-  const [aberta, setAberta] = useState<string | null>(null);
+  const [aberta, setAbertaRaw] = useState<string | null>(() => sessionStorage.getItem(`escala-aberta-${token}`));
+  const setAberta = (v: string | null) => { setAbertaRaw(v); if (v) sessionStorage.setItem(`escala-aberta-${token}`, v); else sessionStorage.removeItem(`escala-aberta-${token}`); };
 
   const call = useCallback(async (action: string, extra: Record<string, unknown> = {}) => {
     const { data, error } = await supabase.functions.invoke('escala-publica', { body: { action, token, pin: pin || undefined, ...extra } });

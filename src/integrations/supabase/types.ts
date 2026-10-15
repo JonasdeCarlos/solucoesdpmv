@@ -3464,6 +3464,7 @@ export type Database = {
           id: string
           nome: string
           ordem: number
+          setor: string
           sexo: string
           ultima_folga_anterior: string | null
           ultimo_domingo_folga_anterior: string | null
@@ -3480,6 +3481,7 @@ export type Database = {
           id?: string
           nome?: string
           ordem?: number
+          setor?: string
           sexo?: string
           ultima_folga_anterior?: string | null
           ultimo_domingo_folga_anterior?: string | null
@@ -3496,6 +3498,7 @@ export type Database = {
           id?: string
           nome?: string
           ordem?: number
+          setor?: string
           sexo?: string
           ultima_folga_anterior?: string | null
           ultimo_domingo_folga_anterior?: string | null
