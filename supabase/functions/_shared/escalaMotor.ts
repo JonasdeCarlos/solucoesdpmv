@@ -155,7 +155,7 @@ export interface Resultado {
 
 export function validarEscala(p: EscalaParams, funcs: EscalaFuncionario[], opts: { pdfFinal?: boolean; cliente?: { nome?: string; cnpj?: string } } = {}): Resultado {
   const out: Violacao[] = [];
-  if (semMulher(p) > 2) out.push(v('R04', 'ALERTA', `Escala domingo da mulher ampliada para ${semMulher(p)} semanas — o art. 386 da CLT prevê folga dominical quinzenal (a cada 2 semanas). Risco trabalhista: exige respaldo em CCT/ACT.`, FUND.R04, ''));
+  if (semMulher(p) > 2) out.push(v('R04', 'ALERTA', `Escala domingo da mulher ampliada para ${semMulher(p)} semanas — o art. 386 da CLT prevê folga dominical quinzenal (a cada 2 semanas). Risco trabalhista: exige respaldo em CCT/ACT.`, FUND.R04));
   const porCelula: Record<string, string[]> = {};
   const marca = (fid: string, d: string, id: string) => { const k = `${fid}|${d}`; (porCelula[k] ||= []).includes(id) || porCelula[k].push(id); };
   const domingosTrabalhados: Record<string, number> = {};
