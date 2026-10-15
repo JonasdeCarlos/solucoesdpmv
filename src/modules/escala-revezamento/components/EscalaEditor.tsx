@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, Ban, Plus, Trash2, Wand2, CheckCircle2 } from 'lucide-react';
+import { AlertTriangle, Ban, Plus, Trash2, Wand2, CheckCircle2, Sparkles, Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import {
   ATIVIDADES_ANEXO_IV, CATEGORIA_LABEL, listarDias, diaSemana, fmtBR, gerarEscala, validarEscala, is12x36,
@@ -29,7 +30,7 @@ interface Props {
   funcionarios: EscalaFuncionario[];
   onFuncionarios: (f: EscalaFuncionario[]) => void;
   readOnly?: boolean;
-  cliente?: { nome?: string; cnpj?: string };
+  cliente?: { nome?: string; cnpj?: string; cnae?: string | null };
 }
 
 export default function EscalaEditor({ params: p, onParams, funcionarios: fs, onFuncionarios, readOnly, cliente }: Props) {
@@ -41,6 +42,52 @@ export default function EscalaEditor({ params: p, onParams, funcionarios: fs, on
   const setF = (i: number, patch: Partial<EscalaFuncionario>) => onFuncionarios(fs.map((f, j) => (j === i ? { ...f, ...patch } : f)));
   const cobertura = (d: string) => fs.filter((f) => (f.dias[d] || 'T') === 'T').length;
   const nMax = nMaxCategoria(p);
+  const [cnae, setCnae] = useState('');
+  const [dadosCct, setDadosCct] = useState('');
+  const [sugerindo, setSugerindo] = useState(false);
+  const [sugestao, setSugestao] = useState<any>(null);
+  const cnaeVal = cnae || cliente?.cnae || '';
+
+  const sugerir = async () => {
+    if (!cnaeVal.trim()) { toast.error('Informe o CNAE.'); return; }
+    setSugerindo(true); setSugestao(null);
+    try {
+      const { data: sess } = await supabase.auth.getSession();
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/escala-sugerir-parametros`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string, Authorization: `Bearer ${sess?.session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
+        body: JSON.stringify({ cnae: cnaeVal, setor: p.setor, empresa: cliente?.nome, dados_cct: dadosCct }),
+      });
+      if (!res.ok || !res.body) { const e = await res.json().catch(() => ({})); throw new Error(e?.error || `Falha (${res.status})`); }
+      const reader = res.body.getReader(); const dec = new TextDecoder(); let buf = ''; let acc = '';
+      while (true) {
+        const { done, value } = await reader.read(); if (done) break;
+        buf += dec.decode(value, { stream: true });
+        let i; while ((i = buf.indexOf('\n')) >= 0) {
+          const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
+          if (!line.startsWith('data:')) continue;
+          const d = line.slice(5).trim(); if (!d || d === '[DONE]') continue;
+          try { const ev = JSON.parse(d); if (ev.type === 'response.output_text.delta') acc += ev.delta || ''; if (ev.type === 'error' || ev.type === 'response.failed') throw new Error(ev.error?.message || ev.response?.error?.message || 'Falha na IA'); } catch (er: any) { if (er?.message && !(er instanceof SyntaxError)) throw er; }
+        }
+      }
+      setSugestao(JSON.parse(acc));
+    } catch (e: any) { toast.error(e?.message || 'Falha ao sugerir'); } finally { setSugerindo(false); }
+  };
+
+  const aplicar = () => {
+    const s = sugestao; if (!s) return;
+    onParams({
+      ...p, categoria_atividade: s.categoria_atividade, atividade_anexo_iv: s.atividade_anexo_iv, regime: s.regime,
+      n_domingos: s.n_domingos, prazo_folga_compensatoria_feriado: s.prazo_folga_compensatoria_feriado,
+      fundamento_trabalho_domingo: s.fundamento_trabalho_domingo,
+      ...(dadosCct.trim() ? { cct_vigente: true, regras_cct: { ...p.regras_cct,
+        clausula_feriados: s.cct_clausula_feriados ?? p.regras_cct.clausula_feriados,
+        n_domingos_max: s.cct_n_domingos_max ?? p.regras_cct.n_domingos_max,
+        max_consecutivos: s.cct_max_consecutivos ?? p.regras_cct.max_consecutivos,
+        prazo_folga_feriado: s.cct_prazo_folga_feriado ?? p.regras_cct.prazo_folga_feriado } } : {}),
+    });
+    toast.success('Parâmetros aplicados. Confira antes de gerar.');
+  };
 
   const gerar = () => {
     const g = gerarEscala(p, fs);
@@ -51,6 +98,25 @@ export default function EscalaEditor({ params: p, onParams, funcionarios: fs, on
 
   return (
     <div className="space-y-4">
+      {!readOnly && <Card className="p-4 space-y-3">
+        <h3 className="font-semibold flex items-center gap-2"><Sparkles className="w-4 h-4" />Sugerir parâmetros pelo CNAE (IA)</h3>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div><Label>CNAE</Label><Input value={cnaeVal} placeholder="Ex.: 5510-8/01 Hotéis" onChange={(e) => setCnae(e.target.value)} /></div>
+          <div className="sm:col-span-2"><Label>Dados específicos / cláusulas da CCT (opcional)</Label>
+            <Textarea rows={3} value={dadosCct} placeholder="Cole aqui as cláusulas da CCT sobre domingos, feriados, folgas, dias seguidos..." onChange={(e) => setDadosCct(e.target.value)} /></div>
+        </div>
+        <Button size="sm" onClick={sugerir} disabled={sugerindo}>{sugerindo ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Sparkles className="w-4 h-4 mr-1" />}Sugerir parâmetros</Button>
+        {sugestao && <div className="rounded-md border p-3 text-sm space-y-1">
+          <p><b>Atividade:</b> {sugestao.atividade_descricao}</p>
+          <p><b>Categoria:</b> {CATEGORIA_LABEL[sugestao.categoria_atividade as Categoria] || sugestao.categoria_atividade} · <b>Anexo IV:</b> {sugestao.atividade_anexo_iv} · <b>Regime:</b> {sugestao.regime} · <b>N domingos:</b> {sugestao.n_domingos} · <b>Prazo FC:</b> {sugestao.prazo_folga_compensatoria_feriado} dias</p>
+          <p><b>Fundamento:</b> {sugestao.fundamento_trabalho_domingo}</p>
+          {(sugestao.cct_n_domingos_max != null || sugestao.cct_max_consecutivos != null || sugestao.cct_prazo_folga_feriado != null || sugestao.cct_clausula_feriados != null) && <p><b>Da CCT:</b> {[sugestao.cct_clausula_feriados != null && `cláusula de feriados: ${sugestao.cct_clausula_feriados ? 'sim' : 'não'}`, sugestao.cct_n_domingos_max != null && `N máx. ${sugestao.cct_n_domingos_max}`, sugestao.cct_max_consecutivos != null && `máx. ${sugestao.cct_max_consecutivos} dias seguidos`, sugestao.cct_prazo_folga_feriado != null && `prazo FC ${sugestao.cct_prazo_folga_feriado} dias`].filter(Boolean).join(' · ')}</p>}
+          <p className="text-muted-foreground">{sugestao.justificativa}</p>
+          {sugestao.alertas?.map((a: string, i: number) => <p key={i} className="flex gap-1 text-muted-foreground"><AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />{a}</p>)}
+          <Button size="sm" variant="outline" onClick={aplicar}>Aplicar à escala</Button>
+        </div>}
+      </Card>}
+
       <Card className="p-4 space-y-3">
         <h3 className="font-semibold">Parâmetros</h3>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
