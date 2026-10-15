@@ -9,6 +9,8 @@ export interface EscalaFuncionario {
   codigo: string;
   nome: string;
   cargo: string;
+  /** Opcional: setor do funcionário. Se vazio, não entra na regra de cobertura por setor. */
+  setor?: string;
   sexo: 'M' | 'F';
   art386_ativo: boolean;
   art386_justificativa_desativacao: string;
