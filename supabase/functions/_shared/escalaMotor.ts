@@ -345,19 +345,28 @@ export function gerarEscala(p: EscalaParams, funcsIn: EscalaFuncionario[]): Gera
   // mantém afastamentos
   funcsIn.forEach((f, i) => Object.entries(f.dias || {}).forEach(([d, t]) => { if (t === 'A') funcs[i].dias[d] = 'A'; }));
   const cobertura = (d: string) => funcs.filter((f) => (f.dias[d] || 'T') === 'T').length;
-  // Cobertura por setor: setores vazios são ignorados
-  const setores = [...new Set(funcs.map((f) => (f.setor || '').trim()).filter(Boolean))];
-  const coberturaSetor = (d: string, s: string) => funcs.filter((f) => (f.setor || '').trim() === s && (f.dias[d] || 'T') === 'T').length;
-  /** true se marcar folga para f em d deixaria o setor dele descoberto */
-  const descobreSetor = (f: EscalaFuncionario, d: string) => {
-    const s = (f.setor || '').trim();
-    return !!s && coberturaSetor(d, s) <= 1;
+  // Cobertura por setor e por função (cargo): campos vazios são ignorados
+  const gruposDe = (f: EscalaFuncionario) => {
+    const g: string[] = [];
+    if ((f.setor || '').trim()) g.push('Setor "' + f.setor!.trim() + '"');
+    if ((f.cargo || '').trim()) g.push('Função "' + f.cargo!.trim() + '"');
+    return g;
   };
+  const setores = [...new Set(funcs.flatMap(gruposDe))];
+  const coberturaSetor = (d: string, s: string) => funcs.filter((f) => gruposDe(f).includes(s) && (f.dias[d] || 'T') === 'T').length;
+  /** true se marcar folga para f em d deixaria o setor ou a função dele descoberto */
+  const descobreSetor = (f: EscalaFuncionario, d: string) => gruposDe(f).some((s) => coberturaSetor(d, s) <= 1);
 
   // 1) Domingos por turmas (R03/R04/R11)
   const gerais = funcs.filter((f) => !(f.sexo === 'F' && f.art386_ativo));
   const mulheres = funcs.filter((f) => f.sexo === 'F' && f.art386_ativo);
-  const turmas = (lista: typeof funcs, T: number) => lista.forEach((f, idx) => {
+  const turmas = (lista0: typeof funcs, T: number) => {
+    // agrupa por função/setor para que as turmas de domingo se alternem dentro de cada função
+    const chave = (f: EscalaFuncionario) => `${(f.cargo || '').trim()}|${(f.setor || '').trim()}`;
+    const lista = [...lista0].sort((a, b) => chave(a).localeCompare(chave(b)));
+    const pos = new Map<string, number>();
+    lista.forEach((f) => {
+    const k = chave(f); const idx = pos.get(k) || 0; pos.set(k, idx + 1);
     // respeita o histórico: quantos domingos já trabalhou desde a última folga dominical
     let ja = 1;
     if (f.ultimo_domingo_folga_anterior && f.ultimo_domingo_folga_anterior < p.data_inicio)
@@ -371,7 +380,8 @@ export function gerarEscala(p: EscalaParams, funcsIn: EscalaFuncionario[]): Gera
       const folga = !domingoOk || k === primeiro || (k > primeiro && k % T === fase);
       f.dias[d] = folga ? 'F' : 'T';
     });
-  });
+    });
+  };
   turmas(gerais, N);
   turmas(mulheres, semMulher(p));
 
@@ -441,7 +451,7 @@ export function gerarEscala(p: EscalaParams, funcsIn: EscalaFuncionario[]): Gera
     for (const d of dias) {
       for (const s of setores) {
         if (coberturaSetor(d, s) > 0) continue;
-        const membros = funcs.filter((f) => (f.setor || '').trim() === s);
+        const membros = funcs.filter((f) => gruposDe(f).includes(s));
         // tenta mover a folga semanal (F) de um membro para outro dia da mesma semana com cobertura
         let reparado = false;
         for (const f of membros) {
@@ -462,7 +472,7 @@ export function gerarEscala(p: EscalaParams, funcsIn: EscalaFuncionario[]): Gera
         }
         if (!reparado) {
           const qtd = membros.length;
-          conflitos.push(`Setor "${s}" descoberto em ${fmtBR(d)}: ${qtd <= 1 ? 'há apenas 1 funcionário no setor' : 'todos os funcionários do setor estão de folga/afastados'}. Ajuste manualmente ou reforce o quadro do setor.`);
+          conflitos.push(`${s} descoberta(o) em ${fmtBR(d)}: ${qtd <= 1 ? 'há apenas 1 funcionário' : 'todos estão de folga/afastados'}. Ajuste manualmente ou reforce o quadro.`);
         }
       }
     }

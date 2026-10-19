@@ -49,20 +49,24 @@ export default function ImportarFuncionarios({ atuais, onImportar }: { atuais: E
           }
         }
         if (arquivos.length) {
-          const { data, error } = await supabase.functions.invoke('conversor-extrair-tabela', { body: { arquivos, conhecidos: [], textos } });
+          const { data, error } = await supabase.functions.invoke('escala-extrair-funcionarios', { body: { arquivos, textos } });
           if (error || data?.error) throw new Error(data?.error || error?.message);
-          for (const l of data?.lancamentos || []) if (l?.nome) achados.push({ nome: String(l.nome), codigo: String(l.codigo || '') });
+          for (const l of data?.funcionarios || []) if (l?.nome) achados.push({ nome: String(l.nome), codigo: String(l.codigo || ''), cargo: String(l.cargo || ''), setor: String(l.setor || '') });
         }
       }
       const vistos = new Set(atuais.map((f) => norm(f.nome)).filter(Boolean));
+      // completa cargo/setor de quem já está na lista
+      const porNome = new Map(achados.map((a) => [norm(a.nome), a]));
+      let atualizados = 0;
+      const base = atuais.map((f) => { const a = porNome.get(norm(f.nome)); if (!a) return f; const c = f.cargo || a.cargo || ''; const st = f.setor || a.setor || ''; if (c !== (f.cargo || '') || st !== (f.setor || '')) atualizados++; return { ...f, cargo: c, setor: st }; });
       const novos: EscalaFuncionario[] = [];
       for (const a of achados) {
         const k = norm(a.nome); if (!k || vistos.has(k)) continue; vistos.add(k);
         novos.push({ ...novoFuncionario(), nome: a.nome.trim(), codigo: a.codigo, cargo: a.cargo || '', setor: a.setor || '' });
       }
-      if (!novos.length) return toast.info('Nenhum funcionário novo encontrado no extrato.');
-      onImportar([...atuais.filter((f) => f.nome.trim()), ...novos]);
-      toast.success(`${novos.length} funcionário(s) importado(s). Confira nomes, sexo e horários.`);
+      if (!novos.length && !atualizados) return toast.info('Nenhum funcionário novo encontrado no extrato.');
+      onImportar([...base.filter((f) => f.nome.trim()), ...novos]);
+      toast.success(`${novos.length} funcionário(s) importado(s)${atualizados ? `, ${atualizados} com cargo/setor completado` : ''}. Confira nomes, sexo e horários.`);
     } catch (e: any) { toast.error(e.message || 'Falha na leitura do extrato'); }
     finally { setLendo(false); if (ref.current) ref.current.value = ''; }
   };
