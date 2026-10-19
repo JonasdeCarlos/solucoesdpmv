@@ -53,3 +53,10 @@ itSpread('folgas de domingo são distribuídas em turmas, não todos no mesmo di
   expectSpread(folgas).toBeLessThan(6);
   expectSpread(folgas).toBeGreaterThan(0);
 });
+
+itSpread('regime 5x2 gera 2 folgas por semana completa', () => {
+  const p: any = { regime: '5x2', data_inicio: '2026-11-02', data_fim: '2026-11-29', categoria_atividade: 'COMERCIO', atividade_anexo_iv: 'nenhuma', fundamento_trabalho_domingo: 'Lei 10.101/2000', cct_vigente: false, cct_registro: '', cct_vigencia: '', regras_cct: {}, prazo_folga_compensatoria_feriado: 7, n_domingos: 3, minimo_diario: 0, feriados: [], setor: '', responsavel_nome: '' };
+  const g = gerarSpread(p, [0, 1, 2, 3].map((i) => ({ ...novoSpread(), nome: 'F' + i })));
+  const semana = ['2026-11-09', '2026-11-10', '2026-11-11', '2026-11-12', '2026-11-13', '2026-11-14', '2026-11-15'];
+  g.funcionarios.forEach((f) => expectSpread(semana.filter((d) => f.dias[d] === 'F').length).toBe(2));
+});

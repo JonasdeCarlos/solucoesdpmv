@@ -11,7 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import {
   ATIVIDADES_ANEXO_IV, CATEGORIA_LABEL, listarDias, diaSemana, fmtBR, gerarEscala, validarEscala, is12x36,
-  nMaxCategoria, novoFuncionario, type EscalaFuncionario, type EscalaParams, type TipoDia, type Categoria,
+  nMaxCategoria, novoFuncionario, domingoAutorizado, fundamentoPadrao, type EscalaFuncionario, type EscalaParams, type TipoDia, type Categoria,
 } from '../motor';
 import ImportarFuncionarios from './ImportarFuncionarios';
 
@@ -91,7 +91,16 @@ export default function EscalaEditor({ params: p, onParams, funcionarios: fs, on
   };
 
   const gerar = () => {
-    const g = gerarEscala(p, fs);
+    let pg = p;
+    const temDomingo = listarDias(p.data_inicio, p.data_fim).some((d) => diaSemana(d) === 0);
+    if (temDomingo && !is12x36(p) && !domingoAutorizado(p)) {
+      const fp = fundamentoPadrao(p);
+      if (fp && window.confirm(`O fundamento de trabalho aos domingos está vazio. Sem ele, todos ficam de folga em todos os domingos e não há revezamento.\n\nPreencher com "${fp}" e gerar a escala com revezamento?`)) {
+        pg = { ...p, fundamento_trabalho_domingo: fp };
+        onParams(pg);
+      }
+    }
+    const g = gerarEscala(pg, fs);
     if (!is12x36(p)) onFuncionarios(g.funcionarios);
     setConflitos(g.conflitos);
     toast[g.conflitos.length ? 'warning' : 'success'](g.conflitos.length ? 'Escala gerada com pendências — veja a lista.' : 'Escala gerada sem bloqueios.');

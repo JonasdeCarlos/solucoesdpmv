@@ -107,10 +107,20 @@ export const nMaxCategoria = (p: EscalaParams) => {
   const cct = p.regras_cct?.n_domingos_max;
   return cct && cct > 0 ? Math.min(base, cct) : base;
 };
+/** Limite de dias seguidos pelo regime (6x1 = 6, 5x2/5x1 = 5, 4x2 = 4). */
+export const maxRegime = (p: EscalaParams) => { const m = /^(\d)\s*x\s*\d/i.exec(p.regime || ''); const n = m ? Number(m[1]) : 6; return n >= 1 && n <= 6 ? n : 6; };
+/** Folgas por semana seg–dom pelo regime (5x2 e 4x2 = 2; demais = 1). */
+export const folgasSemana = (p: EscalaParams) => (/^(5\s*x\s*2|4\s*x\s*2)$/i.test((p.regime || '').trim()) ? 2 : 1);
 export const maxConsecutivos = (p: EscalaParams) => {
   const c = p.regras_cct?.max_consecutivos;
-  return c && c > 0 ? Math.min(6, c) : 6;
+  const r = maxRegime(p);
+  return c && c > 0 ? Math.min(r, c) : r;
 };
+/** Fundamento padrão por categoria, para quem não preencheu. */
+export const fundamentoPadrao = (p: EscalaParams) =>
+  p.categoria_atividade === 'COMERCIO' ? 'Lei 10.101/2000, art. 6º (comércio em geral, observada a legislação municipal)'
+  : p.categoria_atividade === 'DEMAIS_AUTORIZADAS' ? 'Portaria MTP 671/2021, Anexo IV (atividade autorizada)'
+  : '';
 export const prazoFeriado = (p: EscalaParams) => {
   const c = p.regras_cct?.prazo_folga_feriado;
   return c && c > 0 ? c : (p.prazo_folga_compensatoria_feriado || 7);
@@ -205,6 +215,8 @@ export function validarEscala(p: EscalaParams, funcs: EscalaFuncionario[], opts:
       if (!sem.some((x) => t(x) === 'F' || t(x) === 'A')) {
         out.push(v('R01', 'BLOQUEIO', 'Semana sem folga semanal', FUND.R01, nome, `${fmtBR(sem[0])} a ${fmtBR(sem[6])}`));
         sem.forEach((x) => marca(f.id, x, 'R01'));
+      } else if (folgasSemana(p) > 1 && sem.filter((x) => t(x) === 'F' || t(x) === 'FC' || t(x) === 'A').length < folgasSemana(p)) {
+        out.push(v('R01', 'ALERTA', `Semana com menos de ${folgasSemana(p)} folgas (regime ${p.regime})`, 'regime contratual', nome, `${fmtBR(sem[0])} a ${fmtBR(sem[6])}`));
       }
     }
 
@@ -324,6 +336,7 @@ export function gerarEscala(p: EscalaParams, funcsIn: EscalaFuncionario[]): Gera
   const dias = listarDias(p.data_inicio, p.data_fim);
   const fer = feriadoSet(p);
   const maxC = maxConsecutivos(p);
+  const folgasSem = folgasSemana(p);
   const N = nEfetivo(p);
   const domingos = dias.filter((d) => diaSemana(d) === 0);
   const feriadoOk = podeTrabalharFeriado(p);
@@ -371,16 +384,22 @@ export function gerarEscala(p: EscalaParams, funcsIn: EscalaFuncionario[]): Gera
     for (const d of dias) {
       if (diaSemana(d) !== 1) continue;
       const sem = listarDias(d, addDias(d, 6)).filter((x) => x <= p.data_fim);
-      if (sem.some((x) => t(x) === 'F' || t(x) === 'A')) continue;
-      let cand = sem.filter((x) => diaSemana(x) !== 0 && t(x) === 'T' && !fer.has(x));
-      if (!cand.length) continue;
-      // evita deixar o setor descoberto, se houver alternativa
-      const semDescobrir = cand.filter((x) => !descobreSetor(f, x));
-      if (semDescobrir.length) cand = semDescobrir;
-      // maior cobertura primeiro; desempate rotativo (R11)
+      const alvo = sem.length === 7 ? folgasSem : Math.min(folgasSem, Math.max(1, Math.floor(sem.length / 3)));
       const rot = (fi + Math.floor(diffDias(p.data_inicio, d) / 7)) % 6;
-      cand.sort((a, b) => cobertura(b) - cobertura(a) || ((diaSemana(a) + 6 - rot) % 6) - ((diaSemana(b) + 6 - rot) % 6));
-      f.dias[cand[0]] = 'F';
+      while (sem.filter((x) => t(x) === 'F' || t(x) === 'A').length < alvo) {
+        let cand = sem.filter((x) => diaSemana(x) !== 0 && t(x) === 'T' && !fer.has(x));
+        if (!cand.length) break;
+        // evita deixar o setor descoberto, se houver alternativa
+        const semDescobrir = cand.filter((x) => !descobreSetor(f, x));
+        if (semDescobrir.length) cand = semDescobrir;
+        // 2ª folga: prefere dia não colado à 1ª, para quebrar a sequência
+        const jaF = sem.filter((x) => t(x) === 'F');
+        const longe = cand.filter((x) => jaF.every((y) => Math.abs(diffDias(x, y)) > 1));
+        if (jaF.length && longe.length) cand = longe;
+        // maior cobertura primeiro; desempate rotativo por funcionário/semana (R11)
+        cand.sort((a, b) => cobertura(b) - cobertura(a) || ((diaSemana(a) + 6 - rot) % 6) - ((diaSemana(b) + 6 - rot) % 6));
+        f.dias[cand[0]] = 'F';
+      }
     }
     // partial first week (antes da 1ª segunda)
     let streak = 1;
@@ -470,7 +489,7 @@ export function rodapeFundamentos(p: EscalaParams, funcs: EscalaFuncionario[]): 
     `Categoria: ${CATEGORIA_LABEL[p.categoria_atividade] || p.categoria_atividade}`,
     `N = ${nEfetivo(p)} domingo(s) (máx. ${nMaxCategoria(p)})`,
     `Art. 386 CLT: ${art386 ? 'ativo' : 'inativo'}`,
-    `Domingos/feriados: ${p.fundamento_trabalho_domingo || 'sem fundamento informado'}`,
+    `Domingos/feriados: ${p.fundamento_trabalho_domingo || fundamentoPadrao(p) || 'sem fundamento informado'}`,
     p.atividade_anexo_iv && p.atividade_anexo_iv !== 'nenhuma' ? `Anexo IV: ${p.atividade_anexo_iv}` : '',
     p.cct_vigente ? `CCT ${p.cct_registro} ${p.cct_vigencia}`.trim() : '',
     'Fundamentos: art. 67 CLT; Lei 605/1949; art. 7º XV CF; OJ 410 SDI-1 TST',
