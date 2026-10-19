@@ -185,16 +185,16 @@ export default function EscalaEditor({ params: p, onParams, funcionarios: fs, on
           {!readOnly && <div className="flex gap-2"><ImportarFuncionarios atuais={fs} onImportar={onFuncionarios} /><Button size="sm" variant="outline" onClick={() => onFuncionarios([...fs, novoFuncionario()])}><Plus className="w-4 h-4 mr-1" />Funcionário</Button></div>}</div>
         <p className="text-xs text-muted-foreground">Preencha o <strong>Setor</strong> para o sistema evitar deixar o setor descoberto ao gerar a escala. Em branco, o funcionário não entra nessa regra.</p>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[980px]">
+          <table className="w-full text-sm min-w-[1240px]">
             <thead><tr className="text-left text-muted-foreground">
-              <th className="p-1">Código</th><th className="p-1">Nome</th><th className="p-1">Cargo</th><th className="p-1">Setor</th><th className="p-1">Sexo</th><th className="p-1">Art. 386</th>
+              <th className="p-1 w-20">Código</th><th className="p-1 min-w-[200px] w-[200px]">Nome</th><th className="p-1 min-w-[140px] w-[140px]">Cargo</th><th className="p-1">Setor</th><th className="p-1">Sexo</th><th className="p-1">Art. 386</th>
               <th className="p-1">Última folga antes</th><th className="p-1">Último domingo de folga</th><th className="p-1">Entrada</th><th className="p-1">Saída</th><th />
             </tr></thead>
             <tbody>{fs.map((f, i) => (
               <tr key={f.id} className="align-top border-t">
                 <td className="p-1 w-20"><Input disabled={readOnly} value={f.codigo} onChange={(e) => setF(i, { codigo: e.target.value })} /></td>
-                <td className="p-1"><Input disabled={readOnly} value={f.nome} onChange={(e) => setF(i, { nome: e.target.value })} /></td>
-                <td className="p-1"><Input disabled={readOnly} value={f.cargo} onChange={(e) => setF(i, { cargo: e.target.value })} /></td>
+                <td className="p-1 w-[200px] min-w-[200px]"><Input disabled={readOnly} value={f.nome} onChange={(e) => setF(i, { nome: e.target.value })} /></td>
+                <td className="p-1 w-[140px] min-w-[140px]"><Input disabled={readOnly} value={f.cargo} onChange={(e) => setF(i, { cargo: e.target.value })} /></td>
                 <td className="p-1 w-32"><Input disabled={readOnly} placeholder="Opcional" value={f.setor || ''} onChange={(e) => setF(i, { setor: e.target.value })} /></td>
                 <td className="p-1 w-20"><select disabled={readOnly} className={sel} value={f.sexo} onChange={(e) => { const s = e.target.value as 'M' | 'F'; setF(i, { sexo: s, art386_ativo: s === 'F' }); }}><option value="M">M</option><option value="F">F</option></select></td>
                 <td className="p-1 w-48">{f.sexo === 'F' ? (<div className="space-y-1">
