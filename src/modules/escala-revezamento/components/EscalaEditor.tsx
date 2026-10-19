@@ -185,7 +185,7 @@ export default function EscalaEditor({ params: p, onParams, funcionarios: fs, on
           {!readOnly && <div className="flex gap-2"><ImportarFuncionarios atuais={fs} onImportar={onFuncionarios} /><Button size="sm" variant="outline" onClick={() => onFuncionarios([...fs, novoFuncionario()])}><Plus className="w-4 h-4 mr-1" />Funcionário</Button></div>}</div>
         <p className="text-xs text-muted-foreground">Preencha o <strong>Setor</strong> para o sistema evitar deixar o setor descoberto ao gerar a escala. Em branco, o funcionário não entra nessa regra.</p>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[980px]">
+          <table className="w-full text-sm min-w-[1240px]">
             <thead><tr className="text-left text-muted-foreground">
               <th className="p-1 w-20">Código</th><th className="p-1 min-w-[200px] w-[200px]">Nome</th><th className="p-1 min-w-[140px] w-[140px]">Cargo</th><th className="p-1">Setor</th><th className="p-1">Sexo</th><th className="p-1">Art. 386</th>
               <th className="p-1">Última folga antes</th><th className="p-1">Último domingo de folga</th><th className="p-1">Entrada</th><th className="p-1">Saída</th><th />
