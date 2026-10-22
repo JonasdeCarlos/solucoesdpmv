@@ -96,6 +96,7 @@ function parseAreas(html: string): AreaAtividade[] {
   }).filter((g) => g.ordem && g.titulo);
 }
 
+let familiaRef = "";
 async function tituloDeReferencia(digits: string): Promise<string> {
   // A busca por código do MTE passou a exigir reCAPTCHA; usamos um índice público
   // apenas para descobrir o título oficial e então pesquisar por título no MTE.
@@ -104,6 +105,8 @@ async function tituloDeReferencia(digits: string): Promise<string> {
     const r = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
     if (!r.ok) return "";
     const html = await r.text();
+    const fam = html.match(new RegExp(`href="/cbo-mte/${digits.slice(0, 4)}-([a-z0-9-]+)"`, "i"))?.[1] || "";
+    familiaRef = fam.replace(/-/g, " ").trim();
     const slug = html.match(new RegExp(`href="/cbo-mte/${digits}-([a-z0-9-]+)"`, "i"))?.[1] || "";
     if (!slug) return "";
     // A página de detalhe traz o título COM acentuação (essencial para a busca do MTE).
@@ -181,12 +184,18 @@ async function consultarMte(cbo: string, nome?: string) {
     ...variacoesDeTermo(await tituloDeReferencia(digits)),
     ...variacoesDeTermo(nome || ""),
   ]));
+  // Fallback: busca pela família (as Áreas de Atividade do CBO são definidas por família).
+  const termosFamilia = variacoesDeTermo(familiaRef).filter((t) => !termos.includes(t));
+  const familia = digits.slice(0, 4);
+  let famPage: { text: string; url: string } | null = null;
+  let famForm = { html: "", action: "" };
+  let famClick = "";
 
   let resultado: { text: string; url: string } | null = null;
   let formResultado = { html: "", action: "" };
   let clickCodigo = "";
 
-  for (const termo of termos) {
+  for (const termo of [...termos, ...termosFamilia]) {
     const busca = await fetchHtml("/cbosite/pages/pesquisas/BuscaPorTitulo.jsf");
     const formBusca = extractForm(busca.text, "formBuscaPorTitulo");
     if (!formBusca.html) throw new Error("Não foi possível abrir a busca oficial do MTE.");
@@ -206,13 +215,22 @@ async function consultarMte(cbo: string, nome?: string) {
       const bate = digits.length === 6
         ? texto.includes(display)
         : new RegExp(`\\b${digits}(-\\d{2})?\\b`).test(texto);
-      if (!bate) continue;
+      if (!bate) {
+        if (!famClick && new RegExp(`\\b${familia}\\b`).test(texto) && !new RegExp(`\\b${familia}-\\d{2}\\b`).test(texto)) {
+          const c = Array.from(linha.matchAll(/\{'(formSite017:objetos:\d+:j_idt\d+)':'\1'\}/g)).map((m) => m[1]);
+          famClick = c[1] || c[0] || "";
+          if (famClick) { famPage = page; famForm = form; }
+        }
+        continue;
+      }
       const campos = Array.from(linha.matchAll(/\{'(formSite017:objetos:\d+:j_idt\d+)':'\1'\}/g)).map((m) => m[1]);
       clickCodigo = campos[1] || campos[0] || "";
       if (clickCodigo) { resultado = page; formResultado = form; break; }
     }
     if (clickCodigo) break;
+    if (famClick && termosFamilia.includes(termo)) break;
   }
+  if (!clickCodigo && famClick && famPage) { resultado = famPage; formResultado = famForm; clickCodigo = famClick; }
 
   if (!resultado || !clickCodigo) {
     return {
