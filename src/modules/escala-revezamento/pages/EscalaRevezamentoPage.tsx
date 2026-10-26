@@ -106,6 +106,31 @@ function ListaEscalas({ clienteId, onAbrir }: { clienteId: string; onAbrir: (id:
     if (!confirm('Excluir esta escala?')) return;
     await supabase.from('escalas_revezamento' as any).delete().eq('id', id); load();
   };
+  const linkGestor = async (e: any) => {
+    const tokSalvo = e.link_id ? localStorage.getItem(`escala-link-${e.link_id}`) : null;
+    if (tokSalvo && confirm('Esta escala já tem link. Copiar o link existente? (Cancelar gera um novo link e o anterior deixa de funcionar)')) {
+      await copyToClipboard(linkUrl(tokSalvo)); return toast.success('Link copiado.');
+    }
+    const token = novoToken(); const th = await sha256(token);
+    let linkId = e.link_id as string | null;
+    if (linkId) {
+      const { error } = await supabase.from('escala_links_publicos' as any).update({ token_hash: th, pin_hash: null, revogado_em: null, expira_em: new Date(Date.now() + 90 * 86400000).toISOString() } as any).eq('id', linkId);
+      if (error) return toast.error(error.message);
+    } else {
+      const { data: u } = await supabase.auth.getUser();
+      const { data, error } = await supabase.from('escala_links_publicos' as any).insert({
+        cliente_id: clienteId, token_hash: th, expira_em: new Date(Date.now() + 90 * 86400000).toISOString(), created_by: u.user?.id,
+      } as any).select('id').single();
+      if (error) return toast.error(error.message);
+      linkId = (data as any).id;
+      const { error: e2 } = await supabase.from('escalas_revezamento' as any).update({ link_id: linkId, ...(e.status === 'enviada' || e.status === 'aprovada' ? {} : { status: 'rascunho' }) } as any).eq('id', e.id);
+      if (e2) return toast.error(e2.message);
+    }
+    localStorage.setItem(`escala-link-${linkId}`, token);
+    await copyToClipboard(linkUrl(token));
+    toast.success('Link do gestor copiado. Ele poderá editar e gerar esta escala (válido por 90 dias).');
+    load();
+  };
   return (
     <Card className="p-4 mt-3 space-y-2">
       <div className="flex justify-between"><h3 className="font-semibold">Escalas da empresa</h3><Button size="sm" onClick={nova}><Plus className="w-4 h-4 mr-1" />Nova escala</Button></div>
@@ -115,7 +140,9 @@ function ListaEscalas({ clienteId, onAbrir }: { clienteId: string; onAbrir: (id:
           <button className="font-medium hover:underline text-left" onClick={() => onAbrir(e.id)}>{e.titulo} {e.setor && `— ${e.setor}`}</button>
           <span className="text-muted-foreground">{fmtBRAno(e.data_inicio)} a {fmtBRAno(e.data_fim)}</span>
           <StatusBadge s={e.status} />{e.origem === 'publica' && <Badge variant="outline">Cliente</Badge>}
-          <Button variant="ghost" size="icon" className="ml-auto" onClick={() => excluir(e.id)}><Trash2 className="w-4 h-4" /></Button>
+          {e.link_id && <Badge variant="outline">Com link</Badge>}
+          <Button variant="outline" size="sm" className="ml-auto" onClick={() => linkGestor(e)}><Link2 className="w-4 h-4 mr-1" />Link para o gestor</Button>
+          <Button variant="ghost" size="icon" onClick={() => excluir(e.id)}><Trash2 className="w-4 h-4" /></Button>
         </div>))}
     </Card>
   );
