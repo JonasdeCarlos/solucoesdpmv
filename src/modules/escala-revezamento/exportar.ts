@@ -107,10 +107,10 @@ export function gerarXlsx(info: ExportInfo) {
       [`Quadro de escala de revezamento — ${cliente.nome || ''} — CNPJ ${cliente.cnpj || ''}`],
       [`Setor: ${p.setor || ''} — ${MESES[Number(mes.slice(5)) - 1]}/${mes.slice(0, 4)}`],
       [],
-      ['Código', 'Funcionário', ...dias.map((d) => `${d.slice(8)} ${SEM[diaSemana(d)]}`)],
+      ['Código', 'Funcionário', 'Cargo', ...dias.map((d) => `${d.slice(8)} ${SEM[diaSemana(d)]}`)],
       ...gruposPorSetor(fs).flatMap((g) => {
         const linhas = g.funcs.map((f) => [f.codigo, f.nome, f.cargo || '', ...dias.map((d) => cel(f.dias[d]))]);
-        return g.setor ? [[`SETOR: ${g.setor}`], ...linhas, ['', 'Trabalhando no setor', ...dias.map((d) => trab(g.funcs, d))], []] : linhas;
+        return g.setor ? [[`SETOR: ${g.setor}`], ...linhas, ['', 'Trabalhando no setor', '', ...dias.map((d) => trab(g.funcs, d))], []] : linhas;
       }),
       [],
       ['Legenda: T trabalho, F folga, FC folga compensatória de feriado, A afastado'],
