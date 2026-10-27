@@ -287,7 +287,7 @@ export default function EscalaEditor({ params: p, onParams, funcionarios: fs, on
                 {g.setor && <tr className="border-t bg-primary/10"><td className="sticky left-0 z-10 bg-primary/10 p-1 border-r font-semibold">Setor: {g.setor} ({g.funcs.length})</td><td colSpan={dias.length} /></tr>}
                 {g.funcs.map((f) => (
                 <tr key={f.id} className="border-t">
-                  <td className="sticky left-0 z-10 bg-card p-1 border-r truncate max-w-[150px]">{f.nome || '(sem nome)'}</td>
+                  <td className="sticky left-0 z-10 bg-card p-1 border-r truncate max-w-[180px]">{f.nome || '(sem nome)'}{f.cargo && <div className="text-[10px] text-muted-foreground truncate">{f.cargo}</div>}</td>
                   {dias.map((d) => {
                     const t = f.dias[d] || 'T';
                     const erros = res.porCelula[`${f.id}|${d}`];
