@@ -60,3 +60,14 @@ itSpread('regime 5x2 gera 2 folgas por semana completa', () => {
   const semana = ['2026-11-09', '2026-11-10', '2026-11-11', '2026-11-12', '2026-11-13', '2026-11-14', '2026-11-15'];
   g.funcionarios.forEach((f) => expectSpread(semana.filter((d) => f.dias[d] === 'F').length).toBe(2));
 });
+
+describe('mínimo por setor', () => {
+  it('mantém ao menos 3 pessoas trabalhando no setor Cozinha todos os dias', () => {
+    const p: EscalaParams = { ...base, regime: '5x2', fundamento_trabalho_domingo: 'Lei 10.101/2000', n_domingos: 3, regras_cct: { minimo_setor: { Cozinha: 3 } } } as EscalaParams;
+    const fs = Array.from({ length: 6 }, (_, i) => ({ ...f('c' + i), setor: 'Cozinha' }));
+    const r = gerarEscala(p, fs);
+    for (const d of listarDias(p.data_inicio, p.data_fim)) {
+      expect(r.funcionarios.filter((x) => x.dias[d] === 'T').length).toBeGreaterThanOrEqual(3);
+    }
+  });
+});
