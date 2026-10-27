@@ -1,3 +1,5 @@
+import { Fragment } from 'react';
+import { gruposPorSetor } from '../exportar';
 import { useMemo, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -243,7 +245,9 @@ export default function EscalaEditor({ params: p, onParams, funcionarios: fs, on
               {dias.map((d) => <th key={d} className={`p-1 min-w-[30px] text-center ${diaSemana(d) === 0 || fer.has(d) ? 'bg-primary text-primary-foreground' : ''}`}>{d.slice(8)}<br />{SEM[diaSemana(d)]}</th>)}
             </tr></thead>
             <tbody>
-              {fs.map((f) => (
+              {gruposPorSetor(fs).map((g) => (<Fragment key={'g' + g.setor}>
+                {g.setor && <tr className="border-t bg-primary/10"><td className="sticky left-0 z-10 bg-primary/10 p-1 border-r font-semibold">Setor: {g.setor} ({g.funcs.length})</td><td colSpan={dias.length} /></tr>}
+                {g.funcs.map((f) => (
                 <tr key={f.id} className="border-t">
                   <td className="sticky left-0 z-10 bg-card p-1 border-r truncate max-w-[150px]">{f.nome || '(sem nome)'}</td>
                   {dias.map((d) => {
@@ -256,6 +260,8 @@ export default function EscalaEditor({ params: p, onParams, funcionarios: fs, on
                       </td>);
                   })}
                 </tr>))}
+                {g.setor && <tr className="border-t italic text-muted-foreground"><td className="sticky left-0 z-10 bg-card p-1 border-r">Trabalhando no setor</td>{dias.map((d) => <td key={d} className="text-center">{g.funcs.filter((x) => (x.dias[d] || 'T') === 'T').length}</td>)}</tr>}
+              </Fragment>))}
               <tr className="border-t font-semibold">
                 <td className="sticky left-0 z-10 bg-card p-1 border-r">Cobertura</td>
                 {dias.map((d) => { const c = cobertura(d); return <td key={d} className={`text-center ${p.minimo_diario && c < p.minimo_diario ? 'text-destructive' : ''}`}>{c}</td>; })}
