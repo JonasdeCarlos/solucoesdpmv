@@ -237,7 +237,7 @@ function EscalaView({ id, onVoltar }: { id: string; onVoltar: () => void }) {
       if (estadoRef.current !== 'salvo' || document.hidden) return;
       const { data } = await supabase.from('escalas_revezamento' as any).select('updated_at').eq('id', id).maybeSingle();
       const v = (data as any)?.updated_at;
-      if (v && v !== versao.current && estadoRef.current === 'salvo') {
+      if (v && Date.parse(v) !== Date.parse(versao.current || '') && estadoRef.current === 'salvo') {
         await load();
         toast.info('Escala atualizada com alterações do gestor.');
       }

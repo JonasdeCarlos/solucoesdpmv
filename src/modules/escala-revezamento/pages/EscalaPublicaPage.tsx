@@ -138,7 +138,7 @@ function EscalaPublicaEditor({ id, call, cliente, onVoltar }: { id: string; call
       if (estadoRef.current !== 'salvo' || document.hidden) return;
       try {
         const v = await call('versao', { escala_id: id });
-        if (v.versao && v.versao !== versao.current && estadoRef.current === 'salvo') {
+        if (v.versao && Date.parse(v.versao) !== Date.parse(versao.current || '') && estadoRef.current === 'salvo') {
           aplicar(await call('get', { escala_id: id }));
           toast.info('Escala atualizada com alterações do escritório.');
         }

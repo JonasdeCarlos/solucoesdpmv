@@ -28,10 +28,9 @@ export async function carregarEscala(db: any, id: string) {
 /** Salva e devolve o novo carimbo de versão (updated_at), gravado só no fim para que leitores não peguem a escala pela metade. */
 export async function salvarEscala(db: any, id: string, patch: Record<string, unknown>, funcionarios: EscalaFuncionario[]): Promise<string> {
   await salvarEscalaInterno(db, id, patch, funcionarios);
-  const versao = new Date().toISOString();
-  const { error } = await db.from('escalas_revezamento').update({ updated_at: versao }).eq('id', id);
+  const { data, error } = await db.from('escalas_revezamento').update({ updated_at: new Date().toISOString() }).eq('id', id).select('updated_at').single();
   if (error) throw error;
-  return versao;
+  return data.updated_at;
 }
 
 async function salvarEscalaInterno(db: any, id: string, patch: Record<string, unknown>, funcionarios: EscalaFuncionario[]) {
