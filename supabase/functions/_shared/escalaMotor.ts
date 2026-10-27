@@ -26,7 +26,7 @@ export interface RegrasCct {
   /** Opcional: semanas máximas entre domingos de folga da mulher (art. 386 CLT = 2). */
   domingo_mulher_semanas?: number | null;
   /** Mínimo de pessoas trabalhando por setor (nome do setor -> quantidade). Ausente = 1. */
-  minimo_setor?: Record<string, number>;
+  minimo_setor?: Record<string, number | Record<string, number>>;
   max_consecutivos?: number | null;
   prazo_folga_feriado?: number | null;
   clausula_feriados?: boolean;
@@ -357,13 +357,15 @@ export function gerarEscala(p: EscalaParams, funcsIn: EscalaFuncionario[]): Gera
   const setores = [...new Set(funcs.flatMap(gruposDe))];
   const coberturaSetor = (d: string, s: string) => funcs.filter((f) => gruposDe(f).includes(s) && (f.dias[d] || 'T') === 'T').length;
   /** true se marcar folga para f em d deixaria o setor ou a função dele descoberto */
-  const minimoMap = Object.fromEntries(Object.entries(p.regras_cct?.minimo_setor || {}).map(([k, v]) => [k.trim().toLowerCase(), Number(v) || 0]));
-  const minGrupo = (s: string) => {
+  const minimoMap = Object.fromEntries(Object.entries(p.regras_cct?.minimo_setor || {}).map(([k, v]) => [k.trim().toLowerCase(), v]));
+  /** mínimo do setor no dia (aceita número único ou por dia da semana: chaves "0" = domingo ... "6" = sábado) */
+  const minGrupo = (s: string, d: string) => {
     const m = /^Setor "(.*)"$/.exec(s);
-    const v = m ? minimoMap[m[1].trim().toLowerCase()] : 0;
-    return v && v > 0 ? v : 1;
+    const raw: any = m ? minimoMap[m[1].trim().toLowerCase()] : 0;
+    const v = typeof raw === 'object' && raw ? Number(raw[String(diaSemana(d))]) || 0 : Number(raw) || 0;
+    return v > 0 ? v : 1;
   };
-  const descobreSetor = (f: EscalaFuncionario, d: string) => gruposDe(f).some((s) => coberturaSetor(d, s) <= minGrupo(s));
+  const descobreSetor = (f: EscalaFuncionario, d: string) => gruposDe(f).some((s) => coberturaSetor(d, s) <= minGrupo(s, d));
 
   // 1) Domingos por turmas (R03/R04/R11)
   const gerais = funcs.filter((f) => !(f.sexo === 'F' && f.art386_ativo));
@@ -458,7 +460,7 @@ export function gerarEscala(p: EscalaParams, funcsIn: EscalaFuncionario[]): Gera
   if (setores.length) {
     for (const d of dias) {
       for (const s of setores) {
-        const minS = minGrupo(s);
+        const minS = minGrupo(s, d);
         if (coberturaSetor(d, s) >= minS) continue;
         const membros = funcs.filter((f) => gruposDe(f).includes(s));
         // tenta mover a folga semanal (F) de um membro para outro dia da mesma semana com cobertura
@@ -470,7 +472,7 @@ export function gerarEscala(p: EscalaParams, funcsIn: EscalaFuncionario[]): Gera
             .filter((x) => x <= p.data_fim && x !== d);
           const alvo = sem.find((x) =>
             (f.dias[x] || 'T') === 'T' && diaSemana(x) !== 0 && !fer.has(x) &&
-            coberturaSetor(x, s) >= minS + 1 && // mover a folga para lá não descobre o setor
+            coberturaSetor(x, s) >= minGrupo(s, x) + 1 && // mover a folga para lá não descobre o setor
             !(f.sexo === 'F' && f.art386_ativo && diaSemana(x) === 0));
           if (alvo) {
             f.dias[d] = 'T';

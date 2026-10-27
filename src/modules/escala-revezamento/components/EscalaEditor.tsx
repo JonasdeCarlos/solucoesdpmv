@@ -34,6 +34,8 @@ interface Props {
   cliente?: { nome?: string; cnpj?: string; cnae?: string | null };
 }
 
+const DIAS_MIN: [string, string][] = [['1', 'Seg'], ['2', 'Ter'], ['3', 'Qua'], ['4', 'Qui'], ['5', 'Sex'], ['6', 'Sáb'], ['0', 'Dom']];
+
 export default function EscalaEditor({ params: p, onParams, funcionarios: fs, onFuncionarios, readOnly, cliente }: Props) {
   const [conflitos, setConflitos] = useState<string[]>([]);
   const dias = useMemo(() => listarDias(p.data_inicio, p.data_fim), [p.data_inicio, p.data_fim]);
@@ -185,11 +187,16 @@ export default function EscalaEditor({ params: p, onParams, funcionarios: fs, on
           {!readOnly && <div className="flex gap-2"><ImportarFuncionarios atuais={fs} onImportar={onFuncionarios} /><Button size="sm" variant="outline" onClick={() => onFuncionarios([...fs, novoFuncionario()])}><Plus className="w-4 h-4 mr-1" />Funcionário</Button></div>}</div>
         {(() => { const setoresLista = [...new Set(fs.map((f) => (f.setor || '').trim()).filter(Boolean))]; const ms = p.regras_cct.minimo_setor || {}; return setoresLista.length > 0 && (
           <div className="rounded-md border p-3 space-y-2">
-            <Label>Mínimo de pessoas por setor (por dia)</Label>
-            <div className="flex flex-wrap gap-3">{setoresLista.map((s) => (
-              <div key={s} className="flex items-center gap-2 text-sm"><span>{s}</span>
-                <Input disabled={readOnly} className="w-20" type="number" min={1} placeholder="1" value={ms[s] ?? ''} onChange={(e) => { const n = { ...ms }; if (e.target.value && Number(e.target.value) > 0) n[s] = Number(e.target.value); else delete n[s]; set('regras_cct', { ...p.regras_cct, minimo_setor: n }); }} /></div>))}
-            </div>
+            <Label>Mínimo de pessoas por setor (por dia da semana)</Label>
+            <div className="overflow-x-auto"><table className="text-sm"><thead><tr className="text-muted-foreground"><th className="p-1 text-left">Setor</th>{DIAS_MIN.map(([, l]) => <th key={l} className="p-1">{l}</th>)}</tr></thead>
+              <tbody>{setoresLista.map((s) => { const raw: any = ms[s]; const val = (k: string) => typeof raw === 'object' && raw ? raw[k] ?? '' : raw ?? '';
+                return (<tr key={s}><td className="p-1 pr-3">{s}</td>{DIAS_MIN.map(([k]) => (
+                  <td key={k} className="p-1"><Input disabled={readOnly} className="w-16" type="number" min={0} placeholder="1" value={val(k)} onChange={(e) => {
+                    const atual: Record<string, number> = typeof raw === 'object' && raw ? { ...raw } : (raw ? Object.fromEntries(DIAS_MIN.map(([x]) => [x, Number(raw)])) : {});
+                    if (e.target.value && Number(e.target.value) > 0) atual[k] = Number(e.target.value); else delete atual[k];
+                    const n = { ...ms }; if (Object.keys(atual).length) n[s] = atual; else delete n[s];
+                    set('regras_cct', { ...p.regras_cct, minimo_setor: n });
+                  }} /></td>))}</tr>); })}</tbody></table></div>
             <p className="text-xs text-muted-foreground">Em branco = pelo menos 1 pessoa. O gerador evita folgas que deixem o setor abaixo do mínimo e avisa quando não for possível.</p>
           </div>); })()}
         <p className="text-xs text-muted-foreground">Preencha o <strong>Setor</strong> para o sistema evitar deixar o setor descoberto ao gerar a escala. Em branco, o funcionário não entra nessa regra.</p>
