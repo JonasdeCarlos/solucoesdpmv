@@ -71,3 +71,15 @@ describe('mínimo por setor', () => {
     }
   });
 });
+
+describe('mínimo por setor por dia da semana', () => {
+  it('exige 4 pessoas na Cozinha aos sábados e 2 nos demais dias', () => {
+    const p: EscalaParams = { ...base, regime: '5x2', fundamento_trabalho_domingo: 'Lei 10.101/2000', n_domingos: 3, regras_cct: { minimo_setor: { Cozinha: { '1': 2, '2': 2, '3': 2, '4': 2, '5': 2, '6': 4, '0': 2 } } } } as EscalaParams;
+    const fs = Array.from({ length: 7 }, (_, i) => ({ ...f('w' + i), setor: 'Cozinha' }));
+    const r = gerarEscala(p, fs);
+    for (const d of listarDias(p.data_inicio, p.data_fim)) {
+      const n = r.funcionarios.filter((x) => x.dias[d] === 'T').length;
+      expect(n).toBeGreaterThanOrEqual(new Date(d + 'T12:00:00Z').getUTCDay() === 6 ? 4 : 2);
+    }
+  });
+});
