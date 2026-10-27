@@ -52,7 +52,7 @@ export function gerarPdf(info: ExportInfo, final = false) {
       startY: 30,
       head: [['Funcionário', ...dias.map((d) => `${d.slice(8)}\n${SEM[diaSemana(d)]}`)]],
       body: gruposPorSetor(fs).flatMap((g) => {
-        const linhas: any[] = g.funcs.map((f) => [`${f.codigo ? f.codigo + ' ' : ''}${f.nome}`, ...dias.map((d) => cel(f.dias[d]))]);
+        const linhas: any[] = g.funcs.map((f) => [`${f.codigo ? f.codigo + ' ' : ''}${f.nome}${f.cargo ? '\n' + f.cargo : ''}`, ...dias.map((d) => cel(f.dias[d]))]);
         if (!g.setor) return linhas;
         return [
           [{ content: `SETOR: ${g.setor.toUpperCase()} (${g.funcs.length})`, colSpan: dias.length + 1, styles: { halign: 'left', fontStyle: 'bold', fillColor: [98, 142, 63], textColor: 255 } }],
@@ -109,7 +109,7 @@ export function gerarXlsx(info: ExportInfo) {
       [],
       ['Código', 'Funcionário', ...dias.map((d) => `${d.slice(8)} ${SEM[diaSemana(d)]}`)],
       ...gruposPorSetor(fs).flatMap((g) => {
-        const linhas = g.funcs.map((f) => [f.codigo, f.nome, ...dias.map((d) => cel(f.dias[d]))]);
+        const linhas = g.funcs.map((f) => [f.codigo, f.nome, f.cargo || '', ...dias.map((d) => cel(f.dias[d]))]);
         return g.setor ? [[`SETOR: ${g.setor}`], ...linhas, ['', 'Trabalhando no setor', ...dias.map((d) => trab(g.funcs, d))], []] : linhas;
       }),
       [],
