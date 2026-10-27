@@ -56,6 +56,12 @@ Deno.serve(async (req) => {
       return json({ cliente, branding: brand || null, escalas: escalas || [], limite_escalas: link.limite_escalas });
     }
 
+    if (action === "versao") {
+      const { data: e } = await db.from("escalas_revezamento").select("updated_at, status, link_id, cliente_id").eq("id", String(body.escala_id || "")).maybeSingle();
+      if (!e || e.link_id !== link.id || e.cliente_id !== link.cliente_id) return json({ error: "Escala não encontrada." }, 404);
+      return json({ versao: e.updated_at, status: e.status });
+    }
+
     if (action === "get") {
       const r = await doLink(String(body.escala_id || ""));
       if (!r) return json({ error: "Escala não encontrada." }, 404);
@@ -100,8 +106,8 @@ Deno.serve(async (req) => {
         if (pend.length) return json({ error: "Há pendências que impedem o envio.", pendencias: pend }, 422);
         patch.status = "enviada"; patch.enviado_em = new Date().toISOString(); patch.visto_escritorio = false;
       }
-      await salvarEscala(db, r.escala.id, patch, funcs);
-      return json({ ok: true, status: patch.status || r.escala.status });
+      const versao = await salvarEscala(db, r.escala.id, patch, funcs);
+      return json({ ok: true, status: patch.status || r.escala.status, versao });
     }
 
     return json({ error: "Ação inválida." }, 400);

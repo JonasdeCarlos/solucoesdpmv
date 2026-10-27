@@ -25,7 +25,15 @@ export async function carregarEscala(db: any, id: string) {
 }
 
 /** Grava cabeçalho (patch), funcionários e dias. Funcionários recebem ids novos se não forem uuid. */
-export async function salvarEscala(db: any, id: string, patch: Record<string, unknown>, funcionarios: EscalaFuncionario[]) {
+/** Salva e devolve o novo carimbo de versão (updated_at), gravado só no fim para que leitores não peguem a escala pela metade. */
+export async function salvarEscala(db: any, id: string, patch: Record<string, unknown>, funcionarios: EscalaFuncionario[]): Promise<string> {
+  await salvarEscalaInterno(db, id, patch, funcionarios);
+  const { data, error } = await db.from('escalas_revezamento').update({ updated_at: new Date().toISOString() }).eq('id', id).select('updated_at').single();
+  if (error) throw error;
+  return data.updated_at;
+}
+
+async function salvarEscalaInterno(db: any, id: string, patch: Record<string, unknown>, funcionarios: EscalaFuncionario[]) {
   if (Object.keys(patch).length) {
     const { error } = await db.from('escalas_revezamento').update(patch).eq('id', id);
     if (error) throw error;

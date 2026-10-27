@@ -196,6 +196,9 @@ function EscalaView({ id, onVoltar }: { id: string; onVoltar: () => void }) {
   const [estado, setEstado] = useState<'salvo' | 'salvando' | 'pendente'>('salvo');
   const pronto = useRef(false);
   const fila = useRef<Promise<void>>(Promise.resolve());
+  const versao = useRef<string | null>(null);
+  const estadoRef = useRef(estado); estadoRef.current = estado;
+  const bkKey = 'escala-rascunho-adm-' + id;
 
   const load = useCallback(async () => {
     const r = await carregarEscala(supabase, id);
@@ -208,23 +211,52 @@ function EscalaView({ id, onVoltar }: { id: string; onVoltar: () => void }) {
     setEsc(e); setParams(paramsDe(e)); setFuncs(r.funcionarios); setTitulo(e.titulo); setObs(e.observacao_escritorio || '');
     const { data: c } = await supabase.from('clientes' as any).select('nome, cnpj, cnae').eq('id', e.cliente_id).maybeSingle();
     setCliente(c);
+    versao.current = e.updated_at || null;
     pronto.current = false;
     setTimeout(() => { pronto.current = true; }, 0);
+    return e;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    (async () => {
+      const e = await load();
+      // recupera digitação que não chegou a ser salva
+      try {
+        const bk = JSON.parse(localStorage.getItem(bkKey) || 'null');
+        if (e && bk && bk.base === (e.updated_at || null) && e.status !== 'aprovada') {
+          setTimeout(() => { setParams(bk.params); setFuncs(bk.funcs); setTitulo(bk.titulo); toast.info('Recuperamos alterações que ainda não tinham sido salvas.'); }, 10);
+        } else localStorage.removeItem(bkKey);
+      } catch { /* ignore */ }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [load]);
+
+  // espelhamento: traz alterações feitas pelo gestor no link externo
+  useEffect(() => {
+    const iv = setInterval(async () => {
+      if (estadoRef.current !== 'salvo' || document.hidden) return;
+      const { data } = await supabase.from('escalas_revezamento' as any).select('updated_at').eq('id', id).maybeSingle();
+      const v = (data as any)?.updated_at;
+      if (v && Date.parse(v) !== Date.parse(versao.current || '') && estadoRef.current === 'salvo') {
+        await load();
+        toast.info('Escala atualizada com alterações do gestor.');
+      }
+    }, 8000);
+    return () => clearInterval(iv);
+  }, [id, load]);
 
   // salvamento automático do rascunho (parâmetros, funcionários importados, folgas)
   useEffect(() => {
     if (!pronto.current || !params || esc?.status === 'aprovada') return;
     setEstado('pendente');
+    try { localStorage.setItem(bkKey, JSON.stringify({ base: versao.current, params, funcs, titulo })); } catch { /* cheio */ }
     const t = setTimeout(() => {
       const patch: Record<string, unknown> = { titulo };
       PARAM_KEYS.forEach((k) => { patch[k] = params[k]; });
       const snap = funcs;
       fila.current = fila.current.then(async () => {
         setEstado('salvando');
-        try { await salvarEscala(supabase, id, patch, snap); setEstado('salvo'); }
+        try { versao.current = await salvarEscala(supabase, id, patch, snap); localStorage.removeItem(bkKey); setEstado('salvo'); }
         catch (e: any) { setEstado('pendente'); toast.error('Falha ao salvar rascunho: ' + e.message); }
       });
     }, 1500);
@@ -244,7 +276,8 @@ function EscalaView({ id, onVoltar }: { id: string; onVoltar: () => void }) {
       const patch: Record<string, unknown> = { titulo, ...extra };
       PARAM_KEYS.forEach((k) => { patch[k] = params[k]; });
       await fila.current;
-      await salvarEscala(supabase, id, patch, funcs);
+      versao.current = await salvarEscala(supabase, id, patch, funcs);
+      localStorage.removeItem(bkKey);
       setEstado('salvo');
       toast.success('Escala salva.');
       await load();

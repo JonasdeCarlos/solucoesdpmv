@@ -103,17 +103,56 @@ function EscalaPublicaEditor({ id, call, cliente, onVoltar }: { id: string; call
   const [estado, setEstado] = useState<'salvo' | 'salvando' | 'pendente'>('salvo');
   const [pend, setPend] = useState<string[]>([]);
   const pronto = useRef(false);
+  const versao = useRef<string | null>(null);
+  const estadoRef = useRef(estado); estadoRef.current = estado;
+  const bkKey = 'escala-rascunho-' + id;
+
+  const aplicar = (d: any) => {
+    pronto.current = false;
+    setEsc(d.escala); setParams(paramsDe(d.escala)); setFuncs(d.funcionarios);
+    setNome(d.escala.preenchido_por_nome || ''); setContato(d.escala.preenchido_por_contato || ''); setLgpd(!!d.escala.aceite_lgpd_em);
+    versao.current = d.escala.updated_at || null;
+    setTimeout(() => { pronto.current = true; }, 0);
+  };
 
   useEffect(() => {
     (async () => {
       try {
         const d = await call('get', { escala_id: id });
-        setEsc(d.escala); setParams(paramsDe(d.escala)); setFuncs(d.funcionarios);
-        setNome(d.escala.preenchido_por_nome || ''); setContato(d.escala.preenchido_por_contato || ''); setLgpd(!!d.escala.aceite_lgpd_em);
-        setTimeout(() => { pronto.current = true; }, 0);
+        aplicar(d);
+        // recupera digitação que não chegou a ser salva (queda de internet, página fechada)
+        try {
+          const bk = JSON.parse(localStorage.getItem(bkKey) || 'null');
+          if (bk && bk.base === (d.escala.updated_at || null) && ['rascunho', 'devolvida'].includes(d.escala.status)) {
+            setTimeout(() => { setParams(bk.params); setFuncs(bk.funcs); setNome(bk.nome); setContato(bk.contato); toast.info('Recuperamos alterações que ainda não tinham sido salvas.'); }, 10);
+          } else localStorage.removeItem(bkKey);
+        } catch { /* ignore */ }
       } catch (e: any) { toast.error(e.message); }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, call]);
+
+  // espelhamento: traz alterações feitas pelo escritório
+  useEffect(() => {
+    const iv = setInterval(async () => {
+      if (estadoRef.current !== 'salvo' || document.hidden) return;
+      try {
+        const v = await call('versao', { escala_id: id });
+        if (v.versao && Date.parse(v.versao) !== Date.parse(versao.current || '') && estadoRef.current === 'salvo') {
+          aplicar(await call('get', { escala_id: id }));
+          toast.info('Escala atualizada com alterações do escritório.');
+        }
+      } catch { /* ignore */ }
+    }, 8000);
+    return () => clearInterval(iv);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, call]);
+
+  useEffect(() => {
+    const h = (ev: BeforeUnloadEvent) => { if (estadoRef.current !== 'salvo') { ev.preventDefault(); ev.returnValue = ''; } };
+    window.addEventListener('beforeunload', h);
+    return () => window.removeEventListener('beforeunload', h);
+  }, []);
 
   const editavel = esc && ['rascunho', 'devolvida'].includes(esc.status);
   const payload = () => {
@@ -125,9 +164,10 @@ function EscalaPublicaEditor({ id, call, cliente, onVoltar }: { id: string; call
   useEffect(() => {
     if (!pronto.current || !editavel || !params) return;
     setEstado('pendente');
+    try { localStorage.setItem(bkKey, JSON.stringify({ base: versao.current, params, funcs, nome, contato })); } catch { /* cheio */ }
     const t = setTimeout(async () => {
       setEstado('salvando');
-      try { await call('save', payload()); setEstado('salvo'); } catch (e: any) { toast.error(e.message); setEstado('pendente'); }
+      try { const r = await call('save', payload()); if (r?.versao) versao.current = r.versao; localStorage.removeItem(bkKey); setEstado('salvo'); } catch (e: any) { toast.error(e.message); setEstado('pendente'); }
     }, 1500);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
