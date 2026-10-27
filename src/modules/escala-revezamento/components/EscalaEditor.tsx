@@ -199,6 +199,17 @@ export default function EscalaEditor({ params: p, onParams, funcionarios: fs, on
                     const n = { ...ms }; if (Object.keys(atual).length) n[s] = atual; else delete n[s];
                     set('regras_cct', { ...p.regras_cct, minimo_setor: n });
                   }} /></td>))}</tr>); })}</tbody></table></div>
+            <Label>Máximo de pessoas por setor (por dia da semana)</Label>
+            <div className="overflow-x-auto"><table className="text-sm"><thead><tr className="text-muted-foreground"><th className="p-1 text-left">Setor</th>{DIAS_MIN.map(([, l]) => <th key={l} className="p-1">{l}</th>)}</tr></thead>
+              <tbody>{setoresLista.map((s) => { const mx = p.regras_cct.maximo_setor || {}; const raw = mx[s] || {};
+                return (<tr key={s}><td className="p-1 pr-3">{s}</td>{DIAS_MIN.map(([k]) => (
+                  <td key={k} className="p-1"><Input disabled={readOnly} className="w-16" type="number" min={0} placeholder="–" value={raw[k] ?? ''} onChange={(e) => {
+                    const atual: Record<string, number> = { ...raw };
+                    if (e.target.value && Number(e.target.value) > 0) atual[k] = Number(e.target.value); else delete atual[k];
+                    const n = { ...mx }; if (Object.keys(atual).length) n[s] = atual; else delete n[s];
+                    set('regras_cct', { ...p.regras_cct, maximo_setor: n });
+                  }} /></td>))}</tr>); })}</tbody></table></div>
+            <p className="text-xs text-muted-foreground">Máximo em branco = sem limite. Quando passar do máximo, o gerador transfere folgas de outros dias da semana para esse dia.</p>
             <p className="text-xs text-muted-foreground">Em branco = pelo menos 1 pessoa. O gerador evita folgas que deixem o setor abaixo do mínimo e avisa quando não for possível.</p>
           </div>); })()}
         <div className="rounded-md border p-3 space-y-2">

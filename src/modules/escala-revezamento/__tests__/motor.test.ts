@@ -83,3 +83,14 @@ describe('mínimo por setor por dia da semana', () => {
     }
   });
 });
+
+import { gerarEscala as gerarMax } from '../../../../supabase/functions/_shared/escalaMotor';
+describe('máximo por setor', () => {
+  it('não passa de 4 trabalhando na segunda', () => {
+    const p: any = { regime: '6x1', data_inicio: '2026-11-02', data_fim: '2026-11-29', categoria_atividade: 'COMERCIO', atividade_anexo_iv: 'nenhuma', fundamento_trabalho_domingo: 'Lei 10.101/2000', cct_vigente: false, cct_registro: '', cct_vigencia: '', regras_cct: { maximo_setor: { Cozinha: { '1': 4 } } }, prazo_folga_compensatoria_feriado: 7, n_domingos: 3, minimo_diario: 0, feriados: [], setor: '', responsavel_nome: '' };
+    const fs: any[] = Array.from({ length: 6 }, (_, i) => ({ id: 'f' + i, nome: 'F' + i, sexo: 'M', setor: 'Cozinha', hora_entrada: '08:00', hora_saida: '16:00', dias: {} }));
+    const r = gerarMax(p, fs);
+    for (const d of ['2026-11-02', '2026-11-09', '2026-11-16', '2026-11-23'])
+      expect(r.funcionarios.filter((f: any) => f.dias[d] === 'T').length).toBeLessThanOrEqual(4);
+  });
+});

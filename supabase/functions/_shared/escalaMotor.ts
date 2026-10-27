@@ -27,6 +27,8 @@ export interface RegrasCct {
   domingo_mulher_semanas?: number | null;
   /** Mínimo de pessoas trabalhando por setor (nome do setor -> quantidade). Ausente = 1. */
   minimo_setor?: Record<string, number | Record<string, number>>;
+  /** Máximo de pessoas trabalhando por setor por dia da semana ("0"=domingo..."6"). Ausente = sem limite. */
+  maximo_setor?: Record<string, Record<string, number>>;
   /** Necessidade por dia da semana ("0"=domingo..."6") ou data ISO: 'alta' evita folgas, 'baixa' concentra folgas. */
   necessidade?: { semana?: Record<string, 'alta' | 'baixa'>; datas?: { data: string; nivel: 'alta' | 'baixa' }[] };
   /** Férias/afastamentos por funcionário (id), marcados como 'A' antes de gerar. */
@@ -377,6 +379,13 @@ export function gerarEscala(p: EscalaParams, funcsIn: EscalaFuncionario[]): Gera
     const v = typeof raw === 'object' && raw ? Number(raw[String(diaSemana(d))]) || 0 : Number(raw) || 0;
     return v > 0 ? v : 1;
   };
+  const maximoMap = Object.fromEntries(Object.entries(p.regras_cct?.maximo_setor || {}).map(([k, v]) => [k.trim().toLowerCase(), v]));
+  const maxGrupo = (s: string, d: string) => {
+    const m = /^Setor "(.*)"$/.exec(s);
+    const raw: any = m ? maximoMap[m[1].trim().toLowerCase()] : null;
+    const v = raw && typeof raw === 'object' ? Number(raw[String(diaSemana(d))]) || 0 : 0;
+    return v > 0 ? v : Infinity;
+  };
   const descobreSetor = (f: EscalaFuncionario, d: string) => gruposDe(f).some((s) => coberturaSetor(d, s) <= minGrupo(s, d));
 
   // 1) Domingos por turmas (R03/R04/R11)
@@ -498,6 +507,26 @@ export function gerarEscala(p: EscalaParams, funcsIn: EscalaFuncionario[]): Gera
             ? `${s} abaixo do mínimo de ${minS} pessoa(s) em ${fmtBR(d)} (${coberturaSetor(d, s)} trabalhando, ${qtd} no setor). Ajuste manualmente ou reforce o quadro.`
             : `${s} descoberta(o) em ${fmtBR(d)}: ${qtd <= 1 ? 'há apenas 1 funcionário' : 'todos estão de folga/afastados'}. Ajuste manualmente ou reforce o quadro.`);
         }
+      }
+    }
+  }
+
+  // 4c) Máximo por setor/dia: move folgas de outros dias da semana para o dia com excesso
+  if (setores.length) {
+    for (const d of dias) {
+      for (const s of setores) {
+        const maxS = maxGrupo(s, d);
+        if (!isFinite(maxS) || coberturaSetor(d, s) <= maxS) continue;
+        const membros = funcs.filter((f) => gruposDe(f).includes(s));
+        for (const f of membros) {
+          if (coberturaSetor(d, s) <= maxS) break;
+          if (f.dias[d] !== 'T' || fer.has(d) || diaSemana(d) === 0) continue;
+          const semIni = addDias(d, -((diaSemana(d) + 6) % 7));
+          const sem = listarDias(semIni < p.data_inicio ? p.data_inicio : semIni, addDias(semIni, 6)).filter((x) => x <= p.data_fim && x !== d);
+          const origem = sem.find((x) => f.dias[x] === 'F' && diaSemana(x) !== 0 && coberturaSetor(x, s) + 1 <= maxGrupo(s, x));
+          if (origem) { f.dias[origem] = 'T'; f.dias[d] = 'F'; }
+        }
+        if (coberturaSetor(d, s) > maxS) conflitos.push(`${s} acima do máximo de ${maxS} pessoa(s) em ${fmtBR(d)} (${coberturaSetor(d, s)} trabalhando). Ajuste manualmente.`);
       }
     }
   }
