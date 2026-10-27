@@ -183,6 +183,15 @@ export default function EscalaEditor({ params: p, onParams, funcionarios: fs, on
       <Card className="p-4 space-y-3">
         <div className="flex items-center justify-between"><h3 className="font-semibold">Funcionários ({fs.length})</h3>
           {!readOnly && <div className="flex gap-2"><ImportarFuncionarios atuais={fs} onImportar={onFuncionarios} /><Button size="sm" variant="outline" onClick={() => onFuncionarios([...fs, novoFuncionario()])}><Plus className="w-4 h-4 mr-1" />Funcionário</Button></div>}</div>
+        {(() => { const setoresLista = [...new Set(fs.map((f) => (f.setor || '').trim()).filter(Boolean))]; const ms = p.regras_cct.minimo_setor || {}; return setoresLista.length > 0 && (
+          <div className="rounded-md border p-3 space-y-2">
+            <Label>Mínimo de pessoas por setor (por dia)</Label>
+            <div className="flex flex-wrap gap-3">{setoresLista.map((s) => (
+              <div key={s} className="flex items-center gap-2 text-sm"><span>{s}</span>
+                <Input disabled={readOnly} className="w-20" type="number" min={1} placeholder="1" value={ms[s] ?? ''} onChange={(e) => { const n = { ...ms }; if (e.target.value && Number(e.target.value) > 0) n[s] = Number(e.target.value); else delete n[s]; set('regras_cct', { ...p.regras_cct, minimo_setor: n }); }} /></div>))}
+            </div>
+            <p className="text-xs text-muted-foreground">Em branco = pelo menos 1 pessoa. O gerador evita folgas que deixem o setor abaixo do mínimo e avisa quando não for possível.</p>
+          </div>); })()}
         <p className="text-xs text-muted-foreground">Preencha o <strong>Setor</strong> para o sistema evitar deixar o setor descoberto ao gerar a escala. Em branco, o funcionário não entra nessa regra.</p>
         <div className="overflow-x-auto">
           <table className="w-full text-sm min-w-[1240px]">
