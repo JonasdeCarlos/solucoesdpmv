@@ -57,9 +57,9 @@ Deno.serve(async (req) => {
     }
 
     if (action === "versao") {
-      const r = await doLink(String(body.escala_id || ""));
-      if (!r) return json({ error: "Escala não encontrada." }, 404);
-      return json({ versao: r.escala.updated_at, status: r.escala.status });
+      const { data: e } = await db.from("escalas_revezamento").select("updated_at, status, link_id, cliente_id").eq("id", String(body.escala_id || "")).maybeSingle();
+      if (!e || e.link_id !== link.id || e.cliente_id !== link.cliente_id) return json({ error: "Escala não encontrada." }, 404);
+      return json({ versao: e.updated_at, status: e.status });
     }
 
     if (action === "get") {
