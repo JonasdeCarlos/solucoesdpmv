@@ -27,6 +27,10 @@ export interface RegrasCct {
   domingo_mulher_semanas?: number | null;
   /** Mínimo de pessoas trabalhando por setor (nome do setor -> quantidade). Ausente = 1. */
   minimo_setor?: Record<string, number | Record<string, number>>;
+  /** Necessidade por dia da semana ("0"=domingo..."6") ou data ISO: 'alta' evita folgas, 'baixa' concentra folgas. */
+  necessidade?: { semana?: Record<string, 'alta' | 'baixa'>; datas?: { data: string; nivel: 'alta' | 'baixa' }[] };
+  /** Férias/afastamentos por funcionário (id), marcados como 'A' antes de gerar. */
+  ferias?: { func_id: string; inicio: string; fim: string }[];
   max_consecutivos?: number | null;
   prazo_folga_feriado?: number | null;
   clausula_feriados?: boolean;
@@ -346,6 +350,14 @@ export function gerarEscala(p: EscalaParams, funcsIn: EscalaFuncionario[]): Gera
   const funcs = funcsIn.map((f) => ({ ...f, dias: {} as Record<string, TipoDia> }));
   // mantém afastamentos
   funcsIn.forEach((f, i) => Object.entries(f.dias || {}).forEach(([d, t]) => { if (t === 'A') funcs[i].dias[d] = 'A'; }));
+  (p.regras_cct?.ferias || []).forEach((fe) => {
+    const f = funcs.find((x) => x.id === fe.func_id);
+    if (!f || !fe.inicio) return;
+    dias.forEach((d) => { if (d >= fe.inicio && d <= (fe.fim || fe.inicio)) f.dias[d] = 'A'; });
+  });
+  const nivelDia = (d: string) => (p.regras_cct?.necessidade?.datas || []).find((x) => x.data === d)?.nivel || p.regras_cct?.necessidade?.semana?.[String(diaSemana(d))];
+  /** bônus de prioridade para receber folga: dia de baixa necessidade primeiro, alta por último */
+  const pesoFolga = (d: string) => (nivelDia(d) === 'baixa' ? 1000 : nivelDia(d) === 'alta' ? -1000 : 0);
   const cobertura = (d: string) => funcs.filter((f) => (f.dias[d] || 'T') === 'T').length;
   // Cobertura por setor e por função (cargo): campos vazios são ignorados
   const gruposDe = (f: EscalaFuncionario) => {
@@ -417,7 +429,7 @@ export function gerarEscala(p: EscalaParams, funcsIn: EscalaFuncionario[]): Gera
         const longe = cand.filter((x) => jaF.every((y) => Math.abs(diffDias(x, y)) > 1));
         if (jaF.length && longe.length) cand = longe;
         // maior cobertura primeiro; desempate rotativo por funcionário/semana (R11)
-        cand.sort((a, b) => cobertura(b) - cobertura(a) || ((diaSemana(a) + 6 - rot) % 6) - ((diaSemana(b) + 6 - rot) % 6));
+        cand.sort((a, b) => (pesoFolga(b) + cobertura(b)) - (pesoFolga(a) + cobertura(a)) || ((diaSemana(a) + 6 - rot) % 6) - ((diaSemana(b) + 6 - rot) % 6));
         f.dias[cand[0]] = 'F';
       }
     }
@@ -448,7 +460,7 @@ export function gerarEscala(p: EscalaParams, funcsIn: EscalaFuncionario[]): Gera
       if (!janela.length) continue;
       const semDescobrir = janela.filter((x) => !descobreSetor(f, x));
       if (semDescobrir.length) janela = semDescobrir;
-      janela.sort((a, b) => cobertura(b) - cobertura(a));
+      janela.sort((a, b) => (pesoFolga(b) + cobertura(b)) - (pesoFolga(a) + cobertura(a)));
       f.dias[janela[0]] = 'FC';
     }
   });

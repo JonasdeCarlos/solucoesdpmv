@@ -201,6 +201,33 @@ export default function EscalaEditor({ params: p, onParams, funcionarios: fs, on
                   }} /></td>))}</tr>); })}</tbody></table></div>
             <p className="text-xs text-muted-foreground">Em branco = pelo menos 1 pessoa. O gerador evita folgas que deixem o setor abaixo do mínimo e avisa quando não for possível.</p>
           </div>); })()}
+        <div className="rounded-md border p-3 space-y-2">
+          <Label>Dias de maior e menor necessidade</Label>
+          <div className="flex flex-wrap gap-2">{DIAS_MIN.map(([k, l]) => { const v = p.regras_cct.necessidade?.semana?.[k] || ''; return (
+            <div key={k} className="flex flex-col text-xs"><span className="text-muted-foreground">{l}</span>
+              <select disabled={readOnly} className={sel + ' w-24'} value={v} onChange={(e) => { const sem = { ...(p.regras_cct.necessidade?.semana || {}) } as Record<string, 'alta' | 'baixa'>; if (e.target.value) sem[k] = e.target.value as any; else delete sem[k]; set('regras_cct', { ...p.regras_cct, necessidade: { ...(p.regras_cct.necessidade || {}), semana: sem } }); }}>
+                <option value="">Normal</option><option value="alta">Maior</option><option value="baixa">Menor</option></select></div>); })}</div>
+          {(p.regras_cct.necessidade?.datas || []).map((x, i) => (
+            <div key={i} className="flex gap-2 items-center">
+              <Input disabled={readOnly} type="date" className="w-44" value={x.data} onChange={(e) => { const ds = [...(p.regras_cct.necessidade?.datas || [])]; ds[i] = { ...x, data: e.target.value }; set('regras_cct', { ...p.regras_cct, necessidade: { ...(p.regras_cct.necessidade || {}), datas: ds } }); }} />
+              <select disabled={readOnly} className={sel + ' w-32'} value={x.nivel} onChange={(e) => { const ds = [...(p.regras_cct.necessidade?.datas || [])]; ds[i] = { ...x, nivel: e.target.value as any }; set('regras_cct', { ...p.regras_cct, necessidade: { ...(p.regras_cct.necessidade || {}), datas: ds } }); }}><option value="alta">Maior</option><option value="baixa">Menor</option></select>
+              {!readOnly && <Button variant="ghost" size="icon" onClick={() => set('regras_cct', { ...p.regras_cct, necessidade: { ...(p.regras_cct.necessidade || {}), datas: (p.regras_cct.necessidade?.datas || []).filter((_, j) => j !== i) } })}><Trash2 className="w-4 h-4" /></Button>}
+            </div>))}
+          {!readOnly && <Button variant="outline" size="sm" onClick={() => set('regras_cct', { ...p.regras_cct, necessidade: { ...(p.regras_cct.necessidade || {}), datas: [...(p.regras_cct.necessidade?.datas || []), { data: p.data_inicio, nivel: 'alta' }] } })}><Plus className="w-4 h-4 mr-1" />Data específica</Button>}
+          <p className="text-xs text-muted-foreground">Maior necessidade: o gerador evita dar folgas nesse dia. Menor: concentra as folgas nele. Data específica vale acima do dia da semana.</p>
+        </div>
+        <div className="rounded-md border p-3 space-y-2">
+          <Label>Férias / afastamentos no período</Label>
+          {(p.regras_cct.ferias || []).map((x, i) => { const upd = (o: any) => { const fe = [...(p.regras_cct.ferias || [])]; fe[i] = { ...x, ...o }; set('regras_cct', { ...p.regras_cct, ferias: fe }); }; return (
+            <div key={i} className="flex flex-wrap gap-2 items-center">
+              <select disabled={readOnly} className={sel + ' w-64'} value={x.func_id} onChange={(e) => upd({ func_id: e.target.value })}><option value="">Selecione o funcionário</option>{fs.map((f) => <option key={f.id} value={f.id}>{f.codigo ? f.codigo + ' - ' : ''}{f.nome || '(sem nome)'}</option>)}</select>
+              <span className="text-xs">de</span><Input disabled={readOnly} type="date" className="w-44" value={x.inicio} onChange={(e) => upd({ inicio: e.target.value })} />
+              <span className="text-xs">até</span><Input disabled={readOnly} type="date" className="w-44" value={x.fim} onChange={(e) => upd({ fim: e.target.value })} />
+              {!readOnly && <Button variant="ghost" size="icon" onClick={() => set('regras_cct', { ...p.regras_cct, ferias: (p.regras_cct.ferias || []).filter((_, j) => j !== i) })}><Trash2 className="w-4 h-4" /></Button>}
+            </div>); })}
+          {!readOnly && <Button variant="outline" size="sm" onClick={() => set('regras_cct', { ...p.regras_cct, ferias: [...(p.regras_cct.ferias || []), { func_id: '', inicio: p.data_inicio, fim: p.data_inicio }] })}><Plus className="w-4 h-4 mr-1" />Férias</Button>}
+          <p className="text-xs text-muted-foreground">Os dias de férias aparecem como A (afastado) e o gerador redistribui as folgas dos demais para cobrir o setor.</p>
+        </div>
         <p className="text-xs text-muted-foreground">Preencha o <strong>Setor</strong> para o sistema evitar deixar o setor descoberto ao gerar a escala. Em branco, o funcionário não entra nessa regra.</p>
         <div className="overflow-x-auto">
           <table className="w-full text-sm min-w-[1240px]">
