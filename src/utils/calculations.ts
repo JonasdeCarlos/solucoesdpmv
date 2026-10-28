@@ -366,7 +366,9 @@ export function calcularVerbas(step1: Step1Data, step2: Step2Data): VerbaResciso
       const reflexo13 = (sal / 12) * mesesProj;
       const reflexoFerias = (sal / 12) * mesesProj;
       const tercoReflexo = step2.consideraTercoFerias ? reflexoFerias / 3 : 0;
-      const baseAviso = avisoVal + valDiasPorAno + reflexo13 + reflexoFerias + tercoReflexo;
+      // Férias indenizadas e 1/3 não incidem FGTS (Lei 8.036/90 art. 15 §6º; OJ 195 SDI-1)
+      void reflexoFerias; void tercoReflexo;
+      const baseAviso = avisoVal + valDiasPorAno + reflexo13;
       fgtsSobreAviso = baseAviso * 0.08;
       verbas.push({
         id: 'fgts_aviso',
@@ -547,9 +549,7 @@ export function recalcDependents(
     const base =
       valOf('aviso_previo_indenizado') +
       valOf('dias_indenizados_ano') +
-      valOf('reflexo_aviso_13') +
-      valOf('reflexo_aviso_ferias') +
-      valOf('reflexo_aviso_terco');
+      valOf('reflexo_aviso_13');
     setVal('fgts_aviso', base * 0.08);
   }
 
