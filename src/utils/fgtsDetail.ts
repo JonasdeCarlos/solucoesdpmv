@@ -79,15 +79,7 @@ export function calcularFgtsDetalhado(
 
   let base13Anterior = 0;
   if (incluir13Anteriores && !apenasUltimoMes && dataAdmissao && dataDesligamento) {
-    const diffY = dataDesligamento.getFullYear() - dataAdmissao.getFullYear();
-    const diffM = dataDesligamento.getMonth() - dataAdmissao.getMonth();
-    const diffD = dataDesligamento.getDate() - dataAdmissao.getDate();
-    let totalMeses = diffY * 12 + diffM;
-    if (diffD >= 15) totalMeses += 1;
-    if (totalMeses > 12) {
-      const anosCompletos = Math.floor(totalMeses / 12);
-      base13Anterior = salario * anosCompletos;
-    }
+    base13Anterior = base13AnosAnteriores(salario, dataAdmissao, dataDesligamento);
   }
 
   const baseTotal = baseSalarial + decimoProporcional + base13Anterior;
@@ -101,4 +93,19 @@ export function calcularFgtsDetalhado(
     baseTotal: Math.round(baseTotal * 100) / 100,
     fgtsTotal,
   };
+}
+
+/** 13º de anos anteriores (base FGTS): cada ano civil antes do desligamento, proporcional aos avos (regra dos 15 dias no ano de admissão). */
+export function base13AnosAnteriores(salario: number, adm: Date, desl: Date): number {
+  let total = 0;
+  for (let y = adm.getFullYear(); y < desl.getFullYear(); y++) {
+    let avos = 12;
+    if (y === adm.getFullYear()) {
+      const diasMes = new Date(y, adm.getMonth() + 1, 0).getDate();
+      const diasNoMes = diasMes - adm.getDate() + 1;
+      avos = 11 - adm.getMonth() + (diasNoMes >= 15 ? 1 : 0);
+    }
+    total += salario * (avos / 12);
+  }
+  return total;
 }

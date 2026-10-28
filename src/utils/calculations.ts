@@ -1,3 +1,4 @@
+import { base13AnosAnteriores } from './fgtsDetail';
 export type MotivoRescisao =
   | 'pedido_demissao'
   | 'dispensa_sem_justa_causa'
@@ -335,12 +336,8 @@ export function calcularVerbas(step1: Step1Data, step2: Step2Data): VerbaResciso
       // Adiciona 13º proporcional à base
       baseFGTS += decimo;
       if (!step1.fgtsApenasMesRescisao && step2.incluir13AnosAnteriores) {
-        const mesesVinculo = step1.dataAdmissao && step1.dataDesligamento
-          ? diffMonthsFull(step1.dataAdmissao, step1.dataDesligamento)
-          : 0;
-        if (mesesVinculo > 12) {
-          const anosCompletos = Math.floor(mesesVinculo / 12);
-          baseFGTS += sal * anosCompletos;
+        if (step1.dataAdmissao && step1.dataDesligamento) {
+          baseFGTS += base13AnosAnteriores(sal, step1.dataAdmissao, step1.dataDesligamento);
         }
       }
       fgtsTotal = baseFGTS * 0.08;
@@ -539,8 +536,7 @@ export function recalcDependents(
     }
     let base13Anterior = 0;
     if (!step1.fgtsApenasMesRescisao && step2.incluir13AnosAnteriores && step1.dataAdmissao && step1.dataDesligamento) {
-      const meses = diffMonthsFull(step1.dataAdmissao, step1.dataDesligamento);
-      if (meses > 12) base13Anterior = sal * Math.floor(meses / 12);
+      base13Anterior = base13AnosAnteriores(sal, step1.dataAdmissao, step1.dataDesligamento);
     }
     const baseTotal = baseSalarial + valOf('13_proporcional') + base13Anterior;
     setVal('fgts', baseTotal * 0.08);
