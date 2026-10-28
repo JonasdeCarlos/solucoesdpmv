@@ -195,6 +195,12 @@ export default function NecessidadeContratacao({ empresaId, empresa, onAbrirEsca
         </table>
       </Card>
 
+      {setores.length > 0 && (
+        <p className="text-xs text-muted-foreground px-1">
+          <b>Parciais (qtd × h/sem):</b> use apenas se o setor tiver funcionários em contrato parcial (art. 58-A CLT). No primeiro campo, quantos são; no segundo, quantas horas por semana cada um trabalha. “3 × 20” = 3 pessoas de 20h semanais cada, 60h no total. Essas pessoas entram no quadro atual do setor e as horas delas entram na conta de horas do setor, mas ficam fixas: quem acompanha a redução de jornada do novo marco são só os de jornada cheia. Deixe em branco se não houver parciais.
+        </p>
+      )}
+
       {cenarios.length > 0 && (
         <Card className="p-3 space-y-2">
           <div className="font-medium">Cenários salvos <span className="text-xs text-muted-foreground">(marque para comparar)</span></div>
