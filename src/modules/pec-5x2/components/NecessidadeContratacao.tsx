@@ -342,7 +342,7 @@ function DetalheSetor({ s, p, onChange, onEnviar }: { s: Setor; p: Parametros; o
             </div>
             {a.arredondada > b.arredondada && <div className="text-xs text-primary">A compensação evita {a.arredondada - b.arredondada} contratação(ões).</div>}
             {modoB(s) && <MapaCalor s={s} p={p} m={m} total={b.arredondada} pico={pico} />}
-            {modoB(s) && <RelatorioDia s={s} p={p} m={m} />}
+            {<RelatorioDia s={s} p={p} m={m} />}
           </Card>);
       })}
     </div>

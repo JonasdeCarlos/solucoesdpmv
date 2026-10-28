@@ -124,8 +124,8 @@ export function fmtH(h: number) { const t = Math.round(h * 60); return `${Math.f
 export interface LinhaDia { rotulo: string; nivel: Nivel; mult: number; horas: number; postosMax: number; pessoas: number; escalados: number; deficit: number; obs?: string; explicacao: string }
 /** Necessidade detalhada por dia da semana e por data especial (Modo B). */
 export function necessidadePorDia(s: Setor, p: Parametros, marco: Marco, comp = true): LinhaDia[] {
-  if (!modoB(s)) return [];
   const r = calcular(s, p, marco, comp);
+  if (!modoB(s)) return porDiaModoA(s, p, marco, r);
   const jornadaDia = Math.min(r.limite, marco.jornada / marco.dias);
   const abertos = DIAS.filter((d) => s.funcionamento?.[d]?.aberto);
   const escalados = abertos.length ? Math.floor((r.arredondada * marco.dias) / abertos.length) : 0;
@@ -148,6 +148,34 @@ export function necessidadePorDia(s: Setor, p: Parametros, marco: Marco, comp = 
       : `${fmtH(h)} ÷ ${fmtH(jornadaDia)} = ${porHoras}, mas são ${mx} postos ao mesmo tempo → ${pessoas} pessoas`;
     const explicacao = `Funcionamento ${turnos || '—'}. ${partes.join('; ')}. ${motivo}${mult !== 1 ? ` (movimento ${nv}: postos multiplicados por ${mult})` : ''}.`;
     return { rotulo, nivel: nv, mult, horas: r2(h), postosMax: mx, pessoas, escalados, deficit: Math.max(0, pessoas - escalados), obs, explicacao };
+  };
+  const out = abertos.map((d) => linha(d, s.intensidade_dias?.[d] || 'normal', DIA_LABEL[d]));
+  for (const de of s.datas_especiais || []) {
+    if (!de.data) continue;
+    const wd = String(new Date(de.data + 'T12:00:00').getDay());
+    if (!s.funcionamento?.[wd]?.aberto) continue;
+    out.push(linha(wd, de.nivel, `${de.data.split('-').reverse().join('/')} (${DIA_LABEL[wd]})`, de.observacao));
+  }
+  return out;
+}
+
+/** Sem faixas de postos: parte do quadro atual distribuído nos dias abertos e aplica a intensidade de cada dia. */
+function porDiaModoA(s: Setor, p: Parametros, marco: Marco, r: Resultado): LinhaDia[] {
+  const abertos = DIAS.filter((d) => s.funcionamento?.[d]?.aberto);
+  if (!abertos.length) return [];
+  const base0 = p.marcos[0] || marco;
+  const atual = (s.funcionarios_atuais || 0) + (s.parciais?.qtd || 0);
+  const baseDia = (atual * base0.dias) / abertos.length;
+  const escalados = Math.floor((r.arredondada * marco.dias) / abertos.length);
+  const linha = (d: string, nv: Nivel, rotulo: string, obs?: string): LinhaDia => {
+    const f = s.funcionamento![d]; const mult = p.multiplicadores_intensidade[nv] ?? 1;
+    const turnos = (f.turnos || []).map((x) => `${x.ini}–${x.fim}`).join(' e ');
+    const hAberto = (f.turnos || []).reduce((a, x) => a + horas(x.ini, x.fim), 0);
+    const pessoas = Math.ceil(baseDia * mult - 1e-9);
+    const explicacao = `Funcionamento ${turnos || '—'} (${fmtH(hAberto)} aberto). Hoje ${atual} funcionários × ${base0.dias} dias ÷ ${abertos.length} dias abertos = ${r2(baseDia)} pessoas num dia normal` +
+      (mult !== 1 ? `; movimento ${nv} multiplica por ${mult}: ${r2(baseDia)} × ${mult} = ${r2(baseDia * mult)} → ${pessoas} pessoas` : ` → ${pessoas} pessoas`) +
+      `. Com o quadro de ${r.arredondada} no marco ${marco.nome} (${marco.dias} dias/semana), cabem ~${escalados} por dia${pessoas > escalados ? `, faltam ${pessoas - escalados}` : ''}.`;
+    return { rotulo, nivel: nv, mult, horas: r2(pessoas * hAberto), postosMax: pessoas, pessoas, escalados, deficit: Math.max(0, pessoas - escalados), obs, explicacao };
   };
   const out = abertos.map((d) => linha(d, s.intensidade_dias?.[d] || 'normal', DIA_LABEL[d]));
   for (const de of s.datas_especiais || []) {

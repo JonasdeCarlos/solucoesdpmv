@@ -28,7 +28,7 @@ export function exportarPdf(empresa: { nome?: string; cnpj?: string }, setores: 
   doc.text(`Regime padrão: ${REGIME_LABEL[p.regime_compensacao_padrao]} · Reposição: ${p.indices_reposicao.ativo ? n2(p.indices_reposicao.ferias + p.indices_reposicao.absenteismo) + '%' : 'desativada'}`, 30, 86);
   autoTable(doc, { startY: 98, head: [HEAD], body: linhas(setores, p), headStyles: { fillColor: VERDE }, styles: { fontSize: 8 },
     didParseCell: (d) => { if (d.section === 'body' && (d.column.index === 5 || d.column.index === 8) && Number(d.cell.raw) > 0) d.cell.styles.textColor = [200, 30, 30]; } });
-  for (const s of setores) for (const m of p.marcos.slice(1)) {
+  for (const s of setores) for (const m of p.marcos) {
     const ls = necessidadePorDia(s, p, m, true); if (!ls.length) continue;
     autoTable(doc, { head: [[`${s.nome} – ${m.nome}: necessidade por dia`, 'Intensidade', 'Horas', 'Postos máx.', 'Pessoas nec.', 'Escaladas', 'Falta', 'Obs.', 'Como chegamos']],
       body: ls.map((l) => [l.rotulo, `${l.nivel} (×${l.mult})`, fmtH(l.horas), l.postosMax, l.pessoas, l.escalados, l.deficit || '—', l.obs || '', l.explicacao]),
