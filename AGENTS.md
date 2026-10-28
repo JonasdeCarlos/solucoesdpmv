@@ -2,3 +2,4 @@
 - Fechamento por Bruto Alvo vive em src/modules/bruto-alvo com tabelas fb_* e cadastro próprio de funcionários; reutiliza o gerador Domínio da Taxa de Serviço só via wrapper (exportTxt.ts). Why: módulo isolado, sem alterar código existente.
 - Conversor de lançamentos Domínio vive em src/modules/conversor-dominio com tabelas cl_* e edge conversor-extrair-tabela; gera o TXT só via gerarLinha/validarLinha da Taxa de Serviço. Why: um único gerador do layout Domínio.
 - Escala de Revezamento vive em src/modules/escala-revezamento (tabelas escala*); regras ficam só em supabase/functions/_shared/escalaMotor.ts, importado pelo front e pela edge escala-publica. Why: uma única fonte de verdade das regras.
+- PEC 5x2 (Necessidade de Contratação) vive em src/modules/pec-5x2 com tabelas transicao_* e cálculo puro em calculo.ts; a página /pec-5x2 embute a Escala de Revezamento (prop embutido) e /escala-revezamento redireciona. Why: escala existente sem alteração de lógica.
