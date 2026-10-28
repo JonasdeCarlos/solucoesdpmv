@@ -67,6 +67,7 @@ import ConversorDominioPage from "./modules/conversor-dominio/pages/ConversorDom
 import CalculadoraHorasPage from "./pages/CalculadoraHorasPage";
 import EscalaRevezamentoPage from "./modules/escala-revezamento/pages/EscalaRevezamentoPage";
 import EscalaPublicaPage from "./modules/escala-revezamento/pages/EscalaPublicaPage";
+import Pec5x2Page from "./modules/pec-5x2/pages/Pec5x2Page";
 
 const queryClient = new QueryClient();
 
@@ -146,7 +147,8 @@ const App = () => (
               <Route path="/bruto-alvo" element={<BrutoAlvoPage />} />
               <Route path="/conversor-dominio" element={<ConversorDominioPage />} />
               <Route path="/calculadora-horas" element={<CalculadoraHorasPage />} />
-              <Route path="/escala-revezamento" element={<EscalaRevezamentoPage />} />
+              <Route path="/pec-5x2" element={<Pec5x2Page />} />
+              <Route path="/escala-revezamento" element={<Navigate to="/pec-5x2?aba=escala" replace />} />
               <Route path="/banco-horas" element={<BhLayout />}>
                 <Route index element={<BhDashboardPage />} />
                 <Route path="importar" element={<BhImportPage />} />
