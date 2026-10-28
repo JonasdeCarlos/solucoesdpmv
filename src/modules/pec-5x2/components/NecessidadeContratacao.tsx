@@ -15,7 +15,7 @@ import {
   type Faixa, type Marco, type Nivel, type Parametros, type Regime, type Setor,
 } from '../calculo';
 import { exportarPdf, exportarXlsx } from '../exportar';
-import { necessidadePorDia } from '../calculo';
+import { necessidadePorDia, timelineDia, minH, type LinhaDia } from '../calculo';
 
 const sel = 'h-8 rounded-md border border-input bg-background px-2 text-sm';
 const n2 = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
@@ -372,9 +372,21 @@ function MapaCalor({ s, p, m, total, pico }: { s: Setor; p: Parametros; m: Marco
 /** Relatório completo da necessidade por dia (dias da semana + datas especiais), com compensação. */
 function RelatorioDia({ s, p, m }: { s: Setor; p: Parametros; m: Marco }) {
   const linhas = necessidadePorDia(s, p, m, true);
+  const [ia, setIa] = useState(''); const [carregando, setCarregando] = useState(false);
   if (!linhas.length) return null;
+  const explicarIa = async () => {
+    setCarregando(true);
+    const { data, error } = await supabase.functions.invoke('pec-explicar-dia', { body: { dados: { setor: s.nome, marco: `${m.nome} ${m.jornada}h/${m.dias} dias`, funcionarios_atuais: s.funcionarios_atuais,
+      dias: linhas.map((l) => ({ dia: l.rotulo, intensidade: l.nivel, multiplicador: l.mult, pessoas_necessarias: l.pessoas, escaladas: l.escalados, falta: l.deficit, conta: l.explicacao, obs: l.obs })) } } });
+    setCarregando(false);
+    if (error || (data as any)?.error) return toast.error((data as any)?.error || 'Não foi possível gerar a explicação.');
+    setIa((data as any).texto || '');
+  };
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto space-y-3">
+      <TimelineSemana s={s} linhas={linhas} />
+      <div className="flex items-center gap-2"><Button size="sm" variant="outline" onClick={explicarIa} disabled={carregando}>{carregando ? 'Gerando…' : 'Explicar ao cliente com IA'}</Button></div>
+      {ia && <div className="text-xs whitespace-pre-wrap border rounded p-2 bg-muted/40">{ia}</div>}
       <div className="font-medium text-xs mb-1">Necessidade por dia (com compensação)</div>
       <table className="text-xs w-full"><thead><tr className="text-left">
         <th className="pr-2">Dia</th><th className="px-2">Intensidade</th><th className="px-2">Horas exigidas</th><th className="px-2">Postos simult. máx.</th><th className="px-2">Pessoas necessárias</th><th className="px-2">Escaladas (~)</th><th className="px-2">Falta</th><th className="px-2">Obs.</th></tr></thead>
@@ -386,6 +398,47 @@ function RelatorioDia({ s, p, m }: { s: Setor; p: Parametros; m: Marco }) {
           </tr>,
           <tr key={i + 'x'}><td colSpan={8} className="pb-1 pl-2 text-muted-foreground">Como chegamos: {l.explicacao}</td></tr>])}</tbody></table>
       <p className="text-xs text-muted-foreground mt-1">Pessoas necessárias = maior entre os postos simultâneos e as horas exigidas ÷ jornada diária. "Escaladas" é a média de pessoas por dia com o quadro calculado; "Falta" indica dias que pedem reforço (extra, parcial ou folga deslocada).</p>
+    </div>
+  );
+}
+
+const COR_NIVEL: Record<string, string> = { baixo: 'bg-muted-foreground/40', normal: 'bg-primary/70', alto: 'bg-accent', pico: 'bg-destructive/80' };
+/** Linha do tempo: uma faixa por dia com o horário de funcionamento e uma barra por colaborador. */
+function TimelineSemana({ s, linhas }: { s: Setor; linhas: LinhaDia[] }) {
+  const tls = linhas.map((l) => ({ l, t: timelineDia(s, l) }));
+  const ini = Math.floor(Math.min(...tls.map((x) => x.t.abre)) / 60) * 60;
+  const fim = Math.ceil(Math.max(...tls.map((x) => x.t.fecha)) / 60) * 60;
+  if (!(fim > ini)) return null;
+  const pct = (v: number) => `${((v - ini) / (fim - ini)) * 100}%`;
+  const horasMarc = Array.from({ length: (fim - ini) / 60 + 1 }, (_, i) => ini + i * 60);
+  return (
+    <div className="min-w-[640px]">
+      <div className="font-medium text-xs mb-1">Linha do tempo por dia (cada barra = 1 colaborador)</div>
+      <div className="relative h-4 ml-28 text-[10px] text-muted-foreground">{horasMarc.map((h) => <span key={h} className="absolute -translate-x-1/2" style={{ left: pct(h) }}>{minH(h)}</span>)}</div>
+      {tls.map(({ l, t }, i) => (
+        <div key={i} className="flex items-stretch border-t py-1">
+          <div className="w-28 shrink-0 text-xs pr-2">
+            <div className="font-medium">{l.rotulo}</div>
+            <div className="capitalize text-muted-foreground">{l.nivel} · {l.pessoas} pessoas</div>
+            {l.deficit > 0 && <div className="text-destructive">faltam {l.deficit}</div>}
+          </div>
+          <div className="relative flex-1 bg-muted/30 rounded">
+            <div className="absolute inset-y-0 bg-primary/10 border-x border-primary/40" style={{ left: pct(t.abre), width: `calc(${pct(t.fecha)} - ${pct(t.abre)})` }} />
+            <div className="relative space-y-px py-1">
+              {t.barras.map((b, j) => (
+                <div key={j} className="relative h-2">
+                  <div className={`absolute h-2 rounded-sm ${j >= l.escalados ? 'bg-destructive' : COR_NIVEL[l.nivel]}`} style={{ left: pct(b.ini), width: `calc(${pct(b.fim)} - ${pct(b.ini)})` }} title={`Colaborador ${j + 1}: ${minH(b.ini)}–${minH(b.fim)}`} />
+                  {b.pausa && <div className="absolute h-2 bg-background/80" style={{ left: pct(b.pausa[0]), width: `calc(${pct(b.pausa[1])} - ${pct(b.pausa[0])})` }} />}
+                </div>))}
+            </div>
+          </div>
+        </div>))}
+      <div className="flex flex-wrap gap-3 text-[10px] text-muted-foreground mt-1 ml-28">
+        <span><span className="inline-block w-3 h-2 bg-primary/10 border border-primary/40 mr-1" />horário de funcionamento</span>
+        {(['baixo', 'normal', 'alto', 'pico'] as const).map((n) => <span key={n}><span className={`inline-block w-3 h-2 mr-1 ${COR_NIVEL[n]}`} />{n}</span>)}
+        <span><span className="inline-block w-3 h-2 bg-destructive mr-1" />pessoa que falta no quadro</span>
+        <span>vão branco = intervalo</span>
+      </div>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
-import { calcular, necessidadePorDia, fmtH, REGIME_LABEL, type Parametros, type Setor } from './calculo';
+import { calcular, necessidadePorDia, timelineDia, minH, fmtH, REGIME_LABEL, type Parametros, type Setor } from './calculo';
 
 const VERDE: [number, number, number] = [98, 142, 63];
 const OLIVA: [number, number, number] = [57, 52, 33];
@@ -34,6 +34,32 @@ export function exportarPdf(empresa: { nome?: string; cnpj?: string }, setores: 
       body: ls.map((l) => [l.rotulo, `${l.nivel} (×${l.mult})`, fmtH(l.horas), l.postosMax, l.pessoas, l.escalados, l.deficit || '—', l.obs || '', l.explicacao]),
       headStyles: { fillColor: VERDE }, styles: { fontSize: 7 }, columnStyles: { 8: { cellWidth: 300 } },
       didParseCell: (d) => { if (d.section === 'body' && d.column.index === 6 && Number(d.cell.raw) > 0) d.cell.styles.textColor = [200, 30, 30]; } });
+    // Linha do tempo por dia
+    const tls = ls.map((l) => ({ l, t: timelineDia(s, l) }));
+    const ini = Math.floor(Math.min(...tls.map((x) => x.t.abre)) / 60) * 60, fim = Math.ceil(Math.max(...tls.map((x) => x.t.fecha)) / 60) * 60;
+    if (fim > ini) {
+      const H = doc.internal.pageSize.getHeight(); const x0 = 130, x1 = W - 30; const X = (v: number) => x0 + ((v - ini) / (fim - ini)) * (x1 - x0);
+      let y = (doc as any).lastAutoTable.finalY + 18;
+      const altura = tls.reduce((a, x) => a + Math.max(14, x.t.barras.length * 4 + 6), 30);
+      if (y + altura > H - 30) { doc.addPage(); y = 40; }
+      doc.setFontSize(9); doc.setTextColor(...OLIVA); doc.text(`${s.nome} – ${m.nome}: linha do tempo (cada barra = 1 colaborador)`, 30, y); y += 12;
+      doc.setFontSize(6.5); for (let h = ini; h <= fim; h += 60) doc.text(minH(h), X(h), y, { align: 'center' }); y += 4;
+      const cor: Record<string, [number, number, number]> = { baixo: [170, 170, 170], normal: VERDE, alto: [220, 160, 40], pico: [210, 90, 40] };
+      for (const { l, t } of tls) {
+        const hRow = Math.max(14, t.barras.length * 4 + 6);
+        if (y + hRow > H - 30) { doc.addPage(); y = 40; }
+        doc.setDrawColor(220, 220, 220); doc.line(30, y, x1, y);
+        doc.setTextColor(...OLIVA); doc.setFontSize(7); doc.text(`${l.rotulo} · ${l.nivel}`, 30, y + 8); doc.text(`${l.pessoas} pessoas${l.deficit ? ` · faltam ${l.deficit}` : ''}`, 30, y + 15);
+        doc.setFillColor(232, 240, 226); doc.rect(X(t.abre), y + 2, X(t.fecha) - X(t.abre), hRow - 4, 'F');
+        t.barras.forEach((b, j) => {
+          doc.setFillColor(...(j >= l.escalados ? [200, 30, 30] as [number, number, number] : cor[l.nivel]));
+          doc.rect(X(b.ini), y + 4 + j * 4, X(b.fim) - X(b.ini), 3, 'F');
+          if (b.pausa) { doc.setFillColor(255, 255, 255); doc.rect(X(b.pausa[0]), y + 4 + j * 4, X(b.pausa[1]) - X(b.pausa[0]), 3, 'F'); }
+        });
+        y += hRow;
+      }
+      (doc as any).lastAutoTable.finalY = y;
+    }
   }
   const alertas = setores.flatMap((s) => p.marcos.flatMap((m) => [...calcular(s, p, m, false).alertas, ...calcular(s, p, m, true).alertas].map((a) => `${s.nome} – ${m.nome}: ${a}`)));
   if (alertas.length) autoTable(doc, { head: [['Alertas']], body: [...new Set(alertas)].map((a) => [a]), headStyles: { fillColor: OLIVA }, styles: { fontSize: 7.5 } });
