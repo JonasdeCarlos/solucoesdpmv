@@ -1,3 +1,4 @@
+import { detalharPeriodosFerias } from '@/utils/feriasPeriodos';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { type Step1Data, type Step2Data, type Step3Data, type VerbaRescisoria, calcularTotal, getBaseCalculo, MOTIVO_TERMO_TITULO, MOTIVO_TERMO_CORPO, MOTIVO_LABELS } from './calculations';
@@ -500,6 +501,7 @@ function renderMemoriaPages(doc: jsPDF, step1: Step1Data, step2: Step2Data, verb
     items.push({ title: 'FÉRIAS PROPORCIONAIS', lines: [
       `Fórmula: Salário × (meses / 12)`,
       `${formatCurrency(sal)} × (${step2.mesesFeriasProporcional}/12) = ${formatCurrency(feriasProp)}`,
+      ...(() => { const pp = detalharPeriodosFerias(step1).proporcionais; return pp.length ? ['Períodos:', ...pp.map(l => '  ' + l)] : []; })(),
     ]});
   }
 
@@ -509,6 +511,7 @@ function renderMemoriaPages(doc: jsPDF, step1: Step1Data, step2: Step2Data, verb
     items.push({ title: 'FÉRIAS VENCIDAS', lines: [
       `Fórmula: Salário × períodos vencidos`,
       `${formatCurrency(sal)} × ${step1.periodosVencidos} = ${formatCurrency(fv)}`,
+      ...(() => { const pv = detalharPeriodosFerias(step1).vencidas; return pv.length ? ['Períodos:', ...pv.map(l => '  ' + l)] : []; })(),
     ]});
   }
 

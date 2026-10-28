@@ -13,6 +13,7 @@ import { useClientes } from '@/hooks/useClientes';
 import { type Step1Data, type Step2Data, type Step3Data, type VerbaRescisoria, calcularTotal, calcularVerbas, getBaseCalculo, recalcDependents, MOTIVO_TERMO_TITULO, MOTIVO_TERMO_CORPO, MOTIVO_LABELS } from '@/utils/calculations';
 import { calcularFgtsDetalhado } from '@/utils/fgtsDetail';
 import { formatCurrency, formatDate } from '@/utils/formatters';
+import { detalharPeriodosFerias } from '@/utils/feriasPeriodos';
 import { numberToWords } from '@/utils/numberToWords';
 import ResultsTable from '@/components/ResultsTable';
 import { toast } from 'sonner';
@@ -205,6 +206,8 @@ ${data.empregadoNome || '[NOME DO EMPREGADO]'}`;
       lines.push(`${itemNum}) FÉRIAS PROPORCIONAIS`);
       lines.push(`   Fórmula: Salário × (meses / 12)`);
       lines.push(`   ${formatCurrency(sal)} × (${step2.mesesFeriasProporcional}/12) = ${formatCurrency(feriasPropCalc)}`);
+      const pp = detalharPeriodosFerias(step1).proporcionais;
+      if (pp.length) { lines.push(`   Períodos:`); pp.forEach(l => lines.push(`     ${l}`)); }
       if (Math.abs(feriasProp - feriasPropCalc) > 0.01) {
         lines.push(`   ⚠ Valor ajustado manualmente: ${formatCurrency(feriasProp)}`);
       }
@@ -220,6 +223,8 @@ ${data.empregadoNome || '[NOME DO EMPREGADO]'}`;
       lines.push(`${itemNum}) FÉRIAS VENCIDAS`);
       lines.push(`   Fórmula: Salário × períodos vencidos`);
       lines.push(`   ${formatCurrency(sal)} × ${step1.periodosVencidos} = ${formatCurrency(feriasVencCalc)}`);
+      const pv = detalharPeriodosFerias(step1).vencidas;
+      if (pv.length) { lines.push(`   Períodos:`); pv.forEach(l => lines.push(`     ${l}`)); }
       if (Math.abs(feriasVenc - feriasVencCalc) > 0.01) {
         lines.push(`   ⚠ Valor ajustado manualmente: ${formatCurrency(feriasVenc)}`);
       }
