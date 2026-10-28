@@ -121,7 +121,7 @@ export function calcular(s: Setor, p: Parametros, marco: Marco, comp: boolean, p
 
 export function fmtH(h: number) { const t = Math.round(h * 60); return `${Math.floor(t / 60)}h${String(t % 60).padStart(2, '0')}`; }
 
-export interface LinhaDia { rotulo: string; nivel: Nivel; mult: number; horas: number; postosMax: number; pessoas: number; escalados: number; deficit: number; obs?: string; explicacao: string }
+export interface LinhaDia { rotulo: string; nivel: Nivel; mult: number; horas: number; postosMax: number; pessoas: number; escalados: number; deficit: number; obs?: string; explicacao: string; dia: string; jornadaDia: number }
 /** Necessidade detalhada por dia da semana e por data especial (Modo B). */
 export function necessidadePorDia(s: Setor, p: Parametros, marco: Marco, comp = true): LinhaDia[] {
   const r = calcular(s, p, marco, comp);
@@ -147,7 +147,7 @@ export function necessidadePorDia(s: Setor, p: Parametros, marco: Marco, comp = 
       ? `${fmtH(h)} de trabalho ÷ ${fmtH(jornadaDia)} por pessoa/dia = ${r2(h / jornadaDia)} → ${pessoas} pessoas`
       : `${fmtH(h)} ÷ ${fmtH(jornadaDia)} = ${porHoras}, mas são ${mx} postos ao mesmo tempo → ${pessoas} pessoas`;
     const explicacao = `Funcionamento ${turnos || '—'}. ${partes.join('; ')}. ${motivo}${mult !== 1 ? ` (movimento ${nv}: postos multiplicados por ${mult})` : ''}.`;
-    return { rotulo, nivel: nv, mult, horas: r2(h), postosMax: mx, pessoas, escalados, deficit: Math.max(0, pessoas - escalados), obs, explicacao };
+    return { rotulo, nivel: nv, mult, horas: r2(h), postosMax: mx, pessoas, escalados, deficit: Math.max(0, pessoas - escalados), obs, explicacao, dia: d, jornadaDia: Math.min(r.limite, marco.jornada / marco.dias) };
   };
   const out = abertos.map((d) => linha(d, s.intensidade_dias?.[d] || 'normal', DIA_LABEL[d]));
   for (const de of s.datas_especiais || []) {
@@ -175,7 +175,7 @@ function porDiaModoA(s: Setor, p: Parametros, marco: Marco, r: Resultado): Linha
     const explicacao = `Funcionamento ${turnos || '—'} (${fmtH(hAberto)} aberto). Hoje ${atual} funcionários × ${base0.dias} dias ÷ ${abertos.length} dias abertos = ${r2(baseDia)} pessoas num dia normal` +
       (mult !== 1 ? `; movimento ${nv} multiplica por ${mult}: ${r2(baseDia)} × ${mult} = ${r2(baseDia * mult)} → ${pessoas} pessoas` : ` → ${pessoas} pessoas`) +
       `. Com o quadro de ${r.arredondada} no marco ${marco.nome} (${marco.dias} dias/semana), cabem ~${escalados} por dia${pessoas > escalados ? `, faltam ${pessoas - escalados}` : ''}.`;
-    return { rotulo, nivel: nv, mult, horas: r2(pessoas * hAberto), postosMax: pessoas, pessoas, escalados, deficit: Math.max(0, pessoas - escalados), obs, explicacao };
+    return { rotulo, nivel: nv, mult, horas: r2(pessoas * hAberto), postosMax: pessoas, pessoas, escalados, deficit: Math.max(0, pessoas - escalados), obs, explicacao, dia: d, jornadaDia: Math.min(r.limite, marco.jornada / marco.dias) };
   };
   const out = abertos.map((d) => linha(d, s.intensidade_dias?.[d] || 'normal', DIA_LABEL[d]));
   for (const de of s.datas_especiais || []) {
@@ -186,3 +186,23 @@ function porDiaModoA(s: Setor, p: Parametros, marco: Marco, r: Resultado): Linha
   }
   return out;
 }
+
+const toMin = (h: string) => { const [a, b] = (h || '0:0').split(':').map(Number); return a * 60 + (b || 0); };
+export interface Barra { ini: number; fim: number; pausa?: [number, number] }
+/** Distribui as jornadas das pessoas do dia ao longo do funcionamento (entradas escalonadas), em minutos do dia. */
+export function timelineDia(s: Setor, l: LinhaDia): { abre: number; fecha: number; barras: Barra[] } {
+  const ts = s.funcionamento?.[l.dia]?.turnos || [];
+  if (!ts.length) return { abre: 0, fecha: 0, barras: [] };
+  const abre = Math.min(...ts.map((x) => toMin(x.ini)));
+  let fecha = Math.max(...ts.map((x) => { const f = toMin(x.fim); return f <= toMin(x.ini) ? f + 1440 : f; }));
+  const trab = Math.round(l.jornadaDia * 60); const pausa = trab > 360 ? 60 : trab > 240 ? 15 : 0;
+  const dur = Math.min(trab + pausa, fecha - abre);
+  const n = Math.max(0, l.pessoas); const folga = Math.max(0, fecha - abre - dur);
+  const barras: Barra[] = Array.from({ length: n }, (_, i) => {
+    const ini = abre + Math.round(n > 1 ? (folga * i) / (n - 1) / 15 : 0) * 15;
+    const fim = Math.min(fecha, ini + dur); const meio = ini + Math.round((fim - ini) / 2 / 15) * 15;
+    return { ini, fim, pausa: pausa ? [meio - pausa / 2, meio + pausa / 2] : undefined };
+  });
+  return { abre, fecha, barras };
+}
+export const minH = (m: number) => `${String(Math.floor(m / 60) % 24).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
