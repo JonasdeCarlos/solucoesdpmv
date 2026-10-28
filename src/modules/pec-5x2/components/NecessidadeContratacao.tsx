@@ -285,7 +285,7 @@ function DetalheSetor({ s, p, onChange, onEnviar }: { s: Setor; p: Parametros; o
               <td className="px-2 whitespace-nowrap">{f?.aberto && (f.turnos || []).map((t, i) => (
                 <span key={i} className="mr-2"><Input type="time" className="h-7 w-24 inline-block" value={t.ini} onChange={(e) => setDia(d, { turnos: f.turnos.map((x, j) => (j === i ? { ...x, ini: e.target.value } : x)) })} />–<Input type="time" className="h-7 w-24 inline-block" value={t.fim} onChange={(e) => setDia(d, { turnos: f.turnos.map((x, j) => (j === i ? { ...x, fim: e.target.value } : x)) })} /></span>))}
                 {f?.aberto && <Button size="sm" variant="ghost" className="h-7" onClick={() => setDia(d, { turnos: [...f.turnos, { ini: '18:00', fim: '22:00' }] })}>+ turno</Button>}</td>
-              <td>{f?.aberto && <select className={sel + ' h-7'} value={s.intensidade_dias?.[d] || 'normal'} onChange={(e) => onChange({ intensidade_dias: { ...(s.intensidade_dias || {}), [d]: e.target.value as Nivel } })}>{NIVEIS.map((n) => <option key={n}>{n}</option>)}</select>}</td>
+              <td>{f?.aberto && <select className={sel + ' h-7'} value={s.intensidade_dias?.[d] || 'normal'} onChange={(e) => onChange({ intensidade_dias: { ...(s.intensidade_dias || {}), [d]: e.target.value as Nivel } })}>{NIVEIS.map((n) => <option key={n} value={n}>{n} (×{p.multiplicadores_intensidade[n]})</option>)}</select>}</td>
               <td className="pl-2">{f?.aberto && <Input type="number" placeholder="postos diretos" className="h-7 w-28" value={f.postos_diretos ?? ''} onChange={(e) => setDia(d, { postos_diretos: e.target.value === '' ? null : Number(e.target.value) })} />}</td>
             </tr>); })}
         </tbody></table>
@@ -306,7 +306,7 @@ function DetalheSetor({ s, p, onChange, onEnviar }: { s: Setor; p: Parametros; o
         {datas.map((d, i) => (
           <div key={i} className="flex gap-2 items-center mb-1">
             <Input type="date" className="h-7 w-40" value={d.data} onChange={(e) => onChange({ datas_especiais: datas.map((x, j) => (j === i ? { ...x, data: e.target.value } : x)) })} />
-            <select className={sel + ' h-7'} value={d.nivel} onChange={(e) => onChange({ datas_especiais: datas.map((x, j) => (j === i ? { ...x, nivel: e.target.value as Nivel } : x)) })}>{NIVEIS.map((n) => <option key={n}>{n}</option>)}</select>
+            <select className={sel + ' h-7'} value={d.nivel} onChange={(e) => onChange({ datas_especiais: datas.map((x, j) => (j === i ? { ...x, nivel: e.target.value as Nivel } : x)) })}>{NIVEIS.map((n) => <option key={n} value={n}>{n} (×{p.multiplicadores_intensidade[n]})</option>)}</select>
             <Input className="h-7" placeholder="Observação (feriado, temporada…)" value={d.observacao || ''} onChange={(e) => onChange({ datas_especiais: datas.map((x, j) => (j === i ? { ...x, observacao: e.target.value } : x)) })} />
             <Button size="sm" variant="ghost" onClick={() => onChange({ datas_especiais: datas.filter((_, j) => j !== i) })}><Trash2 className="h-3.5 w-3.5" /></Button>
           </div>))}
