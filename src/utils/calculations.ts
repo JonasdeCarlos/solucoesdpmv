@@ -219,7 +219,7 @@ export function calcularVerbas(step1: Step1Data, step2: Step2Data): VerbaResciso
       const totalMeses = diffMonthsFull(step1.dataAdmissao, step1.dataDesligamento);
       anosCompletos = Math.floor(totalMeses / 12);
     }
-    const diasPorAno = anosCompletos * 3;
+    const diasPorAno = Math.min(anosCompletos * 3, 60); // Lei 12.506/2011: máx. 90 dias no total
     let valorDiasPorAno = 0;
     if (diasPorAno > 0) {
       valorDiasPorAno = (sal / 30) * diasPorAno;
@@ -361,7 +361,7 @@ export function calcularVerbas(step1: Step1Data, step2: Step2Data): VerbaResciso
       if (step1.dataAdmissao && step1.dataDesligamento) {
         anosComp = Math.floor(diffMonthsFull(step1.dataAdmissao, step1.dataDesligamento) / 12);
       }
-      const diasPorAno = anosComp * 3;
+      const diasPorAno = Math.min(anosComp * 3, 60); // Lei 12.506/2011: máx. 90 dias no total
       const diasTotalProj = diasAvisoBase + diasPorAno;
       const avisoVal = (sal / 30) * diasAvisoBase;
       const valDiasPorAno = (sal / 30) * diasPorAno;
