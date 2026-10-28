@@ -15,6 +15,7 @@ import {
   type Faixa, type Marco, type Nivel, type Parametros, type Regime, type Setor,
 } from '../calculo';
 import { exportarPdf, exportarXlsx } from '../exportar';
+import { necessidadePorDia } from '../calculo';
 
 const sel = 'h-8 rounded-md border border-input bg-background px-2 text-sm';
 const n2 = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
@@ -341,6 +342,7 @@ function DetalheSetor({ s, p, onChange, onEnviar }: { s: Setor; p: Parametros; o
             </div>
             {a.arredondada > b.arredondada && <div className="text-xs text-primary">A compensação evita {a.arredondada - b.arredondada} contratação(ões).</div>}
             {modoB(s) && <MapaCalor s={s} p={p} m={m} total={b.arredondada} pico={pico} />}
+            {modoB(s) && <RelatorioDia s={s} p={p} m={m} />}
           </Card>);
       })}
     </div>
@@ -363,6 +365,26 @@ function MapaCalor({ s, p, m, total, pico }: { s: Setor; p: Parametros; m: Marco
               const ok = porDia >= (r.postosDia[d] || req);
               return <td key={d} className={`px-2 text-center ${ok ? 'bg-primary/15' : 'bg-destructive/20'}`}>{req}</td>; })}
           </tr>))}</tbody></table>
+    </div>
+  );
+}
+
+/** Relatório completo da necessidade por dia (dias da semana + datas especiais), com compensação. */
+function RelatorioDia({ s, p, m }: { s: Setor; p: Parametros; m: Marco }) {
+  const linhas = necessidadePorDia(s, p, m, true);
+  if (!linhas.length) return null;
+  return (
+    <div className="overflow-x-auto">
+      <div className="font-medium text-xs mb-1">Necessidade por dia (com compensação)</div>
+      <table className="text-xs w-full"><thead><tr className="text-left">
+        <th className="pr-2">Dia</th><th className="px-2">Intensidade</th><th className="px-2">Horas exigidas</th><th className="px-2">Postos simult. máx.</th><th className="px-2">Pessoas necessárias</th><th className="px-2">Escaladas (~)</th><th className="px-2">Falta</th><th className="px-2">Obs.</th></tr></thead>
+        <tbody>{linhas.map((l, i) => (
+          <tr key={i} className={`border-t ${l.nivel === 'pico' || l.nivel === 'alto' ? 'font-medium' : ''}`}>
+            <td className="pr-2 whitespace-nowrap">{l.rotulo}</td><td className="px-2 capitalize">{l.nivel} (×{l.mult})</td>
+            <td className="px-2">{fmtH(l.horas)}</td><td className="px-2">{l.postosMax}</td><td className="px-2">{l.pessoas}</td><td className="px-2">{l.escalados}</td>
+            <td className={`px-2 ${l.deficit ? 'text-destructive font-medium' : ''}`}>{l.deficit || '—'}</td><td className="px-2">{l.obs || ''}</td>
+          </tr>))}</tbody></table>
+      <p className="text-xs text-muted-foreground mt-1">Pessoas necessárias = maior entre os postos simultâneos e as horas exigidas ÷ jornada diária. "Escaladas" é a média de pessoas por dia com o quadro calculado; "Falta" indica dias que pedem reforço (extra, parcial ou folga deslocada).</p>
     </div>
   );
 }
