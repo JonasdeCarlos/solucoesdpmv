@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { AlertTriangle, CalendarRange, FileDown, FileSpreadsheet, Plus, Save, Settings2, Trash2, Search } from 'lucide-react';
+import { AlertTriangle, CalendarRange, FileDown, FileSpreadsheet, Info, Plus, Save, Settings2, Trash2, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   calcular, DIAS, DIA_LABEL, PARAMS_PADRAO, REGIME_LABEL, horas, modoB, fmtH,
@@ -167,7 +167,7 @@ export default function NecessidadeContratacao({ empresaId, empresa, onAbrirEsca
       <Card className="p-0 overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-muted/50 text-xs">
-            <tr><th className="p-2 text-left">Setor</th><th>Atuais</th><th>Mulheres</th><th>Parciais (qtd × h)</th><th>Regime</th><th>Limite/dia</th><th>Insalubre</th>
+            <tr><th className="p-2 text-left">Setor</th><th>Atuais</th><th>Mulheres</th><th className="whitespace-nowrap" title="Funcionários em contrato parcial (art. 58-A CLT): quantos são e quantas horas por semana cada um trabalha.">Parciais (qtd × h/sem) <Info className="inline h-3 w-3 text-muted-foreground" /></th><th>Regime</th><th>Limite/dia</th><th>Insalubre</th>
               {marcosFut.map((m) => <th key={m.id} className="px-2">{m.nome}<div className="font-normal">sem / com</div></th>)}<th></th></tr>
           </thead>
           <tbody>
@@ -176,7 +176,7 @@ export default function NecessidadeContratacao({ empresaId, empresa, onAbrirEsca
                 <td className="p-1"><Input className="h-8 min-w-[140px]" value={s.nome} onChange={(e) => atualizar(s.id, { nome: e.target.value })} /></td>
                 <td className="p-1"><Input type="number" className="h-8 w-16" value={s.funcionarios_atuais} onChange={(e) => atualizar(s.id, { funcionarios_atuais: Number(e.target.value) || 0 })} /></td>
                 <td className="p-1"><Input type="number" className="h-8 w-16" value={s.funcionarios_por_sexo?.F ?? ''} onChange={(e) => atualizar(s.id, { funcionarios_por_sexo: { F: Number(e.target.value) || 0, M: Math.max(0, s.funcionarios_atuais - (Number(e.target.value) || 0)) } })} /></td>
-                <td className="p-1 whitespace-nowrap"><Input type="number" className="h-8 w-14 inline-block" value={s.parciais?.qtd ?? 0} onChange={(e) => atualizar(s.id, { parciais: { qtd: Number(e.target.value) || 0, horas: s.parciais?.horas || 0 } })} /> × <Input type="number" className="h-8 w-14 inline-block" value={s.parciais?.horas ?? 0} onChange={(e) => atualizar(s.id, { parciais: { qtd: s.parciais?.qtd || 0, horas: Number(e.target.value) || 0 } })} /></td>
+                <td className="p-1 whitespace-nowrap"><Input type="number" placeholder="qtd" className="h-8 w-14 inline-block" value={s.parciais?.qtd ?? 0} onChange={(e) => atualizar(s.id, { parciais: { qtd: Number(e.target.value) || 0, horas: s.parciais?.horas || 0 } })} /> × <Input type="number" placeholder="h/sem" className="h-8 w-16 inline-block" value={s.parciais?.horas ?? 0} onChange={(e) => atualizar(s.id, { parciais: { qtd: s.parciais?.qtd || 0, horas: Number(e.target.value) || 0 } })} /></td>
                 <td className="p-1"><select className={sel} value={s.regime_compensacao || ''} onChange={(e) => atualizar(s.id, { regime_compensacao: (e.target.value || null) as any })}>
                   <option value="">Padrão</option>{(Object.keys(REGIME_LABEL) as Regime[]).map((r) => <option key={r} value={r}>{REGIME_LABEL[r]}</option>)}</select></td>
                 <td className="p-1"><Input type="number" step="0.5" max={10} className="h-8 w-16" placeholder={String(params.limite_diario_padrao)} value={s.limite_diario ?? ''} onChange={(e) => atualizar(s.id, { limite_diario: e.target.value === '' ? null : Math.min(10, Number(e.target.value)) })} /></td>
