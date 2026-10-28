@@ -120,3 +120,31 @@ export function calcular(s: Setor, p: Parametros, marco: Marco, comp: boolean, p
 }
 
 export function fmtH(h: number) { const t = Math.round(h * 60); return `${Math.floor(t / 60)}h${String(t % 60).padStart(2, '0')}`; }
+
+export interface LinhaDia { rotulo: string; nivel: Nivel; mult: number; horas: number; postosMax: number; pessoas: number; escalados: number; deficit: number; obs?: string }
+/** Necessidade detalhada por dia da semana e por data especial (Modo B). */
+export function necessidadePorDia(s: Setor, p: Parametros, marco: Marco, comp = true): LinhaDia[] {
+  if (!modoB(s)) return [];
+  const r = calcular(s, p, marco, comp);
+  const jornadaDia = Math.min(r.limite, marco.jornada / marco.dias);
+  const abertos = DIAS.filter((d) => s.funcionamento?.[d]?.aberto);
+  const escalados = abertos.length ? Math.floor((r.arredondada * marco.dias) / abertos.length) : 0;
+  const linha = (d: string, nv: Nivel, rotulo: string, obs?: string): LinhaDia => {
+    const f = s.funcionamento![d]; const mult = p.multiplicadores_intensidade[nv] ?? 1;
+    let h = 0, mx = 0;
+    for (const fx of s.postos || []) {
+      const ps = f.postos_diretos != null && f.postos_diretos > 0 ? f.postos_diretos : Math.ceil((fx.postos || 0) * mult);
+      h += horas(fx.ini, fx.fim) * ps; mx = Math.max(mx, ps);
+    }
+    const pessoas = Math.max(mx, Math.ceil(h / jornadaDia - 1e-9));
+    return { rotulo, nivel: nv, mult, horas: r2(h), postosMax: mx, pessoas, escalados, deficit: Math.max(0, pessoas - escalados), obs };
+  };
+  const out = abertos.map((d) => linha(d, s.intensidade_dias?.[d] || 'normal', DIA_LABEL[d]));
+  for (const de of s.datas_especiais || []) {
+    if (!de.data) continue;
+    const wd = String(new Date(de.data + 'T12:00:00').getDay());
+    if (!s.funcionamento?.[wd]?.aberto) continue;
+    out.push(linha(wd, de.nivel, `${de.data.split('-').reverse().join('/')} (${DIA_LABEL[wd]})`, de.observacao));
+  }
+  return out;
+}
