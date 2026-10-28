@@ -22,7 +22,7 @@ const sha256 = async (t: string) => Array.from(new Uint8Array(await crypto.subtl
 const novoToken = () => { const a = new Uint8Array(32); crypto.getRandomValues(a); return Array.from(a, (b) => b.toString(16).padStart(2, '0')).join(''); };
 const linkUrl = (t: string) => buildExternalAppLink(`/escala-publica/${t}`);
 
-export default function EscalaRevezamentoPage() {
+export default function EscalaRevezamentoPage({ embutido = false }: { embutido?: boolean } = {}) {
   const { clientes } = useClientes();
   const [clienteId, setClienteIdRaw] = useState(() => localStorage.getItem('escala-cliente') || '');
   const setClienteId = (v: string) => { setClienteIdRaw(v); localStorage.setItem('escala-cliente', v); };
@@ -53,7 +53,7 @@ export default function EscalaRevezamentoPage() {
 
   return (
     <div className="p-4 md:p-6 space-y-4 max-w-7xl mx-auto">
-      <div>
+      <div className={embutido ? 'hidden' : ''}>
         <h1 className="text-2xl font-bold">Escala de Revezamento de Folgas</h1>
         <p className="text-sm text-muted-foreground">Gera e valida escalas 6x1, 5x2 e similares (art. 67 CLT, Lei 10.101/2000, Portaria MTP 671/2021).</p>
       </div>
@@ -63,7 +63,7 @@ export default function EscalaRevezamentoPage() {
           <TabsTrigger value="recebidas">Recebidas de clientes {novas > 0 && <Badge className="ml-2" variant="destructive">{novas}</Badge>}</TabsTrigger>
           <TabsTrigger value="links">Links públicos</TabsTrigger>
         </TabsList>
-        {tab !== 'recebidas' && (
+        {tab !== 'recebidas' && !embutido && (
           <Card className="p-3 mt-3 flex flex-wrap gap-2 items-end">
             <div><Label>Buscar empresa</Label><Input value={busca} onChange={(e) => setBusca(e.target.value)} className="w-56" /></div>
             <div><Label>Empresa</Label>
@@ -139,7 +139,7 @@ function ListaEscalas({ clienteId, onAbrir }: { clienteId: string; onAbrir: (id:
         <div key={e.id} className="flex flex-wrap items-center gap-2 border rounded-md p-2 text-sm">
           <button className="font-medium hover:underline text-left" onClick={() => onAbrir(e.id)}>{e.titulo} {e.setor && `— ${e.setor}`}</button>
           <span className="text-muted-foreground">{fmtBRAno(e.data_inicio)} a {fmtBRAno(e.data_fim)}</span>
-          <StatusBadge s={e.status} />{e.origem === 'publica' && <Badge variant="outline">Cliente</Badge>}
+          <StatusBadge s={e.status} />{e.origem === 'publica' && <Badge variant="outline">Cliente</Badge>}{e.regras_cct?.pec_origem && <Badge variant="outline">PEC 5x2 · {e.regras_cct.pec_origem.marco}</Badge>}
           {e.link_id && <Badge variant="outline">Com link</Badge>}
           <Button variant="outline" size="sm" className="ml-auto" onClick={() => linkGestor(e)}><Link2 className="w-4 h-4 mr-1" />Link para o gestor</Button>
           <Button variant="ghost" size="icon" onClick={() => excluir(e.id)}><Trash2 className="w-4 h-4" /></Button>
@@ -301,6 +301,7 @@ function EscalaView({ id, onVoltar }: { id: string; onVoltar: () => void }) {
         <StatusBadge s={esc.status} />
         {esc.status !== 'aprovada' && <span className="text-xs text-muted-foreground">{estado === 'salvo' ? 'Rascunho salvo' : estado === 'salvando' ? 'Salvando…' : 'Alterações não salvas'}</span>}
         <span className="text-sm text-muted-foreground">{cliente?.nome}</span>
+        {esc.regras_cct?.pec_origem && <a href="/pec-5x2" className="text-xs"><Badge variant="outline">Gerada pela PEC 5x2 · {esc.regras_cct.pec_origem.setor} · {esc.regras_cct.pec_origem.marco} ↩</Badge></a>}
         <div className="ml-auto flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => { try { gerarPdf(info, false); } catch (e: any) { toast.error(e.message); } }}><FileDown className="w-4 h-4 mr-1" />PDF</Button>
           <Button variant="outline" onClick={() => { try { gerarPdf(info, true); } catch (e: any) { toast.error(e.message); } }}><FileDown className="w-4 h-4 mr-1" />PDF final</Button>

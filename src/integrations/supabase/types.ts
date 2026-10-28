@@ -6510,6 +6510,230 @@ export type Database = {
         }
         Relationships: []
       }
+      transicao_cenarios: {
+        Row: {
+          created_at: string
+          empresa_id: string
+          id: string
+          nome: string
+          snapshot: Json
+        }
+        Insert: {
+          created_at?: string
+          empresa_id: string
+          id?: string
+          nome: string
+          snapshot?: Json
+        }
+        Update: {
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          nome?: string
+          snapshot?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transicao_cenarios_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transicao_datas_especiais: {
+        Row: {
+          created_at: string
+          data: string
+          id: string
+          nivel: string
+          observacao: string | null
+          setor_id: string
+        }
+        Insert: {
+          created_at?: string
+          data: string
+          id?: string
+          nivel?: string
+          observacao?: string | null
+          setor_id: string
+        }
+        Update: {
+          created_at?: string
+          data?: string
+          id?: string
+          nivel?: string
+          observacao?: string | null
+          setor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transicao_datas_especiais_setor_id_fkey"
+            columns: ["setor_id"]
+            isOneToOne: false
+            referencedRelation: "transicao_setores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transicao_jornadas_ia: {
+        Row: {
+          created_at: string
+          editado: boolean
+          escala_id: string | null
+          id: string
+          marco: string
+          payload_ia: Json
+          setor_id: string
+          updated_at: string
+          validacao: Json
+        }
+        Insert: {
+          created_at?: string
+          editado?: boolean
+          escala_id?: string | null
+          id?: string
+          marco: string
+          payload_ia?: Json
+          setor_id: string
+          updated_at?: string
+          validacao?: Json
+        }
+        Update: {
+          created_at?: string
+          editado?: boolean
+          escala_id?: string | null
+          id?: string
+          marco?: string
+          payload_ia?: Json
+          setor_id?: string
+          updated_at?: string
+          validacao?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transicao_jornadas_ia_escala_id_fkey"
+            columns: ["escala_id"]
+            isOneToOne: false
+            referencedRelation: "escalas_revezamento"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transicao_jornadas_ia_setor_id_fkey"
+            columns: ["setor_id"]
+            isOneToOne: false
+            referencedRelation: "transicao_setores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transicao_parametros: {
+        Row: {
+          created_at: string
+          empresa_id: string | null
+          id: string
+          indices_reposicao: Json
+          limite_diario_padrao: number
+          marcos: Json
+          multiplicadores_intensidade: Json
+          regime_compensacao_padrao: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          empresa_id?: string | null
+          id?: string
+          indices_reposicao?: Json
+          limite_diario_padrao?: number
+          marcos?: Json
+          multiplicadores_intensidade?: Json
+          regime_compensacao_padrao?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          empresa_id?: string | null
+          id?: string
+          indices_reposicao?: Json
+          limite_diario_padrao?: number
+          marcos?: Json
+          multiplicadores_intensidade?: Json
+          regime_compensacao_padrao?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transicao_parametros_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: true
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transicao_setores: {
+        Row: {
+          created_at: string
+          empresa_id: string
+          funcionamento: Json
+          funcionarios_atuais: number
+          funcionarios_por_sexo: Json
+          id: string
+          insalubre: boolean
+          intensidade_dias: Json
+          limite_diario: number | null
+          nome: string
+          ordem: number
+          parciais: Json
+          postos: Json
+          regime_compensacao: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          empresa_id: string
+          funcionamento?: Json
+          funcionarios_atuais?: number
+          funcionarios_por_sexo?: Json
+          id?: string
+          insalubre?: boolean
+          intensidade_dias?: Json
+          limite_diario?: number | null
+          nome?: string
+          ordem?: number
+          parciais?: Json
+          postos?: Json
+          regime_compensacao?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          empresa_id?: string
+          funcionamento?: Json
+          funcionarios_atuais?: number
+          funcionarios_por_sexo?: Json
+          id?: string
+          insalubre?: boolean
+          intensidade_dias?: Json
+          limite_diario?: number | null
+          nome?: string
+          ordem?: number
+          parciais?: Json
+          postos?: Json
+          regime_compensacao?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transicao_setores_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ts_competencias: {
         Row: {
           codigo_verba: string | null

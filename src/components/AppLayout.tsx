@@ -29,7 +29,7 @@ const NAV_ITEMS = [
   { to: '/bruto-alvo', label: 'Bruto Alvo', icon: Target },
   { to: '/conversor-dominio', label: 'Conversor Domínio', icon: FileSpreadsheet },
   { to: '/calculadora-horas', label: 'Calculadora de Horas', icon: Timer },
-  { to: '/escala-revezamento', label: 'Escala de Revezamento', icon: CalendarRange },
+  { to: '/pec-5x2', label: 'PEC - 5X2', icon: CalendarRange },
   { to: '/admissao/escritorio', label: 'Admissão', icon: UserPlus },
 ];
 
