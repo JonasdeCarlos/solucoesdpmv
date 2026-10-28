@@ -436,6 +436,9 @@ const Step1InitialQuestions = ({ data, onChange, onNext }: Step1Props) => {
                   value={data.diasAvisoPrevioIndenizado}
                   onChange={(e) => update({ diasAvisoPrevioIndenizado: parseInt(e.target.value) || 30 })}
                 />
+                <p className="text-xs text-muted-foreground">
+                  Informe só os 30 dias base. Os 3 dias por ano completo (Lei 12.506/2011, até 60 dias extras, máx. 90 no total) são somados automaticamente em linha própria e projetados no 13º, férias e FGTS.
+                </p>
               </div>
             )}
           </div>
