@@ -378,12 +378,13 @@ function RelatorioDia({ s, p, m }: { s: Setor; p: Parametros; m: Marco }) {
       <div className="font-medium text-xs mb-1">Necessidade por dia (com compensação)</div>
       <table className="text-xs w-full"><thead><tr className="text-left">
         <th className="pr-2">Dia</th><th className="px-2">Intensidade</th><th className="px-2">Horas exigidas</th><th className="px-2">Postos simult. máx.</th><th className="px-2">Pessoas necessárias</th><th className="px-2">Escaladas (~)</th><th className="px-2">Falta</th><th className="px-2">Obs.</th></tr></thead>
-        <tbody>{linhas.map((l, i) => (
+        <tbody>{linhas.flatMap((l, i) => [
           <tr key={i} className={`border-t ${l.nivel === 'pico' || l.nivel === 'alto' ? 'font-medium' : ''}`}>
             <td className="pr-2 whitespace-nowrap">{l.rotulo}</td><td className="px-2 capitalize">{l.nivel} (×{l.mult})</td>
             <td className="px-2">{fmtH(l.horas)}</td><td className="px-2">{l.postosMax}</td><td className="px-2">{l.pessoas}</td><td className="px-2">{l.escalados}</td>
             <td className={`px-2 ${l.deficit ? 'text-destructive font-medium' : ''}`}>{l.deficit || '—'}</td><td className="px-2">{l.obs || ''}</td>
-          </tr>))}</tbody></table>
+          </tr>,
+          <tr key={i + 'x'}><td colSpan={8} className="pb-1 pl-2 text-muted-foreground">Como chegamos: {l.explicacao}</td></tr>])}</tbody></table>
       <p className="text-xs text-muted-foreground mt-1">Pessoas necessárias = maior entre os postos simultâneos e as horas exigidas ÷ jornada diária. "Escaladas" é a média de pessoas por dia com o quadro calculado; "Falta" indica dias que pedem reforço (extra, parcial ou folga deslocada).</p>
     </div>
   );

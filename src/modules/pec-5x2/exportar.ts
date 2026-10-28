@@ -30,9 +30,9 @@ export function exportarPdf(empresa: { nome?: string; cnpj?: string }, setores: 
     didParseCell: (d) => { if (d.section === 'body' && (d.column.index === 5 || d.column.index === 8) && Number(d.cell.raw) > 0) d.cell.styles.textColor = [200, 30, 30]; } });
   for (const s of setores) for (const m of p.marcos.slice(1)) {
     const ls = necessidadePorDia(s, p, m, true); if (!ls.length) continue;
-    autoTable(doc, { head: [[`${s.nome} – ${m.nome}: necessidade por dia`, 'Intensidade', 'Horas', 'Postos máx.', 'Pessoas nec.', 'Escaladas', 'Falta', 'Obs.']],
-      body: ls.map((l) => [l.rotulo, `${l.nivel} (×${l.mult})`, fmtH(l.horas), l.postosMax, l.pessoas, l.escalados, l.deficit || '—', l.obs || '']),
-      headStyles: { fillColor: VERDE }, styles: { fontSize: 7.5 },
+    autoTable(doc, { head: [[`${s.nome} – ${m.nome}: necessidade por dia`, 'Intensidade', 'Horas', 'Postos máx.', 'Pessoas nec.', 'Escaladas', 'Falta', 'Obs.', 'Como chegamos']],
+      body: ls.map((l) => [l.rotulo, `${l.nivel} (×${l.mult})`, fmtH(l.horas), l.postosMax, l.pessoas, l.escalados, l.deficit || '—', l.obs || '', l.explicacao]),
+      headStyles: { fillColor: VERDE }, styles: { fontSize: 7 }, columnStyles: { 8: { cellWidth: 300 } },
       didParseCell: (d) => { if (d.section === 'body' && d.column.index === 6 && Number(d.cell.raw) > 0) d.cell.styles.textColor = [200, 30, 30]; } });
   }
   const alertas = setores.flatMap((s) => p.marcos.flatMap((m) => [...calcular(s, p, m, false).alertas, ...calcular(s, p, m, true).alertas].map((a) => `${s.nome} – ${m.nome}: ${a}`)));
