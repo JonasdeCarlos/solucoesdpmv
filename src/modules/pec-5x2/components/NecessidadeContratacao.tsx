@@ -249,8 +249,12 @@ function ParamsCard({ p, onChange }: { p: Parametros; onChange: (p: Parametros) 
         <div><Label>Regime padrão</Label><select className={sel + ' w-full'} value={p.regime_compensacao_padrao} onChange={(e) => onChange({ ...p, regime_compensacao_padrao: e.target.value as Regime })}>
           {(Object.keys(REGIME_LABEL) as Regime[]).map((r) => <option key={r} value={r}>{REGIME_LABEL[r]}</option>)}</select></div>
         <div><Label>Limite diário com compensação (máx. 10h)</Label><Input type="number" step="0.5" value={p.limite_diario_padrao} onChange={(e) => onChange({ ...p, limite_diario_padrao: Math.min(10, Number(e.target.value) || 8) })} /></div>
-        <div className="flex gap-2 items-end">
-          {NIVEIS.map((n) => <div key={n}><Label className="capitalize">{n}</Label><Input type="number" step="0.05" className="w-20" value={p.multiplicadores_intensidade[n]} onChange={(e) => onChange({ ...p, multiplicadores_intensidade: { ...p.multiplicadores_intensidade, [n]: Number(e.target.value) || 0 } })} /></div>)}
+        <div>
+          <Label>Intensidade dos dias (multiplicador dos postos)</Label>
+          <div className="flex gap-2 items-end mt-1">
+            {NIVEIS.map((n) => <div key={n}><Label className="capitalize">{n} (×{p.multiplicadores_intensidade[n]})</Label><Input type="number" step="0.05" className="w-20" value={p.multiplicadores_intensidade[n]} onChange={(e) => onChange({ ...p, multiplicadores_intensidade: { ...p.multiplicadores_intensidade, [n]: Number(e.target.value) || 0 } })} /></div>)}
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">Cada dia aberto do setor é classificado como baixo, normal, alto ou pico, conforme o movimento. O multiplicador aumenta ou reduz quantos postos precisam estar ocupados naquele dia: 6 postos em dia “alto” (×1,25) exigem 7,5 → 8 postos (arredonda para cima). Em dia “baixo” (×0,75), 6 postos exigem 4,5 → 5. Dias sem classificação valem “normal” (×1). Só é usado quando o setor tem faixas de postos cadastradas (Modo B); nos setores sem postos, a intensidade não interfere.</p>
         </div>
       </div>
       <div className="flex flex-wrap gap-3 items-end">
