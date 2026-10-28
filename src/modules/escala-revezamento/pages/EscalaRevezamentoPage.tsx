@@ -139,7 +139,7 @@ function ListaEscalas({ clienteId, onAbrir }: { clienteId: string; onAbrir: (id:
         <div key={e.id} className="flex flex-wrap items-center gap-2 border rounded-md p-2 text-sm">
           <button className="font-medium hover:underline text-left" onClick={() => onAbrir(e.id)}>{e.titulo} {e.setor && `— ${e.setor}`}</button>
           <span className="text-muted-foreground">{fmtBRAno(e.data_inicio)} a {fmtBRAno(e.data_fim)}</span>
-          <StatusBadge s={e.status} />{e.origem === 'publica' && <Badge variant="outline">Cliente</Badge>}
+          <StatusBadge s={e.status} />{e.origem === 'publica' && <Badge variant="outline">Cliente</Badge>}{e.regras_cct?.pec_origem && <Badge variant="outline">PEC 5x2 · {e.regras_cct.pec_origem.marco}</Badge>}
           {e.link_id && <Badge variant="outline">Com link</Badge>}
           <Button variant="outline" size="sm" className="ml-auto" onClick={() => linkGestor(e)}><Link2 className="w-4 h-4 mr-1" />Link para o gestor</Button>
           <Button variant="ghost" size="icon" onClick={() => excluir(e.id)}><Trash2 className="w-4 h-4" /></Button>
@@ -301,6 +301,7 @@ function EscalaView({ id, onVoltar }: { id: string; onVoltar: () => void }) {
         <StatusBadge s={esc.status} />
         {esc.status !== 'aprovada' && <span className="text-xs text-muted-foreground">{estado === 'salvo' ? 'Rascunho salvo' : estado === 'salvando' ? 'Salvando…' : 'Alterações não salvas'}</span>}
         <span className="text-sm text-muted-foreground">{cliente?.nome}</span>
+        {esc.regras_cct?.pec_origem && <a href="/pec-5x2" className="text-xs"><Badge variant="outline">Gerada pela PEC 5x2 · {esc.regras_cct.pec_origem.setor} · {esc.regras_cct.pec_origem.marco} ↩</Badge></a>}
         <div className="ml-auto flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => { try { gerarPdf(info, false); } catch (e: any) { toast.error(e.message); } }}><FileDown className="w-4 h-4 mr-1" />PDF</Button>
           <Button variant="outline" onClick={() => { try { gerarPdf(info, true); } catch (e: any) { toast.error(e.message); } }}><FileDown className="w-4 h-4 mr-1" />PDF final</Button>
