@@ -15,6 +15,9 @@ import {
   type Faixa, type Marco, type Nivel, type Parametros, type Regime, type Setor,
 } from '../calculo';
 import { exportarPdf, exportarXlsx } from '../exportar';
+import { apiInterna, type PecApi } from '../api';
+import { buildExternalAppLink } from '@/utils/publicLinks';
+import { Link2 } from 'lucide-react';
 import { necessidadePorDia, timelineDia, minH, type LinhaDia } from '../calculo';
 
 const sel = 'h-8 rounded-md border border-input bg-background px-2 text-sm';
@@ -22,9 +25,10 @@ const n2 = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: 2 }
 const NIVEIS: Nivel[] = ['baixo', 'normal', 'alto', 'pico'];
 type SetorDb = Setor & { id: string };
 
-interface Props { empresaId: string; empresa?: { nome: string; cnpj?: string }; onAbrirEscala: (id: string) => void }
+interface Props { empresaId: string; empresa?: { nome: string; cnpj?: string }; onAbrirEscala?: (id: string) => void; api?: PecApi }
 
-export default function NecessidadeContratacao({ empresaId, empresa, onAbrirEscala }: Props) {
+export default function NecessidadeContratacao({ empresaId, empresa, onAbrirEscala, api: apiProp }: Props) {
+  const api = useMemo(() => apiProp || apiInterna(empresaId), [apiProp, empresaId]);
   const [params, setParams] = useState<Parametros>(PARAMS_PADRAO);
   const [setores, setSetores] = useState<SetorDb[]>([]);
   const [verParams, setVerParams] = useState(false);
@@ -34,30 +38,25 @@ export default function NecessidadeContratacao({ empresaId, empresa, onAbrirEsca
   const timers = useRef<Record<string, any>>({});
 
   const load = useCallback(async () => {
-    const [{ data: p }, { data: s }, { data: c }] = await Promise.all([
-      supabase.from('transicao_parametros' as any).select('*').eq('empresa_id', empresaId).maybeSingle(),
-      supabase.from('transicao_setores' as any).select('*').eq('empresa_id', empresaId).order('ordem'),
-      supabase.from('transicao_cenarios' as any).select('*').eq('empresa_id', empresaId).order('created_at', { ascending: false }),
-    ]);
+    let res; try { res = await api.load(); } catch (e: any) { return toast.error(e.message); }
+    const { parametros: p, setores: s, cenarios: c, datas: ds } = res;
     const pp = p as any;
     setParams(pp ? {
       marcos: pp.marcos?.length ? pp.marcos : PARAMS_PADRAO.marcos, regime_compensacao_padrao: pp.regime_compensacao_padrao,
       limite_diario_padrao: Number(pp.limite_diario_padrao), multiplicadores_intensidade: pp.multiplicadores_intensidade, indices_reposicao: pp.indices_reposicao,
     } : PARAMS_PADRAO);
     const lista = ((s as any[]) || []);
-    const ids = lista.map((x) => x.id);
-    const { data: ds } = ids.length ? await supabase.from('transicao_datas_especiais' as any).select('*').in('setor_id', ids) : { data: [] as any[] };
     setSetores(lista.map((x) => ({ ...x, datas_especiais: ((ds as any[]) || []).filter((d) => d.setor_id === x.id) })));
     setCenarios((c as any[]) || []);
-  }, [empresaId]);
+  }, [api]);
   useEffect(() => { load(); }, [load]);
 
   const salvarParams = async (np: Parametros) => {
     setParams(np);
     clearTimeout(timers.current.params);
     timers.current.params = setTimeout(async () => {
-      const { error } = await supabase.from('transicao_parametros' as any).upsert({ empresa_id: empresaId, ...np } as any, { onConflict: 'empresa_id' });
-      if (error) toast.error(error.message);
+      const error = await api.salvarParams(np);
+      if (error) toast.error(error);
     }, 800);
   };
 
@@ -67,25 +66,23 @@ export default function NecessidadeContratacao({ empresaId, empresa, onAbrirEsca
     timers.current[id] = setTimeout(async () => {
       const { datas_especiais, ...rest } = patch as any;
       if (Object.keys(rest).length) {
-        const { error } = await supabase.from('transicao_setores' as any).update(rest).eq('id', id);
-        if (error) toast.error(error.message);
+        const error = await api.atualizarSetor(id, rest);
+        if (error) toast.error(error);
       }
       if (datas_especiais) {
-        await supabase.from('transicao_datas_especiais' as any).delete().eq('setor_id', id);
-        const rows = datas_especiais.filter((d: any) => d.data).map((d: any) => ({ setor_id: id, data: d.data, nivel: d.nivel, observacao: d.observacao || null }));
-        if (rows.length) await supabase.from('transicao_datas_especiais' as any).insert(rows);
+        await api.salvarDatas(id, datas_especiais);
       }
     }, 700);
   };
 
   const novoSetor = async () => {
-    const { data, error } = await supabase.from('transicao_setores' as any).insert({ empresa_id: empresaId, nome: `Setor ${setores.length + 1}`, ordem: setores.length }).select('*').single();
-    if (error) return toast.error(error.message);
+    const { setor: data, error } = await api.novoSetor({ nome: `Setor ${setores.length + 1}`, ordem: setores.length });
+    if (error) return toast.error(error);
     setSetores((l) => [...l, { ...(data as any), datas_especiais: [] }]);
   };
   const excluir = async (id: string) => {
     if (!confirm('Excluir este setor?')) return;
-    await supabase.from('transicao_setores' as any).delete().eq('id', id);
+    await api.excluirSetor(id);
     setSetores((l) => l.filter((s) => s.id !== id));
   };
 
@@ -102,8 +99,8 @@ export default function NecessidadeContratacao({ empresaId, empresa, onAbrirEsca
   const salvarCenario = async () => {
     const nome = prompt('Nome do cenário:'); if (!nome) return;
     const resumo = totais.map((t) => ({ marco: t.marco.nome, atual: t.atual, sem: t.sem, com: t.com }));
-    const { error } = await supabase.from('transicao_cenarios' as any).insert({ empresa_id: empresaId, nome, snapshot: { params, setores, resumo } });
-    if (error) return toast.error(error.message);
+    const error = await api.novoCenario(nome, { params, setores, resumo });
+    if (error) return toast.error(error);
     toast.success('Cenário salvo'); load();
   };
 
@@ -125,7 +122,18 @@ export default function NecessidadeContratacao({ empresaId, empresa, onAbrirEsca
     const { error: e2 } = await supabase.from('escala_funcionarios' as any).insert(funcs as any);
     if (e2) return toast.error(e2.message);
     toast.success(`Escala criada com ${total} colaboradores`);
-    onAbrirEscala((data as any).id);
+    onAbrirEscala?.((data as any).id);
+  };
+
+  const gerarLink = async () => {
+    const bytes = crypto.getRandomValues(new Uint8Array(24));
+    const token = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+    const hash = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token))), (b) => b.toString(16).padStart(2, '0')).join('');
+    const { data: u } = await supabase.auth.getUser();
+    const { error } = await supabase.from('transicao_links' as any).insert({ empresa_id: empresaId, token_hash: hash, expira_em: new Date(Date.now() + 90 * 86400000).toISOString(), created_by: u.user?.id } as any);
+    if (error) return toast.error(error.message);
+    const url = buildExternalAppLink(`/pec-publica/${token}`);
+    try { await navigator.clipboard.writeText(url); toast.success('Link copiado (válido por 90 dias)'); } catch { prompt('Copie o link:', url); }
   };
 
   const det = setores.find((s) => s.id === detalhe);
@@ -139,6 +147,7 @@ export default function NecessidadeContratacao({ empresaId, empresa, onAbrirEsca
         <Button variant="outline" size="sm" onClick={salvarCenario}><Save className="h-4 w-4 mr-1" />Salvar cenário</Button>
         <Button variant="outline" size="sm" onClick={() => exportarPdf(empresa || {}, setores, params)}><FileDown className="h-4 w-4 mr-1" />PDF</Button>
         <Button variant="outline" size="sm" onClick={() => exportarXlsx(empresa || {}, setores, params)}><FileSpreadsheet className="h-4 w-4 mr-1" />Excel</Button>
+        {!api.publico && <Button variant="outline" size="sm" onClick={gerarLink}><Link2 className="h-4 w-4 mr-1" />Link para o cliente</Button>}
       </div>
 
       {verParams && <ParamsCard p={params} onChange={salvarParams} />}
@@ -209,7 +218,7 @@ export default function NecessidadeContratacao({ empresaId, empresa, onAbrirEsca
             {cenarios.map((c) => (
               <label key={c.id} className="flex items-center gap-1 text-sm">
                 <Checkbox checked={comparar.includes(c.id)} onCheckedChange={(v) => setComparar((l) => (v ? [...l, c.id] : l.filter((x) => x !== c.id)))} />{c.nome}
-                <button className="text-xs text-muted-foreground underline ml-1" onClick={async () => { if (confirm('Excluir cenário?')) { await supabase.from('transicao_cenarios' as any).delete().eq('id', c.id); load(); } }}>excluir</button>
+                <button className="text-xs text-muted-foreground underline ml-1" onClick={async () => { if (confirm('Excluir cenário?')) { await api.excluirCenario(c.id); load(); } }}>excluir</button>
               </label>))}
           </div>
           {comparar.length > 0 && (
@@ -226,7 +235,7 @@ export default function NecessidadeContratacao({ empresaId, empresa, onAbrirEsca
       <Dialog open={!!det} onOpenChange={(o) => !o && setDetalhe(null)}>
         <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{det?.nome}</DialogTitle></DialogHeader>
-          {det && <DetalheSetor s={det} p={params} onChange={(patch) => atualizar(det.id, patch)} onEnviar={(m) => enviarEscala(det, m)} />}
+          {det && <DetalheSetor s={det} p={params} onChange={(patch) => atualizar(det.id, patch)} onEnviar={api.publico ? undefined : (m) => enviarEscala(det, m)} />}
         </DialogContent>
       </Dialog>
     </div>
@@ -274,7 +283,7 @@ function ParamsCard({ p, onChange }: { p: Parametros; onChange: (p: Parametros) 
   );
 }
 
-function DetalheSetor({ s, p, onChange, onEnviar }: { s: Setor; p: Parametros; onChange: (patch: Partial<Setor>) => void; onEnviar: (m: Marco) => void }) {
+function DetalheSetor({ s, p, onChange, onEnviar }: { s: Setor; p: Parametros; onChange: (patch: Partial<Setor>) => void; onEnviar?: (m: Marco) => void }) {
   const [pico, setPico] = useState(false);
   const func = s.funcionamento || {};
   const setDia = (d: string, patch: any) => onChange({ funcionamento: { ...func, [d]: { aberto: false, turnos: [{ ini: '08:00', fim: '18:00' }], ...func[d], ...patch } } });
@@ -327,7 +336,7 @@ function DetalheSetor({ s, p, onChange, onEnviar }: { s: Setor; p: Parametros; o
           <Card key={m.id} className="p-3 space-y-2">
             <div className="flex flex-wrap justify-between gap-2">
               <div className="font-medium">{m.nome} · {m.jornada}h/{m.dias} dias · Modo {a.modo}</div>
-              {m.id !== p.marcos[0].id && <Button size="sm" onClick={() => onEnviar(m)}><CalendarRange className="h-4 w-4 mr-1" />Enviar para Escala de Revezamento</Button>}
+              {onEnviar && m.id !== p.marcos[0].id && <Button size="sm" onClick={() => onEnviar!(m)}><CalendarRange className="h-4 w-4 mr-1" />Enviar para Escala de Revezamento</Button>}
             </div>
             <div className="grid md:grid-cols-2 gap-3">
               {[a, b].map((r, i) => (

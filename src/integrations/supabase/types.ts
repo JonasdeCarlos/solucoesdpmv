@@ -6628,6 +6628,44 @@ export type Database = {
           },
         ]
       }
+      transicao_links: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          empresa_id: string
+          expira_em: string | null
+          id: string
+          revogado_em: string | null
+          token_hash: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          empresa_id: string
+          expira_em?: string | null
+          id?: string
+          revogado_em?: string | null
+          token_hash: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          empresa_id?: string
+          expira_em?: string | null
+          id?: string
+          revogado_em?: string | null
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transicao_links_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transicao_parametros: {
         Row: {
           created_at: string
