@@ -249,8 +249,12 @@ function ParamsCard({ p, onChange }: { p: Parametros; onChange: (p: Parametros) 
         <div><Label>Regime padrão</Label><select className={sel + ' w-full'} value={p.regime_compensacao_padrao} onChange={(e) => onChange({ ...p, regime_compensacao_padrao: e.target.value as Regime })}>
           {(Object.keys(REGIME_LABEL) as Regime[]).map((r) => <option key={r} value={r}>{REGIME_LABEL[r]}</option>)}</select></div>
         <div><Label>Limite diário com compensação (máx. 10h)</Label><Input type="number" step="0.5" value={p.limite_diario_padrao} onChange={(e) => onChange({ ...p, limite_diario_padrao: Math.min(10, Number(e.target.value) || 8) })} /></div>
-        <div className="flex gap-2 items-end">
-          {NIVEIS.map((n) => <div key={n}><Label className="capitalize">{n}</Label><Input type="number" step="0.05" className="w-20" value={p.multiplicadores_intensidade[n]} onChange={(e) => onChange({ ...p, multiplicadores_intensidade: { ...p.multiplicadores_intensidade, [n]: Number(e.target.value) || 0 } })} /></div>)}
+        <div>
+          <Label>Intensidade dos dias (multiplicador dos postos)</Label>
+          <div className="flex gap-2 items-end mt-1">
+            {NIVEIS.map((n) => <div key={n}><Label className="capitalize">{n} (×{p.multiplicadores_intensidade[n]})</Label><Input type="number" step="0.05" className="w-20" value={p.multiplicadores_intensidade[n]} onChange={(e) => onChange({ ...p, multiplicadores_intensidade: { ...p.multiplicadores_intensidade, [n]: Number(e.target.value) || 0 } })} /></div>)}
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">Cada dia aberto do setor é classificado como baixo, normal, alto ou pico, conforme o movimento. O multiplicador aumenta ou reduz quantos postos precisam estar ocupados naquele dia: 6 postos em dia “alto” (×1,25) exigem 7,5 → 8 postos (arredonda para cima). Em dia “baixo” (×0,75), 6 postos exigem 4,5 → 5. Dias sem classificação valem “normal” (×1). Só é usado quando o setor tem faixas de postos cadastradas (Modo B); nos setores sem postos, a intensidade não interfere.</p>
         </div>
       </div>
       <div className="flex flex-wrap gap-3 items-end">
@@ -281,7 +285,7 @@ function DetalheSetor({ s, p, onChange, onEnviar }: { s: Setor; p: Parametros; o
               <td className="px-2 whitespace-nowrap">{f?.aberto && (f.turnos || []).map((t, i) => (
                 <span key={i} className="mr-2"><Input type="time" className="h-7 w-24 inline-block" value={t.ini} onChange={(e) => setDia(d, { turnos: f.turnos.map((x, j) => (j === i ? { ...x, ini: e.target.value } : x)) })} />–<Input type="time" className="h-7 w-24 inline-block" value={t.fim} onChange={(e) => setDia(d, { turnos: f.turnos.map((x, j) => (j === i ? { ...x, fim: e.target.value } : x)) })} /></span>))}
                 {f?.aberto && <Button size="sm" variant="ghost" className="h-7" onClick={() => setDia(d, { turnos: [...f.turnos, { ini: '18:00', fim: '22:00' }] })}>+ turno</Button>}</td>
-              <td>{f?.aberto && <select className={sel + ' h-7'} value={s.intensidade_dias?.[d] || 'normal'} onChange={(e) => onChange({ intensidade_dias: { ...(s.intensidade_dias || {}), [d]: e.target.value as Nivel } })}>{NIVEIS.map((n) => <option key={n}>{n}</option>)}</select>}</td>
+              <td>{f?.aberto && <select className={sel + ' h-7'} value={s.intensidade_dias?.[d] || 'normal'} onChange={(e) => onChange({ intensidade_dias: { ...(s.intensidade_dias || {}), [d]: e.target.value as Nivel } })}>{NIVEIS.map((n) => <option key={n} value={n}>{n} (×{p.multiplicadores_intensidade[n]})</option>)}</select>}</td>
               <td className="pl-2">{f?.aberto && <Input type="number" placeholder="postos diretos" className="h-7 w-28" value={f.postos_diretos ?? ''} onChange={(e) => setDia(d, { postos_diretos: e.target.value === '' ? null : Number(e.target.value) })} />}</td>
             </tr>); })}
         </tbody></table>
@@ -302,7 +306,7 @@ function DetalheSetor({ s, p, onChange, onEnviar }: { s: Setor; p: Parametros; o
         {datas.map((d, i) => (
           <div key={i} className="flex gap-2 items-center mb-1">
             <Input type="date" className="h-7 w-40" value={d.data} onChange={(e) => onChange({ datas_especiais: datas.map((x, j) => (j === i ? { ...x, data: e.target.value } : x)) })} />
-            <select className={sel + ' h-7'} value={d.nivel} onChange={(e) => onChange({ datas_especiais: datas.map((x, j) => (j === i ? { ...x, nivel: e.target.value as Nivel } : x)) })}>{NIVEIS.map((n) => <option key={n}>{n}</option>)}</select>
+            <select className={sel + ' h-7'} value={d.nivel} onChange={(e) => onChange({ datas_especiais: datas.map((x, j) => (j === i ? { ...x, nivel: e.target.value as Nivel } : x)) })}>{NIVEIS.map((n) => <option key={n} value={n}>{n} (×{p.multiplicadores_intensidade[n]})</option>)}</select>
             <Input className="h-7" placeholder="Observação (feriado, temporada…)" value={d.observacao || ''} onChange={(e) => onChange({ datas_especiais: datas.map((x, j) => (j === i ? { ...x, observacao: e.target.value } : x)) })} />
             <Button size="sm" variant="ghost" onClick={() => onChange({ datas_especiais: datas.filter((_, j) => j !== i) })}><Trash2 className="h-3.5 w-3.5" /></Button>
           </div>))}
