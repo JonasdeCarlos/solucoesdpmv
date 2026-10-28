@@ -16,6 +16,8 @@ import {
 } from '../calculo';
 import { exportarPdf, exportarXlsx } from '../exportar';
 import { apiInterna, type PecApi } from '../api';
+import { buildExternalAppLink } from '@/utils/publicLinks';
+import { Link2 } from 'lucide-react';
 import { necessidadePorDia, timelineDia, minH, type LinhaDia } from '../calculo';
 
 const sel = 'h-8 rounded-md border border-input bg-background px-2 text-sm';
@@ -123,6 +125,17 @@ export default function NecessidadeContratacao({ empresaId, empresa, onAbrirEsca
     onAbrirEscala?.((data as any).id);
   };
 
+  const gerarLink = async () => {
+    const bytes = crypto.getRandomValues(new Uint8Array(24));
+    const token = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+    const hash = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token))), (b) => b.toString(16).padStart(2, '0')).join('');
+    const { data: u } = await supabase.auth.getUser();
+    const { error } = await supabase.from('transicao_links' as any).insert({ empresa_id: empresaId, token_hash: hash, expira_em: new Date(Date.now() + 90 * 86400000).toISOString(), created_by: u.user?.id } as any);
+    if (error) return toast.error(error.message);
+    const url = buildExternalAppLink(`/pec-publica/${token}`);
+    try { await navigator.clipboard.writeText(url); toast.success('Link copiado (válido por 90 dias)'); } catch { prompt('Copie o link:', url); }
+  };
+
   const det = setores.find((s) => s.id === detalhe);
   const marcosFut = params.marcos.slice(1);
 
@@ -134,6 +147,7 @@ export default function NecessidadeContratacao({ empresaId, empresa, onAbrirEsca
         <Button variant="outline" size="sm" onClick={salvarCenario}><Save className="h-4 w-4 mr-1" />Salvar cenário</Button>
         <Button variant="outline" size="sm" onClick={() => exportarPdf(empresa || {}, setores, params)}><FileDown className="h-4 w-4 mr-1" />PDF</Button>
         <Button variant="outline" size="sm" onClick={() => exportarXlsx(empresa || {}, setores, params)}><FileSpreadsheet className="h-4 w-4 mr-1" />Excel</Button>
+        {!api.publico && <Button variant="outline" size="sm" onClick={gerarLink}><Link2 className="h-4 w-4 mr-1" />Link para o cliente</Button>}
       </div>
 
       {verParams && <ParamsCard p={params} onChange={salvarParams} />}

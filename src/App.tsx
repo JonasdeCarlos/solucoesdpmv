@@ -66,6 +66,7 @@ import BrutoAlvoPage from "./modules/bruto-alvo/pages/BrutoAlvoPage";
 import ConversorDominioPage from "./modules/conversor-dominio/pages/ConversorDominioPage";
 import CalculadoraHorasPage from "./pages/CalculadoraHorasPage";
 import EscalaPublicaPage from "./modules/escala-revezamento/pages/EscalaPublicaPage";
+import Pec5x2PublicaPage from "./modules/pec-5x2/pages/Pec5x2PublicaPage";
 import Pec5x2Page from "./modules/pec-5x2/pages/Pec5x2Page";
 
 const queryClient = new QueryClient();
@@ -92,6 +93,7 @@ const App = () => (
             <Route path="/premio/:policyId" element={<PremioPublicPage />} />
             <Route path="/premiacao-gestor/:token" element={<PremiacaoGestorPage />} />
             <Route path="/escala-publica/:token" element={<EscalaPublicaPage />} />
+            <Route path="/pec-publica/:token" element={<Pec5x2PublicaPage />} />
             {/* Admissão — escritório (senha) */}
             <Route path="/admissao/escritorio/login" element={<EscritorioLoginPage />} />
             <Route element={<OfficeGuard />}>
