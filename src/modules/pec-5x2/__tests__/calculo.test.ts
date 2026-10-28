@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, it, expect } from 'vitest';
 import { calcular, PARAMS_PADRAO, MARCOS_PADRAO, type Setor } from '../calculo';
 
