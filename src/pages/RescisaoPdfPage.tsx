@@ -158,6 +158,33 @@ const RescisaoPdfPage: React.FC = () => {
     );
   }
 
+  const receberTimbrados = (arquivos: File[]) => {
+    setCapaData(emptyCapaData());
+    setUploadedFiles(arquivos.map((f, i) => ({
+      id: crypto.randomUUID(),
+      file: f,
+      name: f.name,
+      category: 'Outros',
+      sortOrder: i,
+      viasEmpregado: '1 via',
+      viasEmpregador: '1 via',
+      customLabel: '',
+    })));
+    setStep(0);
+    setWizardOpen(true);
+    toast.success(`${arquivos.length} PDF(s) com timbrado já estão na etapa de upload.`);
+  };
+
+  return (
+    <Tabs defaultValue="rescisao" className="space-y-4">
+      <TabsList>
+        <TabsTrigger value="rescisao">Rescisão</TabsTrigger>
+        <TabsTrigger value="timbrados">Timbrados</TabsTrigger>
+      </TabsList>
+      <TabsContent value="timbrados">
+        <TimbradosTab onEnviarMontador={receberTimbrados} />
+      </TabsContent>
+      <TabsContent value="rescisao">
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
