@@ -5,6 +5,9 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Plus, Download, Trash2, FileStack } from 'lucide-react';
 import PdfSplitter from '@/components/rescisao/PdfSplitter';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { toast } from 'sonner';
+import TimbradosTab from '@/modules/timbrados/components/TimbradosTab';
 import { format } from 'date-fns';
 import { useRescisaoDossiers } from '@/hooks/useRescisaoDossiers';
 import { supabase } from '@/integrations/supabase/client';
@@ -185,7 +188,6 @@ const RescisaoPdfPage: React.FC = () => {
         <TimbradosTab onEnviarMontador={receberTimbrados} />
       </TabsContent>
       <TabsContent value="rescisao">
-  return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
@@ -251,6 +253,8 @@ const RescisaoPdfPage: React.FC = () => {
       </Card>
       <PdfSplitter />
     </div>
+      </TabsContent>
+    </Tabs>
   );
 };
 
