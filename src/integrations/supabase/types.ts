@@ -6510,6 +6510,71 @@ export type Database = {
         }
         Relationships: []
       }
+      timbrados: {
+        Row: {
+          alinhamento_vertical: string
+          arquivo_path: string
+          arquivo_primeira_pagina_path: string | null
+          ativo: boolean
+          created_at: string
+          empresa_id: string | null
+          escala_minima: number
+          id: string
+          margem_direita_mm: number
+          margem_esquerda_mm: number
+          margem_inferior_mm: number
+          margem_superior_mm: number
+          nome: string
+          tipo_arquivo: string
+          tipo_arquivo_primeira_pagina: string | null
+          updated_at: string
+        }
+        Insert: {
+          alinhamento_vertical?: string
+          arquivo_path: string
+          arquivo_primeira_pagina_path?: string | null
+          ativo?: boolean
+          created_at?: string
+          empresa_id?: string | null
+          escala_minima?: number
+          id?: string
+          margem_direita_mm?: number
+          margem_esquerda_mm?: number
+          margem_inferior_mm?: number
+          margem_superior_mm?: number
+          nome: string
+          tipo_arquivo?: string
+          tipo_arquivo_primeira_pagina?: string | null
+          updated_at?: string
+        }
+        Update: {
+          alinhamento_vertical?: string
+          arquivo_path?: string
+          arquivo_primeira_pagina_path?: string | null
+          ativo?: boolean
+          created_at?: string
+          empresa_id?: string | null
+          escala_minima?: number
+          id?: string
+          margem_direita_mm?: number
+          margem_esquerda_mm?: number
+          margem_inferior_mm?: number
+          margem_superior_mm?: number
+          nome?: string
+          tipo_arquivo?: string
+          tipo_arquivo_primeira_pagina?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "timbrados_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transicao_cenarios: {
         Row: {
           created_at: string
