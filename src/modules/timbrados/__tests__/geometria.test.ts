@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, it, expect } from 'vitest';
 import { A4_W, A4_H, areaUtil, encaixar, origemRotacionada, bboxPixels, nomeTimbrado, mmToPt } from '../geometria';
 
