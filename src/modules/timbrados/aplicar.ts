@@ -1,4 +1,4 @@
-import { PDFDocument, degrees } from 'pdf-lib';
+import { PDFDocument, degrees, BlendMode } from 'pdf-lib';
 import {
   A4_W, A4_H, mmToPt, areaUtil, encaixar, origemRotacionada, bboxPixels, type Margens,
 } from './geometria';
@@ -145,8 +145,11 @@ export async function aplicarTimbrado(file: File, op: OpcoesAplicacao): Promise<
       const fundo = i === 0 && op.fundoPrimeira ? op.fundoPrimeira : op.fundo;
       await desenharFundo(out, page, fundo, cache);
       const o = origemRotacionada(rot, fit);
+      // Multiply: o branco do documento (fundos, caixas, tabelas preenchidas) fica
+      // transparente sobre o timbrado; texto e linhas escuras continuam iguais.
       page.drawPage(embedded, {
         x: o.x, y: o.y, xScale: fit.escala, yScale: fit.escala,
+        blendMode: BlendMode.Multiply,
         ...(o.rotate ? { rotate: degrees(o.rotate) } : {}),
       });
       paginas.push({ numero: i + 1, escala: fit.escala, abaixoMinimo: fit.escala < op.escalaMinima, paisagem });
