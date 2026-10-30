@@ -68,6 +68,7 @@ const RescisaoPdfPage: React.FC = () => {
   const [step, setStep] = useState<WizardStep>(persisted?.step === 2 ? 1 : persisted?.step ?? 0);
   const [capaData, setCapaData] = useState(persisted?.capaData ?? emptyCapaData());
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+  const [aba, setAba] = useState('rescisao');
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
@@ -136,8 +137,7 @@ const RescisaoPdfPage: React.FC = () => {
       URL.revokeObjectURL(url);
   };
 
-  if (wizardOpen) {
-    return (
+  const wizardView = (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-bold">Nova Montagem de Rescisão</h2>
@@ -158,8 +158,7 @@ const RescisaoPdfPage: React.FC = () => {
           </CardContent>
         </Card>
       </div>
-    );
-  }
+  );
 
   const receberTimbrados = (arquivos: File[]) => {
     setCapaData(emptyCapaData());
@@ -175,11 +174,12 @@ const RescisaoPdfPage: React.FC = () => {
     })));
     setStep(0);
     setWizardOpen(true);
+    setAba('rescisao');
     toast.success(`${arquivos.length} PDF(s) com timbrado já estão na etapa de upload.`);
   };
 
   return (
-    <Tabs defaultValue="rescisao" className="space-y-4">
+    <Tabs value={aba} onValueChange={setAba} className="space-y-4">
       <TabsList>
         <TabsTrigger value="rescisao">Rescisão</TabsTrigger>
         <TabsTrigger value="timbrados">Timbrados</TabsTrigger>
@@ -188,6 +188,7 @@ const RescisaoPdfPage: React.FC = () => {
         <TimbradosTab onEnviarMontador={receberTimbrados} />
       </TabsContent>
       <TabsContent value="rescisao">
+    {wizardOpen ? wizardView : (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
@@ -253,6 +254,7 @@ const RescisaoPdfPage: React.FC = () => {
       </Card>
       <PdfSplitter />
     </div>
+    )}
       </TabsContent>
     </Tabs>
   );
