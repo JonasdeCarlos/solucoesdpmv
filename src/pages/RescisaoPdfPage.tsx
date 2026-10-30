@@ -5,6 +5,9 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Plus, Download, Trash2, FileStack } from 'lucide-react';
 import PdfSplitter from '@/components/rescisao/PdfSplitter';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { toast } from 'sonner';
+import TimbradosTab from '@/modules/timbrados/components/TimbradosTab';
 import { format } from 'date-fns';
 import { useRescisaoDossiers } from '@/hooks/useRescisaoDossiers';
 import { supabase } from '@/integrations/supabase/client';
@@ -158,7 +161,33 @@ const RescisaoPdfPage: React.FC = () => {
     );
   }
 
+  const receberTimbrados = (arquivos: File[]) => {
+    setCapaData(emptyCapaData());
+    setUploadedFiles(arquivos.map((f, i) => ({
+      id: crypto.randomUUID(),
+      file: f,
+      name: f.name,
+      category: 'Outros',
+      sortOrder: i,
+      viasEmpregado: '1 via',
+      viasEmpregador: '1 via',
+      customLabel: '',
+    })));
+    setStep(0);
+    setWizardOpen(true);
+    toast.success(`${arquivos.length} PDF(s) com timbrado já estão na etapa de upload.`);
+  };
+
   return (
+    <Tabs defaultValue="rescisao" className="space-y-4">
+      <TabsList>
+        <TabsTrigger value="rescisao">Rescisão</TabsTrigger>
+        <TabsTrigger value="timbrados">Timbrados</TabsTrigger>
+      </TabsList>
+      <TabsContent value="timbrados">
+        <TimbradosTab onEnviarMontador={receberTimbrados} />
+      </TabsContent>
+      <TabsContent value="rescisao">
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
@@ -224,6 +253,8 @@ const RescisaoPdfPage: React.FC = () => {
       </Card>
       <PdfSplitter />
     </div>
+      </TabsContent>
+    </Tabs>
   );
 };
 
