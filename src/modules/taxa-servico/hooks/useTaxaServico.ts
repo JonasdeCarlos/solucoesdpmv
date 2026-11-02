@@ -78,6 +78,18 @@ export async function loadDistribuicao(competenciaId: string): Promise<TsDistrib
   return (data || []).map(num);
 }
 
+/** Pontuação da última apuração gravada da empresa, anterior à competência informada (AAAA-MM). */
+export async function loadPontosUltimaApuracao(empresaId: string, competencia: string): Promise<{ competencia: string; pontos: Record<string, string> } | null> {
+  const { data: comps } = await db.from('ts_competencias').select('id,competencia')
+    .eq('empresa_id', empresaId).lt('competencia', competencia).order('competencia', { ascending: false }).limit(12);
+  for (const c of comps || []) {
+    const d = await loadDistribuicao(c.id);
+    const comPontos = d.filter((x) => Number(x.pontos) > 0);
+    if (comPontos.length) return { competencia: c.competencia, pontos: Object.fromEntries(comPontos.map((x) => [x.funcionario_id, String(x.pontos)])) };
+  }
+  return null;
+}
+
 export async function saveDistribuicao(rows: TsDistribuicao[]) {
   if (!rows.length) return null;
   const { error } = await db.from('ts_distribuicao').upsert(rows.map(({ id, ...r }) => r), { onConflict: 'competencia_id,funcionario_id' });

@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { FileText } from 'lucide-react';
 import { ratear } from '../utils/rateio';
 import { fmt, parseNum } from '../utils/validacoes';
-import { loadDistribuicao, saveDistribuicao, updateCompetencia, type TsCompetencia, type TsFuncionario } from '../hooks/useTaxaServico';
+import { loadDistribuicao, loadPontosUltimaApuracao, saveDistribuicao, updateCompetencia, type TsCompetencia, type TsFuncionario } from '../hooks/useTaxaServico';
 import RelatorioRateioDialog from './RelatorioRateioDialog';
 
 interface Props { comp: TsCompetencia; funcionarios: TsFuncionario[]; empresaNome?: string; onBack: () => void; onNext: () => void; fechada?: boolean }
@@ -50,14 +50,26 @@ export default function StepRateio({ comp, funcionarios, empresaNome = '', onBac
   const [rel, setRel] = useState(false);
   const bloqueado = fechada ?? (comp.status === 'exportado' || comp.status === 'ajustado');
 
+  const [origem, setOrigem] = useState<string | null>(null);
   useEffect(() => {
-    loadDistribuicao(comp.id).then((d) => {
-      if (!d.length) return;
-      const salvo = Object.fromEntries(d.map((x) => [x.funcionario_id, String(x.pontos)]));
+    let vivo = true;
+    loadDistribuicao(comp.id).then(async (d) => {
       const temRascunho = !!localStorage.getItem(draftKey(comp.id));
-      // rascunho digitado tem prioridade sobre o que está salvo
-      setPontos((atual) => (bloqueado || !temRascunho ? salvo : { ...salvo, ...atual }));
+      if (d.length) {
+        const salvo = Object.fromEntries(d.map((x) => [x.funcionario_id, String(x.pontos)]));
+        // rascunho digitado tem prioridade sobre o que está salvo
+        if (vivo) setPontos((atual) => (bloqueado || !temRascunho ? salvo : { ...salvo, ...atual }));
+        return;
+      }
+      if (bloqueado || temRascunho) return;
+      // Nova apuração: parte da pontuação usada na última apuração gravada da empresa
+      const ult = await loadPontosUltimaApuracao(comp.empresa_id, comp.competencia);
+      if (!vivo || !ult) return;
+      setPontos(ult.pontos);
+      localStorage.setItem(draftKey(comp.id), JSON.stringify(ult.pontos));
+      setOrigem(ult.competencia);
     });
+    return () => { vivo = false; };
   }, [comp.id, bloqueado]);
 
   const setPonto = (id: string, v: string) => setPontos((p) => {
@@ -99,6 +111,7 @@ export default function StepRateio({ comp, funcionarios, empresaNome = '', onBac
           <Button variant="outline" size="sm" disabled={!r.totalPontos} onClick={() => setRel(true)}><FileText className="w-4 h-4 mr-1" />Gerar relatório</Button>
         </div>
       </div>
+      {origem && <p className="text-xs text-muted-foreground border rounded-md p-2 bg-muted/40">Pontuação trazida da última apuração ({origem.slice(5, 7)}/{origem.slice(0, 4)}). Ajuste o que mudou neste mês.</p>}
       <div className="border rounded-md max-h-[50vh] overflow-auto">
         <table className="w-full text-sm">
           <thead className="bg-muted sticky top-0"><tr><th className="p-2 text-left">Código</th><th className="p-2 text-left">Nome</th><th className="p-2 w-32">Pontos</th><th className="p-2 w-24">Dias (máx. {diasMes})</th><th className="p-2 text-right">Comissão</th></tr></thead>
