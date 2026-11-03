@@ -27,7 +27,7 @@ const NAV_ITEMS = [
   { to: '/enquadramento-sindical', label: 'Enquadramento Sindical', icon: Landmark },
   { to: '/taxa-servico', label: 'Taxa de Serviço', icon: Coins },
   { to: '/bruto-alvo', label: 'Bruto Alvo', icon: Target },
-  { to: '/liquido-bruto', label: 'Líquido → Bruto', icon: ArrowRightLeft },
+  { to: '/liquido-bruto', label: 'Líquido para Bruto', icon: ArrowRightLeft },
   { to: '/conversor-dominio', label: 'Conversor Domínio', icon: FileSpreadsheet },
   { to: '/calculadora-horas', label: 'Calculadora de Horas', icon: Timer },
   { to: '/pec-5x2', label: 'PEC - 5X2', icon: CalendarRange },
