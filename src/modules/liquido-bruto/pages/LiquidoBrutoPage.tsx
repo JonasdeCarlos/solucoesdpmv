@@ -188,9 +188,10 @@ export default function LiquidoBrutoPage() {
                     <div className="flex items-center justify-between"><Label>Vale-transporte</Label><Switch checked={p.vt.ativo} onCheckedChange={(v) => upd({ vt: { ...p.vt, ativo: v } })} /></div>
                     {p.vt.ativo && (
                       <div className="space-y-1">
-                        <span className="text-xs text-muted-foreground">Custo mensal do VT fornecido</span>
+                        <p className="text-xs text-muted-foreground">Desconto automático de 6% do salário-base.</p>
+                        <span className="text-xs text-muted-foreground">Custo mensal do VT (opcional — só se for menor que os 6%)</span>
                         <MoneyInput value={p.vt.custo} onChange={(v) => upd({ vt: { ...p.vt, custo: v } })} />
-                        <p className="text-xs text-muted-foreground">Desconta o menor entre 6% do salário e o custo do VT (Lei 7.418/85, art. 4º, p.u.).</p>
+                        <p className="text-xs text-muted-foreground">Se informar o custo e ele for menor que 6%, desconta só o custo (Lei 7.418/85, art. 4º, p.u.).</p>
                       </div>
                     )}
                   </div>

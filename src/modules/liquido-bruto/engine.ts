@@ -152,7 +152,9 @@ function calcularLiquidoC(brutoC: number, p: ParametrosSimulacao, t: TabelasLega
 
   // 3, 4, 6
   const assistC = descVar(p.assistencial, brutoC);
-  const vtC = p.vt.ativo ? Math.min(rhu(brutoC * 0.06), toCents(p.vt.custo)) : 0;
+  // VT: 6% do bruto; se o custo do VT for informado e menor, desconta só o custo
+  const vt6C = rhu(brutoC * 0.06);
+  const vtC = p.vt.ativo ? (toCents(p.vt.custo) > 0 ? Math.min(vt6C, toCents(p.vt.custo)) : vt6C) : 0;
   const outros = p.outros.ativo
     ? p.outros.itens.map((o) => ({
         descricao: o.descricao || 'Outro desconto',
