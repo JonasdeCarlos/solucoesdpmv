@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Copy, FileDown, FolderOpen, Plus, RotateCcw, Save, Trash2, AlertTriangle } from 'lucide-react';
+import { Copy, FileDown, FolderOpen, Plus, RotateCcw, Save, Trash2, AlertTriangle, ArrowRight, ArrowRightLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { useEmpresas } from '@/modules/taxa-servico/hooks/useTaxaServico';
 import MoneyInput from '../components/MoneyInput';
@@ -114,9 +114,16 @@ export default function LiquidoBrutoPage() {
 
   return (
     <div className="container max-w-5xl mx-auto px-4 py-6 space-y-4">
-      <div>
-        <h2 className="text-xl md:text-2xl font-bold">Líquido → Bruto</h2>
-        <p className="text-sm text-muted-foreground">Informe o salário líquido desejado e os descontos; o sistema calcula o salário bruto necessário.</p>
+      <div className="flex items-center gap-3 rounded-xl border bg-card p-4 shadow-sm">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <ArrowRightLeft className="h-5 w-5" />
+        </div>
+        <div>
+          <h2 className="flex items-center gap-2 text-xl md:text-2xl font-bold">
+            Líquido <ArrowRight className="h-5 w-5 text-primary" /> Bruto
+          </h2>
+          <p className="text-sm text-muted-foreground">Informe o salário líquido desejado e os descontos; o sistema calcula o salário bruto necessário.</p>
+        </div>
       </div>
 
       <Tabs value={aba} onValueChange={setAba}>
@@ -134,8 +141,8 @@ export default function LiquidoBrutoPage() {
           <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
             <div className="space-y-4">
               <Card>
-                <CardHeader className="pb-3"><CardTitle className="text-base">Identificação (opcional)</CardTitle></CardHeader>
-                <CardContent className="grid gap-3 sm:grid-cols-2">
+                <CardHeader className="pb-3 border-b bg-muted/40"><CardTitle className="text-base text-primary">Identificação (opcional)</CardTitle></CardHeader>
+                <CardContent className="grid gap-3 sm:grid-cols-2 pt-4">
                   <div className="sm:col-span-2 space-y-1">
                     <Label>Empresa</Label>
                     <Select value={empresaId} onValueChange={setEmpresaId}>
@@ -157,8 +164,8 @@ export default function LiquidoBrutoPage() {
               </Card>
 
               <Card>
-                <CardHeader className="pb-3"><CardTitle className="text-base">Valor desejado e descontos obrigatórios</CardTitle></CardHeader>
-                <CardContent className="grid gap-3 sm:grid-cols-2">
+                <CardHeader className="pb-3 border-b bg-muted/40"><CardTitle className="text-base text-primary">Valor desejado e descontos obrigatórios</CardTitle></CardHeader>
+                <CardContent className="grid gap-3 sm:grid-cols-2 pt-4">
                   <div className="space-y-1"><Label htmlFor="liq">Salário líquido desejado *</Label><MoneyInput id="liq" value={liquido} onChange={setLiquido} /></div>
                   <div className="space-y-1">
                     <Label>Nº de dependentes (IRRF)</Label>
@@ -169,8 +176,8 @@ export default function LiquidoBrutoPage() {
               </Card>
 
               <Card>
-                <CardHeader className="pb-3"><CardTitle className="text-base">Descontos opcionais</CardTitle></CardHeader>
-                <CardContent className="space-y-4">
+                <CardHeader className="pb-3 border-b bg-muted/40"><CardTitle className="text-base text-primary">Descontos opcionais</CardTitle></CardHeader>
+                <CardContent className="space-y-4 pt-4">
                   {/* Assistencial */}
                   <div className="space-y-2">
                     <div className="flex items-center justify-between"><Label>Contribuição assistencial</Label><Switch checked={p.assistencial.ativo} onCheckedChange={(v) => upd({ assistencial: { ...p.assistencial, ativo: v } })} /></div>
@@ -245,7 +252,7 @@ export default function LiquidoBrutoPage() {
               )}
               {resultado && (
                 <>
-                  <Card className="bg-primary text-primary-foreground border-primary">
+                  <Card className="bg-primary text-primary-foreground border-primary shadow-md">
                     <CardContent className="py-5">
                       <p className="text-sm opacity-90">Salário bruto necessário</p>
                       <p className="text-3xl font-bold">{brl(resultado.bruto)}</p>
@@ -256,7 +263,7 @@ export default function LiquidoBrutoPage() {
                   </Card>
 
                   <Card>
-                    <CardHeader className="pb-2"><CardTitle className="text-base">Demonstrativo</CardTitle></CardHeader>
+                    <CardHeader className="pb-3 border-b bg-muted/40"><CardTitle className="text-base text-primary">Demonstrativo</CardTitle></CardHeader>
                     <CardContent className="p-0 overflow-x-auto">
                       <Table>
                         <TableHeader><TableRow><TableHead>Descrição</TableHead><TableHead className="text-right">Proventos</TableHead><TableHead className="text-right">Descontos</TableHead></TableRow></TableHeader>

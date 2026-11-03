@@ -50,7 +50,7 @@ export async function exportarPdf(opts: {
   doc.setDrawColor(...VERDE).setLineWidth(1.5).line(36, 76, W - 36, 76);
 
   doc.setTextColor(...VERDE).setFont('helvetica', 'bold').setFontSize(14);
-  doc.text('Simulação Líquido → Bruto', 36, 98);
+  doc.text('Simulação Líquido para Bruto', 36, 98);
 
   const ident: string[][] = [];
   if (opts.empresa) ident.push(['Empresa', opts.empresa]);
