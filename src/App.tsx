@@ -63,6 +63,7 @@ import CctCompararPage from "./pages/gestaoCct/CctCompararPage";
 import CctEnquadramentoPage from "./pages/gestaoCct/CctEnquadramentoPage";
 import TaxaServicoPage from "./modules/taxa-servico/pages/TaxaServicoPage";
 import BrutoAlvoPage from "./modules/bruto-alvo/pages/BrutoAlvoPage";
+import LiquidoBrutoPage from "./modules/liquido-bruto/pages/LiquidoBrutoPage";
 import ConversorDominioPage from "./modules/conversor-dominio/pages/ConversorDominioPage";
 import CalculadoraHorasPage from "./pages/CalculadoraHorasPage";
 import EscalaPublicaPage from "./modules/escala-revezamento/pages/EscalaPublicaPage";
@@ -146,6 +147,7 @@ const App = () => (
               <Route path="/usuarios" element={<UsuariosPage />} />
               <Route path="/taxa-servico" element={<TaxaServicoPage />} />
               <Route path="/bruto-alvo" element={<BrutoAlvoPage />} />
+              <Route path="/liquido-bruto" element={<LiquidoBrutoPage />} />
               <Route path="/conversor-dominio" element={<ConversorDominioPage />} />
               <Route path="/calculadora-horas" element={<CalculadoraHorasPage />} />
               <Route path="/pec-5x2" element={<Pec5x2Page />} />

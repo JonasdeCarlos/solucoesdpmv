@@ -4653,6 +4653,147 @@ export type Database = {
         }
         Relationships: []
       }
+      lb_parametros_irrf: {
+        Row: {
+          created_at: string
+          deducao_dependente: number
+          desconto_simplificado: number
+          id: string
+          redutor_coeficiente: number
+          redutor_constante: number
+          redutor_limite_final: number
+          redutor_limite_isencao: number
+          redutor_valor_max: number
+          vigencia_inicio: string
+        }
+        Insert: {
+          created_at?: string
+          deducao_dependente: number
+          desconto_simplificado: number
+          id?: string
+          redutor_coeficiente: number
+          redutor_constante: number
+          redutor_limite_final: number
+          redutor_limite_isencao: number
+          redutor_valor_max: number
+          vigencia_inicio: string
+        }
+        Update: {
+          created_at?: string
+          deducao_dependente?: number
+          desconto_simplificado?: number
+          id?: string
+          redutor_coeficiente?: number
+          redutor_constante?: number
+          redutor_limite_final?: number
+          redutor_limite_isencao?: number
+          redutor_valor_max?: number
+          vigencia_inicio?: string
+        }
+        Relationships: []
+      }
+      lb_simulacoes: {
+        Row: {
+          cargo: string | null
+          competencia: string
+          created_at: string
+          created_by: string | null
+          empregado: string | null
+          empresa_id: string | null
+          id: string
+          liquido_alvo: number
+          parametros: Json
+          resultado: Json
+          updated_at: string
+        }
+        Insert: {
+          cargo?: string | null
+          competencia: string
+          created_at?: string
+          created_by?: string | null
+          empregado?: string | null
+          empresa_id?: string | null
+          id?: string
+          liquido_alvo: number
+          parametros: Json
+          resultado: Json
+          updated_at?: string
+        }
+        Update: {
+          cargo?: string | null
+          competencia?: string
+          created_at?: string
+          created_by?: string | null
+          empregado?: string | null
+          empresa_id?: string | null
+          id?: string
+          liquido_alvo?: number
+          parametros?: Json
+          resultado?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      lb_tabela_inss: {
+        Row: {
+          aliquota: number
+          created_at: string
+          faixa: number
+          id: string
+          limite_superior: number
+          parcela_deduzir: number
+          vigencia_inicio: string
+        }
+        Insert: {
+          aliquota: number
+          created_at?: string
+          faixa: number
+          id?: string
+          limite_superior: number
+          parcela_deduzir?: number
+          vigencia_inicio: string
+        }
+        Update: {
+          aliquota?: number
+          created_at?: string
+          faixa?: number
+          id?: string
+          limite_superior?: number
+          parcela_deduzir?: number
+          vigencia_inicio?: string
+        }
+        Relationships: []
+      }
+      lb_tabela_irrf: {
+        Row: {
+          aliquota: number
+          created_at: string
+          faixa: number
+          id: string
+          limite_superior: number | null
+          parcela_deduzir: number
+          vigencia_inicio: string
+        }
+        Insert: {
+          aliquota: number
+          created_at?: string
+          faixa: number
+          id?: string
+          limite_superior?: number | null
+          parcela_deduzir?: number
+          vigencia_inicio: string
+        }
+        Update: {
+          aliquota?: number
+          created_at?: string
+          faixa?: number
+          id?: string
+          limite_superior?: number | null
+          parcela_deduzir?: number
+          vigencia_inicio?: string
+        }
+        Relationships: []
+      }
       office_branding: {
         Row: {
           body_font: string
