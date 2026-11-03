@@ -17,7 +17,7 @@ export function linhasDescontos(r: ResultadoBruto, p: ParametrosSimulacao): { de
     valor: r.irrf,
   });
   if (p.assistencial.ativo) l.push({ desc: 'Contribuição assistencial', ref: p.assistencial.tipo === 'percentual' ? `${p.assistencial.valor}%` : 'Valor fixo', valor: r.assistencial });
-  if (p.vt.ativo) l.push({ desc: 'Vale-transporte', ref: `menor entre 6% e custo ${brl(p.vt.custo)}`, valor: r.vt });
+  if (p.vt.ativo) l.push({ desc: 'Vale-transporte', ref: p.vt.custo > 0 ? `menor entre 6% e custo ${brl(p.vt.custo)}` : '6% do salário-base', valor: r.vt });
   if (p.pensao.ativo) l.push({ desc: 'Pensão alimentícia judicial', ref: p.pensao.tipo === 'percentual' ? `${p.pensao.valor}% do bruto` : 'Valor fixo', valor: r.pensao });
   if (p.outros.ativo)
     r.outros.forEach((o, i) => {

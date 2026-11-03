@@ -96,6 +96,12 @@ describe('Regras do motor', () => {
     expect(calcularLiquido(3000, p, T2026).vt).toBe(180);
   });
 
+  it('VT ligado sem custo informado desconta 6% do bruto automaticamente', () => {
+    const p = parametrosVazios();
+    p.vt = { ativo: true, custo: 0 };
+    expect(calcularLiquido(3000, p, T2026).vt).toBe(180);
+  });
+
   it('pensão deduz da base do IRRF só no regime de deduções legais', () => {
     const p = parametrosVazios();
     p.pensao = { ativo: true, tipo: 'fixo', valor: 1000 };
