@@ -236,10 +236,12 @@ export async function generatePremioRelatorioFinalPdf(d: RelatorioFinalData, opt
     doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(255,255,255);
     const contact = [branding?.office_name, branding?.phone, branding?.email].filter(Boolean).join('  •  ');
     doc.text(contact || 'Relatório de avaliação', W / 2, H - 10, { align: 'center' });
-    doc.text(`${i}/${totalPages}`, W - 36, H - 10, { align: 'right' });
+    doc.text(`${i - startPage + 1}/${totalPages - startPage + 1}`, W - 36, H - 10, { align: 'right' });
   }
 
-  const fileName = `relatorio-final-${d.verba_label}-${d.colaborador.nome.replace(/\s+/g,'_')}-${d.competencia.replace(/\//g,'-')}.pdf`;
-  doc.save(fileName);
-  return fileName;
+  if (opts?.save !== false) {
+    const fileName = `relatorio-final-${d.verba_label}-${d.colaborador.nome.replace(/\s+/g,'_')}-${d.competencia.replace(/\//g,'-')}.pdf`;
+    doc.save(fileName);
+  }
+  return doc;
 }
