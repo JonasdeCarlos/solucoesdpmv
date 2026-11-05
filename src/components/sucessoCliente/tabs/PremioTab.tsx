@@ -1050,7 +1050,7 @@ function EmployeeRow({ e, onUpdate, onRemove }: { e: any; onUpdate: (patch: any)
             <Badge variant="secondary" className="text-[10px]">{Number(e.pontos || 0)} pts</Badge>
           </div>
           <p className="text-[11px] text-muted-foreground mt-0.5">
-            {e.cpf && <>CPF {e.cpf} </>}{e.matricula && <>• Matr. {e.matricula}</>}
+            {e.cpf && <>CPF {e.cpf} </>}{e.matricula && <>• Matr. {e.matricula}</>}{e.codigo_folha && <>• Cód. folha {e.codigo_folha}</>}
           </p>
         </div>
         <Button size="sm" variant="ghost" onClick={()=>setEdit(true)}><Pencil className="w-3 h-3"/></Button>
@@ -1063,6 +1063,7 @@ function EmployeeRow({ e, onUpdate, onRemove }: { e: any; onUpdate: (patch: any)
       <div className="md:col-span-3"><Input value={f.nome} onChange={(ev)=>setF({...f, nome: ev.target.value})}/></div>
       <div className="md:col-span-2"><Input value={f.cpf} placeholder="CPF" onChange={(ev)=>setF({...f, cpf: ev.target.value})}/></div>
       <div className="md:col-span-1"><Input value={f.matricula} placeholder="Matr." onChange={(ev)=>setF({...f, matricula: ev.target.value})}/></div>
+      <div className="md:col-span-1"><Input value={f.codigo_folha} placeholder="Cód. folha" onChange={(ev)=>setF({...f, codigo_folha: ev.target.value})}/></div>
       <div className="md:col-span-2"><Input value={f.cargo} placeholder="Cargo" onChange={(ev)=>setF({...f, cargo: ev.target.value})}/></div>
       <div className="md:col-span-1"><Input value={f.setor} placeholder="Setor" onChange={(ev)=>setF({...f, setor: ev.target.value})}/></div>
       <div className="md:col-span-2"><Input type="number" min={0} value={f.pontos} placeholder="Pontos" onChange={(ev)=>setF({...f, pontos: Number(ev.target.value)})}/></div>
