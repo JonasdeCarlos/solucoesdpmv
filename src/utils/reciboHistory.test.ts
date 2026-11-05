@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createEmptyReciboData, createEmptyLinha } from '@/types/recibo';
 
@@ -13,6 +14,12 @@ import { RECIBO_HISTORY_KEY, loadReciboHistory, syncReciboHistory, upsertRecibo,
 
 describe('receipt persistence', () => {
   beforeEach(() => {
+    const entries = new Map<string, string>();
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => entries.get(key) ?? null,
+      setItem: (key: string, value: string) => entries.set(key, value),
+      clear: () => entries.clear(),
+    });
     localStorage.clear();
     vi.resetAllMocks();
     mocks.upsert.mockResolvedValue({ error: null });

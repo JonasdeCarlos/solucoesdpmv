@@ -35,6 +35,7 @@ import {
 
 const STORAGE_KEY = 'recibo_avulso_state_v1';
 const LOTE_KEY = 'recibo_avulso_lote_v1';
+const CURRENT_ID_KEY = 'recibo_avulso_current_id_v1';
 
 function extrairPercentualDoNome(nome: string): number | null {
   const m = nome.match(/(\d{1,3})\s*%/);
@@ -59,7 +60,7 @@ const ReciboPage = () => {
   const [recibo, setRecibo] = useState<ReciboData>(loadPersistedRecibo);
   const [feriadoDialogOpen, setFeriadoDialogOpen] = useState(false);
   const [novoFeriado, setNovoFeriado] = useState({ nome: '', dia: '', mes: '' });
-  const [currentReciboId, setCurrentReciboId] = useState<string | null>(null);
+  const [currentReciboId, setCurrentReciboId] = useState<string | null>(() => localStorage.getItem(CURRENT_ID_KEY));
   const [savedRecibos, setSavedRecibos] = useState<SavedRecibo[]>(() => loadReciboHistory());
   const [historyOpen, setHistoryOpen] = useState(false);
   const [savingRecibo, setSavingRecibo] = useState(false);
@@ -73,6 +74,11 @@ const ReciboPage = () => {
     }
   });
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (currentReciboId) localStorage.setItem(CURRENT_ID_KEY, currentReciboId);
+    else localStorage.removeItem(CURRENT_ID_KEY);
+  }, [currentReciboId]);
 
   useEffect(() => {
     let active = true;
@@ -114,7 +120,10 @@ const ReciboPage = () => {
       toast({ title: 'Recibo salvo na conta!' });
       return true;
     } catch {
-      setSavedRecibos(loadReciboHistory());
+      const local = loadReciboHistory();
+      const pending = local.find((r) => !r.synced && JSON.stringify(r.data) === JSON.stringify(recibo));
+      if (pending) setCurrentReciboId(pending.id);
+      setSavedRecibos(local);
       toast({ title: 'Não foi possível salvar o recibo na conta', description: 'Uma cópia foi mantida neste navegador. Tente salvar novamente.', variant: 'destructive' });
       return false;
     } finally { setSavingRecibo(false); }
