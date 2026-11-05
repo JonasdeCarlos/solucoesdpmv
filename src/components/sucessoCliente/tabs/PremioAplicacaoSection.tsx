@@ -179,9 +179,13 @@ function AssessmentEmployeeList({ assessment, policy, cliente, onOpenHistory, on
     })();
   }, [items, integralPct, tetoIntegral]);
 
-  const [rubrica, setRubrica] = useState<string>(policy.rubrica_codigo || '');
-  const [processo, setProcesso] = useState<string>('11');
-  const [codEmpresa, setCodEmpresa] = useState<string>('');
+  const exportKey = `premio_export_dominio_${policy.id}`;
+  const exportSalvo = useMemo(() => {
+    try { return JSON.parse(localStorage.getItem(exportKey) || '{}'); } catch { return {}; }
+  }, [exportKey]);
+  const [rubrica, setRubrica] = useState<string>(policy.rubrica_codigo || exportSalvo.rubrica || '');
+  const [processo, setProcesso] = useState<string>(exportSalvo.processo || '11');
+  const [codEmpresa, setCodEmpresa] = useState<string>(exportSalvo.codEmpresa || '');
   const exportarDominio = async () => {
     if (!/^\d{1,4}$/.test(rubrica.trim())) { toast.error('Informe o código da rubrica (até 4 dígitos).'); return; }
     const [mm, aaaa] = String(assessment.competencia || '').split('/');
