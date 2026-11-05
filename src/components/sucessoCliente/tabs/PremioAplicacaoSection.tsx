@@ -368,7 +368,7 @@ function AssessmentEmployeeList({ assessment, policy, cliente, onOpenHistory, on
       const tetoColab = (coletivoData && coletivoData.soma_pontos > 0)
         ? tetoDist * (pontosColab / coletivoData.soma_pontos) : Number(policy.valor_base || 0);
 
-      await generatePremioRelatorioFinalPdf({
+    return {
         empresa: cliente?.nome || cliente?.razao_social || '',
         cnpj: cliente?.cnpj || cliente?.documento || '',
         cliente_logo_url: (cliente as any)?.logo_url || undefined,
