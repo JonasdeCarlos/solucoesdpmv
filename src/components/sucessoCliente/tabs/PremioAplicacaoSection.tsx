@@ -5,12 +5,13 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, Play, Plus, Trash2, ClipboardCheck, History, UserMinus, Lock, Unlock, FileDown, Loader2 } from 'lucide-react';
+import { Sparkles, Calendar, Play, Plus, Trash2, ClipboardCheck, History, UserMinus, Lock, Unlock, FileDown, Loader2 } from 'lucide-react';
 import { usePrizeAssessments, useAssessmentEmployees, fetchEmployeeHistory } from '@/hooks/usePrizeAssessments';
 import { usePrizeCriteria, type PrizePolicy } from '@/hooks/usePrizePolicies';
 import PremioAvaliacaoDialog from './PremioAvaliacaoDialog';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { generateFeedback } from '@/hooks/usePrizeAssessments';
 import { gerarArquivo } from '@/modules/taxa-servico/utils/dominioLayout';
 import { generatePremioRelatorioFinalPdf } from '@/utils/sucessoCliente/premioRelatorioFinalPdf';
 
@@ -276,7 +277,36 @@ function AssessmentEmployeeList({ assessment, policy, cliente, onOpenHistory, on
     };
   }, [policy, assessment.competencia, items]);
 
-  const handleRelatorioFinal = async (ae: any) => {
+  const [feedbackId, setFeedbackId] = useState<string | null>(null);
+  const [baixandoTodos, setBaixandoTodos] = useState(false);
+  const handleFeedbackIA = async (ae: any) => {
+    if (ae.parecer_geral && !confirm(`${ae.employee?.nome} já tem feedback. Substituir pelo gerado com IA?`)) return;
+    setFeedbackId(ae.id);
+    try {
+      const { data: res } = await supabase.from('prize_assessment_criterion_results' as any)
+        .select('*').eq('assessment_employee_id', ae.id);
+      const map: Record<string, any> = {};
+      for (const r of (res || []) as any[]) map[r.criterion_id] = r;
+      const { texto, error } = await generateFeedback({
+        modo: 'geral', verba_label: policy.verba_label, colaborador: ae.employee?.nome,
+        empresa: cliente?.nome, competencia: assessment.competencia,
+        criterios: criteria.map(c => ({ nome: c.nome, percentual: Number(map[c.id]?.percentual || 0), observacao: map[c.id]?.observacao })),
+        percentual_final: Number(ae.percentual_final || 0), valor_premio: Number(ae.valor_final || 0), valor_base: policy.valor_base,
+      });
+      if (error || !texto) { toast.error('Falha ao gerar feedback.'); return; }
+      const { error: e2 } = await supabase.from('prize_assessment_employees' as any).update({ parecer_geral: texto } as any).eq('id', ae.id);
+      if (e2) { toast.error('Erro ao salvar feedback.'); return; }
+      toast.success(`Feedback final gerado para ${ae.employee?.nome}.`);
+      await reload();
+    } finally { setFeedbackId(null); }
+  };
+  const baixarTodos = async () => {
+    setBaixandoTodos(true);
+    try { for (const ae of items) await handleRelatorioFinal(ae, true); toast.success(`${items.length} relatório(s) final(is) gerado(s).`); }
+    finally { setBaixandoTodos(false); }
+  };
+
+  const handleRelatorioFinal = async (ae: any, silencioso = false) => {
     setReportingId(ae.id);
     try {
       // Busca resultados dos critérios individuais deste colaborador
@@ -340,7 +370,7 @@ function AssessmentEmployeeList({ assessment, policy, cliente, onOpenHistory, on
         } : null,
         total_geral: shareColab + individualValor,
       });
-      toast.success('Relatório final gerado.');
+      if (!silencioso) toast.success('Relatório final gerado.');
     } catch (e: any) {
       toast.error('Erro ao gerar relatório: ' + (e?.message || ''));
     } finally {
@@ -396,6 +426,11 @@ function AssessmentEmployeeList({ assessment, policy, cliente, onOpenHistory, on
             <div className="flex gap-1">
               <Button size="sm" variant="ghost" onClick={()=>onOpenHistory(ae.employee_id)}><History className="w-3 h-3"/></Button>
               <Button size="sm" onClick={()=>setOpenAe(ae)}><Play className="w-3 h-3 mr-1"/>Avaliar</Button>
+              <Button size="sm" variant="outline" disabled={feedbackId === ae.id}
+                title="Gerar o feedback final deste colaborador com IA" onClick={()=>handleFeedbackIA(ae)}>
+                {feedbackId === ae.id ? <Loader2 className="w-3 h-3 mr-1 animate-spin"/> : <Sparkles className="w-3 h-3 mr-1"/>}
+                {ae.parecer_geral ? 'Refazer feedback IA' : 'Feedback IA'}
+              </Button>
               <Button size="sm" variant="secondary"
                 disabled={!fechada || reportingId === ae.id}
                 title={fechada ? 'Gerar relatório final consolidado (individual + coletivo)' : 'Feche a apuração para liberar o relatório final'}
@@ -417,6 +452,15 @@ function AssessmentEmployeeList({ assessment, policy, cliente, onOpenHistory, on
           </div>
         ))}
       </div>
+      {items.length > 0 && (
+        <div className="flex justify-end">
+          <Button size="sm" variant="secondary" disabled={!fechada || baixandoTodos} onClick={baixarTodos}
+            title={fechada ? 'Baixar o relatório final de todos os colaboradores' : 'Feche a apuração para liberar'}>
+            {baixandoTodos ? <Loader2 className="w-3 h-3 mr-1 animate-spin"/> : <FileDown className="w-3 h-3 mr-1"/>}
+            Baixar relatório final de todos
+          </Button>
+        </div>
+      )}
 
       <PremioAvaliacaoDialog
         open={!!openAe} onOpenChange={(b)=>{ if (!b) setOpenAe(null); }}
