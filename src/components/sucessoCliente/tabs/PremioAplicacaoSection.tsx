@@ -11,6 +11,7 @@ import { usePrizeCriteria, type PrizePolicy } from '@/hooks/usePrizePolicies';
 import PremioAvaliacaoDialog from './PremioAvaliacaoDialog';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { gerarArquivo } from '@/modules/taxa-servico/utils/dominioLayout';
 import { generatePremioRelatorioFinalPdf } from '@/utils/sucessoCliente/premioRelatorioFinalPdf';
 
 function competenciaAtual() {
@@ -152,6 +153,49 @@ function AssessmentEmployeeList({ assessment, policy, cliente, onOpenHistory, on
   const fechada = assessment.status === 'fechada';
   const [reportingId, setReportingId] = useState<string | null>(null);
   const [openAe, setOpenAe] = useState<any | null>(null);
+
+  // Regra de prêmio integral: aplica em apurações já lançadas (inclusive fechadas) sem refazer a avaliação.
+  const integralPct = (policy as any).atingimento_integral_pct == null ? null : Number((policy as any).atingimento_integral_pct);
+  useEffect(() => {
+    if (integralPct == null || !items.length) return;
+    const ajustes = items.filter(i => {
+      const pct = Number(i.percentual_final || 0), v = Number(i.valor_final || 0);
+      return i.elegibilidade !== 'nao_elegivel' && pct >= integralPct && pct > 0 && pct < 100 && v > 0;
+    });
+    if (!ajustes.length) return;
+    (async () => {
+      for (const i of ajustes) {
+        const base = Number(i.valor_final) * 100 / Number(i.percentual_final);
+        await supabase.from('prize_assessment_employees' as any)
+          .update({ valor_final: Number(base.toFixed(2)), elegibilidade: 'elegivel' } as any).eq('id', i.id);
+      }
+      toast.success(`${ajustes.length} colaborador(es) atualizados para o prêmio integral (≥ ${integralPct}%).`);
+      reload();
+    })();
+  }, [items, integralPct]);
+
+  const [rubrica, setRubrica] = useState<string>(policy.rubrica_codigo || '');
+  const [processo, setProcesso] = useState<string>('11');
+  const [codEmpresa, setCodEmpresa] = useState<string>('');
+  const exportarDominio = async () => {
+    if (!/^\d{1,4}$/.test(rubrica.trim())) { toast.error('Informe o código da rubrica (até 4 dígitos).'); return; }
+    const [mm, aaaa] = String(assessment.competencia || '').split('/');
+    const comp = `${aaaa}${mm}`;
+    const semCod = items.filter(i => Number(i.valor_final || 0) > 0 && !String(i.employee?.codigo_folha || '').trim());
+    if (semCod.length) { toast.error(`Sem código de folha: ${semCod.map(i => i.employee?.nome).join(', ')}`); return; }
+    const { conteudo, erros } = gerarArquivo(items.map(i => ({
+      codigoEmpregado: String(i.employee?.codigo_folha || '').trim(), competencia: comp,
+      rubrica: rubrica.trim(), tipoProcesso: processo.trim(), valor: Number(i.valor_final || 0), codigoEmpresa: codEmpresa.trim(),
+    })));
+    if (erros.length) { toast.error(erros.slice(0, 3).join(' ')); return; }
+    if (rubrica.trim() !== (policy.rubrica_codigo || '')) {
+      await supabase.from('prize_policies' as any).update({ rubrica_codigo: rubrica.trim() } as any).eq('id', policy.id);
+    }
+    const blob = new Blob([conteudo + '\r\n'], { type: 'text/plain' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = `dominio_premio_${comp}.txt`; a.click(); URL.revokeObjectURL(a.href);
+    toast.success('Arquivo Domínio gerado.');
+  };
 
   const totalCalc = items.reduce((s, i) => s + Number(i.valor_final || 0), 0);
   const concluidos = items.filter(i => i.status === 'concluida' || i.status === 'alinhamento_gerado').length;
@@ -315,6 +359,14 @@ function AssessmentEmployeeList({ assessment, policy, cliente, onOpenHistory, on
           </Button>
         </div>
       </div>
+      {items.length > 0 && (
+        <div className="flex items-end gap-2 flex-wrap border rounded-md p-2 bg-muted/30">
+          <div><Label className="text-[11px]">Rubrica Domínio *</Label><Input className="h-8 w-24" value={rubrica} onChange={e=>setRubrica(e.target.value.replace(/\D/g,''))} placeholder="ex.: 250"/></div>
+          <div><Label className="text-[11px]">Processo</Label><Input className="h-8 w-16" value={processo} onChange={e=>setProcesso(e.target.value.replace(/\D/g,''))}/></div>
+          <div><Label className="text-[11px]">Cód. empresa (opcional)</Label><Input className="h-8 w-28" value={codEmpresa} onChange={e=>setCodEmpresa(e.target.value.replace(/\D/g,''))}/></div>
+          <Button size="sm" onClick={exportarDominio}><FileDown className="w-3 h-3 mr-1"/>Gerar lançamentos Domínio</Button>
+        </div>
+      )}
       {items.length === 0 && <p className="text-xs text-muted-foreground">Nenhum colaborador vinculado. Cadastre na seção acima e clique em "Sincronizar colaboradores".</p>}
       <div className="space-y-1">
         {items.map(ae => (
