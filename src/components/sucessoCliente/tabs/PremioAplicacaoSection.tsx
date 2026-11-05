@@ -14,6 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { generateFeedback } from '@/hooks/usePrizeAssessments';
 import { gerarArquivo } from '@/modules/taxa-servico/utils/dominioLayout';
 import { generatePremioRelatorioFinalPdf } from '@/utils/sucessoCliente/premioRelatorioFinalPdf';
+import type jsPDF from 'jspdf';
 
 function competenciaAtual() {
   const d = new Date();
