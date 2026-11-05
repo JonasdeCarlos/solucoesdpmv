@@ -284,27 +284,53 @@ function AssessmentEmployeeList({ assessment, policy, cliente, onOpenHistory, on
   }, [policy, assessment.competencia, items]);
 
   const [feedbackId, setFeedbackId] = useState<string | null>(null);
+  const [feedbackTodos, setFeedbackTodos] = useState(false);
   const [baixandoTodos, setBaixandoTodos] = useState(false);
+  const gerarFeedbackDe = async (ae: any): Promise<boolean> => {
+    const { data: res } = await supabase.from('prize_assessment_criterion_results' as any)
+      .select('*').eq('assessment_employee_id', ae.id);
+    const map: Record<string, any> = {};
+    for (const r of (res || []) as any[]) map[r.criterion_id] = r;
+    const { texto, error } = await generateFeedback({
+      modo: 'geral', verba_label: policy.verba_label, colaborador: ae.employee?.nome,
+      empresa: cliente?.nome, competencia: assessment.competencia,
+      criterios: criteria.map(c => ({ nome: c.nome, percentual: Number(map[c.id]?.percentual || 0), observacao: map[c.id]?.observacao })),
+      percentual_final: Number(ae.percentual_final || 0), valor_premio: Number(ae.valor_final || 0), valor_base: policy.valor_base,
+    });
+    if (error || !texto) return false;
+    const { error: e2 } = await supabase.from('prize_assessment_employees' as any).update({ parecer_geral: texto } as any).eq('id', ae.id);
+    return !e2;
+  };
   const handleFeedbackIA = async (ae: any) => {
     if (ae.parecer_geral && !confirm(`${ae.employee?.nome} já tem feedback. Substituir pelo gerado com IA?`)) return;
     setFeedbackId(ae.id);
     try {
-      const { data: res } = await supabase.from('prize_assessment_criterion_results' as any)
-        .select('*').eq('assessment_employee_id', ae.id);
-      const map: Record<string, any> = {};
-      for (const r of (res || []) as any[]) map[r.criterion_id] = r;
-      const { texto, error } = await generateFeedback({
-        modo: 'geral', verba_label: policy.verba_label, colaborador: ae.employee?.nome,
-        empresa: cliente?.nome, competencia: assessment.competencia,
-        criterios: criteria.map(c => ({ nome: c.nome, percentual: Number(map[c.id]?.percentual || 0), observacao: map[c.id]?.observacao })),
-        percentual_final: Number(ae.percentual_final || 0), valor_premio: Number(ae.valor_final || 0), valor_base: policy.valor_base,
-      });
-      if (error || !texto) { toast.error('Falha ao gerar feedback.'); return; }
-      const { error: e2 } = await supabase.from('prize_assessment_employees' as any).update({ parecer_geral: texto } as any).eq('id', ae.id);
-      if (e2) { toast.error('Erro ao salvar feedback.'); return; }
+      if (!(await gerarFeedbackDe(ae))) { toast.error('Falha ao gerar feedback.'); return; }
       toast.success(`Feedback final gerado para ${ae.employee?.nome}.`);
       await reload();
     } finally { setFeedbackId(null); }
+  };
+  const gerarFeedbackTodos = async () => {
+    const semFb = items.filter(i => !i.parecer_geral);
+    const comFb = items.filter(i => i.parecer_geral);
+    let alvo = semFb;
+    if (!semFb.length) {
+      if (!comFb.length || !confirm('Todos já têm feedback. Refazer todos com IA?')) return;
+      alvo = items;
+    } else if (comFb.length && confirm(`${comFb.length} colaborador(es) já têm feedback. Refazer também esses?`)) {
+      alvo = items;
+    }
+    setFeedbackTodos(true);
+    try {
+      let ok = 0;
+      for (const ae of alvo) {
+        setFeedbackId(ae.id);
+        if (await gerarFeedbackDe(ae)) ok++;
+      }
+      if (ok < alvo.length) toast.error(`Falha em ${alvo.length - ok} colaborador(es).`);
+      toast.success(`${ok} feedback(s) gerado(s) com IA.`);
+      await reload();
+    } finally { setFeedbackTodos(false); setFeedbackId(null); }
   };
   const baixarTodos = async () => {
     setBaixandoTodos(true);
