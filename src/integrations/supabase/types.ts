@@ -6113,6 +6113,7 @@ export type Database = {
       prize_policies: {
         Row: {
           arredondamento: string
+          atingimento_integral_pct: number | null
           aviso_legal: string | null
           client_id: string
           created_at: string
@@ -6149,6 +6150,7 @@ export type Database = {
         }
         Insert: {
           arredondamento?: string
+          atingimento_integral_pct?: number | null
           aviso_legal?: string | null
           client_id: string
           created_at?: string
@@ -6185,6 +6187,7 @@ export type Database = {
         }
         Update: {
           arredondamento?: string
+          atingimento_integral_pct?: number | null
           aviso_legal?: string | null
           client_id?: string
           created_at?: string

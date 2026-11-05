@@ -1,0 +1,1 @@
+ALTER TABLE public.prize_policies ADD COLUMN IF NOT EXISTS atingimento_integral_pct numeric NULL;
