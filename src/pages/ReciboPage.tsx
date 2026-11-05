@@ -30,10 +30,12 @@ import {
   loadReciboHistory,
   upsertRecibo,
   deleteRecibo,
+  syncReciboHistory,
 } from '@/utils/reciboHistory';
 
 const STORAGE_KEY = 'recibo_avulso_state_v1';
 const LOTE_KEY = 'recibo_avulso_lote_v1';
+const CURRENT_ID_KEY = 'recibo_avulso_current_id_v1';
 
 function extrairPercentualDoNome(nome: string): number | null {
   const m = nome.match(/(\d{1,3})\s*%/);
@@ -58,9 +60,11 @@ const ReciboPage = () => {
   const [recibo, setRecibo] = useState<ReciboData>(loadPersistedRecibo);
   const [feriadoDialogOpen, setFeriadoDialogOpen] = useState(false);
   const [novoFeriado, setNovoFeriado] = useState({ nome: '', dia: '', mes: '' });
-  const [currentReciboId, setCurrentReciboId] = useState<string | null>(null);
+  const [currentReciboId, setCurrentReciboId] = useState<string | null>(() => localStorage.getItem(CURRENT_ID_KEY));
   const [savedRecibos, setSavedRecibos] = useState<SavedRecibo[]>(() => loadReciboHistory());
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [savingRecibo, setSavingRecibo] = useState(false);
+  const [historyReady, setHistoryReady] = useState(false);
   const [lote, setLote] = useState<ReciboData[]>(() => {
     try {
       const raw = localStorage.getItem(LOTE_KEY);
@@ -70,6 +74,21 @@ const ReciboPage = () => {
     }
   });
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (currentReciboId) localStorage.setItem(CURRENT_ID_KEY, currentReciboId);
+    else localStorage.removeItem(CURRENT_ID_KEY);
+  }, [currentReciboId]);
+
+  useEffect(() => {
+    let active = true;
+    syncReciboHistory().then((items) => {
+      if (active) setSavedRecibos(items);
+    }).catch(() => {
+      if (active) toast({ title: 'Não foi possível consultar os recibos salvos na conta', description: 'Os recibos deste navegador foram preservados. Tente novamente.', variant: 'destructive' });
+    }).finally(() => { if (active) setHistoryReady(true); });
+    return () => { active = false; };
+  }, [toast]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(recibo));
@@ -87,18 +106,31 @@ const ReciboPage = () => {
     return () => window.removeEventListener('storage', onStorage);
   }, []);
 
-  const handleSalvarRecibo = () => {
+  const handleSalvarRecibo = async (): Promise<boolean> => {
+    if (savingRecibo || !historyReady) return false;
     if (!recibo.recebedorNome.trim() && !recibo.clienteNome.trim()) {
       toast({ title: 'Preencha ao menos o recebedor ou cliente antes de salvar', variant: 'destructive' });
-      return;
+      return false;
     }
-    const saved = upsertRecibo(currentReciboId, recibo);
-    setCurrentReciboId(saved.id);
-    setSavedRecibos(loadReciboHistory());
-    toast({ title: 'Recibo salvo!' });
+    setSavingRecibo(true);
+    try {
+      const saved = await upsertRecibo(currentReciboId, recibo);
+      setCurrentReciboId(saved.id);
+      setSavedRecibos(loadReciboHistory());
+      toast({ title: 'Recibo salvo na conta!' });
+      return true;
+    } catch {
+      const local = loadReciboHistory();
+      const pending = local.find((r) => !r.synced && JSON.stringify(r.data) === JSON.stringify(recibo));
+      if (pending) setCurrentReciboId(pending.id);
+      setSavedRecibos(local);
+      toast({ title: 'Não foi possível salvar o recibo na conta', description: 'Uma cópia foi mantida neste navegador. Tente salvar novamente.', variant: 'destructive' });
+      return false;
+    } finally { setSavingRecibo(false); }
   };
 
-  const handleNovoRecibo = () => {
+  const handleNovoRecibo = async () => {
+    if ((recibo.recebedorNome.trim() || recibo.clienteNome.trim()) && !(await handleSalvarRecibo())) return;
     setCurrentReciboId(null);
     setRecibo(createEmptyReciboData());
     toast({ title: 'Novo recibo iniciado' });
@@ -110,11 +142,15 @@ const ReciboPage = () => {
     toast({ title: `Recibo "${item.label}" carregado` });
   };
 
-  const handleExcluirRecibo = (id: string) => {
-    deleteRecibo(id);
-    setSavedRecibos(loadReciboHistory());
-    if (currentReciboId === id) setCurrentReciboId(null);
-    toast({ title: 'Recibo removido' });
+  const handleExcluirRecibo = async (id: string) => {
+    try {
+      await deleteRecibo(id);
+      setSavedRecibos(loadReciboHistory());
+      if (currentReciboId === id) setCurrentReciboId(null);
+      toast({ title: 'Recibo removido' });
+    } catch {
+      toast({ title: 'Não foi possível excluir o recibo', variant: 'destructive' });
+    }
   };
 
   // Ao alterar competência, preencher data de emissão e dias úteis/não úteis
@@ -274,11 +310,12 @@ const ReciboPage = () => {
   };
 
   // Lote de recibos
-  const handleIncluirNoLote = () => {
+  const handleIncluirNoLote = async () => {
     if (!recibo.recebedorNome.trim()) {
       toast({ title: 'Informe o nome do recebedor antes de incluir', variant: 'destructive' });
       return;
     }
+    if (!(await handleSalvarRecibo())) return;
     setLote((prev) => [...prev, JSON.parse(JSON.stringify(recibo)) as ReciboData]);
     toast({ title: 'Recibo incluído no lote' });
   };
@@ -299,11 +336,12 @@ const ReciboPage = () => {
     [recibo.linhas, recibo.calcularFGTS, recibo.aliquotaFGTS]
   );
 
-  const handleGerarPDF = () => {
+  const handleGerarPDF = async () => {
     if (!recibo.recebedorNome.trim()) {
       toast({ title: 'Nome do recebedor é obrigatório', variant: 'destructive' });
       return;
     }
+    if (!(await handleSalvarRecibo())) return;
     generateReciboPDF(recibo);
     toast({ title: 'PDF gerado!' });
   };
@@ -340,11 +378,11 @@ const ReciboPage = () => {
             Recibos salvos ({savedRecibos.length})
           </CardTitle>
           <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={handleNovoRecibo}>
+            <Button size="sm" variant="outline" onClick={handleNovoRecibo} disabled={savingRecibo || !historyReady}>
               <Plus className="h-4 w-4 mr-1" /> Novo recibo
             </Button>
-            <Button size="sm" onClick={handleSalvarRecibo}>
-              <Save className="h-4 w-4 mr-1" /> {currentReciboId ? 'Atualizar' : 'Salvar'}
+            <Button size="sm" onClick={handleSalvarRecibo} disabled={savingRecibo || !historyReady}>
+              <Save className="h-4 w-4 mr-1" /> {savingRecibo ? 'Salvando…' : currentReciboId ? 'Atualizar' : 'Salvar'}
             </Button>
             <Button size="sm" variant="ghost" onClick={() => setHistoryOpen((o) => !o)}>
               {historyOpen ? 'Ocultar' : 'Mostrar'}
@@ -845,7 +883,7 @@ const ReciboPage = () => {
                       {formatCurrency(calcularTotaisRecibo(r.linhas, r.calcularFGTS, r.aliquotaFGTS).totalLiquido)}
                     </span>
                     <div className="flex gap-1">
-                      <Button size="sm" variant="outline" onClick={() => setRecibo(r)} title="Carregar">
+                      <Button size="sm" variant="outline" onClick={() => { setCurrentReciboId(null); setRecibo(r); }} title="Carregar">
                         <FolderOpen className="h-4 w-4" />
                       </Button>
                       <Button size="sm" variant="ghost" onClick={() => handleRemoverDoLote(idx)} title="Remover">
