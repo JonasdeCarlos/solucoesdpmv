@@ -194,8 +194,8 @@ function AssessmentEmployeeList({ assessment, policy, cliente, onOpenHistory, on
     })();
   }, [items, integralPct, tetoIntegral]);
 
-  // Dados de exportação ficam fixos globalmente (não por política): informados uma vez, valem para todas.
-  const exportKey = 'premio_export_dominio_global';
+  // Dados de exportação ficam fixos por empresa (cliente): informados uma vez, valem para todas as políticas dela.
+  const exportKey = `premio_export_dominio_emp_${cliente?.id || policy.id}`;
   const exportSalvo = useMemo(() => {
     try {
       const g = JSON.parse(localStorage.getItem(exportKey) || '{}');
