@@ -6288,6 +6288,33 @@ export type Database = {
           },
         ]
       }
+      recibo_avulso_history: {
+        Row: {
+          created_at: string
+          data: Json
+          id: string
+          label: string
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          data: Json
+          id?: string
+          label?: string
+          total?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json
+          id?: string
+          label?: string
+          total?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       rescisao_cover_templates: {
         Row: {
           created_at: string
