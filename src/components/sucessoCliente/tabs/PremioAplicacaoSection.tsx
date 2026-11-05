@@ -179,9 +179,13 @@ function AssessmentEmployeeList({ assessment, policy, cliente, onOpenHistory, on
     })();
   }, [items, integralPct, tetoIntegral]);
 
-  const [rubrica, setRubrica] = useState<string>(policy.rubrica_codigo || '');
-  const [processo, setProcesso] = useState<string>('11');
-  const [codEmpresa, setCodEmpresa] = useState<string>('');
+  const exportKey = `premio_export_dominio_${policy.id}`;
+  const exportSalvo = useMemo(() => {
+    try { return JSON.parse(localStorage.getItem(exportKey) || '{}'); } catch { return {}; }
+  }, [exportKey]);
+  const [rubrica, setRubrica] = useState<string>(policy.rubrica_codigo || exportSalvo.rubrica || '');
+  const [processo, setProcesso] = useState<string>(exportSalvo.processo || '11');
+  const [codEmpresa, setCodEmpresa] = useState<string>(exportSalvo.codEmpresa || '');
   const exportarDominio = async () => {
     if (!/^\d{1,4}$/.test(rubrica.trim())) { toast.error('Informe o código da rubrica (até 4 dígitos).'); return; }
     const [mm, aaaa] = String(assessment.competencia || '').split('/');
@@ -197,6 +201,7 @@ function AssessmentEmployeeList({ assessment, policy, cliente, onOpenHistory, on
     if (rubrica.trim() !== (policy.rubrica_codigo || '')) {
       await supabase.from('prize_policies' as any).update({ rubrica_codigo: rubrica.trim() } as any).eq('id', policy.id);
     }
+    try { localStorage.setItem(exportKey, JSON.stringify({ rubrica: rubrica.trim(), processo: processo.trim(), codEmpresa: codEmpresa.trim() })); } catch {}
     const blob = new Blob([conteudo + '\r\n'], { type: 'text/plain' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
     a.download = `dominio_premio_${comp}.txt`; a.click(); URL.revokeObjectURL(a.href);
