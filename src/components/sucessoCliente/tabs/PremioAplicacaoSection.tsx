@@ -485,7 +485,12 @@ function AssessmentEmployeeList({ assessment, policy, cliente, onOpenHistory, on
         ))}
       </div>
       {items.length > 0 && (
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2 flex-wrap">
+          <Button size="sm" variant="outline" disabled={feedbackTodos || !!feedbackId} onClick={gerarFeedbackTodos}
+            title="Gerar com IA o feedback final de todos os colaboradores (quem já tem feedback é mantido, salvo se você pedir para refazer)">
+            {feedbackTodos ? <Loader2 className="w-3 h-3 mr-1 animate-spin"/> : <Sparkles className="w-3 h-3 mr-1"/>}
+            Gerar feedback IA de todos
+          </Button>
           <Button size="sm" variant="secondary" disabled={!fechada || baixandoTodos} onClick={baixarTodos}
             title={fechada ? 'Baixar o relatório final de todos os colaboradores' : 'Feche a apuração para liberar'}>
             {baixandoTodos ? <Loader2 className="w-3 h-3 mr-1 animate-spin"/> : <FileDown className="w-3 h-3 mr-1"/>}
