@@ -1,5 +1,5 @@
 import { isModeloHotelaria } from '@/utils/sucessoCliente/premioTemplates';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -156,23 +156,27 @@ function AssessmentEmployeeList({ assessment, policy, cliente, onOpenHistory, on
 
   // Regra de prêmio integral: aplica em apurações já lançadas (inclusive fechadas) sem refazer a avaliação.
   const integralPct = (policy as any).atingimento_integral_pct == null ? null : Number((policy as any).atingimento_integral_pct);
+  const tetoIntegral = Number(policy.valor_base || 0);
+  const ajustandoRef = useRef(false);
   useEffect(() => {
-    if (integralPct == null || !items.length) return;
+    if (integralPct == null || !items.length || !(tetoIntegral > 0) || ajustandoRef.current) return;
+    // Idempotente: quem atingiu o mínimo recebe exatamente o teto da política (nunca acima).
     const ajustes = items.filter(i => {
-      const pct = Number(i.percentual_final || 0), v = Number(i.valor_final || 0);
-      return i.elegibilidade !== 'nao_elegivel' && pct >= integralPct && pct > 0 && pct < 100 && v > 0;
+      const pct = Number(i.percentual_final || 0);
+      return i.elegibilidade !== 'nao_elegivel' && pct >= integralPct && pct > 0
+        && Math.abs(Number(i.valor_final || 0) - tetoIntegral) > 0.005;
     });
     if (!ajustes.length) return;
+    ajustandoRef.current = true;
     (async () => {
       for (const i of ajustes) {
-        const base = Number(i.valor_final) * 100 / Number(i.percentual_final);
         await supabase.from('prize_assessment_employees' as any)
-          .update({ valor_final: Number(base.toFixed(2)), elegibilidade: 'elegivel' } as any).eq('id', i.id);
+          .update({ valor_final: tetoIntegral, elegibilidade: 'elegivel' } as any).eq('id', i.id);
       }
-      toast.success(`${ajustes.length} colaborador(es) atualizados para o prêmio integral (≥ ${integralPct}%).`);
-      reload();
+      toast.success(`${ajustes.length} colaborador(es) ajustados para o prêmio integral de R$ ${tetoIntegral.toFixed(2)}.`);
+      await reload();
     })();
-  }, [items, integralPct]);
+  }, [items, integralPct, tetoIntegral]);
 
   const [rubrica, setRubrica] = useState<string>(policy.rubrica_codigo || '');
   const [processo, setProcesso] = useState<string>('11');
