@@ -168,14 +168,25 @@ function AssessmentEmployeeList({ assessment, policy, cliente, onOpenHistory, on
       return i.elegibilidade !== 'nao_elegivel' && pct >= integralPct && pct > 0
         && Math.abs(Number(i.valor_final || 0) - tetoIntegral) > 0.005;
     });
-    if (!ajustes.length) return;
+    // Quem ficou abaixo do mínimo (e não está pendente/zerado) vira não elegível e zera o valor.
+    const abaixo = items.filter(i => {
+      const pct = Number(i.percentual_final || 0);
+      return pct > 0 && pct < integralPct
+        && (i.elegibilidade !== 'nao_elegivel' || Number(i.valor_final || 0) !== 0);
+    });
+    if (!ajustes.length && !abaixo.length) return;
     ajustandoRef.current = true;
     (async () => {
       for (const i of ajustes) {
         await supabase.from('prize_assessment_employees' as any)
           .update({ valor_final: tetoIntegral, elegibilidade: 'elegivel' } as any).eq('id', i.id);
       }
-      toast.success(`${ajustes.length} colaborador(es) ajustados para o prêmio integral de R$ ${tetoIntegral.toFixed(2)}.`);
+      for (const i of abaixo) {
+        await supabase.from('prize_assessment_employees' as any)
+          .update({ valor_final: 0, elegibilidade: 'nao_elegivel' } as any).eq('id', i.id);
+      }
+      if (ajustes.length) toast.success(`${ajustes.length} colaborador(es) ajustados para o prêmio integral de R$ ${tetoIntegral.toFixed(2)}.`);
+      if (abaixo.length) toast.info(`${abaixo.length} colaborador(es) abaixo de ${integralPct}% marcados como não elegíveis.`);
       await reload();
     })();
   }, [items, integralPct, tetoIntegral]);

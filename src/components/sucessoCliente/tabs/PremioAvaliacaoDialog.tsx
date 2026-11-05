@@ -126,10 +126,12 @@ export default function PremioAvaliacaoDialog({
     const integralRaw = (policy as any).atingimento_integral_pct;
     const integralPct = integralRaw == null || integralRaw === '' ? null : Number(integralRaw);
     const integral = integralPct != null && !essFalhou && pct >= integralPct;
-    const valor = integral ? valorBaseEfetivo : valorBaseEfetivo * (pct / 100);
+    const abaixoDoMinimo = integralPct != null && !integral && pct > 0;
+    const valor = integral ? valorBaseEfetivo : abaixoDoMinimo ? 0 : valorBaseEfetivo * (pct / 100);
     let eleg = 'pendente';
     if (essFalhou) eleg = 'nao_elegivel';
     else if (integral || pct >= (integralPct ?? 70)) eleg = 'elegivel';
+    else if (abaixoDoMinimo) eleg = 'nao_elegivel';
     else if (pct > 0) eleg = 'parcial';
     return { percentualFinal: pct, valorFinal: valor, elegibilidade: eleg, essencialFalhou: essFalhou };
   }, [criteria, local, totalPeso, policy, valorBaseEfetivo]);
