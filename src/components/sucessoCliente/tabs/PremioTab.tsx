@@ -1037,7 +1037,7 @@ export function EmployeesSection({ policy, cliente }: { policy: PrizePolicy; cli
 
 function EmployeeRow({ e, onUpdate, onRemove }: { e: any; onUpdate: (patch: any) => Promise<any>; onRemove: () => Promise<any>; }) {
   const [edit, setEdit] = useState(false);
-  const [f, setF] = useState({ nome: e.nome, cpf: e.cpf || '', matricula: e.matricula || '', cargo: e.cargo || '', setor: e.setor || '', ativo: e.ativo, pontos: Number(e.pontos || 0) });
+  const [f, setF] = useState({ nome: e.nome, cpf: e.cpf || '', matricula: e.matricula || '', codigo_folha: e.codigo_folha || '', cargo: e.cargo || '', setor: e.setor || '', ativo: e.ativo, pontos: Number(e.pontos || 0) });
   if (!edit) {
     return (
       <div className="flex items-start gap-2 border rounded-md p-2 text-sm">

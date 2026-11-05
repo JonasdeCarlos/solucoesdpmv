@@ -186,10 +186,11 @@ function AssessmentEmployeeList({ assessment, policy, cliente, onOpenHistory, on
     if (!/^\d{1,4}$/.test(rubrica.trim())) { toast.error('Informe o código da rubrica (até 4 dígitos).'); return; }
     const [mm, aaaa] = String(assessment.competencia || '').split('/');
     const comp = `${aaaa}${mm}`;
-    const semCod = items.filter(i => Number(i.valor_final || 0) > 0 && !String(i.employee?.codigo_folha || '').trim());
-    if (semCod.length) { toast.error(`Sem código de folha: ${semCod.map(i => i.employee?.nome).join(', ')}`); return; }
+    const codigoDe = (i: any) => String(i.employee?.codigo_folha || i.employee?.matricula || '').trim();
+    const semCod = items.filter(i => Number(i.valor_final || 0) > 0 && !codigoDe(i));
+    if (semCod.length) { toast.error(`Sem código de folha nem matrícula: ${semCod.map(i => i.employee?.nome).join(', ')}`); return; }
     const { conteudo, erros } = gerarArquivo(items.map(i => ({
-      codigoEmpregado: String(i.employee?.codigo_folha || '').trim(), competencia: comp,
+      codigoEmpregado: codigoDe(i), competencia: comp,
       rubrica: rubrica.trim(), tipoProcesso: processo.trim(), valor: Number(i.valor_final || 0), codigoEmpresa: codEmpresa.trim(),
     })));
     if (erros.length) { toast.error(erros.slice(0, 3).join(' ')); return; }
