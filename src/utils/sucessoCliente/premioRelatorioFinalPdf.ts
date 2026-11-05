@@ -36,9 +36,11 @@ export type RelatorioFinalData = {
 
 const BRL = (n: number) => `R$ ${Number(n || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-export async function generatePremioRelatorioFinalPdf(d: RelatorioFinalData) {
+export async function generatePremioRelatorioFinalPdf(d: RelatorioFinalData, opts?: { doc?: jsPDF; save?: boolean }) {
   const branding = await loadBranding();
-  const doc = new jsPDF({ unit: 'pt', format: 'a4', compress: true });
+  const doc = opts?.doc || new jsPDF({ unit: 'pt', format: 'a4', compress: true });
+  const startPage = opts?.doc ? (doc as any).internal.getNumberOfPages() + 1 : 1;
+  if (opts?.doc) doc.addPage();
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
   const primary = branding?.primary_color || '#628E3F';
@@ -222,9 +224,9 @@ export async function generatePremioRelatorioFinalPdf(d: RelatorioFinalData) {
 
   // ---------- Cabeçalho de continuação + rodapé ----------
   const totalPages = (doc as any).internal.getNumberOfPages();
-  for (let i = 1; i <= totalPages; i++) {
+  for (let i = startPage; i <= totalPages; i++) {
     doc.setPage(i);
-    if (i > 1) {
+    if (i > startPage) {
       doc.setDrawColor(pr,pg,pb); doc.setLineWidth(0.7); doc.line(36, 46, W - 36, 46);
       await drawBrandLogo(doc, branding?.logo_url || '/images/logo-monte-verde-pdf.png', 36, 12, 64, 28, { centerY: true });
       doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(sr,sg,sb);
