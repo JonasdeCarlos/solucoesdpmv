@@ -162,11 +162,12 @@ function AssessmentEmployeeList({ assessment, policy, cliente, onOpenHistory, on
   const ajustandoRef = useRef(false);
   useEffect(() => {
     if (integralPct == null || !items.length || !(tetoIntegral > 0) || ajustandoRef.current) return;
-    // Idempotente: quem atingiu o mínimo recebe exatamente o teto da política (nunca acima).
+    // Idempotente: quem atingiu o mínimo recebe o percentual atingido do valor base (ex.: 90% → 90% do teto).
     const ajustes = items.filter(i => {
       const pct = Number(i.percentual_final || 0);
-      return i.elegibilidade !== 'nao_elegivel' && pct >= integralPct && pct > 0
-        && Math.abs(Number(i.valor_final || 0) - tetoIntegral) > 0.005;
+      if (!(pct >= integralPct && pct > 0) || i.elegibilidade === 'nao_elegivel') return false;
+      const esperado = Math.round(tetoIntegral * pct) / 100;
+      return Math.abs(Number(i.valor_final || 0) - esperado) > 0.005 || i.elegibilidade !== 'parcial';
     });
     // Quem ficou abaixo do mínimo (e não está pendente/zerado) vira não elegível e zera o valor.
     const abaixo = items.filter(i => {
@@ -178,14 +179,16 @@ function AssessmentEmployeeList({ assessment, policy, cliente, onOpenHistory, on
     ajustandoRef.current = true;
     (async () => {
       for (const i of ajustes) {
+        const pct = Number(i.percentual_final || 0);
+        const valor = Math.round(tetoIntegral * pct) / 100;
         await supabase.from('prize_assessment_employees' as any)
-          .update({ valor_final: tetoIntegral, elegibilidade: 'elegivel' } as any).eq('id', i.id);
+          .update({ valor_final: valor, elegibilidade: 'parcial' } as any).eq('id', i.id);
       }
       for (const i of abaixo) {
         await supabase.from('prize_assessment_employees' as any)
           .update({ valor_final: 0, elegibilidade: 'nao_elegivel' } as any).eq('id', i.id);
       }
-      if (ajustes.length) toast.success(`${ajustes.length} colaborador(es) ajustados para o prêmio integral de R$ ${tetoIntegral.toFixed(2)}.`);
+      if (ajustes.length) toast.success(`${ajustes.length} colaborador(es) ajustados para o percentual atingido do prêmio.`);
       if (abaixo.length) toast.info(`${abaixo.length} colaborador(es) abaixo de ${integralPct}% marcados como não elegíveis.`);
       await reload();
     })();

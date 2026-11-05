@@ -125,13 +125,14 @@ export default function PremioAvaliacaoDialog({
     const essFalhou = criteria.some(c => c.essencial && Number(local[c.id]?.percentual ?? 0) < minEss);
     const integralRaw = (policy as any).atingimento_integral_pct;
     const integralPct = integralRaw == null || integralRaw === '' ? null : Number(integralRaw);
-    const integral = integralPct != null && !essFalhou && pct >= integralPct;
-    const abaixoDoMinimo = integralPct != null && !integral && pct > 0;
-    const valor = integral ? valorBaseEfetivo : abaixoDoMinimo ? 0 : valorBaseEfetivo * (pct / 100);
+    const atingiuMinimo = integralPct != null && !essFalhou && pct >= integralPct;
+    const abaixoDoMinimo = integralPct != null && !atingiuMinimo && pct > 0;
+    // Superou o mínimo: elegível na altura do percentual atingido (ex.: 90% → 90% do valor base).
+    const valor = abaixoDoMinimo || essFalhou ? 0 : valorBaseEfetivo * (pct / 100);
     let eleg = 'pendente';
     if (essFalhou) eleg = 'nao_elegivel';
-    else if (integral || pct >= (integralPct ?? 70)) eleg = 'elegivel';
-    else if (abaixoDoMinimo) eleg = 'nao_elegivel';
+    else if (integralPct != null) eleg = atingiuMinimo ? 'parcial' : (pct > 0 ? 'nao_elegivel' : 'pendente');
+    else if (pct >= 70) eleg = 'elegivel';
     else if (pct > 0) eleg = 'parcial';
     return { percentualFinal: pct, valorFinal: valor, elegibilidade: eleg, essencialFalhou: essFalhou };
   }, [criteria, local, totalPeso, policy, valorBaseEfetivo]);
