@@ -194,10 +194,15 @@ function AssessmentEmployeeList({ assessment, policy, cliente, onOpenHistory, on
     })();
   }, [items, integralPct, tetoIntegral]);
 
-  const exportKey = `premio_export_dominio_${policy.id}`;
+  // Dados de exportação ficam fixos globalmente (não por política): informados uma vez, valem para todas.
+  const exportKey = 'premio_export_dominio_global';
   const exportSalvo = useMemo(() => {
-    try { return JSON.parse(localStorage.getItem(exportKey) || '{}'); } catch { return {}; }
-  }, [exportKey]);
+    try {
+      const g = JSON.parse(localStorage.getItem(exportKey) || '{}');
+      if (g.rubrica || g.processo || g.codEmpresa) return g;
+      return JSON.parse(localStorage.getItem(`premio_export_dominio_${policy.id}`) || '{}');
+    } catch { return {}; }
+  }, [exportKey, policy.id]);
   const [rubrica, setRubrica] = useState<string>(policy.rubrica_codigo || exportSalvo.rubrica || '');
   const [processo, setProcesso] = useState<string>(exportSalvo.processo || '11');
   const [codEmpresa, setCodEmpresa] = useState<string>(exportSalvo.codEmpresa || '');
@@ -466,8 +471,8 @@ function AssessmentEmployeeList({ assessment, policy, cliente, onOpenHistory, on
         <div className="flex items-end gap-2 flex-wrap border rounded-md p-2 bg-muted/30">
           <div><Label className="text-[11px]">Rubrica Domínio *</Label><Input className="h-8 w-24" value={rubrica} onChange={e=>setRubrica(e.target.value.replace(/\D/g,''))} placeholder="ex.: 250"/></div>
           <div><Label className="text-[11px]">Competência exportação</Label><Input className="h-8 w-24" value={compExport} onChange={e=>setCompExport(e.target.value)} placeholder="MM/AAAA" title="Altera só a competência do arquivo; a apuração não muda"/></div>
-          <div><Label className="text-[11px]">Processo</Label><Input className="h-8 w-16" value={processo} onChange={e=>setProcesso(e.target.value.replace(/\D/g,''))}/></div>
-          <div><Label className="text-[11px]">Cód. empresa (opcional)</Label><Input className="h-8 w-28" value={codEmpresa} onChange={e=>setCodEmpresa(e.target.value.replace(/\D/g,''))}/></div>
+          <div><Label className="text-[11px]">Processo</Label><Input className="h-8 w-16" value={processo} onChange={e=>{ const v=e.target.value.replace(/\D/g,''); setProcesso(v); try{ localStorage.setItem(exportKey, JSON.stringify({ ...exportSalvo, rubrica: rubrica.trim(), processo: v, codEmpresa: codEmpresa.trim() })); }catch{} }}/></div>
+          <div><Label className="text-[11px]">Cód. empresa (opcional)</Label><Input className="h-8 w-28" value={codEmpresa} onChange={e=>{ const v=e.target.value.replace(/\D/g,''); setCodEmpresa(v); try{ localStorage.setItem(exportKey, JSON.stringify({ ...exportSalvo, rubrica: rubrica.trim(), processo: processo.trim(), codEmpresa: v })); }catch{} }}/></div>
           <Button size="sm" onClick={exportarDominio}><FileDown className="w-3 h-3 mr-1"/>Gerar lançamentos Domínio</Button>
         </div>
       )}
