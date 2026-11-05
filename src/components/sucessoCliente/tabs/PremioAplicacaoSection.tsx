@@ -202,7 +202,12 @@ function AssessmentEmployeeList({ assessment, policy, cliente, onOpenHistory, on
     if (!/^\d{1,4}$/.test(rubrica.trim())) { toast.error('Informe o código da rubrica (até 4 dígitos).'); return; }
     const [mm, aaaa] = String(assessment.competencia || '').split('/');
     const comp = `${aaaa}${mm}`;
-    const codigoDe = (i: any) => String(i.employee?.codigo_folha || i.employee?.matricula || '').trim();
+    // Busca os códigos direto no cadastro na hora da exportação (evita dados desatualizados na tela)
+    const { data: emps } = await supabase.from('prize_employees' as any)
+      .select('id,codigo_folha,matricula').in('id', items.map(i => i.employee_id));
+    const codMap = new Map<string, string>();
+    for (const e of (emps || []) as any[]) codMap.set(e.id, String(e.codigo_folha || e.matricula || '').trim());
+    const codigoDe = (i: any) => codMap.get(i.employee_id) || String(i.employee?.codigo_folha || i.employee?.matricula || '').trim();
     const semCod = items.filter(i => Number(i.valor_final || 0) > 0 && !codigoDe(i));
     if (semCod.length) { toast.error(`Sem código de folha nem matrícula: ${semCod.map(i => i.employee?.nome).join(', ')}`); return; }
     const { conteudo, erros } = gerarArquivo(items.map(i => ({
