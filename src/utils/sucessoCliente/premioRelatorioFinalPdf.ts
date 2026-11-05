@@ -36,9 +36,11 @@ export type RelatorioFinalData = {
 
 const BRL = (n: number) => `R$ ${Number(n || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-export async function generatePremioRelatorioFinalPdf(d: RelatorioFinalData) {
+export async function generatePremioRelatorioFinalPdf(d: RelatorioFinalData, opts?: { doc?: jsPDF; save?: boolean }) {
   const branding = await loadBranding();
-  const doc = new jsPDF({ unit: 'pt', format: 'a4', compress: true });
+  const doc = opts?.doc || new jsPDF({ unit: 'pt', format: 'a4', compress: true });
+  const startPage = opts?.doc ? (doc as any).internal.getNumberOfPages() + 1 : 1;
+  if (opts?.doc) doc.addPage();
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
   const primary = branding?.primary_color || '#628E3F';
@@ -222,9 +224,9 @@ export async function generatePremioRelatorioFinalPdf(d: RelatorioFinalData) {
 
   // ---------- Cabeçalho de continuação + rodapé ----------
   const totalPages = (doc as any).internal.getNumberOfPages();
-  for (let i = 1; i <= totalPages; i++) {
+  for (let i = startPage; i <= totalPages; i++) {
     doc.setPage(i);
-    if (i > 1) {
+    if (i > startPage) {
       doc.setDrawColor(pr,pg,pb); doc.setLineWidth(0.7); doc.line(36, 46, W - 36, 46);
       await drawBrandLogo(doc, branding?.logo_url || '/images/logo-monte-verde-pdf.png', 36, 12, 64, 28, { centerY: true });
       doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(sr,sg,sb);
@@ -234,10 +236,12 @@ export async function generatePremioRelatorioFinalPdf(d: RelatorioFinalData) {
     doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(255,255,255);
     const contact = [branding?.office_name, branding?.phone, branding?.email].filter(Boolean).join('  •  ');
     doc.text(contact || 'Relatório de avaliação', W / 2, H - 10, { align: 'center' });
-    doc.text(`${i}/${totalPages}`, W - 36, H - 10, { align: 'right' });
+    doc.text(`${i - startPage + 1}/${totalPages - startPage + 1}`, W - 36, H - 10, { align: 'right' });
   }
 
-  const fileName = `relatorio-final-${d.verba_label}-${d.colaborador.nome.replace(/\s+/g,'_')}-${d.competencia.replace(/\//g,'-')}.pdf`;
-  doc.save(fileName);
-  return fileName;
+  if (opts?.save !== false) {
+    const fileName = `relatorio-final-${d.verba_label}-${d.colaborador.nome.replace(/\s+/g,'_')}-${d.competencia.replace(/\//g,'-')}.pdf`;
+    doc.save(fileName);
+  }
+  return doc;
 }

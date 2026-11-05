@@ -14,6 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { generateFeedback } from '@/hooks/usePrizeAssessments';
 import { gerarArquivo } from '@/modules/taxa-servico/utils/dominioLayout';
 import { generatePremioRelatorioFinalPdf } from '@/utils/sucessoCliente/premioRelatorioFinalPdf';
+import type jsPDF from 'jspdf';
 
 function competenciaAtual() {
   const d = new Date();
@@ -334,23 +335,30 @@ function AssessmentEmployeeList({ assessment, policy, cliente, onOpenHistory, on
   };
   const baixarTodos = async () => {
     setBaixandoTodos(true);
-    try { for (const ae of items) await handleRelatorioFinal(ae, true); toast.success(`${items.length} relatório(s) final(is) gerado(s).`); }
-    finally { setBaixandoTodos(false); }
+    try {
+      let doc: jsPDF | undefined;
+      for (const ae of items) {
+        const dados = await montarDadosRelatorio(ae);
+        doc = await generatePremioRelatorioFinalPdf(dados, { doc, save: false });
+      }
+      doc?.save(`relatorio-final-${policy.verba_label}-${assessment.competencia.replace(/\//g, '-')}-todos.pdf`);
+      toast.success(`Relatório único gerado com ${items.length} colaborador(es).`);
+    } catch (e: any) {
+      toast.error('Erro ao gerar relatório: ' + (e?.message || ''));
+    } finally { setBaixandoTodos(false); }
   };
 
-  const handleRelatorioFinal = async (ae: any, silencioso = false) => {
-    setReportingId(ae.id);
-    try {
-      // Busca resultados dos critérios individuais deste colaborador
-      const { data: res } = await supabase
-        .from('prize_assessment_criterion_results' as any)
-        .select('*').eq('assessment_employee_id', ae.id);
-      const resMap: Record<string, any> = {};
-      for (const r of (res || []) as any[]) resMap[r.criterion_id] = r;
+  const montarDadosRelatorio = async (ae: any) => {
+    // Busca resultados dos critérios individuais deste colaborador
+    const { data: res } = await supabase
+      .from('prize_assessment_criterion_results' as any)
+      .select('*').eq('assessment_employee_id', ae.id);
+    const resMap: Record<string, any> = {};
+    for (const r of (res || []) as any[]) resMap[r.criterion_id] = r;
 
-      const pontosColab = coletivoData ? coletivoData.pontosOf(ae.employee_id) : 0;
-      const shareColab = coletivoData && coletivoData.soma_pontos > 0
-        ? coletivoData.total_coletivo * (pontosColab / coletivoData.soma_pontos) : 0;
+    const pontosColab = coletivoData ? coletivoData.pontosOf(ae.employee_id) : 0;
+    const shareColab = coletivoData && coletivoData.soma_pontos > 0
+      ? coletivoData.total_coletivo * (pontosColab / coletivoData.soma_pontos) : 0;
       const individualValor = Number(ae.valor_final || 0);
       const cfg: any = (policy as any).hotelaria_config || {};
       const splitInd = Number(cfg.split_individual ?? 20);
@@ -361,7 +369,7 @@ function AssessmentEmployeeList({ assessment, policy, cliente, onOpenHistory, on
       const tetoColab = (coletivoData && coletivoData.soma_pontos > 0)
         ? tetoDist * (pontosColab / coletivoData.soma_pontos) : Number(policy.valor_base || 0);
 
-      await generatePremioRelatorioFinalPdf({
+    return {
         empresa: cliente?.nome || cliente?.razao_social || '',
         cnpj: cliente?.cnpj || cliente?.documento || '',
         cliente_logo_url: (cliente as any)?.logo_url || undefined,
@@ -401,7 +409,14 @@ function AssessmentEmployeeList({ assessment, policy, cliente, onOpenHistory, on
           share_colab: shareColab,
         } : null,
         total_geral: shareColab + individualValor,
-      });
+    };
+  };
+
+  const handleRelatorioFinal = async (ae: any, silencioso = false) => {
+    setReportingId(ae.id);
+    try {
+      const dados = await montarDadosRelatorio(ae);
+      await generatePremioRelatorioFinalPdf(dados);
       if (!silencioso) toast.success('Relatório final gerado.');
     } catch (e: any) {
       toast.error('Erro ao gerar relatório: ' + (e?.message || ''));
