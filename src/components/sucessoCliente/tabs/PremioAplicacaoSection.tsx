@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Sparkles, Calendar, Play, Plus, Trash2, ClipboardCheck, History, UserMinus, Lock, Unlock, FileDown, Loader2 } from 'lucide-react';
+import { Sparkles, Calendar, Play, Plus, Trash2, ClipboardCheck, History, UserMinus, Lock, Unlock, FileDown, Loader2, Pencil } from 'lucide-react';
 import { usePrizeAssessments, useAssessmentEmployees, fetchEmployeeHistory } from '@/hooks/usePrizeAssessments';
 import { usePrizeCriteria, type PrizePolicy } from '@/hooks/usePrizePolicies';
 import PremioAvaliacaoDialog from './PremioAvaliacaoDialog';
@@ -456,7 +456,21 @@ function AssessmentEmployeeList({ assessment, policy, cliente, onOpenHistory, on
     <div className="space-y-2">
       <div className="flex items-center justify-between flex-wrap gap-2 text-xs text-muted-foreground">
         <span>
-          <Calendar className="w-3 h-3 inline mr-1"/>{assessment.competencia} • {items.length} colaborador(es) • {concluidos} concluído(s)
+          <Calendar className="w-3 h-3 inline mr-1"/>{assessment.competencia}
+          <button type="button" className="inline-flex items-center ml-1 text-muted-foreground hover:text-foreground align-middle"
+            title="Corrigir a competência da apuração (reflete em feedbacks e relatórios)"
+            onClick={async () => {
+              const nova = window.prompt('Nova competência (MM/AAAA):', assessment.competencia);
+              if (!nova || nova === assessment.competencia) return;
+              if (!/^\d{2}\/\d{4}$/.test(nova.trim())) { toast.error('Use o formato MM/AAAA.'); return; }
+              const { error } = await supabase.from('prize_assessments' as any).update({ competencia: nova.trim() } as any).eq('id', assessment.id);
+              if (error) { toast.error('Erro ao alterar competência: ' + error.message); return; }
+              toast.success(`Competência alterada para ${nova.trim()}.`);
+              window.location.reload();
+            }}>
+            <Pencil className="w-3 h-3"/>
+          </button>
+          {' '}• {items.length} colaborador(es) • {concluidos} concluído(s)
           {fechada && <Badge variant="default" className="ml-2 text-[10px]">apuração fechada</Badge>}
         </span>
         <div className="flex items-center gap-2">
