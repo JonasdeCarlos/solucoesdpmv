@@ -201,6 +201,7 @@ function AssessmentEmployeeList({ assessment, policy, cliente, onOpenHistory, on
     if (rubrica.trim() !== (policy.rubrica_codigo || '')) {
       await supabase.from('prize_policies' as any).update({ rubrica_codigo: rubrica.trim() } as any).eq('id', policy.id);
     }
+    try { localStorage.setItem(exportKey, JSON.stringify({ rubrica: rubrica.trim(), processo: processo.trim(), codEmpresa: codEmpresa.trim() })); } catch {}
     const blob = new Blob([conteudo + '\r\n'], { type: 'text/plain' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
     a.download = `dominio_premio_${comp}.txt`; a.click(); URL.revokeObjectURL(a.href);
