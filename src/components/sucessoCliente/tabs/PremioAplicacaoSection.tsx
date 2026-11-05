@@ -198,9 +198,12 @@ function AssessmentEmployeeList({ assessment, policy, cliente, onOpenHistory, on
   const [rubrica, setRubrica] = useState<string>(policy.rubrica_codigo || exportSalvo.rubrica || '');
   const [processo, setProcesso] = useState<string>(exportSalvo.processo || '11');
   const [codEmpresa, setCodEmpresa] = useState<string>(exportSalvo.codEmpresa || '');
+  const [compExport, setCompExport] = useState<string>(assessment.competencia || '');
+  useEffect(() => { setCompExport(assessment.competencia || ''); }, [assessment.competencia]);
   const exportarDominio = async () => {
     if (!/^\d{1,4}$/.test(rubrica.trim())) { toast.error('Informe o código da rubrica (até 4 dígitos).'); return; }
-    const [mm, aaaa] = String(assessment.competencia || '').split('/');
+    if (!/^(0[1-9]|1[0-2])\/\d{4}$/.test(compExport.trim())) { toast.error('Competência da exportação inválida (MM/AAAA).'); return; }
+    const [mm, aaaa] = compExport.trim().split('/');
     const comp = `${aaaa}${mm}`;
     // Busca os códigos direto no cadastro na hora da exportação (evita dados desatualizados na tela)
     const { data: emps } = await supabase.from('prize_employees' as any)
@@ -459,6 +462,7 @@ function AssessmentEmployeeList({ assessment, policy, cliente, onOpenHistory, on
       {items.length > 0 && (
         <div className="flex items-end gap-2 flex-wrap border rounded-md p-2 bg-muted/30">
           <div><Label className="text-[11px]">Rubrica Domínio *</Label><Input className="h-8 w-24" value={rubrica} onChange={e=>setRubrica(e.target.value.replace(/\D/g,''))} placeholder="ex.: 250"/></div>
+          <div><Label className="text-[11px]">Competência exportação</Label><Input className="h-8 w-24" value={compExport} onChange={e=>setCompExport(e.target.value)} placeholder="MM/AAAA" title="Altera só a competência do arquivo; a apuração não muda"/></div>
           <div><Label className="text-[11px]">Processo</Label><Input className="h-8 w-16" value={processo} onChange={e=>setProcesso(e.target.value.replace(/\D/g,''))}/></div>
           <div><Label className="text-[11px]">Cód. empresa (opcional)</Label><Input className="h-8 w-28" value={codEmpresa} onChange={e=>setCodEmpresa(e.target.value.replace(/\D/g,''))}/></div>
           <Button size="sm" onClick={exportarDominio}><FileDown className="w-3 h-3 mr-1"/>Gerar lançamentos Domínio</Button>
