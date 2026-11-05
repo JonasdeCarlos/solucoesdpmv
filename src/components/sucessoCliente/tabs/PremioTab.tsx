@@ -367,6 +367,7 @@ function PolicyCard({ policy, expanded, onToggle, onUpdate, onRemove, cliente }:
     periodo_tipo: policy.periodo_tipo,
     valor_base: policy.valor_base,
     status: policy.status,
+    atingimento_integral_pct: (policy as any).atingimento_integral_pct ?? '',
   });
   const isHotelaria = isModeloHotelaria(policy);
   const effectivePolicy = isHotelaria ? ({ ...policy, ...hotelariaDraft } as PrizePolicy) : policy;
@@ -389,7 +390,8 @@ function PolicyCard({ policy, expanded, onToggle, onUpdate, onRemove, cliente }:
       periodo_tipo: form.periodo_tipo,
       valor_base: Number(form.valor_base || 0),
       status: form.status,
-    });
+      atingimento_integral_pct: form.atingimento_integral_pct === '' || form.atingimento_integral_pct == null ? null : Number(form.atingimento_integral_pct),
+    } as any);
     setEditing(false);
   };
 
@@ -499,6 +501,11 @@ function PolicyCard({ policy, expanded, onToggle, onUpdate, onRemove, cliente }:
               </Select>
             </div>
             <div><Label>Valor base (R$)</Label><Input type="number" step="0.01" value={form.valor_base} onChange={(e)=>setForm({...form, valor_base: Number(e.target.value)})}/></div>
+            <div>
+              <Label>Atingimento mínimo para prêmio integral (%)</Label>
+              <Input type="number" step="1" min="0" max="100" placeholder="Opcional — ex.: 70" value={form.atingimento_integral_pct as any} onChange={(e)=>setForm({...form, atingimento_integral_pct: e.target.value as any})}/>
+              <p className="text-[11px] text-muted-foreground mt-1">Se o atingimento global chegar a este percentual, o colaborador recebe o prêmio integral. Em branco: recebe proporcional ao atingimento.</p>
+            </div>
             <div>
               <Label>Status</Label>
               <Select value={form.status} onValueChange={(v)=>setForm({...form, status: v})}>
@@ -628,6 +635,7 @@ export function CriteriaSection({ policy, cliente }: { policy: PrizePolicy; clie
         regra_premiacao: regraAtual,
         periodo_tipo: policy.periodo_tipo,
         valor_base: policy.valor_base,
+        atingimento_integral_pct: (policy as any).atingimento_integral_pct ?? null,
         criterios: items.map(c => ({ nome: c.nome, descricao: c.descricao, peso: c.peso, essencial: c.essencial })),
         participantes: (participantes || []).filter(p => p.ativo).map(p => ({ nome: p.nome, cpf: p.cpf, cargo: p.cargo, matricula: p.matricula })),
         remuneracao_variavel: remuneracaoVariavelAtual ? {

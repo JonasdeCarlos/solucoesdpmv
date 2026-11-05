@@ -12,6 +12,7 @@ export type PoliticaPdfData = {
   regra_premiacao?: string | null;
   periodo_tipo: string;
   valor_base: number;
+  atingimento_integral_pct?: number | null;
   criterios: Array<{ nome: string; descricao?: string | null; peso: number; essencial: boolean }>;
   participantes: Array<{ nome: string; cpf?: string | null; cargo?: string | null; matricula?: string | null }>;
   remuneracao_variavel?: {
@@ -132,11 +133,14 @@ async function buildPoliticaDoc(d: PoliticaPdfData) {
   // Identificação
   bandTitle('Identificação da Política', [pr,pg,pb], [255,255,255]);
   doc.setFont('helvetica','normal'); doc.setFontSize(9);
-  const idLines = [
+  const idLines: string[] = [
     `Nome da política: ${d.politica_nome}`,
     `Verba: ${d.verba_label}   Periodicidade: ${d.periodo_tipo}   Valor base: ${BRL(d.valor_base)}`,
   ];
-  for (const l of idLines) { doc.text(l, 46, y); y += 12; }
+  if (d.atingimento_integral_pct != null && !isNaN(Number(d.atingimento_integral_pct))) {
+    idLines.push(`Elegibilidade ao prêmio integral: atingimento global mínimo de ${Number(d.atingimento_integral_pct).toLocaleString('pt-BR')}%.`);
+  }
+  for (const l of idLines) { for (const w of doc.splitTextToSize(l, W-92)) { doc.text(w, 46, y); y += 12; } }
   y += 8;
 
   // Objetivo
