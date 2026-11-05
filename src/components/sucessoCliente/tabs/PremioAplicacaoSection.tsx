@@ -334,21 +334,28 @@ function AssessmentEmployeeList({ assessment, policy, cliente, onOpenHistory, on
   };
   const baixarTodos = async () => {
     setBaixandoTodos(true);
-    try { for (const ae of items) await handleRelatorioFinal(ae, true); toast.success(`${items.length} relatório(s) final(is) gerado(s).`); }
-    finally { setBaixandoTodos(false); }
+    try {
+      let doc: jsPDF | undefined;
+      for (const ae of items) {
+        const dados = await montarDadosRelatorio(ae);
+        doc = await generatePremioRelatorioFinalPdf(dados, { doc, save: false });
+      }
+      doc?.save(`relatorio-final-${policy.verba_label}-${assessment.competencia.replace(/\//g, '-')}-todos.pdf`);
+      toast.success(`Relatório único gerado com ${items.length} colaborador(es).`);
+    } catch (e: any) {
+      toast.error('Erro ao gerar relatório: ' + (e?.message || ''));
+    } finally { setBaixandoTodos(false); }
   };
 
-  const handleRelatorioFinal = async (ae: any, silencioso = false) => {
-    setReportingId(ae.id);
-    try {
-      // Busca resultados dos critérios individuais deste colaborador
-      const { data: res } = await supabase
-        .from('prize_assessment_criterion_results' as any)
-        .select('*').eq('assessment_employee_id', ae.id);
-      const resMap: Record<string, any> = {};
-      for (const r of (res || []) as any[]) resMap[r.criterion_id] = r;
+  const montarDadosRelatorio = async (ae: any) => {
+    // Busca resultados dos critérios individuais deste colaborador
+    const { data: res } = await supabase
+      .from('prize_assessment_criterion_results' as any)
+      .select('*').eq('assessment_employee_id', ae.id);
+    const resMap: Record<string, any> = {};
+    for (const r of (res || []) as any[]) resMap[r.criterion_id] = r;
 
-      const pontosColab = coletivoData ? coletivoData.pontosOf(ae.employee_id) : 0;
+    {
       const shareColab = coletivoData && coletivoData.soma_pontos > 0
         ? coletivoData.total_coletivo * (pontosColab / coletivoData.soma_pontos) : 0;
       const individualValor = Number(ae.valor_final || 0);
