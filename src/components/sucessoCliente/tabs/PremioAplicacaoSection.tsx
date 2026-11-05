@@ -355,9 +355,9 @@ function AssessmentEmployeeList({ assessment, policy, cliente, onOpenHistory, on
     const resMap: Record<string, any> = {};
     for (const r of (res || []) as any[]) resMap[r.criterion_id] = r;
 
-    {
-      const shareColab = coletivoData && coletivoData.soma_pontos > 0
-        ? coletivoData.total_coletivo * (pontosColab / coletivoData.soma_pontos) : 0;
+    const pontosColab = coletivoData ? coletivoData.pontosOf(ae.employee_id) : 0;
+    const shareColab = coletivoData && coletivoData.soma_pontos > 0
+      ? coletivoData.total_coletivo * (pontosColab / coletivoData.soma_pontos) : 0;
       const individualValor = Number(ae.valor_final || 0);
       const cfg: any = (policy as any).hotelaria_config || {};
       const splitInd = Number(cfg.split_individual ?? 20);
