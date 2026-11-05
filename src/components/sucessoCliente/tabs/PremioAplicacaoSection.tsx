@@ -408,7 +408,14 @@ function AssessmentEmployeeList({ assessment, policy, cliente, onOpenHistory, on
           share_colab: shareColab,
         } : null,
         total_geral: shareColab + individualValor,
-      });
+    };
+  };
+
+  const handleRelatorioFinal = async (ae: any, silencioso = false) => {
+    setReportingId(ae.id);
+    try {
+      const dados = await montarDadosRelatorio(ae);
+      await generatePremioRelatorioFinalPdf(dados);
       if (!silencioso) toast.success('Relatório final gerado.');
     } catch (e: any) {
       toast.error('Erro ao gerar relatório: ' + (e?.message || ''));
