@@ -123,10 +123,13 @@ export default function PremioAvaliacaoDialog({
     const pct = soma / totalPeso;
     const minEss = Number((policy as any).minimo_essencial ?? 0);
     const essFalhou = criteria.some(c => c.essencial && Number(local[c.id]?.percentual ?? 0) < minEss);
-    const valor = valorBaseEfetivo * (pct / 100);
+    const integralRaw = (policy as any).atingimento_integral_pct;
+    const integralPct = integralRaw == null || integralRaw === '' ? null : Number(integralRaw);
+    const integral = integralPct != null && !essFalhou && pct >= integralPct;
+    const valor = integral ? valorBaseEfetivo : valorBaseEfetivo * (pct / 100);
     let eleg = 'pendente';
     if (essFalhou) eleg = 'nao_elegivel';
-    else if (pct >= 70) eleg = 'elegivel';
+    else if (integral || pct >= (integralPct ?? 70)) eleg = 'elegivel';
     else if (pct > 0) eleg = 'parcial';
     return { percentualFinal: pct, valorFinal: valor, elegibilidade: eleg, essencialFalhou: essFalhou };
   }, [criteria, local, totalPeso, policy, valorBaseEfetivo]);
