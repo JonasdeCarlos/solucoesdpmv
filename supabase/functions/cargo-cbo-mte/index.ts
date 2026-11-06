@@ -1,3 +1,4 @@
+import { requireInternalUser } from '../_shared/internalAuth.ts';
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 
 type AreaAtividade = { ordem: string; titulo: string; atividades: string[] };
@@ -274,6 +275,8 @@ async function consultarMte(cbo: string, nome?: string) {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const denied = await requireInternalUser(req, corsHeaders);
+  if (denied) return denied;
   try {
     const { cbo, nome } = await req.json();
     const code = String(cbo || "").replace(/\D/g, "");

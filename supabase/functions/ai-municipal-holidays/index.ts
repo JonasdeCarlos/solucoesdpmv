@@ -1,3 +1,4 @@
+import { requireInternalUser } from '../_shared/internalAuth.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.4';
 
 const corsHeaders = {
@@ -18,6 +19,8 @@ Inclua: aniversário da cidade, padroeiro(a), datas religiosas locais conhecidas
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  const denied = await requireInternalUser(req, corsHeaders);
+  if (denied) return denied;
   try {
     const { uf, municipio, ano } = await req.json();
     if (!uf || !municipio || !ano) {

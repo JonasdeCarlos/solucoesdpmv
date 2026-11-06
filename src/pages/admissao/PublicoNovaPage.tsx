@@ -6,13 +6,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { getTemplateById } from '@/hooks/useAdmissaoTemplates';
 import { getRequestByToken } from '@/hooks/useAdmissaoRequests';
 
-function genToken(): string {
-  const arr = new Uint8Array(18);
-  crypto.getRandomValues(arr);
-  return btoa(String.fromCharCode(...arr))
-    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-}
-
 const PublicoNovaPage = () => {
   const { templateId = '' } = useParams();
   const nav = useNavigate();
@@ -38,20 +31,8 @@ const PublicoNovaPage = () => {
         }
       }
 
-      const token = genToken();
-      const { error } = await supabase
-        .from('admission_requests' as any)
-        .insert({
-          template_id: tpl.id,
-          template_name_snapshot: tpl.name,
-          template_schema_snapshot: tpl.schema_json,
-          company_name: '',
-          company_cnpj: '',
-          employee_name: '',
-          token,
-          status: 'rascunho',
-        } as any);
-      if (error) return setError('Erro ao iniciar formulário.');
+      const { data: token, error } = await supabase.rpc('create_public_admission', { _template_id: tpl.id });
+      if (error || !token) return setError('Erro ao iniciar formulário.');
       localStorage.setItem(lsKey, token);
       nav(`/admissao/preencher/${token}`, { replace: true });
     })();

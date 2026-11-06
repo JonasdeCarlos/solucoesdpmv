@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { requireInternalUser } from '../_shared/internalAuth.ts';
 import * as pdfjs from 'npm:pdfjs-dist@4.10.38/legacy/build/pdf.min.mjs';
 
 const corsHeaders = {
@@ -105,6 +106,8 @@ function relevantChunks(text: string, question: string, max = 12): string[] {
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  const denied = await requireInternalUser(req, corsHeaders);
+  if (denied) return denied;
   const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   try {
     const { analysis_id, question, history } = await req.json();
@@ -137,7 +140,7 @@ Deno.serve(async (req) => {
     else ctx += `\n\n(Sem texto integral extraído — responda com base no Raio-X e avise que o texto integral não está disponível.)`;
 
     const messages: any[] = [{ role: 'system', content: SYSTEM }, { role: 'user', content: ctx }, { role: 'assistant', content: 'Documento recebido. Pode perguntar.' }];
-    if (Array.isArray(history)) for (const h of history.slice(-8)) if (h?.role && h?.content) messages.push({ role: h.role, content: String(h.content) });
+    if (Array.isArray(history)) for (const h of history.slice(-8)) if ((h?.role === 'user' || h?.role === 'assistant') && h?.content) messages.push({ role: h.role, content: String(h.content) });
     messages.push({ role: 'user', content: String(question) });
 
     const resp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {

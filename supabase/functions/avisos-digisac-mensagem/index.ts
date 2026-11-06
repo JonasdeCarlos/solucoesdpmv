@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { requireInternalUser } from '../_shared/internalAuth.ts';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 
 function json(status: number, body: unknown) {
@@ -10,6 +11,8 @@ function json(status: number, body: unknown) {
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  const denied = await requireInternalUser(req, corsHeaders);
+  if (denied) return denied;
   const t0 = Date.now();
   try {
     const { empresa_id, mensagem } = await req.json();

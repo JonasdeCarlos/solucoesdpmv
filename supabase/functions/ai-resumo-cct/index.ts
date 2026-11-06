@@ -1,3 +1,4 @@
+import { requireInternalUser } from '../_shared/internalAuth.ts';
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { z } from "npm:zod@3.25.76";
@@ -34,6 +35,8 @@ const jsonResponse = (data: unknown, status = 200) => new Response(JSON.stringif
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const denied = await requireInternalUser(req, corsHeaders);
+  if (denied) return denied;
   try {
     const body = BodySchema.safeParse(await req.json());
     if (!body.success) return jsonResponse({ error: body.error.flatten().fieldErrors }, 400);

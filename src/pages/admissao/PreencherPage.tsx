@@ -26,7 +26,7 @@ const PreencherPage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const { files, loading: filesLoading, loadError: filesError, uploadFile, deleteFile, fetchAll } =
-    useAdmissaoFiles(req?.id || null);
+    useAdmissaoFiles(req?.id || null, token);
 
   useEffect(() => {
     getRequestByToken(token).then((r) => {
@@ -43,10 +43,10 @@ const PreencherPage = () => {
   useEffect(() => {
     if (!req || done) return;
     const t = setTimeout(() => {
-      saveDraftAnswers(req.id, answers);
+      saveDraftAnswers(req.id, answers, token);
     }, 1500);
     return () => clearTimeout(t);
-  }, [answers, req, done]);
+  }, [answers, req, done, token]);
 
   // Sync file fields into answers
   useEffect(() => {
@@ -155,7 +155,7 @@ const PreencherPage = () => {
       return;
     }
     setSubmitting(true);
-    const { error } = await submitAnswers(req.id, answers);
+    const { error } = await submitAnswers(req.id, answers, token);
     setSubmitting(false);
     if (error) return toast.error('Erro ao enviar');
     setDone(true);

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { FormSchema, emptySchema } from '@/utils/admissao/formSchema';
+import { admissionClient } from '@/utils/admissao/linkClient';
 
 export type AdmissionStatus =
   | 'rascunho'
@@ -153,7 +154,7 @@ export function useAdmissaoRequests() {
 }
 
 export async function getRequestByToken(token: string): Promise<AdmissionRequest | null> {
-  const { data, error } = await supabase
+  const { data, error } = await admissionClient(token)
     .from('admission_requests' as any)
     .select('*')
     .eq('token', token)
@@ -172,15 +173,15 @@ export async function getRequestById(id: string): Promise<AdmissionRequest | nul
   return normalize(data);
 }
 
-export async function saveDraftAnswers(id: string, draft: Record<string, any>) {
-  return supabase
+export async function saveDraftAnswers(id: string, draft: Record<string, any>, token?: string) {
+  return admissionClient(token)
     .from('admission_requests' as any)
     .update({ draft_answers: draft } as any)
     .eq('id', id);
 }
 
-export async function submitAnswers(id: string, answers: Record<string, any>) {
-  const res = await supabase
+export async function submitAnswers(id: string, answers: Record<string, any>, token?: string) {
+  const res = await admissionClient(token)
     .from('admission_requests' as any)
     .update({
       answers,

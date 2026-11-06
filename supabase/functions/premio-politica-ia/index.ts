@@ -1,3 +1,4 @@
+import { requireInternalUser } from '../_shared/internalAuth.ts';
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import mammoth from "npm:mammoth@1.8.0";
 import { extractText, getDocumentProxy } from "npm:unpdf@0.12.1";
@@ -6,6 +7,8 @@ type FileIn = { name: string; mime: string; data_base64: string };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const denied = await requireInternalUser(req, corsHeaders);
+  if (denied) return denied;
   try {
     const KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!KEY) throw new Error("LOVABLE_API_KEY missing");

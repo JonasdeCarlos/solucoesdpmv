@@ -1,9 +1,12 @@
+import { requireInternalUser } from '../_shared/internalAuth.ts';
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 
 const MODEL = "openai/gpt-6-astra";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const denied = await requireInternalUser(req, corsHeaders);
+  if (denied) return denied;
   try {
     const KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!KEY) return json({ error: "LOVABLE_API_KEY ausente" }, 500);
@@ -82,3 +85,4 @@ Responda apenas com JSON no formato {"mapa":[{"i":0,"campo":"nome"}]} com um ite
 function json(b: unknown, status = 200) {
   return new Response(JSON.stringify(b), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 }
+

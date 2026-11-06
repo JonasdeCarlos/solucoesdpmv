@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { requireInternalUser } from '../_shared/internalAuth.ts';
 import * as pdfjs from 'npm:pdfjs-dist@4.10.38/legacy/build/pdf.min.mjs';
 
 // Extrai o texto digital de um PDF (até 150 páginas). Retorna '' se não houver camada de texto.
@@ -176,6 +177,8 @@ const hasUsefulExtraction = (parsed: any) => {
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  const denied = await requireInternalUser(req, corsHeaders);
+  if (denied) return denied;
 
   try {
     const { analysis_id } = await req.json();

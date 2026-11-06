@@ -1,3 +1,4 @@
+import { requireInternalUser } from '../_shared/internalAuth.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.4';
 import { extractText, getDocumentProxy } from 'npm:unpdf@0.12.1';
 
@@ -33,6 +34,8 @@ Regras:
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  const denied = await requireInternalUser(req, corsHeaders);
+  if (denied) return denied;
   try {
     const { source_doc_id } = await req.json();
     if (!source_doc_id) return new Response(JSON.stringify({ error: 'source_doc_id required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });

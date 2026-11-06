@@ -1,3 +1,4 @@
+import { requireInternalUser } from '../_shared/internalAuth.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const corsHeaders = {
@@ -194,6 +195,8 @@ async function enviarWhatsApp(numeros: string[], texto: string) {
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  const denied = await requireInternalUser(req, corsHeaders);
+  if (denied) return denied;
   try {
     const body = await req.json().catch(() => ({}));
     const onlyCctId: string | null = body?.client_cct_id ?? null;
@@ -312,3 +315,4 @@ Deno.serve(async (req) => {
     });
   }
 });
+

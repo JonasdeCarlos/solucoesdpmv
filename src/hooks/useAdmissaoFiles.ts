@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { AdmissionFileRow } from '@/utils/admissao/dossieBuilder';
 import { safeUuid } from '@/utils/safeUuid';
+import { admissionClient } from '@/utils/admissao/linkClient';
 
-export function useAdmissaoFiles(requestId: string | null) {
+export function useAdmissaoFiles(requestId: string | null, token?: string) {
+  const client = useMemo(() => admissionClient(token), [token]);
   const [files, setFiles] = useState<AdmissionFileRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -15,7 +17,7 @@ export function useAdmissaoFiles(requestId: string | null) {
     }
     setLoading(true);
     setLoadError(null);
-    const { data, error } = await supabase
+    const { data, error } = await client
       .from('admission_files' as any)
       .select('*')
       .eq('request_id', requestId)
@@ -26,7 +28,7 @@ export function useAdmissaoFiles(requestId: string | null) {
       setFiles((data as any[]) || []);
     }
     setLoading(false);
-  }, [requestId]);
+  }, [requestId, client]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
@@ -38,11 +40,11 @@ export function useAdmissaoFiles(requestId: string | null) {
   ) => {
     const ext = (file.name.split('.').pop() || 'bin').toLowerCase();
     const path = `requests/${requestId}/${fieldKey}/${safeUuid()}.${ext}`;
-    const { error: upErr } = await supabase.storage
+    const { error: upErr } = await client.storage
       .from('admissao-uploads')
       .upload(path, file, { contentType: file.type || 'application/octet-stream', upsert: false });
     if (upErr) return { error: upErr };
-    const { error } = await supabase.from('admission_files' as any).insert({
+    const { error } = await client.from('admission_files' as any).insert({
       request_id: requestId,
       field_key: fieldKey,
       original_name: file.name,
@@ -56,8 +58,8 @@ export function useAdmissaoFiles(requestId: string | null) {
   };
 
   const deleteFile = async (id: string, storagePath: string) => {
-    await supabase.storage.from('admissao-uploads').remove([storagePath]);
-    const { error } = await supabase.from('admission_files' as any).delete().eq('id', id);
+    await client.storage.from('admissao-uploads').remove([storagePath]);
+    const { error } = await client.from('admission_files' as any).delete().eq('id', id);
     if (!error) await fetchAll();
     return { error };
   };

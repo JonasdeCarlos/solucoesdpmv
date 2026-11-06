@@ -1,4 +1,5 @@
 import { extractText, getDocumentProxy } from 'npm:unpdf@0.12.1';
+import { requireInternalUser } from '../_shared/internalAuth.ts';
 
 // Extrai dados estruturados de PDFs de "Relação de Vencimentos" usando Lovable AI.
 // Recebe { file_path } no bucket 'aviso-pdfs', retorna { emission_date, emission_time, empresas:[...] }.
@@ -247,6 +248,8 @@ const countRows = (parsed: ParsedPdf) => parsed.empresas.reduce((total, empresa)
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  const denied = await requireInternalUser(req, corsHeaders);
+  if (denied) return denied;
   try {
     const { file_path } = await req.json();
     if (!file_path) {
