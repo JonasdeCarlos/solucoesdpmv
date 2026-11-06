@@ -1,9 +1,27 @@
 import { assertEquals } from 'https://deno.land/std@0.224.0/assert/mod.ts';
 import { requireInternalUser } from './internalAuth.ts';
+import { requireLinkOrInternal } from './linkOrInternalAuth.ts';
 
 Deno.test('Internal access rejects callers without a session', async () => {
   const response = await requireInternalUser(new Request('http://localhost'), {});
   assertEquals(response?.status, 401);
+});
+
+Deno.test('External AI rejects absent or invalid manager links', async () => {
+  const oldFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(JSON.stringify({ error: 'Link inválido' }), { status: 404 });
+  try {
+    assertEquals((await requireLinkOrInternal(new Request('http://localhost'), {}, 'premiacao'))?.status, 401);
+    assertEquals((await requireLinkOrInternal(new Request('http://localhost', { headers: { 'x-external-token': 'invalid-link' } }), {}, 'premiacao'))?.status, 401);
+  } finally { globalThis.fetch = oldFetch; }
+});
+
+Deno.test('External AI accepts a manager link only after successful link validation', async () => {
+  const oldFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(JSON.stringify({ politica: { id: 'test-policy' } }), { headers: { 'Content-Type': 'application/json' } });
+  try {
+    assertEquals(await requireLinkOrInternal(new Request('http://localhost', { headers: { 'x-external-token': 'valid-test-link' } }), {}, 'premiacao'), null);
+  } finally { globalThis.fetch = oldFetch; }
 });
 
 Deno.test('Internal access rejects invalid sessions before checking roles', async () => {
