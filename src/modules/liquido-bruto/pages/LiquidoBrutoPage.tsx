@@ -172,6 +172,10 @@ export default function LiquidoBrutoPage() {
                     <Input type="number" min={0} step={1} value={p.dependentes} onChange={(e) => upd({ dependentes: Math.max(0, Math.floor(Number(e.target.value) || 0)) })} />
                   </div>
                   <p className="sm:col-span-2 text-xs text-muted-foreground">INSS (tabela progressiva) e IRRF (tabela progressiva + redutor da Lei 15.270/2025) são sempre calculados.</p>
+                  <div className="sm:col-span-2 flex items-center justify-between gap-3 border-t pt-3">
+                    <Label htmlFor="cargo-confianca">Cargo de confiança (adicional de 40%)</Label>
+                    <Switch id="cargo-confianca" checked={!!p.cargoConfianca} onCheckedChange={(v) => upd({ cargoConfianca: v })} />
+                  </div>
                 </CardContent>
               </Card>
 
@@ -268,7 +272,8 @@ export default function LiquidoBrutoPage() {
                       <Table>
                         <TableHeader><TableRow><TableHead>Descrição</TableHead><TableHead className="text-right">Proventos</TableHead><TableHead className="text-right">Descontos</TableHead></TableRow></TableHeader>
                         <TableBody>
-                          <TableRow><TableCell>Salário-base</TableCell><TableCell className="text-right">{brl(resultado.bruto)}</TableCell><TableCell /></TableRow>
+                          <TableRow><TableCell>Salário-base</TableCell><TableCell className="text-right">{brl(resultado.salarioBase)}</TableCell><TableCell /></TableRow>
+                          {resultado.adicionalCargoConfianca > 0 && <TableRow><TableCell>Cargo de confiança (40% do salário-base)</TableCell><TableCell className="text-right">{brl(resultado.adicionalCargoConfianca)}</TableCell><TableCell /></TableRow>}
                           {linhasDescontos(resultado, p).map((d, i) => (
                             <TableRow key={i}>
                               <TableCell>{d.desc}<div className="text-xs text-muted-foreground">{d.ref}</div></TableCell>

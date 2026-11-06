@@ -59,6 +59,7 @@ export async function exportarPdf(opts: {
   ident.push(['Competência', comp]);
   ident.push(['Líquido desejado', brl(r.liquidoAlvo)]);
   ident.push(['Dependentes IRRF', String(p.dependentes || 0)]);
+  if (p.cargoConfianca) ident.push(['Cargo de confiança', 'Adicional de 40% sobre o salário-base']);
   const flags = [
     p.assistencial.ativo && 'Contribuição assistencial',
     p.vt.ativo && 'Vale-transporte',
@@ -88,7 +89,8 @@ export async function exportarPdf(opts: {
     startY: y,
     head: [['Descrição', 'Referência', 'Proventos', 'Descontos']],
     body: [
-      ['Salário-base', '', brl(r.bruto), ''],
+      ['Salário-base', '', brl(r.salarioBase ?? r.bruto), ''],
+      ...(r.adicionalCargoConfianca > 0 ? [['Cargo de confiança', '40% do salário-base', brl(r.adicionalCargoConfianca), '']] : []),
       ...desc.map((d) => [d.desc, d.ref, '', brl(d.valor)]),
     ],
     foot: [
@@ -127,6 +129,11 @@ export async function exportarPdf(opts: {
 
 export function memoria(r: ResultadoBruto): string[][] {
   return [
+    ...(r.adicionalCargoConfianca > 0 ? [
+      ['Salário-base', brl(r.salarioBase)],
+      ['Cargo de confiança (salário-base × 40%)', brl(r.adicionalCargoConfianca)],
+      ['Bruto total (salário-base + cargo de confiança)', brl(r.bruto)],
+    ] : []),
     ['Base do INSS (limitada ao teto)', brl(r.baseInss)],
     ['INSS: alíquota nominal da faixa', `${pct(r.inssAliquotaNominal, 1)} (faixa ${r.inssFaixa})`],
     ['Base IRRF — deduções legais (bruto − INSS − dependentes − pensão)', brl(r.baseIrrfLegal)],

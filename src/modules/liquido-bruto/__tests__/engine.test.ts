@@ -88,6 +88,32 @@ describe('Líquido → Bruto — casos obrigatórios 2026', () => {
 });
 
 describe('Regras do motor', () => {
+  it('cargo de confiança compõe o bruto com 40% do salário-base e tributa o total', () => {
+    const p = { ...parametrosVazios(), cargoConfianca: true };
+    const r = calcularBruto(4000, p, T2026);
+    expect(r.salarioBase).toBe(3157.4);
+    expect(r.adicionalCargoConfianca).toBe(1262.96);
+    expect(r.bruto).toBe(4420.36);
+    expect(r.inss).toBe(420.36);
+    expect(r.liquido).toBe(4000);
+  });
+
+  it('cargo de confiança mantém a composição de 40% ao arredondar e alcança o líquido desejado', () => {
+    const p = { ...parametrosVazios(), cargoConfianca: true };
+    for (const alvo of [2000, 3000, 5000, 6500, 12000]) {
+      const r = calcularBruto(alvo, p, T2026);
+      expect(Math.round(r.adicionalCargoConfianca * 100)).toBe(Math.round(r.salarioBase * 40));
+      expect(Math.round(r.bruto * 100)).toBe(Math.round(r.salarioBase * 100) + Math.round(r.adicionalCargoConfianca * 100));
+      expect(r.liquido).toBeGreaterThanOrEqual(alvo);
+      expect(r.diferencaArredondamento).toBeLessThanOrEqual(0.02);
+    }
+  });
+
+  it('sem cargo de confiança, todo o bruto permanece salário-base', () => {
+    const r = calcularBruto(4000, parametrosVazios(), T2026);
+    expect(r.salarioBase).toBe(4420.36);
+    expect(r.adicionalCargoConfianca).toBe(0);
+  });
   it('VT desconta o menor entre 6% do salário e o custo do VT', () => {
     const p = parametrosVazios();
     p.vt = { ativo: true, custo: 100 };
