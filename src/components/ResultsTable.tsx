@@ -2,6 +2,9 @@ import { type VerbaRescisoria, calcularTotal } from '@/utils/calculations';
 import { formatCurrency } from '@/utils/formatters';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Trash2 } from 'lucide-react';
 
 interface ResultsTableProps {
   verbas: VerbaRescisoria[];
@@ -45,6 +48,7 @@ const ResultsTable = ({ verbas, editable = false, onUpdate }: ResultsTableProps)
             <th className="text-left p-3 font-semibold">REF</th>
             <th className="text-right p-3 font-semibold">VALOR (R$)</th>
             {editable && <th className="text-center p-3 font-semibold">TIPO</th>}
+            {editable && <th className="w-12"><span className="sr-only">Excluir</span></th>}
           </tr>
         </thead>
         <tbody>
@@ -90,6 +94,19 @@ const ResultsTable = ({ verbas, editable = false, onUpdate }: ResultsTableProps)
                   </Select>
                 </td>
               )}
+              {editable && (
+                <td className="p-2 text-center">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive" aria-label={`Excluir ${v.verba}`} disabled={!onUpdate}
+                        onClick={() => onUpdate?.(verbas.filter(item => item.id !== v.id))}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Excluir {v.verba}</TooltipContent>
+                  </Tooltip>
+                </td>
+              )}
             </tr>
           ))}
           {hasDescontos ? (
@@ -97,24 +114,24 @@ const ResultsTable = ({ verbas, editable = false, onUpdate }: ResultsTableProps)
               <tr className="font-semibold bg-muted/40">
                 <td className="p-3" colSpan={2}>TOTAL PROVENTOS</td>
                 <td className="p-3 text-right">{formatCurrency(totalProventos)}</td>
-                {editable && <td />}
+                {editable && <td colSpan={2} />}
               </tr>
               <tr className="font-semibold bg-muted/40">
                 <td className="p-3" colSpan={2}>TOTAL DESCONTOS</td>
                 <td className="p-3 text-right text-destructive">- {formatCurrency(totalDescontos)}</td>
-                {editable && <td />}
+                {editable && <td colSpan={2} />}
               </tr>
               <tr className="results-table-total font-bold">
                 <td className="p-3" colSpan={2}>LÍQUIDO A RECEBER</td>
                 <td className="p-3 text-right text-lg">{formatCurrency(total)}</td>
-                {editable && <td />}
+                {editable && <td colSpan={2} />}
               </tr>
             </>
           ) : (
             <tr className="results-table-total font-bold">
               <td className="p-3" colSpan={2}>TOTAL GERAL</td>
               <td className="p-3 text-right text-lg">{formatCurrency(total)}</td>
-              {editable && <td />}
+              {editable && <td colSpan={2} />}
             </tr>
           )}
         </tbody>

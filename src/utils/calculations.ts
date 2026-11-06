@@ -556,8 +556,10 @@ export function recalcDependents(
   // FGTS sobre outros créditos com incidência marcada
   if (byId('fgts_outros_creditos')) {
     const base = (step2.outrosCreditos || [])
-      .filter(c => c.incideFGTS && c.valor > 0)
-      .reduce((acc, c) => acc + c.valor, 0);
+      .reduce((acc, c, index) => {
+        const atual = byId(`outros_creditos_${index}`);
+        return c.incideFGTS && atual?.tipo === 'credito' ? acc + atual.valor : acc;
+      }, 0);
     setVal('fgts_outros_creditos', base * 0.08);
   }
 
