@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { requireInternalUser } from '../_shared/internalAuth.ts';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 
 // Timeout local antes do Cloudflare matar a conexão (~100s).
@@ -71,6 +72,8 @@ async function transferirTicket(
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  const denied = await requireInternalUser(req, corsHeaders);
+  if (denied) return denied;
 
   const t0 = Date.now();
   try {

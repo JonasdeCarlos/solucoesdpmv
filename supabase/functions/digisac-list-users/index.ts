@@ -1,7 +1,10 @@
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
+import { requireInternalUser } from '../_shared/internalAuth.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  const denied = await requireInternalUser(req, corsHeaders);
+  if (denied) return denied;
 
   const BASE_URL = Deno.env.get('DIGISAC_BASE_URL') || 'https://contabilmv.digisac.co';
   const TOKEN = Deno.env.get('DIGISAC_API_TOKEN') || Deno.env.get('DIGISAC_TOKEN');

@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { requireInternalUser } from '../_shared/internalAuth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -50,6 +51,8 @@ function extractJson(txt: string): any {
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  const denied = await requireInternalUser(req, corsHeaders);
+  if (denied) return denied;
   try {
     const { base_analysis_id, finding_id, texto_alteracao, titulo, modo } = await req.json();
     const modoAplicacao = modo === 'nova' ? 'nova' : 'atualizar';
