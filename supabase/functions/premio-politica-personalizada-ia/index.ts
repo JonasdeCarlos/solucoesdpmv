@@ -1,4 +1,5 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { requireInternalUser } from '../_shared/internalAuth.ts';
 import { decodeBase64 } from "jsr:@std/encoding@1/base64";
 // mammoth/xlsx são carregados só quando necessários (evita estourar memória no boot)
 
@@ -8,8 +9,10 @@ const PERIODOS = ["mensal", "quinzenal", "bimestral", "trimestral", "semestral",
 
 // Mantém a conexão viva (espaços em branco a cada 10s) enquanto a IA trabalha,
 // evitando o limite de 150s de inatividade. JSON aceita espaços iniciais.
-Deno.serve((req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const denied = await requireInternalUser(req, corsHeaders);
+  if (denied) return denied;
   const enc = new TextEncoder();
   const stream = new ReadableStream({
     async start(ctrl) {
