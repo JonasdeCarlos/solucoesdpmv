@@ -7502,6 +7502,14 @@ export type Database = {
       }
     }
     Functions: {
+      admission_link_allows: {
+        Args: { _request_id: string; _write?: boolean }
+        Returns: boolean
+      }
+      create_public_admission: {
+        Args: { _template_id: string }
+        Returns: string
+      }
       get_empregador_web_password: {
         Args: { _client_id: string }
         Returns: string
@@ -7514,6 +7522,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      internal_user_authorized: { Args: never; Returns: boolean }
       is_admin_or_master: { Args: { _user_id: string }; Returns: boolean }
       normalize_email: { Args: { _email: string }; Returns: string }
       premiacao_apurar: {
