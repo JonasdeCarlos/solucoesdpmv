@@ -16,6 +16,7 @@ import {
   nMaxCategoria, novoFuncionario, domingoAutorizado, fundamentoPadrao, type EscalaFuncionario, type EscalaParams, type TipoDia, type Categoria,
 } from '../motor';
 import ImportarFuncionarios from './ImportarFuncionarios';
+import { externalAiHeaders } from '@/utils/externalAiHeaders';
 
 const SEM = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 const CICLO: TipoDia[] = ['T', 'F', 'FC', 'A'];
@@ -60,7 +61,7 @@ export default function EscalaEditor({ params: p, onParams, funcionarios: fs, on
       const { data: sess } = await supabase.auth.getSession();
       const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/escala-sugerir-parametros`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string, Authorization: `Bearer ${sess?.session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
+        headers: { ...externalAiHeaders(), 'Content-Type': 'application/json', apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string, Authorization: `Bearer ${sess?.session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
         body: JSON.stringify({ cnae: cnaeVal, setor: p.setor, empresa: cliente?.nome, dados_cct: dadosCct }),
       });
       if (!res.ok || !res.body) { const e = await res.json().catch(() => ({})); throw new Error(e?.error || `Falha (${res.status})`); }

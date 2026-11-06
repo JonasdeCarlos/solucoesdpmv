@@ -385,7 +385,8 @@ function RelatorioDia({ s, p, m }: { s: Setor; p: Parametros; m: Marco }) {
   if (!linhas.length) return null;
   const explicarIa = async () => {
     setCarregando(true);
-    const { data, error } = await supabase.functions.invoke('pec-explicar-dia', { body: { dados: { setor: s.nome, marco: `${m.nome} ${m.jornada}h/${m.dias} dias`, funcionarios_atuais: s.funcionarios_atuais,
+    const { externalAiHeaders } = await import('@/utils/externalAiHeaders');
+    const { data, error } = await supabase.functions.invoke('pec-explicar-dia', { headers: externalAiHeaders(), body: { dados: { setor: s.nome, marco: `${m.nome} ${m.jornada}h/${m.dias} dias`, funcionarios_atuais: s.funcionarios_atuais,
       dias: linhas.map((l) => ({ dia: l.rotulo, intensidade: l.nivel, multiplicador: l.mult, pessoas_necessarias: l.pessoas, escaladas: l.escalados, falta: l.deficit, conta: l.explicacao, obs: l.obs })) } } });
     setCarregando(false);
     if (error || (data as any)?.error) return toast.error((data as any)?.error || 'Não foi possível gerar a explicação.');
