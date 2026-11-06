@@ -193,7 +193,7 @@ export async function submitAnswers(id: string, answers: Record<string, any>, to
   if (!res.error) {
     // Notificação WhatsApp (Digisac) de nova admissão pendente — nunca bloqueia o envio.
     try {
-      await supabase.functions.invoke('admissao-notificar', { body: { request_id: id } });
+      await supabase.functions.invoke('admissao-notificar', { body: { request_id: id }, headers: token ? { 'x-admission-token': token } : {} });
     } catch (e) {
       console.warn('Falha ao notificar nova admissão', e);
     }

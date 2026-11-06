@@ -221,7 +221,8 @@ export async function signedEvidenciaUrl(path: string) {
 }
 
 export async function generateFeedback(payload: any) {
-  const { data, error } = await supabase.functions.invoke('premio-feedback', { body: payload });
+  const { externalAiHeaders } = await import('@/utils/externalAiHeaders');
+  const { data, error } = await supabase.functions.invoke('premio-feedback', { body: payload, headers: externalAiHeaders() });
   if (error) return { texto: null, error };
   return { texto: (data as any)?.texto || null, error: (data as any)?.error || null };
 }

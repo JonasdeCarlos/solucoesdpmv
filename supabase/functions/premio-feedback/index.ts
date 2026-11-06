@@ -1,7 +1,11 @@
-import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { requireLinkOrInternal } from '../_shared/linkOrInternalAuth.ts';
+import { corsHeaders as baseCorsHeaders } from "npm:@supabase/supabase-js@2/cors";
+const corsHeaders = { ...baseCorsHeaders, 'Access-Control-Allow-Headers': `${baseCorsHeaders['Access-Control-Allow-Headers']}, x-external-token, x-external-password` };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const denied = await requireLinkOrInternal(req, corsHeaders, 'premio');
+  if (denied) return denied;
   try {
     const KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!KEY) throw new Error("LOVABLE_API_KEY missing");

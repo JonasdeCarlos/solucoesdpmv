@@ -1,5 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
+import { corsHeaders as baseCorsHeaders } from 'npm:@supabase/supabase-js@2/cors';
+import { requireInternalUser } from '../_shared/internalAuth.ts';
+const corsHeaders = { ...baseCorsHeaders, 'Access-Control-Allow-Headers': `${baseCorsHeaders['Access-Control-Allow-Headers']}, x-admission-token` };
 
 function json(status: number, body: unknown) {
   return new Response(JSON.stringify(body), {
@@ -14,6 +16,16 @@ Deno.serve(async (req) => {
     const { request_id } = await req.json().catch(() => ({}));
     if (!request_id || typeof request_id !== 'string') {
       return json(400, { erro: 'request_id obrigatório.' });
+    }
+    const denied = await requireInternalUser(req, corsHeaders);
+    if (denied) {
+      const token = req.headers.get('x-admission-token');
+      if (!token || token.length > 200) return denied;
+      const client = createClient(Deno.env.get('SUPABASE_URL') || '', Deno.env.get('SUPABASE_ANON_KEY') || '', {
+        global: { headers: { 'x-admission-token': token } }, auth: { persistSession: false },
+      });
+      const { data, error } = await client.from('admission_requests').select('id,status').eq('id', request_id).maybeSingle();
+      if (error || !data || data.status !== 'enviado') return denied;
     }
 
     const BASE_URL = Deno.env.get('DIGISAC_BASE_URL') || 'https://contabilmv.digisac.co';
@@ -104,7 +116,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    return json(200, { sucesso: resultados.some((x: any) => x.ok), resultados });
+    return json(200, { sucesso: resultados.some((x: any) => x.ok) });
   } catch (err) {
     console.error('[admissao-notificar] exception', err);
     return json(500, { erro: (err as Error).message });

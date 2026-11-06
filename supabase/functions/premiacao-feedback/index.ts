@@ -1,9 +1,13 @@
-import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { requireLinkOrInternal } from '../_shared/linkOrInternalAuth.ts';
+import { corsHeaders as baseCorsHeaders } from "npm:@supabase/supabase-js@2/cors";
+const corsHeaders = { ...baseCorsHeaders, 'Access-Control-Allow-Headers': `${baseCorsHeaders['Access-Control-Allow-Headers']}, x-external-token, x-external-password` };
 
 const MODEL = "openai/gpt-6-astra";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const denied = await requireLinkOrInternal(req, corsHeaders, 'premiacao');
+  if (denied) return denied;
   try {
     const KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!KEY) return json({ error: "LOVABLE_API_KEY ausente" }, 500);

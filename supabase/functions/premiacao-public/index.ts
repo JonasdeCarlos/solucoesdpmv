@@ -1,5 +1,6 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { requireInternalUser } from '../_shared/internalAuth.ts';
 
 const json = (data: unknown, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -24,6 +25,12 @@ async function manageLink(body: any, authHeader: string) {
 
   const s = supa();
   const { politica_id, op, link_id, senha } = body;
+  const { data: roles } = await userClient.from('user_roles').select('role').eq('user_id', u.user.id).in('role', ['master', 'admin', 'user']).limit(1);
+  if (!roles?.length) return json({ error: 'Sem permissão' }, 403);
+  if (link_id) {
+    const { data: scopedLink } = await s.from('premiacao_public_links').select('id').eq('id', link_id).eq('politica_id', politica_id).maybeSingle();
+    if (!scopedLink) return json({ error: 'Link não encontrado nesta política' }, 404);
+  }
 
   if (op === "list") {
     const { data } = await s.from("premiacao_public_links").select("id, token, ativo, created_at, senha_hash")
@@ -233,7 +240,11 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json();
     const { action } = body;
-    if (action === "manage_link") return await manageLink(body, req.headers.get("Authorization") || "");
+    if (action === "manage_link") {
+      const denied = await requireInternalUser(req, corsHeaders);
+      if (denied) return denied;
+      return await manageLink(body, req.headers.get("Authorization") || "");
+    }
     const { token, senha } = body;
     if (!token) return json({ error: "Token ausente" }, 400);
     const { link, error } = await authLink(token, senha);

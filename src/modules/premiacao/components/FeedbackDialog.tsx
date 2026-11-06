@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { tbl, brl, fmtComp, type Apuracao, type Catalogo, type Colaborador, type Lancamento, type Politica } from '../hooks/usePremiacao';
 import { pdfFeedback } from '../utils/pdfs';
+import { externalAiHeaders } from '@/utils/externalAiHeaders';
 
 export default function FeedbackDialog({ open, onOpenChange, politica, cat, apuracao, colaborador, empresa, call }: {
   call?: (action: string, extra?: Record<string, unknown>) => Promise<any>;
@@ -42,6 +43,7 @@ export default function FeedbackDialog({ open, onOpenChange, politica, cat, apur
       const res = await fetch(url, {
         method: 'POST',
         headers: {
+          ...externalAiHeaders(),
           'Content-Type': 'application/json',
           apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string,
           Authorization: `Bearer ${sess?.session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
