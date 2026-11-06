@@ -1,3 +1,4 @@
+import { requireInternalUser } from '../_shared/internalAuth.ts';
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 
 function json(b: unknown, status = 200) {
@@ -6,6 +7,8 @@ function json(b: unknown, status = 200) {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const denied = await requireInternalUser(req, corsHeaders);
+  if (denied) return denied;
   try {
     const KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!KEY) throw new Error("LOVABLE_API_KEY missing");
@@ -70,3 +73,4 @@ Responda SOMENTE JSON: {"descricao_sumaria":"...","atividades":["..."]}`;
     return json({ error: e instanceof Error ? e.message : String(e) }, 500);
   }
 });
+

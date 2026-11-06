@@ -1,3 +1,4 @@
+import { requireInternalUser } from '../_shared/internalAuth.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const corsHeaders = {
@@ -56,6 +57,8 @@ function resumir(a: any) {
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  const denied = await requireInternalUser(req, corsHeaders);
+  if (denied) return denied;
   try {
     const { analise_anterior_id, analise_nova_id } = await req.json();
     if (!analise_anterior_id || !analise_nova_id) return json(400, { error: 'Informe as duas CCTs para comparar.' });

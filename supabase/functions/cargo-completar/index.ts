@@ -1,3 +1,4 @@
+import { requireInternalUser } from '../_shared/internalAuth.ts';
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 
 const normalizarTexto = (s: string) => (s || "")
@@ -53,6 +54,8 @@ function fallbackCargo(atuais: any) {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const denied = await requireInternalUser(req, corsHeaders);
+  if (denied) return denied;
   try {
     const { cargo, empresa, campos_vazios } = await req.json();
     const KEY = Deno.env.get("LOVABLE_API_KEY");

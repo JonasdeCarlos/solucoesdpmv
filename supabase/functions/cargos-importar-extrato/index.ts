@@ -1,9 +1,12 @@
+import { requireInternalUser } from '../_shared/internalAuth.ts';
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 
 type Linha = { funcionario?: string; cargo: string; cbo?: string; salario: number };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const denied = await requireInternalUser(req, corsHeaders);
+  if (denied) return denied;
   try {
     const { pdf_base64, mime, setor } = await req.json();
     if (!pdf_base64) throw new Error("pdf_base64 obrigatório");

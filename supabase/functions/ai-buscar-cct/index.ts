@@ -1,3 +1,4 @@
+import { requireInternalUser } from '../_shared/internalAuth.ts';
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 
@@ -5,6 +6,8 @@ interface CctDoc { id: string; sindicato: string; text: string; }
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const denied = await requireInternalUser(req, corsHeaders);
+  if (denied) return denied;
   try {
     const { question, docs } = await req.json() as { question: string; docs: CctDoc[] };
     if (!question || !Array.isArray(docs) || docs.length === 0) {
