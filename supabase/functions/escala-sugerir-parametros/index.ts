@@ -1,4 +1,6 @@
-import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { requireLinkOrInternal } from '../_shared/linkOrInternalAuth.ts';
+import { corsHeaders as baseCorsHeaders } from "npm:@supabase/supabase-js@2/cors";
+const corsHeaders = { ...baseCorsHeaders, 'Access-Control-Allow-Headers': `${baseCorsHeaders['Access-Control-Allow-Headers']}, x-external-token, x-external-password` };
 import { ATIVIDADES_ANEXO_IV, CATEGORIA_LABEL } from "../_shared/escalaMotor.ts";
 
 const MODEL = "openai/gpt-6-astra";
@@ -26,6 +28,8 @@ const schema = {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const denied = await requireLinkOrInternal(req, corsHeaders, 'escala');
+  if (denied) return denied;
   try {
     const KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!KEY) return json({ error: "LOVABLE_API_KEY ausente" }, 500);
