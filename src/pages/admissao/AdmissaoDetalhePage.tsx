@@ -1,3 +1,4 @@
+import { buildExternalAppLink } from '@/utils/publicLinks';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
@@ -60,7 +61,7 @@ const AdmissaoDetalhePage = () => {
   if (!req) return <p className="text-sm text-muted-foreground">Carregando...</p>;
 
   const copyLink = async () => {
-    const url = `${window.location.origin}/admissao/preencher/${req.token}`;
+    const url = buildExternalAppLink(`/admissao/preencher/${req.token}`);
     await navigator.clipboard.writeText(url);
     toast.success('Link copiado');
   };
