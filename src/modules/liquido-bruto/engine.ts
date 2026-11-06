@@ -46,6 +46,7 @@ export interface OutroDesconto {
 }
 
 export interface ParametrosSimulacao {
+  cargoConfianca?: boolean;
   dependentes: number;
   assistencial: DescontoVariavel;
   vt: { ativo: boolean; custo: number };
@@ -57,6 +58,8 @@ export type RegimeIrrf = 'legal' | 'simplificado';
 
 export interface ResultadoLiquido {
   bruto: number;
+  salarioBase: number;
+  adicionalCargoConfianca: number;
   inss: number;
   inssFaixa: number;
   inssAliquotaNominal: number;
@@ -127,6 +130,8 @@ export function somaPercentuais(p: ParametrosSimulacao): number {
 }
 
 function calcularLiquidoC(brutoC: number, p: ParametrosSimulacao, t: TabelasLegais): ResultadoLiquido {
+  const salarioBaseC = p.cargoConfianca ? rhu(brutoC / 1.4) : brutoC;
+  const adicionalCargoConfiancaC = brutoC - salarioBaseC;
   const pi = t.parametros;
   // 1. INSS
   const baseInssC = Math.min(brutoC, toCents(tetoInss(t)));
@@ -168,6 +173,8 @@ function calcularLiquidoC(brutoC: number, p: ParametrosSimulacao, t: TabelasLega
 
   return {
     bruto: fromCents(brutoC),
+    salarioBase: fromCents(salarioBaseC),
+    adicionalCargoConfianca: fromCents(adicionalCargoConfiancaC),
     inss: fromCents(inss.valorC),
     inssFaixa: inss.faixa.faixa,
     inssAliquotaNominal: inss.faixa.aliquota,
@@ -205,18 +212,21 @@ export function calcularBruto(liquidoAlvo: number, p: ParametrosSimulacao, t: Ta
 
   let lo = 1;
   let hi = alvoC * 3 + 1_000_000;
-  if (calcularLiquidoC(hi, p, t).liquido * 100 < alvoC)
+  // Com cargo de confiança, busca o salário-base: bruto = base + 40% da base.
+  const brutoDaBase = (baseC: number) => p.cargoConfianca ? baseC + rhu(baseC * 0.4) : baseC;
+  if (calcularLiquidoC(brutoDaBase(hi), p, t).liquido * 100 < alvoC)
     throw new ErroSimulacao('Não foi possível atingir esse líquido com os descontos informados. Revise os descontos fixos.');
   while (lo < hi) {
     const mid = Math.floor((lo + hi) / 2);
-    if (toCents(calcularLiquidoC(mid, p, t).liquido) >= alvoC) hi = mid;
+    if (toCents(calcularLiquidoC(brutoDaBase(mid), p, t).liquido) >= alvoC) hi = mid;
     else lo = mid + 1;
   }
-  const r = calcularLiquidoC(lo, p, t);
+  const r = calcularLiquidoC(brutoDaBase(lo), p, t);
   return { ...r, liquidoAlvo: fromCents(alvoC), diferencaArredondamento: fromCents(toCents(r.liquido) - alvoC) };
 }
 
 export const parametrosVazios = (): ParametrosSimulacao => ({
+  cargoConfianca: false,
   dependentes: 0,
   assistencial: { ativo: false, tipo: 'percentual', valor: 0 },
   vt: { ativo: false, custo: 0 },
