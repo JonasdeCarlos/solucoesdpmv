@@ -1,5 +1,6 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { requireInternalUser } from '../_shared/internalAuth.ts';
 
 const json = (data: unknown, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -35,7 +36,8 @@ async function checkPassword(policy_id: string, password: string | undefined) {
   const s = supa();
   const { data } = await s.from("prize_policies").select("public_password_hash").eq("id", policy_id).maybeSingle();
   const hash = (data as any)?.public_password_hash as string | null | undefined;
-  if (!hash) return null; // sem senha configurada
+  if (!data) return json({ error: 'Política não encontrada' }, 404);
+  if (!hash) return json({ error: 'Acesso externo desativado: o escritório precisa definir uma senha para este link.' }, 403);
   if (!password) return json({ requires_password: true }, 200);
   const ok = (await sha256(password)) === hash;
   if (!ok) return json({ requires_password: true, wrong: true }, 200);
@@ -71,6 +73,10 @@ async function assertAeInPolicy(s: ReturnType<typeof supa>, ae_id: string, polic
 
 async function handle(action: string, policy_id: string, body: any) {
   const s = supa();
+  // Public edits cannot change record identities or move records to another policy.
+  if (body.patch && typeof body.patch === 'object') {
+    for (const key of ['id', 'policy_id', 'client_id', 'assessment_id', 'employee_id', 'assessment_employee_id', 'criterion_id', 'created_by']) delete body.patch[key];
+  }
 
   if (action === "get_bundle") {
     const { data: policy, error } = await s.from("prize_policies").select("*").eq("id", policy_id).maybeSingle();
@@ -225,6 +231,8 @@ async function handle(action: string, policy_id: string, body: any) {
   }
   if (action === "upsert_criterion_result") {
     await assertAeInPolicy(s, body.assessment_employee_id, policy_id);
+    const { data: criterion } = await s.from('prize_criteria').select('id').eq('id', body.criterion_id).eq('policy_id', policy_id).maybeSingle();
+    if (!criterion) return json({ error: 'Critério fora da política' }, 403);
     const { error } = await s
       .from("prize_assessment_criterion_results")
       .upsert(
@@ -259,8 +267,11 @@ Deno.serve(async (req) => {
       return await setPublicPassword(policy_id, body.password ?? null, req.headers.get("Authorization") || "");
     }
 
-    const denied = await checkPassword(policy_id, body.password || url.searchParams.get("password") || undefined);
-    if (denied) return denied;
+    const internalDenied = await requireInternalUser(req, corsHeaders);
+    if (internalDenied) {
+      const denied = await checkPassword(policy_id, body.password || url.searchParams.get("password") || undefined);
+      if (denied) return denied;
+    }
 
     return await handle(action, policy_id, body);
   } catch (e) {
