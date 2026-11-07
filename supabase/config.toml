@@ -7,3 +7,9 @@ verify_jwt = false
 
 [functions.escala-publica]
 verify_jwt = false
+
+[functions.premio-hotelaria-public]
+verify_jwt = false
+
+[functions.premiacao-public]
+verify_jwt = false
