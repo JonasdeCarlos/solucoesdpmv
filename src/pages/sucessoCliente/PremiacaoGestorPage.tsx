@@ -38,17 +38,25 @@ export default function PremiacaoGestorPage() {
   const [needPass, setNeedPass] = useState(false);
   const [wrong, setWrong] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [accessError, setAccessError] = useState('');
   const [bundle, setBundle] = useState<any>(null);
   const [competencia, setCompetencia] = useState(compAtual());
 
   const load = async (pwd: string) => {
     setLoading(true);
+    setAccessError('');
+    try {
     const r = await callEdge(token, pwd, 'get_bundle');
-    setLoading(false);
     if (r.requires_password) { setNeedPass(true); setWrong(!!r.wrong); return; }
-    if (r.error) { setBundle(null); setNeedPass(false); toast.error(r.error); return; }
+    if (r.error) { setBundle(null); setNeedPass(false); setAccessError(r.error); return; }
     setNeedPass(false); setBundle(r);
     sessionStorage.setItem(`prem-gestor-${token}`, pwd);
+    } catch {
+      setAccessError('Não foi possível acessar o prêmio. Tente novamente.');
+      setBundle(null);
+    } finally {
+      setLoading(false);
+    }
   };
   useEffect(() => { load(senha); }, [token]);
 
@@ -85,7 +93,7 @@ export default function PremiacaoGestorPage() {
     </div>
   );
 
-  if (!bundle || !cat) return <div className="min-h-screen flex items-center justify-center p-4"><p className="text-muted-foreground">Link inválido ou desativado.</p></div>;
+  if (!bundle || !cat) return <div className="min-h-screen flex flex-col gap-3 items-center justify-center p-4"><p className="text-muted-foreground">{accessError || 'Link inválido ou desativado.'}</p><Button variant="outline" onClick={() => load(senha)}>Tentar novamente</Button></div>;
 
   const politica = bundle.politica;
   const empresa = bundle.cliente?.nome_fantasia || bundle.cliente?.nome || '';

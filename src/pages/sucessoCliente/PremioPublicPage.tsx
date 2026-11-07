@@ -1,7 +1,7 @@
 import { isModeloHotelaria } from '@/utils/sucessoCliente/premioTemplates';
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { invokePrizePublic } from '@/utils/prizePublicRequest';
 import { Loader2, Building2, Lock } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -16,17 +16,7 @@ let PUB_PASSWORD = '';
 export function setPubPassword(p: string) { PUB_PASSWORD = p; }
 
 async function invokePub(policyId: string, action: string, extra: Record<string, unknown> = {}) {
-  const { data, error } = await supabase.functions.invoke('premio-hotelaria-public', {
-    body: { policy_id: policyId, action, password: PUB_PASSWORD || undefined, ...extra },
-  });
-  if (error) throw error;
-  if ((data as any)?.requires_password) {
-    const err: any = new Error((data as any).wrong ? 'Senha incorreta.' : 'Senha necessária.');
-    err.requiresPassword = true;
-    throw err;
-  }
-  if ((data as any)?.error) throw new Error((data as any).error);
-  return data as any;
+  return invokePrizePublic({ policy_id: policyId, action, password: PUB_PASSWORD || undefined, ...extra });
 }
 
 export default function PremioPublicPage() {
@@ -51,7 +41,10 @@ export default function PremioPublicPage() {
   useEffect(() => {
     (async () => {
       const saved = policyId ? sessionStorage.getItem(`premio_pwd_${policyId}`) : null;
-      if (saved) setPubPassword(saved);
+      setPubPassword(saved || '');
+      setLoading(true);
+      setError(null);
+      setNeedPassword(false);
       try { await reloadBundle(); }
       catch (e: any) {
         if (e?.requiresPassword) setNeedPassword(true);
@@ -72,6 +65,7 @@ export default function PremioPublicPage() {
       setNeedPassword(false);
     } catch (err: any) {
       setPubPassword('');
+      if (policyId) sessionStorage.removeItem(`premio_pwd_${policyId}`);
       setError(err?.requiresPassword ? 'Senha incorreta.' : (err.message || 'Erro ao carregar'));
     } finally {
       setChecking(false);
