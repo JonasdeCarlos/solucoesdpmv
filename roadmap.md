@@ -1,4 +1,5 @@
 # Privacidade e segurança
+- [ ] Revisar e corrigir os links externos dos prêmios sem remover a proteção de acesso.
 - [x] Bloquear indexação por buscadores na versão atualizada.
 - [x] Verificar pedido de login nas telas internas.
 - [x] Restringir dados internos e anexos a usuários autorizados; validar links externos nas funções de IA.
