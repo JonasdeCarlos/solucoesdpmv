@@ -13,3 +13,6 @@ verify_jwt = false
 
 [functions.premiacao-public]
 verify_jwt = false
+
+[functions.pec-comercial]
+verify_jwt = false
