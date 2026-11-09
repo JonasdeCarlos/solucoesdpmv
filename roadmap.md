@@ -1,6 +1,8 @@
 # Privacidade e segurança
-- [ ] Criar link comercial PEC 5x2 com cadastro obrigatório, acesso individual e lista interna de contatos.
-- [ ] Testar cadastro comercial, persistência e isolamento dos dados entre interessados.
+- [x] Criar link comercial PEC 5x2 com cadastro obrigatório, acesso individual e lista interna de contatos.
+- [x] Testar cadastro comercial, persistência e bloqueio de consultas anônimas aos contatos e setores alheios; 21 testes passaram.
+- [ ] Publicar o link comercial /pec-comercial — depende da publicação pelo proprietário.
+- [ ] Validar lista comercial com sessão interna — sessão autenticada indisponível no Supabase externo.
 - [x] Corrigir tela de senha nos links antigos de prêmios e preservar as mensagens de acesso; quatro testes e rejeição sem senha verificados.
 - [ ] Validar abertura do prêmio após senha correta — senha de um link real indisponível; nenhuma senha foi alterada.
 - [x] Bloquear indexação por buscadores na versão atualizada.
