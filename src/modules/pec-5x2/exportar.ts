@@ -46,13 +46,14 @@ export function exportarPdf(empresa: { nome?: string; cnpj?: string }, setores: 
       doc.setFontSize(6.5); for (let h = ini; h <= fim; h += 60) doc.text(minH(h), X(h), y, { align: 'center' }); y += 4;
       const cor: Record<string, [number, number, number]> = { baixo: [170, 170, 170], normal: VERDE, alto: [220, 160, 40], pico: [210, 90, 40] };
       for (const { l, t } of tls) {
-        const hRow = Math.max(14, t.barras.length * 4 + 6);
+        const hRow = Math.max(30, t.barras.length * 4 + 6);
         if (y + hRow > H - 30) { doc.addPage(); y = 40; }
         doc.setDrawColor(220, 220, 220); doc.line(30, y, x1, y);
-        doc.setTextColor(...OLIVA); doc.setFontSize(7); doc.text(`${l.rotulo} · ${l.nivel}`, 30, y + 8); doc.text(`${l.pessoas} pessoas${l.deficit ? ` · faltam ${l.deficit}` : ''}`, 30, y + 15);
+        doc.setTextColor(...OLIVA); doc.setFontSize(7); doc.text(`${l.rotulo} · ${l.nivel}`, 30, y + 8); doc.text(`${l.escalados} disponíveis`, 30, y + 15);
+        doc.text(`Demanda: ${l.pessoas}${l.deficit ? ` · faltam ${l.deficit}` : ''}`, 30, y + 23);
         doc.setFillColor(232, 240, 226); doc.rect(X(t.abre), y + 2, X(t.fecha) - X(t.abre), hRow - 4, 'F');
         t.barras.forEach((b, j) => {
-          doc.setFillColor(...(j >= l.escalados ? [200, 30, 30] as [number, number, number] : cor[l.nivel]));
+          doc.setFillColor(...cor[l.nivel]);
           doc.rect(X(b.ini), y + 4 + j * 4, X(b.fim) - X(b.ini), 3, 'F');
           if (b.pausa) { doc.setFillColor(255, 255, 255); doc.rect(X(b.pausa[0]), y + 4 + j * 4, X(b.pausa[1]) - X(b.pausa[0]), 3, 'F'); }
         });
