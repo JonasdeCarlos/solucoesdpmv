@@ -2,6 +2,7 @@
 export function externalAiHeaders(): Record<string, string> {
   const parts = window.location.pathname.split('/').filter(Boolean);
   const kind = parts[0];
+  if (kind === 'pec-comercial') return { 'x-commercial-token': localStorage.getItem('pec-commercial-access') || '' };
   const token = parts[1];
   if (!token) return {};
   if (kind === 'premiacao-gestor') return { 'x-external-token': token, 'x-external-password': sessionStorage.getItem(`prem-gestor-${token}`) || '' };

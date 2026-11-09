@@ -4839,6 +4839,54 @@ export type Database = {
         }
         Relationships: []
       }
+      pec_commercial_leads: {
+        Row: {
+          access_hash: string
+          consentimento_em: string
+          created_at: string
+          email: string
+          empresa: string
+          etapa: string
+          id: string
+          ip_hash: string | null
+          nome: string
+          origem: string
+          updated_at: string
+          whatsapp: string
+          workspace: Json
+        }
+        Insert: {
+          access_hash: string
+          consentimento_em?: string
+          created_at?: string
+          email: string
+          empresa?: string
+          etapa?: string
+          id?: string
+          ip_hash?: string | null
+          nome: string
+          origem?: string
+          updated_at?: string
+          whatsapp: string
+          workspace?: Json
+        }
+        Update: {
+          access_hash?: string
+          consentimento_em?: string
+          created_at?: string
+          email?: string
+          empresa?: string
+          etapa?: string
+          id?: string
+          ip_hash?: string | null
+          nome?: string
+          origem?: string
+          updated_at?: string
+          whatsapp?: string
+          workspace?: Json
+        }
+        Relationships: []
+      }
       ponto_ocr_audit: {
         Row: {
           alteracoes_manuais: Json | null
