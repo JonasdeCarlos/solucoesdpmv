@@ -1,6 +1,15 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
-import { commercialLeadSchema } from '../../../src/modules/pec-5x2/commercialSchema.ts';
+import { z } from 'npm:zod@3.25.76';
+
+const commercialLeadSchema = z.object({
+  nome: z.string().trim().min(2, 'Informe o nome do contato.').max(120),
+  email: z.string().trim().email('Informe um e-mail válido.').max(254).transform(v => v.toLowerCase()),
+  whatsapp: z.string().max(30).transform(v => v.replace(/\D/g, '')).refine(v => /^\d{10,15}$/.test(v), 'Informe o WhatsApp com DDD.'),
+  empresa: z.string().trim().max(160).default(''),
+  consentimento: z.literal(true, { errorMap: () => ({ message: 'Autorize o contato comercial para continuar.' }) }),
+  website: z.string().max(0).optional(),
+});
 
 const json = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
 const hash = async (value: string) => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value))), b => b.toString(16).padStart(2, '0')).join('');
