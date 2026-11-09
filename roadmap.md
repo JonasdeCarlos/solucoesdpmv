@@ -1,4 +1,5 @@
 # Privacidade e segurança
+- [x] Corrigir barras diárias PEC na tela/PDF para representar as pessoas disponíveis no marco, separando demanda e déficit; sete testes passaram. Conferência autenticada permanece bloqueada pela sessão indisponível abaixo.
 - [x] Criar link comercial PEC 5x2 com cadastro obrigatório, acesso individual e lista interna de contatos.
 - [x] Testar cadastro comercial, persistência e bloqueio de consultas anônimas aos contatos e setores alheios; 21 testes passaram.
 - [ ] Publicar o link comercial /pec-comercial — depende da publicação pelo proprietário.

@@ -429,7 +429,8 @@ function TimelineSemana({ s, linhas }: { s: Setor; linhas: LinhaDia[] }) {
         <div key={i} className="flex items-stretch border-t py-1">
           <div className="w-28 shrink-0 text-xs pr-2">
             <div className="font-medium">{l.rotulo}</div>
-            <div className="capitalize text-muted-foreground">{l.nivel} · {l.pessoas} pessoas</div>
+            <div className="capitalize text-muted-foreground">{l.nivel} · {l.escalados} disponíveis</div>
+            <div className="text-muted-foreground">Demanda: {l.pessoas}</div>
             {l.deficit > 0 && <div className="text-destructive">faltam {l.deficit}</div>}
           </div>
           <div className="relative flex-1 bg-muted/30 rounded">
@@ -437,7 +438,7 @@ function TimelineSemana({ s, linhas }: { s: Setor; linhas: LinhaDia[] }) {
             <div className="relative space-y-px py-1">
               {t.barras.map((b, j) => (
                 <div key={j} className="relative h-2">
-                  <div className={`absolute h-2 rounded-sm ${j >= l.escalados ? 'bg-destructive' : COR_NIVEL[l.nivel]}`} style={{ left: pct(b.ini), width: `calc(${pct(b.fim)} - ${pct(b.ini)})` }} title={`Colaborador ${j + 1}: ${minH(b.ini)}–${minH(b.fim)}`} />
+                  <div className={`absolute h-2 rounded-sm ${COR_NIVEL[l.nivel]}`} style={{ left: pct(b.ini), width: `calc(${pct(b.fim)} - ${pct(b.ini)})` }} title={`Colaborador ${j + 1}: ${minH(b.ini)}–${minH(b.fim)}`} />
                   {b.pausa && <div className="absolute h-2 bg-background/80" style={{ left: pct(b.pausa[0]), width: `calc(${pct(b.pausa[1])} - ${pct(b.pausa[0])})` }} />}
                 </div>))}
             </div>
@@ -446,7 +447,6 @@ function TimelineSemana({ s, linhas }: { s: Setor; linhas: LinhaDia[] }) {
       <div className="flex flex-wrap gap-3 text-[10px] text-muted-foreground mt-1 ml-28">
         <span><span className="inline-block w-3 h-2 bg-primary/10 border border-primary/40 mr-1" />horário de funcionamento</span>
         {(['baixo', 'normal', 'alto', 'pico'] as const).map((n) => <span key={n}><span className={`inline-block w-3 h-2 mr-1 ${COR_NIVEL[n]}`} />{n}</span>)}
-        <span><span className="inline-block w-3 h-2 bg-destructive mr-1" />pessoa que falta no quadro</span>
         <span>vão branco = intervalo</span>
       </div>
     </div>

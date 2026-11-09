@@ -11,3 +11,4 @@
 - Internal edge functions must validate the session and protected user_roles through the shared internalAuth helper before privileged operations; external handlers require scoped link validation instead. Why: an API key or frontend guard is not authorization.
 - Legacy hotelaria URLs must reuse the protected prize page and public prize requests must preserve password challenges and server access errors. Why: all manager URLs need the same access gate without hiding recovery instructions.
 - Commercial PEC access stores leads and isolated simulation JSON in pec_commercial_leads; only the server validates hashed access tokens, and internal contacts reuse the authorization gate. Why: commercial visitors must never access existing client data.
+- PEC daily timelines use available daily staffing from the selected milestone, calculated in the pure engine, and show demand separately in screen/PDF output. Why: demand estimates must not be drawn as existing employees.

@@ -128,7 +128,7 @@ export function necessidadePorDia(s: Setor, p: Parametros, marco: Marco, comp = 
   if (!modoB(s)) return porDiaModoA(s, p, marco, r);
   const jornadaDia = Math.min(r.limite, marco.jornada / marco.dias);
   const abertos = DIAS.filter((d) => s.funcionamento?.[d]?.aberto);
-  const escalados = abertos.length ? Math.floor((r.arredondada * marco.dias) / abertos.length) : 0;
+  const escalados = abertos.length ? Math.min(r.arredondada, Math.floor((r.arredondada * marco.dias) / abertos.length)) : 0;
   const linha = (d: string, nv: Nivel, rotulo: string, obs?: string): LinhaDia => {
     const f = s.funcionamento![d]; const mult = p.multiplicadores_intensidade[nv] ?? 1;
     let h = 0, mx = 0; const partes: string[] = [];
@@ -166,7 +166,7 @@ function porDiaModoA(s: Setor, p: Parametros, marco: Marco, r: Resultado): Linha
   const base0 = p.marcos[0] || marco;
   const atual = (s.funcionarios_atuais || 0) + (s.parciais?.qtd || 0);
   const baseDia = (atual * base0.dias) / abertos.length;
-  const escalados = Math.floor((r.arredondada * marco.dias) / abertos.length);
+  const escalados = Math.min(r.arredondada, Math.floor((r.arredondada * marco.dias) / abertos.length));
   const linha = (d: string, nv: Nivel, rotulo: string, obs?: string): LinhaDia => {
     const f = s.funcionamento![d]; const mult = p.multiplicadores_intensidade[nv] ?? 1;
     const turnos = (f.turnos || []).map((x) => `${x.ini}–${x.fim}`).join(' e ');
@@ -197,7 +197,7 @@ export function timelineDia(s: Setor, l: LinhaDia): { abre: number; fecha: numbe
   let fecha = Math.max(...ts.map((x) => { const f = toMin(x.fim); return f <= toMin(x.ini) ? f + 1440 : f; }));
   const trab = Math.round(l.jornadaDia * 60); const pausa = trab > 360 ? 60 : trab > 240 ? 15 : 0;
   const dur = Math.min(trab + pausa, fecha - abre);
-  const n = Math.max(0, l.pessoas); const folga = Math.max(0, fecha - abre - dur);
+  const n = Math.max(0, Math.floor(l.escalados)); const folga = Math.max(0, fecha - abre - dur);
   const barras: Barra[] = Array.from({ length: n }, (_, i) => {
     const ini = abre + Math.round(n > 1 ? (folga * i) / (n - 1) / 15 : 0) * 15;
     const fim = Math.min(fecha, ini + dur); const meio = ini + Math.round((fim - ini) / 2 / 15) * 15;
