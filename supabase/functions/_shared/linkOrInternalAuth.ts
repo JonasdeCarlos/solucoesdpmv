@@ -4,6 +4,17 @@ import { requireInternalUser } from './internalAuth.ts';
 export async function requireLinkOrInternal(req: Request, cors: Record<string, string>, kind: 'premiacao' | 'premio' | 'escala' | 'pec') {
   const denied = await requireInternalUser(req, cors);
   if (!denied) return null;
+  const commercial = req.headers.get('x-commercial-token');
+  if (commercial && (kind === 'pec' || kind === 'escala') && /^[a-f0-9]{64}$/.test(commercial)) {
+    try {
+      const r = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/pec-comercial`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', apikey: Deno.env.get('SUPABASE_ANON_KEY') || '' }, body: JSON.stringify({ action: 'authorize', token: commercial }),
+      });
+      const data = await r.json();
+      if (r.ok && data.empresa && !data.error) return null;
+    } catch { /* fail closed */ }
+    return denied;
+  }
   const credential = req.headers.get('x-external-token');
   if (!credential || credential.length > 200) return denied;
   const password = req.headers.get('x-external-password') || '';

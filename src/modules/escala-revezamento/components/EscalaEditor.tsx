@@ -34,12 +34,13 @@ interface Props {
   funcionarios: EscalaFuncionario[];
   onFuncionarios: (f: EscalaFuncionario[]) => void;
   readOnly?: boolean;
+  comercial?: boolean;
   cliente?: { nome?: string; cnpj?: string; cnae?: string | null };
 }
 
 const DIAS_MIN: [string, string][] = [['1', 'Seg'], ['2', 'Ter'], ['3', 'Qua'], ['4', 'Qui'], ['5', 'Sex'], ['6', 'Sáb'], ['0', 'Dom']];
 
-export default function EscalaEditor({ params: p, onParams, funcionarios: fs, onFuncionarios, readOnly, cliente }: Props) {
+export default function EscalaEditor({ params: p, onParams, funcionarios: fs, onFuncionarios, readOnly, cliente, comercial }: Props) {
   const [conflitos, setConflitos] = useState<string[]>([]);
   const dias = useMemo(() => listarDias(p.data_inicio, p.data_fim), [p.data_inicio, p.data_fim]);
   const fer = useMemo(() => new Set(p.feriados.map((f) => f.data)), [p.feriados]);
@@ -187,7 +188,7 @@ export default function EscalaEditor({ params: p, onParams, funcionarios: fs, on
 
       <Card className="p-4 space-y-3">
         <div className="flex items-center justify-between"><h3 className="font-semibold">Funcionários ({fs.length})</h3>
-          {!readOnly && <div className="flex gap-2"><ImportarFuncionarios atuais={fs} onImportar={onFuncionarios} /><Button size="sm" variant="outline" onClick={() => onFuncionarios([...fs, novoFuncionario()])}><Plus className="w-4 h-4 mr-1" />Funcionário</Button></div>}</div>
+          {!readOnly && <div className="flex gap-2">{!comercial && <ImportarFuncionarios atuais={fs} onImportar={onFuncionarios} />}<Button size="sm" variant="outline" onClick={() => onFuncionarios([...fs, novoFuncionario()])}><Plus className="w-4 h-4 mr-1" />Funcionário</Button></div>}</div>
         {(() => { const setoresLista = [...new Set(fs.map((f) => (f.setor || '').trim()).filter(Boolean))]; const ms = p.regras_cct.minimo_setor || {}; return setoresLista.length > 0 && (
           <div className="rounded-md border p-3 space-y-2">
             <Label>Mínimo de pessoas por setor (por dia da semana)</Label>

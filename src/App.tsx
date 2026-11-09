@@ -69,6 +69,7 @@ import CalculadoraHorasPage from "./pages/CalculadoraHorasPage";
 import EscalaPublicaPage from "./modules/escala-revezamento/pages/EscalaPublicaPage";
 import Pec5x2PublicaPage from "./modules/pec-5x2/pages/Pec5x2PublicaPage";
 import Pec5x2Page from "./modules/pec-5x2/pages/Pec5x2Page";
+import PecComercialPage from "./modules/pec-5x2/pages/PecComercialPage";
 
 const queryClient = new QueryClient();
 
@@ -95,6 +96,7 @@ const App = () => (
             <Route path="/premiacao-gestor/:token" element={<PremiacaoGestorPage />} />
             <Route path="/escala-publica/:token" element={<EscalaPublicaPage />} />
             <Route path="/pec-publica/:token" element={<Pec5x2PublicaPage />} />
+            <Route path="/pec-comercial" element={<PecComercialPage />} />
             {/* Admissão — escritório (senha) */}
             <Route path="/admissao/escritorio/login" element={<EscritorioLoginPage />} />
             <Route element={<OfficeGuard />}>

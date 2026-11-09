@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import EscalaRevezamentoPage from '@/modules/escala-revezamento/pages/EscalaRevezamentoPage';
 import NecessidadeContratacao from '../components/NecessidadeContratacao';
 import { MARCOS_PADRAO } from '../calculo';
+import CommercialLeads from '../components/CommercialLeads';
 
 const KEY = 'escala-cliente'; // mesmo contexto de empresa da Escala de Revezamento
 const dias = (iso: string) => Math.ceil((new Date(iso + 'T00:00:00').getTime() - Date.now()) / 86400000);
@@ -16,7 +17,7 @@ const dias = (iso: string) => Math.ceil((new Date(iso + 'T00:00:00').getTime() -
 export default function Pec5x2Page() {
   const { clientes } = useClientes();
   const [sp, setSp] = useSearchParams();
-  const tab = sp.get('aba') === 'escala' ? 'escala' : 'necessidade';
+  const tab = sp.get('aba') === 'comercial' ? 'comercial' : sp.get('aba') === 'escala' ? 'escala' : 'necessidade';
   const [clienteId, setRaw] = useState(() => localStorage.getItem(KEY) || '');
   const setClienteId = (v: string) => { setRaw(v); localStorage.setItem(KEY, v); };
   const [busca, setBusca] = useState('');
@@ -47,10 +48,11 @@ export default function Pec5x2Page() {
             {filtrados.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
           </select></div>
       </Card>
-      <Tabs value={tab} onValueChange={(v) => setSp(v === 'escala' ? { aba: 'escala' } : {})}>
+      <Tabs value={tab} onValueChange={(v) => setSp(v === 'necessidade' ? {} : { aba: v })}>
         <TabsList>
           <TabsTrigger value="necessidade">Necessidade de Contratação</TabsTrigger>
           <TabsTrigger value="escala">Escala de Revezamento</TabsTrigger>
+          <TabsTrigger value="comercial">Ação comercial</TabsTrigger>
         </TabsList>
         <TabsContent value="necessidade">
           {clienteId ? <NecessidadeContratacao empresaId={clienteId} empresa={clientes.find((c) => c.id === clienteId)}
@@ -58,6 +60,7 @@ export default function Pec5x2Page() {
             : <p className="text-sm text-muted-foreground p-4">Escolha uma empresa.</p>}
         </TabsContent>
         <TabsContent value="escala"><EscalaRevezamentoPage key={escalaKey} embutido /></TabsContent>
+        <TabsContent value="comercial"><CommercialLeads /></TabsContent>
       </Tabs>
     </div>
   );
