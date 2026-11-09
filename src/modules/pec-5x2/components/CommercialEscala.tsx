@@ -26,7 +26,7 @@ export default function CommercialEscala({ token, empresa }: { token: string; em
       const fim = new Date(Date.UTC(now.getFullYear(), now.getMonth() + 1, 0)).toISOString().slice(0, 10);
       let saved = d.escala;
       try { saved = JSON.parse(localStorage.getItem(`pec-commercial-draft-${token}`) || 'null') || saved; } catch { /* recovery */ }
-      setParams(saved?.params || paramsDe({ regime: '5x2', data_inicio: inicio, data_fim: fim, categoria_atividade: 'geral', atividade_anexo_iv: '', fundamento_trabalho_domingo: {}, cct_vigente: false, cct_registro: '', regras_cct: {}, prazo_folga_compensatoria_feriado: 7, n_domingos: 3, minimo_diario: 0, setor: '', responsavel_nome: '' }));
+      setParams(saved?.params || paramsDe({ regime: '5x2', data_inicio: inicio, data_fim: fim, categoria_atividade: 'DEMAIS_NAO_AUTORIZADAS', atividade_anexo_iv: '', fundamento_trabalho_domingo: '', cct_vigente: false, cct_registro: '', regras_cct: {}, prazo_folga_compensatoria_feriado: 7, n_domingos: 3, minimo_diario: 0, setor: '', responsavel_nome: '' }));
       setFuncionarios(saved?.funcionarios || []);
       ready.current = true;
     }).catch(e => toast.error(e.message));
