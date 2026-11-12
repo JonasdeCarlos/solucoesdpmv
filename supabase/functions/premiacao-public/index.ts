@@ -25,8 +25,8 @@ async function manageLink(body: any, authHeader: string) {
 
   const s = supa();
   const { politica_id, op, link_id, senha } = body;
-  const { data: roles } = await userClient.from('user_roles').select('role').eq('user_id', u.user.id).in('role', ['master', 'admin', 'user']).limit(1);
-  if (!roles?.length) return json({ error: 'Sem permissão' }, 403);
+  const { data: roles } = await userClient.from('user_roles').select('role').eq('user_id', u.user.id).in('role', ['master', 'admin']).limit(1);
+  if (!roles?.length) return json({ error: 'Somente administradores podem gerenciar links externos' }, 403);
   if (link_id) {
     const { data: scopedLink } = await s.from('premiacao_public_links').select('id').eq('id', link_id).eq('politica_id', politica_id).maybeSingle();
     if (!scopedLink) return json({ error: 'Link não encontrado nesta política' }, 404);

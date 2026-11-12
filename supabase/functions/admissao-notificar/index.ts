@@ -111,7 +111,7 @@ Deno.serve(async (req) => {
         if (!r.ok) console.error(`[admissao-notificar] Digisac falhou [${r.status}]: ${text}`);
         resultados.push({ number, ok: r.ok, status: r.status });
       } catch (e) {
-        console.error('[admissao-notificar] erro', number, String(e));
+        console.error('[admissao-notificar] erro ao enviar', String(e));
         resultados.push({ number, ok: false, erro: String(e) });
       }
     }
