@@ -1,3 +1,4 @@
+import { writeSafe } from '@/utils/safePrint';
 import React, { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -47,7 +48,7 @@ const PontoPrintView: React.FC<Props> = ({ identificacao, config, diasCalculados
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
-    printWindow.document.write(`
+    writeSafe(printWindow.document, `
       <!DOCTYPE html>
       <html>
       <head>

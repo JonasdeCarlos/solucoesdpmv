@@ -1,3 +1,4 @@
+import { writeSafe } from '@/utils/safePrint';
 import React, { useState, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -151,7 +152,7 @@ const JornadaPage: React.FC = () => {
 
     const pw = window.open('', '_blank');
     if (!pw) return;
-    pw.document.write(`<!DOCTYPE html><html><head><title>Jornada Verificada</title>
+    writeSafe(pw.document, `<!DOCTYPE html><html><head><title>Jornada Verificada</title>
     <style>
       * { margin:0; padding:0; box-sizing:border-box; }
       body { font-family:Arial,sans-serif; font-size:9pt; padding:12mm; color:#222; }

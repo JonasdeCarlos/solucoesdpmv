@@ -32,6 +32,12 @@ Deno.serve(async (req) => {
       String(b.url_download || '') ||
       `https://mediador.trabalho.gov.br/sistemas/mediador/Resumo/resumoVisualizarSalvarMsWordDoc?NrSolicitacao=${encodeURIComponent(numeroSolicitacao)}`;
 
+    for (const u of [urlVisualizar, urlDownload]) {
+      let ok = false;
+      try { const x = new URL(u); ok = x.protocol === 'https:' && x.hostname === 'mediador.trabalho.gov.br'; } catch { ok = false; }
+      if (!ok) return new Response(JSON.stringify({ error: 'URL não permitida' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
     const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE);

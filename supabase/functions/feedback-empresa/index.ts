@@ -81,7 +81,15 @@ Deno.serve(async (req) => {
     if (action === "generate") {
       const KEY = Deno.env.get("LOVABLE_API_KEY");
       if (!KEY) throw new Error("LOVABLE_API_KEY missing");
-      const { tipo, employee_name, employee_role, pontos_fortes, pontos_melhorar, fato_ocorrido, tom, manager_name } = body.input || {};
+      const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+      const { count } = await supa.from("ai_usage_log").select("id", { count: "exact", head: true })
+        .eq("client_id", empresa.id).eq("function_name", "feedback-empresa").gte("created_at", since);
+      if ((count || 0) >= 50) return json({ error: "Limite diário de gerações atingido para esta empresa." }, 429);
+      const inp = body.input || {};
+      const cap = (v: unknown, n: number) => (v == null ? "" : String(v).slice(0, n));
+      const tipo = cap(inp.tipo, 30), tom = cap(inp.tom, 30);
+      const employee_name = cap(inp.employee_name, 200), employee_role = cap(inp.employee_role, 200), manager_name = cap(inp.manager_name, 200);
+      const pontos_fortes = cap(inp.pontos_fortes, 3000), pontos_melhorar = cap(inp.pontos_melhorar, 3000), fato_ocorrido = cap(inp.fato_ocorrido, 4000);
       
       const companyName = empresa.nome_fantasia || empresa.nome || "";
       const companyInstruction = companyName 

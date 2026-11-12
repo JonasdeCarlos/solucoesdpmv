@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
     ];
     if (Array.isArray(history)) {
       for (const h of history.slice(-8)) {
-        if (h?.role && h?.content) messages.push({ role: h.role, content: String(h.content) });
+        if ((h?.role === 'user' || h?.role === 'assistant') && h?.content) messages.push({ role: h.role, content: String(h.content).slice(0, 8000) });
       }
     }
     messages.push({ role: 'user', content: String(question) });
