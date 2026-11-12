@@ -1,3 +1,4 @@
+import { writeSafe } from '@/utils/safePrint';
 import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -118,7 +119,7 @@ export default function DsrPrevisaoTab({ competencia }: Props) {
     const html = gerarHtmlPrevisao(anual ? meses : [mes], cfg, opts);
     const w = window.open('', '_blank');
     if (!w) return;
-    w.document.write(html);
+    writeSafe(w.document, html);
     w.document.close();
     w.focus();
     setTimeout(() => w.print(), 400);

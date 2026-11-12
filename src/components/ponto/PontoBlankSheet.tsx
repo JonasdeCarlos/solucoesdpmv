@@ -1,3 +1,4 @@
+import { writeSafe } from '@/utils/safePrint';
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -128,7 +129,7 @@ const PontoBlankSheet: React.FC<Props> = ({ config }) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
-    printWindow.document.write(`
+    writeSafe(printWindow.document, `
       <!DOCTYPE html>
       <html>
       <head>

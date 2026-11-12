@@ -1,3 +1,4 @@
+import { writeSafe } from '@/utils/safePrint';
 import React, { useState, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -206,7 +207,7 @@ const PontoBancoHoras: React.FC<Props> = ({ empregadoNome, empregadoCpf, emprega
   const openPrint = (html: string) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
-    printWindow.document.write(html);
+    writeSafe(printWindow.document, html);
     printWindow.document.close();
     printWindow.print();
   };
@@ -258,7 +259,7 @@ const PontoBancoHoras: React.FC<Props> = ({ empregadoNome, empregadoCpf, emprega
     if (!content) return;
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
-    printWindow.document.write(`<!DOCTYPE html><html><head><title>Relatório Banco de Horas</title>
+    writeSafe(printWindow.document, `<!DOCTYPE html><html><head><title>Relatório Banco de Horas</title>
       <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: Arial, sans-serif; font-size: 10pt; padding: 15mm; color: #222; }
