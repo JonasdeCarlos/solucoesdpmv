@@ -1,4 +1,6 @@
 # Privacidade e segurança
+- [x] Incluir PDF com texto na mensageria; cinco testes passaram e envio sem sessão retorna 401.
+- [ ] Conferir entrega real de texto e PDF pelo Digisac — sessão interna indisponível no Supabase externo; nenhum envio a clientes foi realizado.
 - [x] Corrigir barras diárias PEC na tela/PDF para representar as pessoas disponíveis no marco, separando demanda e déficit; sete testes passaram. Conferência autenticada permanece bloqueada pela sessão indisponível abaixo.
 - [x] Criar link comercial PEC 5x2 com cadastro obrigatório, acesso individual e lista interna de contatos.
 - [x] Testar cadastro comercial, persistência e bloqueio de consultas anônimas aos contatos e setores alheios; 21 testes passaram.

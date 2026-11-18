@@ -6,10 +6,12 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Send, Loader2, ArrowLeft, MessageSquare, Trash2, History, Save, BookmarkPlus } from 'lucide-react';
+import { Send, Loader2, ArrowLeft, MessageSquare, Trash2, History, Save, BookmarkPlus, Paperclip, FileText } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAvisoEmpresas } from '@/hooks/useAvisoEmpresas';
 import { formatCnpj } from '@/utils/avisos/normalize';
+import { readMessagePdf } from '@/utils/avisos/mensageriaPdf';
+import type { PdfAttachment } from '../../../supabase/functions/_shared/mensageriaPdf';
 
 interface MensagemHist {
   id: string;
@@ -40,6 +42,17 @@ const MensageriaPage = () => {
   const [modelos, setModelos] = useState<Modelo[]>([]);
   const [modeloId, setModeloId] = useState<string | null>(null);
   const [savingModelo, setSavingModelo] = useState(false);
+  const [anexo, setAnexo] = useState<PdfAttachment | null>(null);
+  const [readingPdf, setReadingPdf] = useState(false);
+
+  useEffect(() => { setSentIds(new Set()); }, [mensagem, anexo]);
+
+  const selecionarPdf = async (file: File) => {
+    setReadingPdf(true);
+    try { setAnexo(await readMessagePdf(file)); }
+    catch (error) { toast.error(error instanceof Error ? error.message : 'PDF inválido.'); }
+    finally { setReadingPdf(false); }
+  };
 
   const refreshHist = useCallback(async () => {
     setLoadingHist(true);
@@ -121,6 +134,7 @@ const MensageriaPage = () => {
   );
 
   const enviar = async (empresaId: string, empresaName: string) => {
+    if (sendingId || readingPdf) return;
     const texto = mensagem.trim();
     if (!texto) { toast.error('Digite a mensagem antes de enviar.'); return; }
     if (texto.length > 4000) { toast.error('Mensagem muito longa (máx. 4000).'); return; }
@@ -130,9 +144,13 @@ const MensageriaPage = () => {
     let erroMsg: string | null = null;
     try {
       const { data, error } = await supabase.functions.invoke('avisos-digisac-mensagem', {
-        body: { empresa_id: empresaId, mensagem: texto },
+        body: { empresa_id: empresaId, mensagem: texto, ...(anexo ? { anexo } : {}) },
       });
-      if (error) throw new Error(error.message);
+      if (error) {
+        const response = (error as { context?: Response }).context;
+        const reply = response ? await response.clone().json().catch(() => null) : null;
+        throw new Error(reply?.erro || error.message);
+      }
       if ((data as any)?.erro) throw new Error(String((data as any).erro));
       sucesso = true;
       setSentIds((prev) => new Set(prev).add(empresaId));
@@ -149,7 +167,7 @@ const MensageriaPage = () => {
       empresa_id: empresaId,
       empresa_code: empresa?.code ?? null,
       empresa_name: empresa?.name ?? empresaName,
-      mensagem: texto,
+      mensagem: anexo ? `${texto}\n\n[Anexo PDF: ${anexo.name}]` : texto,
       sucesso,
       erro: erroMsg,
       enviado_por: user?.user?.id ?? null,
@@ -203,6 +221,7 @@ const MensageriaPage = () => {
           <label className="text-sm font-medium">Mensagem</label>
           <Textarea
             value={mensagem}
+            disabled={!!sendingId}
             onChange={(e) => setMensagem(e.target.value)}
             placeholder="Digite a mensagem que será enviada individualmente para cada empresa..."
             rows={6}
@@ -213,6 +232,25 @@ const MensageriaPage = () => {
             <span>Para evitar bloqueio por spam, o envio é manual — um clique por empresa.</span>
             <span>{mensagem.length}/4000</span>
           </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <input id="mensageria-pdf" aria-label="Selecionar anexo PDF" type="file" accept="application/pdf,.pdf" className="sr-only" disabled={!!sendingId || readingPdf}
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              event.target.value = '';
+              if (file) void selecionarPdf(file);
+            }} />
+          <Button variant="outline" disabled={!!sendingId || readingPdf} onClick={() => document.getElementById('mensageria-pdf')?.click()}>
+            {readingPdf ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Paperclip className="h-4 w-4 mr-2" />}
+            {readingPdf ? 'Lendo PDF…' : anexo ? 'Trocar PDF' : 'Anexar PDF'}
+          </Button>
+          {anexo ? (
+            <div className="flex min-w-0 items-center gap-2 text-sm">
+              <FileText className="h-4 w-4 shrink-0 text-primary" />
+              <span className="break-all">{anexo.name}</span>
+              <Button variant="ghost" size="icon" title="Remover anexo PDF" aria-label="Remover anexo PDF" disabled={!!sendingId} onClick={() => setAnexo(null)}><Trash2 className="h-4 w-4" /></Button>
+            </div>
+          ) : <span className="text-xs text-muted-foreground">PDF · até 5 MB</span>}
         </div>
       </Card>
 
@@ -262,7 +300,7 @@ const MensageriaPage = () => {
                           <Button
                             size="sm"
                             variant={sent ? 'outline' : 'default'}
-                            disabled={sendingId === e.id || !mensagem.trim()}
+                            disabled={!!sendingId || readingPdf || !mensagem.trim()}
                             onClick={() => enviar(e.id, e.name)}
                           >
                             {sendingId === e.id ? (

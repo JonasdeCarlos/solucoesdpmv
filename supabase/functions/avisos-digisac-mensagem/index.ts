@@ -1,6 +1,14 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { requireInternalUser } from '../_shared/internalAuth.ts';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
+import { z } from 'npm:zod@3';
+import { buildMessagePayload, MAX_PDF_BASE64 } from '../_shared/mensageriaPdf.ts';
+
+const bodySchema = z.object({
+  empresa_id: z.string().uuid(),
+  mensagem: z.string().trim().min(1).max(4000),
+  anexo: z.object({ name: z.string().min(1).max(180), mimetype: z.literal('application/pdf'), base64: z.string().min(1).max(MAX_PDF_BASE64) }).strict().optional(),
+}).strict();
 
 function json(status: number, body: unknown) {
   return new Response(JSON.stringify(body), {
@@ -15,13 +23,15 @@ Deno.serve(async (req) => {
   if (denied) return denied;
   const t0 = Date.now();
   try {
-    const { empresa_id, mensagem } = await req.json();
-    if (!empresa_id || !mensagem || typeof mensagem !== 'string') {
-      return json(400, { erro: 'Campos obrigatórios: empresa_id, mensagem.' });
-    }
-    if (mensagem.length > 4000) {
-      return json(400, { erro: 'Mensagem muito longa (máx. 4000 caracteres).' });
-    }
+    if (Number(req.headers.get('content-length') || 0) > MAX_PDF_BASE64 + 16384) return json(413, { erro: 'Selecione um PDF de até 5 MB.' });
+    let body: unknown;
+    try { body = await req.json(); } catch { return json(400, { erro: 'Pedido de envio inválido.' }); }
+    const parsed = bodySchema.safeParse(body);
+    if (!parsed.success) return json(400, { erro: 'Confira a empresa, o texto (máx. 4000 caracteres) e o PDF (máx. 5 MB).' });
+    const { empresa_id, mensagem, anexo } = parsed.data;
+    let payload: Record<string, unknown>;
+    try { payload = buildMessagePayload(mensagem, '', '', anexo); }
+    catch (error) { return json(400, { erro: error instanceof Error ? error.message : 'PDF inválido.' }); }
 
     const BASE_URL = Deno.env.get('DIGISAC_BASE_URL') || 'https://contabilmv.digisac.co';
     const TOKEN = Deno.env.get('DIGISAC_API_TOKEN') || Deno.env.get('DIGISAC_TOKEN');
@@ -32,8 +42,8 @@ Deno.serve(async (req) => {
     }
 
     const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+      Deno.env.get('SUPABASE_URL') || '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '',
     );
 
     const { data: empresa, error: errEmp } = await supabase
@@ -43,9 +53,8 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (errEmp || !empresa) return json(404, { erro: 'Empresa não encontrada.' });
 
-    const payload: Record<string, unknown> = {
-      text: mensagem, serviceId: SERVICE_ID, departmentId: DEPARTMENT_ID,
-    };
+    payload.serviceId = SERVICE_ID;
+    payload.departmentId = DEPARTMENT_ID;
     const numeros: string[] = Array.isArray((empresa as any).whatsapp_numeros) && (empresa as any).whatsapp_numeros.length
       ? (empresa as any).whatsapp_numeros
       : (empresa.whatsapp ? [String(empresa.whatsapp)] : []);
@@ -60,7 +69,7 @@ Deno.serve(async (req) => {
     }
 
     const controller = new AbortController();
-    const to = setTimeout(() => controller.abort(), 30000);
+    const to = setTimeout(() => controller.abort(), anexo ? 60000 : 30000);
     let resp: Response | null = null;
     let data: any = null;
     let errMsg: string | null = null;
